@@ -86,7 +86,7 @@ UI em **português brasileiro**, tema claro com sidebar escura, primário azul (
 ## 6. Roadmap (fases)
 
 - ✅ **Fase 0 — Setup inicial** (Electron + React + TS, configs, esqueleto)
-- ⬜ **Fase 1 — Banco SQLite + login**
+- ✅ **Fase 1 — Banco SQLite + login** (migrations, seed admin/admin, IPC auth, tela de login, sidebar)
 - ⬜ **Fase 2 — CRUD receitas + lotes + dashboard**
 - ⬜ **Fase 3 — Configurações (portas, equipamentos, timeout, usuários)**
 - ⬜ **Fase 4 — Núcleo de captura serial** (o coração do produto)

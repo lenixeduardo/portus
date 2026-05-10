@@ -13,17 +13,17 @@
 - [x] `.gitignore` e `README.md`
 - [x] Commit inicial e push
 
-## Fase 1 — Banco SQLite + Login
-- [ ] Criar `src/main/db/connection.ts` (better-sqlite3, path em `app.getPath('userData')`)
-- [ ] Sistema de migrations em `src/main/db/migrations/` (`001_init.sql`)
-- [ ] Schema: `users`, `recipes`, `batches`, `equipments`, `capture_sessions`, `readings`, `settings`
-- [ ] Seed: usuário `admin` com senha default + 6 equipamentos placeholder
-- [ ] IPC handlers: `auth:login`, `auth:logout`, `auth:current-user`
-- [ ] Hash de senha com `bcrypt` (ou `bcryptjs` p/ evitar nativo extra)
-- [ ] Tela de Login (React) — card centralizado, validação, erro
-- [ ] Estado de sessão em memória no main + expor `currentUser` ao renderer
-- [ ] Layout base com sidebar (após login) e roteamento simples
-- [ ] Commit + push
+## Fase 1 — Banco SQLite + Login ✅
+- [x] Criar `src/main/db/connection.ts` (better-sqlite3, path em `app.getPath('userData')`)
+- [x] Sistema de migrations em `src/main/db/migrations.ts` (inline TS p/ sobreviver ao bundle)
+- [x] Schema: `users`, `recipes`, `batches`, `equipments`, `capture_sessions`, `readings`, `settings`
+- [x] Seed: usuário `admin/admin` + 6 equipamentos placeholder + `capture_timeout_seconds=30`
+- [x] IPC handlers: `auth:login`, `auth:logout`, `auth:current-user`
+- [x] Hash de senha com `bcryptjs` (puro JS, sem build nativo)
+- [x] Tela de Login (React) — card centralizado, validação, erro
+- [x] Estado de sessão em memória no main + expor `currentUser` ao renderer
+- [x] Layout base com sidebar (após login) e roteamento simples
+- [x] Commit + push
 
 ## Fase 2 — CRUD Receitas + Lotes + Dashboard
 - [ ] IPC `recipes:list|create|update|delete`

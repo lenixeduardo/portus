@@ -1,5 +1,9 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
+import { closeDb } from "./db/connection";
+import { runMigrations } from "./db/migrate";
+import { seedInitialData } from "./db/seed";
+import { registerAuthHandlers } from "./ipc/auth-handlers";
 
 const isDev = !app.isPackaged;
 
@@ -7,6 +11,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    backgroundColor: "#F3F4F6",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -22,9 +27,15 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  runMigrations();
+  seedInitialData();
+  registerAuthHandlers();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
+  closeDb();
   if (process.platform !== "darwin") app.quit();
 });
 
