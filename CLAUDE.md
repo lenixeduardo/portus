@@ -87,7 +87,7 @@ UI em **português brasileiro**, tema claro com sidebar escura, primário azul (
 
 - ✅ **Fase 0 — Setup inicial** (Electron + React + TS, configs, esqueleto)
 - ✅ **Fase 1 — Banco SQLite + login** (migrations, seed admin/admin, IPC auth, tela de login, sidebar)
-- ⬜ **Fase 2 — CRUD receitas + lotes + dashboard**
+- ✅ **Fase 2 — CRUD receitas + lotes + dashboard** (repositories, IPC, tela Receitas, Dashboard com cards, geração de código de lote, limite de 6 abertos)
 - ⬜ **Fase 3 — Configurações (portas, equipamentos, timeout, usuários)**
 - ⬜ **Fase 4 — Núcleo de captura serial** (o coração do produto)
 - ⬜ **Fase 5 — Histórico e exportação**

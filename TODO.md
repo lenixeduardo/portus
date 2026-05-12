@@ -25,15 +25,19 @@
 - [x] Layout base com sidebar (após login) e roteamento simples
 - [x] Commit + push
 
-## Fase 2 — CRUD Receitas + Lotes + Dashboard
-- [ ] IPC `recipes:list|create|update|delete`
-- [ ] Tela "Receitas" (tabela + modal de criação)
-- [ ] IPC `batches:list-open|create|close`
-- [ ] Tela Dashboard com grid 3×2 dos lotes abertos
-- [ ] Modal "Novo Lote" (seleciona receita, gera código)
-- [ ] Botão "Finalizar Lote" com confirmação
-- [ ] Validar limite de 6 lotes abertos (apenas aviso, não bloqueio rígido)
-- [ ] Commit + push
+## Fase 2 — CRUD Receitas + Lotes + Dashboard ✅
+- [x] IPC `recipes:list|create|update|delete` (`src/main/ipc/recipes-handlers.ts`)
+- [x] Repository receitas (`src/main/db/recipes-repo.ts`)
+- [x] Tela "Receitas" (tabela + modal de criação/edição) + exclusão com confirmação
+- [x] IPC `batches:list-open|create|close` (`src/main/ipc/batches-handlers.ts`)
+- [x] Repository lotes com join de receita/operador/contagem de leituras
+- [x] Geração automática de código do lote (`YYYY-NNNN`)
+- [x] Dashboard com grid 3×2 dos lotes abertos
+- [x] Modal "Novo Lote" (seleciona receita, código opcional)
+- [x] Botão "Finalizar Lote" com confirmação
+- [x] Limite de 6 lotes abertos (bloqueio com mensagem clara)
+- [x] Botão "Iniciar Leitura" placeholder (Fase 4)
+- [x] Commit + push
 
 ## Fase 3 — Configurações
 - [ ] Tela Configurações com abas (Captura / Equipamentos / Usuários)

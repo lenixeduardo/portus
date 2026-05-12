@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import "./styles.css";
 import { Login } from "./screens/Login";
 import { Sidebar, type Route } from "./components/Sidebar";
+import { Dashboard } from "./screens/Dashboard";
+import { Recipes } from "./screens/Recipes";
 import type { User } from "../shared/types";
 
 const TITLES: Record<Route, string> = {
@@ -40,9 +42,13 @@ export function App() {
           <h2>{TITLES[route]}</h2>
         </div>
         <div className="content">
-          <div className="placeholder">
-            Tela <strong>{TITLES[route]}</strong> — implementação na próxima fase.
-          </div>
+          {route === "dashboard" && <Dashboard />}
+          {route === "recipes" && <Recipes />}
+          {(route === "history" || route === "settings") && (
+            <div className="placeholder">
+              Tela <strong>{TITLES[route]}</strong> — implementação nas próximas fases.
+            </div>
+          )}
         </div>
       </div>
     </div>

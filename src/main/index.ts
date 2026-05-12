@@ -4,6 +4,8 @@ import { closeDb } from "./db/connection";
 import { runMigrations } from "./db/migrate";
 import { seedInitialData } from "./db/seed";
 import { registerAuthHandlers } from "./ipc/auth-handlers";
+import { registerBatchesHandlers } from "./ipc/batches-handlers";
+import { registerRecipesHandlers } from "./ipc/recipes-handlers";
 
 const isDev = !app.isPackaged;
 
@@ -31,6 +33,8 @@ app.whenReady().then(() => {
   runMigrations();
   seedInitialData();
   registerAuthHandlers();
+  registerRecipesHandlers();
+  registerBatchesHandlers();
   createWindow();
 });
 
