@@ -32,6 +32,7 @@ export interface Equipment {
   parity: "none" | "even" | "odd";
   enabled: boolean;
   slotIndex: number;
+  parseRegex?: string;
 }
 
 export interface Reading {

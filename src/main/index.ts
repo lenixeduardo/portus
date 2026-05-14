@@ -5,7 +5,10 @@ import { runMigrations } from "./db/migrate";
 import { seedInitialData } from "./db/seed";
 import { registerAuthHandlers } from "./ipc/auth-handlers";
 import { registerBatchesHandlers } from "./ipc/batches-handlers";
+import { registerEquipmentsHandlers } from "./ipc/equipments-handlers";
 import { registerFormulasHandlers } from "./ipc/formulas-handlers";
+import { registerSettingsHandlers } from "./ipc/settings-handlers";
+import { registerUsersHandlers } from "./ipc/users-handlers";
 
 const isDev = !app.isPackaged;
 
@@ -35,6 +38,9 @@ app.whenReady().then(() => {
   registerAuthHandlers();
   registerFormulasHandlers();
   registerBatchesHandlers();
+  registerSettingsHandlers();
+  registerEquipmentsHandlers();
+  registerUsersHandlers();
   createWindow();
 });
 

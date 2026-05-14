@@ -4,6 +4,7 @@ import { Login } from "./screens/Login";
 import { Sidebar, type Route } from "./components/Sidebar";
 import { Dashboard } from "./screens/Dashboard";
 import { Formulas } from "./screens/Formulas";
+import { Settings } from "./screens/Settings";
 import type { User } from "../shared/types";
 
 const TITLES: Record<Route, string> = {
@@ -44,7 +45,8 @@ export function App() {
         <div className="content">
           {route === "dashboard" && <Dashboard />}
           {route === "formulas" && <Formulas />}
-          {(route === "history" || route === "settings") && (
+          {route === "settings" && <Settings currentUserId={user.id} />}
+          {route === "history" && (
             <div className="placeholder">
               Tela <strong>{TITLES[route]}</strong> — implementação nas próximas fases.
             </div>

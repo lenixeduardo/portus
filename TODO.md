@@ -39,13 +39,15 @@
 - [x] Botão "Iniciar Leitura" placeholder (Fase 4)
 - [x] Commit + push
 
-## Fase 3 — Configurações
-- [ ] Tela Configurações com abas (Captura / Equipamentos / Usuários)
-- [ ] Aba Captura: input numérico para `capture_timeout_seconds`
-- [ ] Aba Equipamentos: listar 6 slots, escolher COM (`SerialPort.list()`), baud, data/stop/parity, regex de parse, enable
-- [ ] Aba Usuários: CRUD básico
-- [ ] IPC `serial:list-ports`, `equipments:update`, `settings:get|set`, `users:*`
-- [ ] Commit + push
+## Fase 3 — Configurações ✅
+- [x] Tela Configurações com abas (Captura / Equipamentos / Usuários)
+- [x] Aba Captura: input numérico para `capture_timeout_seconds` (validação 5–600s)
+- [x] Aba Equipamentos: lista os 6 slots, modal de edição com dropdown de portas detectadas (`SerialPort.list()`), baud, data/stop/parity, regex validada, toggle habilitado
+- [x] Aba Usuários: criar, alterar senha, excluir (protege admin logado / último usuário / usuários com fórmulas/lotes vinculados)
+- [x] IPC `settings:get-all|set`, `equipments:list|update`, `users:list|create|change-password|delete`, `serial:list-ports`
+- [x] Repositories: `settings-repo`, `equipments-repo`, `users-repo`
+- [x] Equipment ganhou campo `parseRegex` em `shared/types.ts`
+- [x] Commit + push
 
 ## Fase 4 — Núcleo de captura serial 🎯
 - [ ] Service `src/main/serial/capture-session.ts`

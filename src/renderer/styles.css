@@ -328,3 +328,66 @@ select {
 }
 .batch-actions button:first-child { flex: 1; background: var(--accent); }
 .batch-actions button:first-child:hover { background: #059669; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.tab {
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 0;
+  padding: 10px 16px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab:hover { background: transparent; color: var(--text); }
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: transparent;
+}
+
+.tab-panel { min-height: 200px; }
+
+.chip-gray { background: #E5E7EB; color: #374151; }
+.chip-blue { background: #DBEAFE; color: #1E40AF; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.success {
+  color: #065F46;
+  background: #D1FAE5;
+  border: 1px solid #A7F3D0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 400;
+  margin-bottom: 0;
+}
+label.checkbox input { width: auto; margin: 0; }
+
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+.small { font-size: 12px; }
+
+small.muted {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
