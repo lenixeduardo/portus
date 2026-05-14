@@ -56,6 +56,13 @@ export function listOpenBatches(): BatchWithFormula[] {
   return rows.map(rowToBatchWithFormula);
 }
 
+export function listAllBatches(): BatchWithFormula[] {
+  const rows = getDb()
+    .prepare(`${JOIN_SELECT} ORDER BY b.opened_at DESC`)
+    .all() as BatchJoinRow[];
+  return rows.map(rowToBatchWithFormula);
+}
+
 export function getBatchWithFormula(id: number): BatchWithFormula | null {
   const row = getDb()
     .prepare(`${JOIN_SELECT} WHERE b.id = ?`)

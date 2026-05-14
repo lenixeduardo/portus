@@ -8,6 +8,7 @@ import { registerBatchesHandlers } from "./ipc/batches-handlers";
 import { registerCaptureHandlers } from "./ipc/capture-handlers";
 import { registerEquipmentsHandlers } from "./ipc/equipments-handlers";
 import { registerFormulasHandlers } from "./ipc/formulas-handlers";
+import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 
@@ -43,6 +44,7 @@ app.whenReady().then(() => {
   registerEquipmentsHandlers();
   registerUsersHandlers();
   registerCaptureHandlers();
+  registerHistoryHandlers();
   createWindow();
 });
 

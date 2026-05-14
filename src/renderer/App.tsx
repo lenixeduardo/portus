@@ -4,6 +4,7 @@ import { Login } from "./screens/Login";
 import { Sidebar, type Route } from "./components/Sidebar";
 import { Dashboard } from "./screens/Dashboard";
 import { Formulas } from "./screens/Formulas";
+import { History } from "./screens/History";
 import { Settings } from "./screens/Settings";
 import type { User } from "../shared/types";
 
@@ -46,11 +47,7 @@ export function App() {
           {route === "dashboard" && <Dashboard />}
           {route === "formulas" && <Formulas />}
           {route === "settings" && <Settings currentUserId={user.id} />}
-          {route === "history" && (
-            <div className="placeholder">
-              Tela <strong>{TITLES[route]}</strong> — implementação nas próximas fases.
-            </div>
-          )}
+          {route === "history" && <History />}
         </div>
       </div>
     </div>

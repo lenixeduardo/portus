@@ -392,6 +392,102 @@ small.muted {
   font-size: 12px;
 }
 
+/* ── History ── */
+.history-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.export-btn {
+  white-space: nowrap;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.export-btn:hover { background: #059669; }
+
+.history-summary {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+@media (max-width: 1100px) {
+  .history-summary { grid-template-columns: repeat(3, 1fr); }
+}
+
+.history-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.history-summary-item span { color: var(--text-muted); }
+.history-summary-item strong { font-size: 14px; font-weight: 600; }
+
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.session-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg);
+  border-radius: 0;
+  color: var(--text);
+  font-size: 14px;
+  gap: 12px;
+  text-align: left;
+}
+.session-header:hover { background: #E9EBEE; }
+
+.session-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.session-index { font-weight: 600; font-size: 14px; }
+
+.session-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.session-meta-item {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.session-meta-item span { margin-right: 3px; }
+
+.session-toggle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.session-body { border-top: 1px solid var(--border); }
+
+.reading-parsed { color: #065F46; font-weight: 600; }
+
 /* ── Capture Modal ── */
 .capture-modal-card { width: 640px; }
 

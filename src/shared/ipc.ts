@@ -25,7 +25,10 @@ export const IPC = {
   captureIsActive: "capture:is-active",
   captureTick: "capture:tick",
   captureSlotUpdate: "capture:slot-update",
-  captureEnded: "capture:ended"
+  captureEnded: "capture:ended",
+  batchesListAll: "batches:list-all",
+  historyGetBatch: "history:get-batch",
+  historyExportCsv: "history:export-csv"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error";
@@ -61,6 +64,30 @@ export interface CaptureEndedEvent {
 }
 
 export type Unsubscribe = () => void;
+
+export interface ReadingRecord {
+  id: number;
+  equipmentId: number;
+  equipmentName: string;
+  slotIndex: number;
+  valueRaw: string;
+  valueParsed?: string;
+  capturedAt: string;
+}
+
+export interface CaptureSessionRecord {
+  id: number;
+  startedAt: string;
+  endedAt?: string;
+  timeoutSeconds: number;
+  status: "active" | "completed" | "cancelled";
+  readings: ReadingRecord[];
+}
+
+export interface BatchHistory {
+  batch: BatchWithFormula;
+  sessions: CaptureSessionRecord[];
+}
 
 export interface LoginRequest {
   username: string;
@@ -130,8 +157,13 @@ export interface SerialReaderApi {
   };
   batches: {
     listOpen(): Promise<BatchWithFormula[]>;
+    listAll(): Promise<BatchWithFormula[]>;
     create(input: BatchInput): Promise<ServiceResult<BatchWithFormula>>;
     close(id: number): Promise<ServiceResult<true>>;
+  };
+  history: {
+    getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;
+    exportCsv(batchId: number): Promise<ServiceResult<true>>;
   };
   settings: {
     getAll(): Promise<AppSettings>;

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
   IPC,
   type AppSettings,
+  type BatchHistory,
   type BatchInput,
   type BatchWithFormula,
   type CaptureEndedEvent,
@@ -37,10 +38,17 @@ const api: SerialReaderApi = {
   },
   batches: {
     listOpen: (): Promise<BatchWithFormula[]> => ipcRenderer.invoke(IPC.batchesListOpen),
+    listAll: (): Promise<BatchWithFormula[]> => ipcRenderer.invoke(IPC.batchesListAll),
     create: (input: BatchInput): Promise<ServiceResult<BatchWithFormula>> =>
       ipcRenderer.invoke(IPC.batchesCreate, input),
     close: (id: number): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.batchesClose, id)
+  },
+  history: {
+    getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
+      ipcRenderer.invoke(IPC.historyGetBatch, batchId),
+    exportCsv: (batchId: number): Promise<ServiceResult<true>> =>
+      ipcRenderer.invoke(IPC.historyExportCsv, batchId)
   },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGetAll),
