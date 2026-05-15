@@ -6,9 +6,22 @@ function toBindArray(params: BindParams): (string | number | null)[] {
   return params.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v));
 }
 
-export function run(sql: string, ...params: BindParams): void {
-  getDb().run(sql, toBindArray(params));
+// db.export() (called by persistDb) resets last_insert_rowid() to 0 in sql.js,
+// so run() captures the rowid before persisting and returns it.
+export function run(sql: string, ...params: BindParams): number {
+  const db = getDb();
+  db.run(sql, toBindArray(params));
+  const rowid = getLastRowid(db);
   persistDb();
+  return rowid;
+}
+
+function getLastRowid(db: ReturnType<typeof getDb>): number {
+  const stmt = db.prepare("SELECT last_insert_rowid() AS id");
+  stmt.step();
+  const id = (stmt.getAsObject() as { id: number }).id ?? 0;
+  stmt.free();
+  return id;
 }
 
 export function get<T = Record<string, unknown>>(
@@ -33,11 +46,6 @@ export function all<T = Record<string, unknown>>(sql: string, ...params: BindPar
   while (stmt.step()) rows.push(stmt.getAsObject() as T);
   stmt.free();
   return rows;
-}
-
-export function lastInsertRowid(): number {
-  const row = get<{ id: number }>("SELECT last_insert_rowid() AS id");
-  return row?.id ?? 0;
 }
 
 export function exec(sql: string): void {

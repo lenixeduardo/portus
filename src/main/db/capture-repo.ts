@@ -1,4 +1,4 @@
-import { get, lastInsertRowid, run } from "./query";
+import { get, run } from "./query";
 import type { CaptureSession, Reading } from "../../shared/types";
 
 interface SessionRow {
@@ -22,8 +22,8 @@ function rowToSession(r: SessionRow): CaptureSession {
 }
 
 export function createCaptureSession(batchId: number, timeoutSeconds: number): CaptureSession {
-  run("INSERT INTO capture_sessions (batch_id, timeout_seconds) VALUES (?, ?)", batchId, timeoutSeconds);
-  const row = get<SessionRow>("SELECT * FROM capture_sessions WHERE id = ?", lastInsertRowid())!;
+  const id = run("INSERT INTO capture_sessions (batch_id, timeout_seconds) VALUES (?, ?)", batchId, timeoutSeconds);
+  const row = get<SessionRow>("SELECT * FROM capture_sessions WHERE id = ?", id)!;
   return rowToSession(row);
 }
 
@@ -44,7 +44,7 @@ export interface InsertReadingParams {
 }
 
 export function insertReading(params: InsertReadingParams): Reading {
-  run(
+  const id = run(
     `INSERT INTO readings (batch_id, equipment_id, value_raw, value_parsed, capture_session_id)
      VALUES (?, ?, ?, ?, ?)`,
     params.batchId,
@@ -61,7 +61,7 @@ export function insertReading(params: InsertReadingParams): Reading {
     value_parsed: string | null;
     captured_at: string;
     capture_session_id: number;
-  }>("SELECT * FROM readings WHERE id = ?", lastInsertRowid())!;
+  }>("SELECT * FROM readings WHERE id = ?", id)!;
   return {
     id: row.id,
     batchId: row.batch_id,

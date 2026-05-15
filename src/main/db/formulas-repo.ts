@@ -1,4 +1,4 @@
-import { all, get, lastInsertRowid, run } from "./query";
+import { all, get, run } from "./query";
 import type { Formula } from "../../shared/types";
 
 interface FormulaRow {
@@ -33,13 +33,13 @@ export function createFormula(
   description: string | undefined,
   createdBy: number
 ): Formula {
-  run(
+  const id = run(
     "INSERT INTO formulas (name, description, created_by) VALUES (?, ?, ?)",
     name,
     description ?? null,
     createdBy
   );
-  return getFormula(lastInsertRowid())!;
+  return getFormula(id)!;
 }
 
 export function updateFormula(

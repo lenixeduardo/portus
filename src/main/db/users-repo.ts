@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { all, get, lastInsertRowid, run } from "./query";
+import { all, get, run } from "./query";
 import type { User } from "../../shared/types";
 
 interface UserRow {
@@ -28,8 +28,8 @@ export function getUserByUsername(username: string): UserRow | undefined {
 
 export function createUser(username: string, password: string): User {
   const hash = bcrypt.hashSync(password, 10);
-  run("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, hash);
-  return getUser(lastInsertRowid())!;
+  const id = run("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, hash);
+  return getUser(id)!;
 }
 
 export function updateUserPassword(id: number, password: string): void {

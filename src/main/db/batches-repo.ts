@@ -1,4 +1,4 @@
-import { all, get, lastInsertRowid, run } from "./query";
+import { all, get, run } from "./query";
 import type { Batch } from "../../shared/types";
 import type { BatchWithFormula } from "../../shared/ipc";
 
@@ -73,8 +73,8 @@ export function codeExists(code: string): boolean {
 }
 
 export function createBatch(formulaId: number, code: string, createdBy: number): BatchWithFormula {
-  run("INSERT INTO batches (formula_id, code, created_by) VALUES (?, ?, ?)", formulaId, code, createdBy);
-  return getBatchWithFormula(lastInsertRowid())!;
+  const id = run("INSERT INTO batches (formula_id, code, created_by) VALUES (?, ?, ?)", formulaId, code, createdBy);
+  return getBatchWithFormula(id)!;
 }
 
 export function closeBatch(id: number): void {
