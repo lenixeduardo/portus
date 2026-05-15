@@ -7,11 +7,52 @@ Antes de começar, certifique-se de ter instalado:
 - **Node.js 18+** ([download](https://nodejs.org/))
 - **npm 9+** (incluído com Node.js)
 - **Git** (para clonar o repositório)
-- **Windows 7+** (aplicação desktop, testada em Windows 10/11)
+- **Windows 10+** (aplicação desktop)
+- **Visual Studio Build Tools** ou **Visual Studio Community** ([instruções abaixo](#-instalar-visual-studio-build-tools-windows))
 
 ### Para desenvolvimento (opcional):
 - **Visual Studio Code** (recomendado)
 - **Git Bash** ou **PowerShell** (terminal)
+
+---
+
+## ⚙️ Instalar Visual Studio Build Tools (Windows)
+
+A aplicação usa módulos nativos C++ que precisam ser compilados. Você tem **2 opções**:
+
+### Opção A: Visual Studio Build Tools (recomendado, mais leve)
+
+1. Baixe o instalador: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
+2. Execute e selecione:
+   - ✅ **"Desktop development with C++"**
+   - ✅ Deixe as opções padrão selecionadas
+3. Clique em "Install"
+4. Aguarde a instalação (pode levar 5-10 minutos)
+5. **Reinicie o computador**
+6. Abra um **novo PowerShell** e tente novamente
+
+### Opção B: Visual Studio Community (alternativa)
+
+1. Baixe: https://visualstudio.microsoft.com/downloads/
+2. Execute o instalador
+3. Selecione **"Desktop development with C++"**
+4. Instale
+5. **Reinicie** e tente novamente
+
+> ⚠️ **Importante:** Você DEVE reiniciar o computador após instalar o Visual Studio Build Tools!
+
+---
+
+## ✅ Verificar Instalação (Windows)
+
+Abra **PowerShell** e execute:
+
+```powershell
+node -v
+npm -v
+```
+
+Se ambos mostrarem versões, prossiga. Se receber erro, reinstale Node.js.
 
 ---
 
@@ -163,12 +204,40 @@ Após login, você verá:
 
 ## 🔧 Troubleshooting
 
+### ❌ Erro: "Could not find any Visual Studio installation" (Windows)
+
+**Problema:** Módulos nativos não conseguem compilar sem C++ tools.
+
+**Solução:**
+1. Instale **Visual Studio Build Tools** ([ver instruções acima](#-instalar-visual-studio-build-tools-windows))
+2. ⚠️ **REINICIE o computador** após instalação
+3. Abra um **novo PowerShell** (importante!)
+4. Execute novamente:
+   ```bash
+   npm install
+   npm run rebuild
+   ```
+
+**Se ainda não funcionar:**
+```powershell
+# Limpe cache e tente novamente
+npm cache clean --force
+npm install
+npm run rebuild
+```
+
+---
+
 ### ❌ Erro: "better-sqlite3 is not a native module"
 
 **Solução:**
 ```bash
 npm run rebuild
 ```
+
+Se ainda falhar, veja a solução acima (Visual Studio).
+
+---
 
 ### ❌ Erro: "Cannot find module 'vite'"
 
@@ -178,18 +247,31 @@ npm install
 npm run rebuild
 ```
 
+---
+
 ### ❌ Porta 5173 já em uso (Vite)
 
 **Solução 1:** Feche outras aplicações Vite
 
 **Solução 2:** Use porta diferente
 ```bash
-VITE_PORT=5174 npm run dev
+set VITE_PORT=5174 && npm run dev
 ```
+
+---
 
 ### ❌ Aplicação não abre janela
 
 Verifique no **Terminal 2** se há mensagens de erro. Geralmente é porque o Terminal 1 ainda está compilando. Aguarde e execute `npm start` novamente.
+
+---
+
+### ❌ PowerShell diz "npm: The term 'npm' is not recognized"
+
+**Solução:**
+1. Feche PowerShell completamente
+2. Abra um **novo PowerShell** (importante!)
+3. Tente novamente
 
 ---
 
