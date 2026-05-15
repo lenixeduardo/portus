@@ -5,7 +5,7 @@
     "moduleResolution": "Node",
     "outDir": "dist/main",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node", "sql.js"]
   },
   "include": ["src/main/**/*", "src/shared/**/*", "src/preload/**/*"]
 }
