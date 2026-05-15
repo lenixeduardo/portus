@@ -12,7 +12,7 @@ import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 
-const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
+const isDev = !app.isPackaged && process.env.NODE_ENV !== "production" || process.env.ELECTRON_DEV === "1";
 
 function createWindow() {
   const win = new BrowserWindow({
