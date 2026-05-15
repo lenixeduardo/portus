@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import type { Formula } from "../../shared/types";
 import type { BatchWithFormula } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
+
 import { CaptureModal } from "../components/CaptureModal";
+
+import { Play, CheckSquare } from "lucide-react";
+
 
 export function Dashboard() {
   const [batches, setBatches] = useState<BatchWithFormula[]>([]);
@@ -51,7 +55,7 @@ export function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="muted">Carregando...</div>
+        <div className="muted mono" style={{ fontSize: 12 }}>Carregando...</div>
       ) : batches.length === 0 ? (
         <div className="placeholder">
           Nenhum lote aberto. Clique em <strong>+ Novo Lote</strong> para começar.
@@ -107,19 +111,45 @@ function BatchCard({
     <div className="batch-card">
       <div className="batch-card-head">
         <div>
-          <div className="batch-code">Lote #{batch.code}</div>
+          <div className="batch-code">#{batch.code}</div>
           <div className="batch-recipe">{batch.formulaName}</div>
         </div>
         <span className="chip chip-green">ABERTO</span>
       </div>
+
       <div className="batch-meta">
-        <div><span>Aberto em</span><strong>{formatDate(batch.openedAt)}</strong></div>
-        <div><span>Leituras</span><strong>{batch.readingsCount}</strong></div>
-        <div><span>Operador</span><strong>{batch.operatorName}</strong></div>
+        <div>
+          <span>Aberto</span>
+          <strong>{formatDate(batch.openedAt)}</strong>
+        </div>
+        <div>
+          <span>Leituras</span>
+          <strong>{batch.readingsCount}</strong>
+        </div>
+        <div>
+          <span>Operador</span>
+          <strong>{batch.operatorName}</strong>
+        </div>
       </div>
+
       <div className="batch-actions">
-        <button onClick={onStartCapture}>▶ Iniciar Leitura</button>
-        <button className="secondary" onClick={onClose}>Finalizar Lote</button>
+
+        <button
+          onClick={() => alert("Captura serial será implementada na Fase 4.")}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Play size={13} />
+          Iniciar Leitura
+        </button>
+        <button
+          className="secondary"
+          onClick={onClose}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <CheckSquare size={13} />
+          Finalizar
+        </button>
+
       </div>
     </div>
   );
@@ -151,7 +181,7 @@ function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
     setError(null);
     const res = await window.api.batches.create({
       formulaId: Number(formulaId),
-      code: code.trim() || undefined
+      code: code.trim() || undefined,
     });
     setSaving(false);
     if (!res.ok) {
@@ -178,7 +208,7 @@ function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
         <div className="field">
           <label>Fórmula</label>
           {formulas.length === 0 ? (
-            <div className="muted">Cadastre uma fórmula antes de criar um lote.</div>
+            <div className="muted" style={{ fontSize: 13 }}>Cadastre uma fórmula antes de criar um lote.</div>
           ) : (
             <select
               value={formulaId}
@@ -193,7 +223,12 @@ function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
         </div>
         <div className="field">
           <label>Código do lote (opcional — gerado automaticamente)</label>
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ex.: 2026-0042" />
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="ex.: 2026-0042"
+            className="mono"
+          />
         </div>
         {error && <div className="error">{error}</div>}
         <button type="submit" style={{ display: "none" }} />
@@ -204,5 +239,5 @@ function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
 
 function formatDate(iso: string): string {
   const d = new Date(iso.replace(" ", "T") + "Z");
-  return d.toLocaleString("pt-BR");
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 }

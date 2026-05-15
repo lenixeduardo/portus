@@ -63,7 +63,7 @@ export function Formulas() {
               <tr key={f.id}>
                 <td><strong>{f.name}</strong></td>
                 <td className="muted">{f.description ?? "—"}</td>
-                <td className="muted">{formatDate(f.createdAt)}</td>
+                <td className="muted mono" style={{ fontSize: 12 }}>{formatDate(f.createdAt)}</td>
                 <td>
                   <button className="link" onClick={() => setEdit({ mode: "edit", formula: f })}>Editar</button>
                   <button className="link danger" onClick={() => handleDelete(f)}>Excluir</button>

@@ -9,10 +9,10 @@ import { Settings } from "./screens/Settings";
 import type { User } from "../shared/types";
 
 const TITLES: Record<Route, string> = {
-  dashboard: "Lotes Abertos",
+  dashboard: "Lotes Ativos",
   formulas: "Fórmulas",
   history: "Histórico",
-  settings: "Configurações"
+  settings: "Configurações",
 };
 
 export function App() {
