@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { getDb } from "./connection";
+import { all, get, run } from "./query";
 import type { User } from "../../shared/types";
 
 interface UserRow {
@@ -14,48 +14,38 @@ function rowToUser(row: UserRow): User {
 }
 
 export function listUsers(): User[] {
-  const rows = getDb()
-    .prepare("SELECT * FROM users ORDER BY username COLLATE NOCASE")
-    .all() as UserRow[];
-  return rows.map(rowToUser);
+  return all<UserRow>("SELECT * FROM users ORDER BY username COLLATE NOCASE").map(rowToUser);
 }
 
 export function getUser(id: number): User | null {
-  const row = getDb()
-    .prepare("SELECT * FROM users WHERE id = ?")
-    .get(id) as UserRow | undefined;
+  const row = get<UserRow>("SELECT * FROM users WHERE id = ?", id);
   return row ? rowToUser(row) : null;
+}
+
+export function getUserByUsername(username: string): UserRow | undefined {
+  return get<UserRow>("SELECT * FROM users WHERE username = ?", username);
 }
 
 export function createUser(username: string, password: string): User {
   const hash = bcrypt.hashSync(password, 10);
-  const info = getDb()
-    .prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)")
-    .run(username, hash);
-  return getUser(Number(info.lastInsertRowid))!;
+  const id = run("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, hash);
+  return getUser(id)!;
 }
 
 export function updateUserPassword(id: number, password: string): void {
   const hash = bcrypt.hashSync(password, 10);
-  getDb().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, id);
+  run("UPDATE users SET password_hash = ? WHERE id = ?", hash, id);
 }
 
 export function deleteUser(id: number): void {
-  getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
+  run("DELETE FROM users WHERE id = ?", id);
 }
 
 export function countUsers(): number {
-  const r = getDb().prepare("SELECT COUNT(*) AS c FROM users").get() as { c: number };
-  return r.c;
+  return get<{ c: number }>("SELECT COUNT(*) AS c FROM users")?.c ?? 0;
 }
 
 export function userHasReferences(id: number): boolean {
-  const r1 = getDb()
-    .prepare("SELECT 1 FROM formulas WHERE created_by = ? LIMIT 1")
-    .get(id);
-  if (r1) return true;
-  const r2 = getDb()
-    .prepare("SELECT 1 FROM batches WHERE created_by = ? LIMIT 1")
-    .get(id);
-  return r2 != null;
+  if (get("SELECT 1 AS x FROM formulas WHERE created_by = ? LIMIT 1", id)) return true;
+  return get("SELECT 1 AS x FROM batches WHERE created_by = ? LIMIT 1", id) != null;
 }

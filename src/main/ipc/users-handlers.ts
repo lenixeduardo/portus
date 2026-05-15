@@ -11,7 +11,7 @@ import {
   updateUserPassword,
   userHasReferences
 } from "../db/users-repo";
-import { getDb } from "../db/connection";
+import { getUserByUsername } from "../db/users-repo";
 
 function validateUsername(username: string): string | null {
   const t = (username ?? "").trim();
@@ -29,8 +29,7 @@ function validatePassword(password: string): string | null {
 }
 
 function usernameExists(username: string): boolean {
-  const r = getDb().prepare("SELECT 1 FROM users WHERE username = ?").get(username);
-  return r != null;
+  return getUserByUsername(username) != null;
 }
 
 export function registerUsersHandlers(): void {

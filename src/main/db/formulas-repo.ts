@@ -1,4 +1,4 @@
-import { getDb } from "../db/connection";
+import { all, get, run } from "./query";
 import type { Formula } from "../../shared/types";
 
 interface FormulaRow {
@@ -20,16 +20,11 @@ function rowToFormula(row: FormulaRow): Formula {
 }
 
 export function listFormulas(): Formula[] {
-  const rows = getDb()
-    .prepare("SELECT * FROM formulas ORDER BY name COLLATE NOCASE")
-    .all() as FormulaRow[];
-  return rows.map(rowToFormula);
+  return all<FormulaRow>("SELECT * FROM formulas ORDER BY name COLLATE NOCASE").map(rowToFormula);
 }
 
 export function getFormula(id: number): Formula | null {
-  const row = getDb()
-    .prepare("SELECT * FROM formulas WHERE id = ?")
-    .get(id) as FormulaRow | undefined;
+  const row = get<FormulaRow>("SELECT * FROM formulas WHERE id = ?", id);
   return row ? rowToFormula(row) : null;
 }
 
@@ -38,10 +33,13 @@ export function createFormula(
   description: string | undefined,
   createdBy: number
 ): Formula {
-  const info = getDb()
-    .prepare("INSERT INTO formulas (name, description, created_by) VALUES (?, ?, ?)")
-    .run(name, description ?? null, createdBy);
-  return getFormula(Number(info.lastInsertRowid))!;
+  const id = run(
+    "INSERT INTO formulas (name, description, created_by) VALUES (?, ?, ?)",
+    name,
+    description ?? null,
+    createdBy
+  );
+  return getFormula(id)!;
 }
 
 export function updateFormula(
@@ -49,19 +47,14 @@ export function updateFormula(
   name: string,
   description: string | undefined
 ): Formula | null {
-  getDb()
-    .prepare("UPDATE formulas SET name = ?, description = ? WHERE id = ?")
-    .run(name, description ?? null, id);
+  run("UPDATE formulas SET name = ?, description = ? WHERE id = ?", name, description ?? null, id);
   return getFormula(id);
 }
 
 export function deleteFormula(id: number): void {
-  getDb().prepare("DELETE FROM formulas WHERE id = ?").run(id);
+  run("DELETE FROM formulas WHERE id = ?", id);
 }
 
 export function countBatchesForFormula(id: number): number {
-  const r = getDb()
-    .prepare("SELECT COUNT(*) AS c FROM batches WHERE formula_id = ?")
-    .get(id) as { c: number };
-  return r.c;
+  return get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE formula_id = ?", id)?.c ?? 0;
 }

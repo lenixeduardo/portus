@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
-import { closeDb } from "./db/connection";
+import { closeDb, openDb, persistDb } from "./db/connection";
 import { runMigrations } from "./db/migrate";
 import { seedInitialData } from "./db/seed";
 import { registerAuthHandlers } from "./ipc/auth-handlers";
@@ -8,6 +8,7 @@ import { registerBatchesHandlers } from "./ipc/batches-handlers";
 import { registerCaptureHandlers } from "./ipc/capture-handlers";
 import { registerEquipmentsHandlers } from "./ipc/equipments-handlers";
 import { registerFormulasHandlers } from "./ipc/formulas-handlers";
+import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 
@@ -30,12 +31,14 @@ function createWindow() {
     win.webContents.openDevTools({ mode: "detach" });
   } else {
     win.loadFile(join(__dirname, "../../renderer/index.html"));
-  };
+  }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await openDb();
   runMigrations();
   seedInitialData();
+  persistDb();
   registerAuthHandlers();
   registerFormulasHandlers();
   registerBatchesHandlers();
@@ -43,6 +46,7 @@ app.whenReady().then(() => {
   registerEquipmentsHandlers();
   registerUsersHandlers();
   registerCaptureHandlers();
+  registerHistoryHandlers();
   createWindow();
 });
 

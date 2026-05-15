@@ -23,10 +23,71 @@ export const IPC = {
   captureStart: "capture:start",
   captureCancel: "capture:cancel",
   captureIsActive: "capture:is-active",
-  captureTickEvent: "capture:tick",
-  captureSlotUpdateEvent: "capture:slot-update",
-  captureEndedEvent: "capture:ended"
+  captureTick: "capture:tick",
+  captureSlotUpdate: "capture:slot-update",
+  captureEnded: "capture:ended",
+  batchesListAll: "batches:list-all",
+  historyGetBatch: "history:get-batch",
+  historyExportCsv: "history:export-csv"
 } as const;
+
+export type SlotStatus = "idle" | "open" | "receiving" | "error";
+
+export interface SlotInitState {
+  slotIndex: number;
+  equipmentId: number;
+  name: string;
+  status: SlotStatus;
+}
+
+export interface CaptureStartResult {
+  sessionId: number;
+  slots: SlotInitState[];
+  timeoutSeconds: number;
+}
+
+export interface SlotUpdateEvent {
+  slotIndex: number;
+  status: SlotStatus;
+  valueRaw?: string;
+  valueParsed?: string;
+  timestamp?: string;
+}
+
+export interface CaptureTickEvent {
+  remaining: number;
+  total: number;
+}
+
+export interface CaptureEndedEvent {
+  reason: "completed" | "cancelled";
+}
+
+export type Unsubscribe = () => void;
+
+export interface ReadingRecord {
+  id: number;
+  equipmentId: number;
+  equipmentName: string;
+  slotIndex: number;
+  valueRaw: string;
+  valueParsed?: string;
+  capturedAt: string;
+}
+
+export interface CaptureSessionRecord {
+  id: number;
+  startedAt: string;
+  endedAt?: string;
+  timeoutSeconds: number;
+  status: "active" | "completed" | "cancelled";
+  readings: ReadingRecord[];
+}
+
+export interface BatchHistory {
+  batch: BatchWithFormula;
+  sessions: CaptureSessionRecord[];
+}
 
 export interface LoginRequest {
   username: string;
@@ -80,45 +141,7 @@ export interface EquipmentUpdateInput {
 
 export type AppSettings = Record<string, string>;
 
-export type SlotStatus = "open" | "receiving" | "error";
-
-export interface SlotInitState {
-  equipmentId: number;
-  name: string;
-  slotIndex: number;
-  portPath: string;
-  status: SlotStatus;
-  error?: string;
-}
-
-export interface CaptureStartData {
-  sessionId: number;
-  batchId: number;
-  timeoutSeconds: number;
-  slots: SlotInitState[];
-}
-
-export interface CaptureTickEvent {
-  remainingSeconds: number;
-}
-
-export interface SlotUpdateEvent {
-  equipmentId: number;
-  status: SlotStatus;
-  valueRaw?: string;
-  valueParsed?: string | null;
-  capturedAt?: string;
-  error?: string;
-}
-
-export interface CaptureEndedEvent {
-  sessionId: number;
-  reason: "timeout" | "cancelled" | "completed";
-}
-
 export type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-export type Unsubscribe = () => void;
 
 export interface SerialReaderApi {
   auth: {
@@ -134,8 +157,13 @@ export interface SerialReaderApi {
   };
   batches: {
     listOpen(): Promise<BatchWithFormula[]>;
+    listAll(): Promise<BatchWithFormula[]>;
     create(input: BatchInput): Promise<ServiceResult<BatchWithFormula>>;
     close(id: number): Promise<ServiceResult<true>>;
+  };
+  history: {
+    getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;
+    exportCsv(batchId: number): Promise<ServiceResult<true>>;
   };
   settings: {
     getAll(): Promise<AppSettings>;
@@ -155,7 +183,7 @@ export interface SerialReaderApi {
     listPorts(): Promise<SerialPortInfo[]>;
   };
   capture: {
-    start(batchId: number): Promise<ServiceResult<CaptureStartData>>;
+    start(batchId: number): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
     isActive(): Promise<boolean>;
     onTick(cb: (e: CaptureTickEvent) => void): Unsubscribe;

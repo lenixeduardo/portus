@@ -1,4 +1,4 @@
-import { getDb } from "./connection";
+import { all, get, run } from "./query";
 import type { Equipment } from "../../shared/types";
 
 interface EquipmentRow {
@@ -30,16 +30,11 @@ function rowToEquipment(row: EquipmentRow): Equipment {
 }
 
 export function listEquipments(): Equipment[] {
-  const rows = getDb()
-    .prepare("SELECT * FROM equipments ORDER BY slot_index")
-    .all() as EquipmentRow[];
-  return rows.map(rowToEquipment);
+  return all<EquipmentRow>("SELECT * FROM equipments ORDER BY slot_index").map(rowToEquipment);
 }
 
 export function getEquipment(id: number): Equipment | null {
-  const row = getDb()
-    .prepare("SELECT * FROM equipments WHERE id = ?")
-    .get(id) as EquipmentRow | undefined;
+  const row = get<EquipmentRow>("SELECT * FROM equipments WHERE id = ?", id);
   return row ? rowToEquipment(row) : null;
 }
 
@@ -47,23 +42,20 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
   const current = getEquipment(id);
   if (!current) return null;
   const merged: Equipment = { ...current, ...patch, id, slotIndex: current.slotIndex };
-  getDb()
-    .prepare(
-      `UPDATE equipments SET
-        name = ?, port_path = ?, baud_rate = ?, data_bits = ?,
-        stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?
-       WHERE id = ?`
-    )
-    .run(
-      merged.name,
-      merged.portPath,
-      merged.baudRate,
-      merged.dataBits,
-      merged.stopBits,
-      merged.parity,
-      merged.enabled ? 1 : 0,
-      merged.parseRegex ?? null,
-      id
-    );
+  run(
+    `UPDATE equipments SET
+      name = ?, port_path = ?, baud_rate = ?, data_bits = ?,
+      stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?
+     WHERE id = ?`,
+    merged.name,
+    merged.portPath,
+    merged.baudRate,
+    merged.dataBits,
+    merged.stopBits,
+    merged.parity,
+    merged.enabled ? 1 : 0,
+    merged.parseRegex ?? null,
+    id
+  );
   return getEquipment(id);
 }

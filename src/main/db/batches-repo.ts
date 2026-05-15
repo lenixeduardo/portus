@@ -1,4 +1,4 @@
-import { getDb } from "./connection";
+import { all, get, run } from "./query";
 import type { Batch } from "../../shared/types";
 import type { BatchWithFormula } from "../../shared/ipc";
 
@@ -50,51 +50,43 @@ const JOIN_SELECT = `
 `;
 
 export function listOpenBatches(): BatchWithFormula[] {
-  const rows = getDb()
-    .prepare(`${JOIN_SELECT} WHERE b.status = 'open' ORDER BY b.opened_at DESC`)
-    .all() as BatchJoinRow[];
-  return rows.map(rowToBatchWithFormula);
+  return all<BatchJoinRow>(`${JOIN_SELECT} WHERE b.status = 'open' ORDER BY b.opened_at DESC`).map(
+    rowToBatchWithFormula
+  );
+}
+
+export function listAllBatches(): BatchWithFormula[] {
+  return all<BatchJoinRow>(`${JOIN_SELECT} ORDER BY b.opened_at DESC`).map(rowToBatchWithFormula);
 }
 
 export function getBatchWithFormula(id: number): BatchWithFormula | null {
-  const row = getDb()
-    .prepare(`${JOIN_SELECT} WHERE b.id = ?`)
-    .get(id) as BatchJoinRow | undefined;
+  const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.id = ?`, id);
   return row ? rowToBatchWithFormula(row) : null;
 }
 
 export function countOpenBatches(): number {
-  const r = getDb()
-    .prepare("SELECT COUNT(*) AS c FROM batches WHERE status = 'open'")
-    .get() as { c: number };
-  return r.c;
+  return get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE status = 'open'")?.c ?? 0;
 }
 
 export function codeExists(code: string): boolean {
-  const r = getDb().prepare("SELECT 1 FROM batches WHERE code = ?").get(code);
-  return r != null;
+  return get("SELECT 1 AS x FROM batches WHERE code = ?", code) != null;
 }
 
 export function createBatch(formulaId: number, code: string, createdBy: number): BatchWithFormula {
-  const info = getDb()
-    .prepare("INSERT INTO batches (formula_id, code, created_by) VALUES (?, ?, ?)")
-    .run(formulaId, code, createdBy);
-  return getBatchWithFormula(Number(info.lastInsertRowid))!;
+  const id = run("INSERT INTO batches (formula_id, code, created_by) VALUES (?, ?, ?)", formulaId, code, createdBy);
+  return getBatchWithFormula(id)!;
 }
 
 export function closeBatch(id: number): void {
-  getDb()
-    .prepare(
-      "UPDATE batches SET status = 'closed', closed_at = datetime('now') WHERE id = ? AND status = 'open'"
-    )
-    .run(id);
+  run(
+    "UPDATE batches SET status = 'closed', closed_at = datetime('now') WHERE id = ? AND status = 'open'",
+    id
+  );
 }
 
 export function generateBatchCode(): string {
   const year = new Date().getFullYear();
-  const row = getDb()
-    .prepare("SELECT COUNT(*) AS c FROM batches WHERE code LIKE ?")
-    .get(`${year}-%`) as { c: number };
-  const seq = String(row.c + 1).padStart(4, "0");
+  const c = get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE code LIKE ?", `${year}-%`)?.c ?? 0;
+  const seq = String(c + 1).padStart(4, "0");
   return `${year}-${seq}`;
 }

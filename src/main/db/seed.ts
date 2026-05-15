@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { getDb } from "./connection";
+import { get, run } from "./query";
 
 const DEFAULT_EQUIPMENTS = [
   "Espectrofotômetro",
@@ -11,32 +11,29 @@ const DEFAULT_EQUIPMENTS = [
 ];
 
 export function seedInitialData(): void {
-  const db = getDb();
-
-  const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get() as { c: number };
-  if (userCount.c === 0) {
+  const userCount = get<{ c: number }>("SELECT COUNT(*) AS c FROM users");
+  if ((userCount?.c ?? 0) === 0) {
     const hash = bcrypt.hashSync("admin", 10);
-    db.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run("admin", hash);
+    run("INSERT INTO users (username, password_hash) VALUES (?, ?)", "admin", hash);
     console.log("[db] seeded user: admin / admin");
   }
 
-  const equipCount = db.prepare("SELECT COUNT(*) AS c FROM equipments").get() as { c: number };
-  if (equipCount.c === 0) {
-    const insert = db.prepare(
-      "INSERT INTO equipments (name, slot_index, enabled) VALUES (?, ?, ?)"
-    );
-    const tx = db.transaction(() => {
-      DEFAULT_EQUIPMENTS.forEach((name, i) => {
-        insert.run(name, i + 1, i < 5 ? 1 : 0);
-      });
+  const equipCount = get<{ c: number }>("SELECT COUNT(*) AS c FROM equipments");
+  if ((equipCount?.c ?? 0) === 0) {
+    DEFAULT_EQUIPMENTS.forEach((name, i) => {
+      run(
+        "INSERT INTO equipments (name, slot_index, enabled) VALUES (?, ?, ?)",
+        name,
+        i + 1,
+        i < 5 ? 1 : 0
+      );
     });
-    tx();
     console.log("[db] seeded 6 equipment slots");
   }
 
-  const settings: Array<[string, string]> = [["capture_timeout_seconds", "30"]];
-  const upsert = db.prepare(
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING"
+  run(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
+    "capture_timeout_seconds",
+    "30"
   );
-  settings.forEach(([k, v]) => upsert.run(k, v));
 }

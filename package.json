@@ -15,8 +15,12 @@
     "build:renderer": "vite build",
     "start": "cross-env NODE_ENV=production electron . --no-sandbox",
     "package": "npm run build && electron-builder",
+<<<<<<< HEAD
     "postinstall": "node scripts/rebuild.js",
     "rebuild": "node scripts/rebuild.js",
+=======
+    "rebuild": "electron-rebuild -f -w serialport",
+>>>>>>> 5e21c95a29542d6f18e49f209b8711ca76c75c91
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "sim:build": "tsc -p tsconfig.tools.json",
     "sim": "npm run sim:build && node dist/tools/serial-sim.js",
@@ -26,18 +30,18 @@
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/syne": "^5.2.7",
+    "@types/sql.js": "^1.4.11",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.10.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "serialport": "^12.0.0"
+    "serialport": "^12.0.0",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",
     "@types/bcryptjs": "^2.4.6",
-    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",

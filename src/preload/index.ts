@@ -2,10 +2,11 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   IPC,
   type AppSettings,
+  type BatchHistory,
   type BatchInput,
   type BatchWithFormula,
   type CaptureEndedEvent,
-  type CaptureStartData,
+  type CaptureStartResult,
   type CaptureTickEvent,
   type EquipmentUpdateInput,
   type FormulaInput,
@@ -43,10 +44,17 @@ const api: SerialReaderApi = {
   },
   batches: {
     listOpen: (): Promise<BatchWithFormula[]> => ipcRenderer.invoke(IPC.batchesListOpen),
+    listAll: (): Promise<BatchWithFormula[]> => ipcRenderer.invoke(IPC.batchesListAll),
     create: (input: BatchInput): Promise<ServiceResult<BatchWithFormula>> =>
       ipcRenderer.invoke(IPC.batchesCreate, input),
     close: (id: number): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.batchesClose, id)
+  },
+  history: {
+    getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
+      ipcRenderer.invoke(IPC.historyGetBatch, batchId),
+    exportCsv: (batchId: number): Promise<ServiceResult<true>> =>
+      ipcRenderer.invoke(IPC.historyExportCsv, batchId)
   },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGetAll),
@@ -71,13 +79,13 @@ const api: SerialReaderApi = {
     listPorts: (): Promise<SerialPortInfo[]> => ipcRenderer.invoke(IPC.serialListPorts)
   },
   capture: {
-    start: (batchId: number): Promise<ServiceResult<CaptureStartData>> =>
+    start: (batchId: number): Promise<ServiceResult<CaptureStartResult>> =>
       ipcRenderer.invoke(IPC.captureStart, batchId),
     cancel: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureCancel),
     isActive: (): Promise<boolean> => ipcRenderer.invoke(IPC.captureIsActive),
-    onTick: (cb) => subscribe<CaptureTickEvent>(IPC.captureTickEvent, cb),
-    onSlotUpdate: (cb) => subscribe<SlotUpdateEvent>(IPC.captureSlotUpdateEvent, cb),
-    onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEndedEvent, cb)
+    onTick: (cb) => subscribe<CaptureTickEvent>(IPC.captureTick, cb),
+    onSlotUpdate: (cb) => subscribe<SlotUpdateEvent>(IPC.captureSlotUpdate, cb),
+    onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEnded, cb)
   }
 };
 

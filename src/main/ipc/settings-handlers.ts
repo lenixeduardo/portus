@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import { IPC, type AppSettings, type ServiceResult } from "../../shared/ipc";
-import { getDb } from "../db/connection";
+import { all } from "../db/query";
 import { setSetting } from "../db/settings-repo";
 import { getCurrentUser } from "../auth/auth-service";
 
@@ -19,10 +19,7 @@ function validate(key: string, value: string): string | null {
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle(IPC.settingsGetAll, (): AppSettings => {
-    const rows = getDb().prepare("SELECT key, value FROM settings").all() as Array<{
-      key: string;
-      value: string;
-    }>;
+    const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
     const out: AppSettings = {};
     rows.forEach((r) => (out[r.key] = r.value));
     return out;
