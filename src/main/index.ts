@@ -11,13 +11,13 @@ import { registerFormulasHandlers } from "./ipc/formulas-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 
-const isDev = !app.isPackaged;
+const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#0c0c0e",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -29,7 +29,7 @@ function createWindow() {
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    win.loadFile(join(__dirname, "../renderer/index.html"));
+    win.loadFile(join(__dirname, "../../renderer/index.html"));
   };
 }
 
