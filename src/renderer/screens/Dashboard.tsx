@@ -51,11 +51,14 @@ export function Dashboard() {
 
     setScannerState({ phase: "detecting", code });
 
-    const batch = await window.api.batches.findByCode(code);
-    if (!batch) {
-      setScannerError(`Código "${code}" não corresponde a nenhum lote aberto.`);
+    const res = await window.api.batches.scanBarcode({ barcodeValue: code });
+    if (!res.ok) {
+      setScannerError(res.error);
       return;
     }
+
+    const { batch } = res.data;
+
     if (batch.status !== "open") {
       setScannerError(`Lote ${batch.code} já está finalizado.`);
       return;
@@ -68,6 +71,7 @@ export function Dashboard() {
     }
 
     setScannerState({ phase: "idle" });
+    await reload();
     setCaptureBatchId(batch.id);
   }, scannerActive);
 
