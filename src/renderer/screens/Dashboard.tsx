@@ -4,8 +4,9 @@ import type { BatchWithFormula } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
 import { CaptureModal } from "../components/CaptureModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
+import { BarcodeModal } from "../components/BarcodeModal";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { CheckSquare, Scan, Printer } from "lucide-react";
+import { CheckSquare, Scan, Printer, ScanBarcode } from "lucide-react";
 
 type ScannerState =
   | { phase: "idle" }
@@ -16,6 +17,7 @@ export function Dashboard() {
   const [batches, setBatches] = useState<BatchWithFormula[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
+  const [showBarcode, setShowBarcode] = useState(false);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,10 +43,11 @@ export function Dashboard() {
     clearScannerError();
   }
 
-  const scannerActive = captureBatchId === null;
+  // Auto-scanner disabled when BarcodeModal is open or capture is running
+  const scannerActive = captureBatchId === null && !showBarcode;
 
   useBarcodeScanner(async (code) => {
-    if (captureBatchId !== null) return; // capture already running
+    if (captureBatchId !== null) return;
 
     setScannerState({ phase: "detecting", code });
 
@@ -105,10 +108,35 @@ export function Dashboard() {
     win.document.close();
   }
 
+  async function handleBarcodeReady(batch: BatchWithFormula) {
+    setShowBarcode(false);
+    const already = await window.api.capture.isActive();
+    if (already) {
+      setScannerError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
+      await reload();
+      return;
+    }
+    await reload();
+    setBatches((current) => {
+      const stillOpen = current.some((b) => b.id === batch.id);
+      if (stillOpen) setCaptureBatchId(batch.id);
+      else setScannerError(`Lote ${batch.code} foi fechado antes de iniciar a captura.`);
+      return current;
+    });
+  }
+
   return (
     <>
       <div className="page-actions">
         <ScannerStatusBar state={scannerState} />
+        <button
+          className="secondary"
+          onClick={() => setShowBarcode(true)}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <ScanBarcode size={14} />
+          Novo Lote por Código de Barras
+        </button>
         <button onClick={() => setShowNewBatch(true)}>+ Novo Lote</button>
       </div>
 
@@ -139,6 +167,13 @@ export function Dashboard() {
             setShowNewBatch(false);
             reload();
           }}
+        />
+      )}
+
+      {showBarcode && (
+        <BarcodeModal
+          onClose={() => setShowBarcode(false)}
+          onBatchReady={handleBarcodeReady}
         />
       )}
 

@@ -1,6 +1,14 @@
 import { ipcMain } from "electron";
-import { IPC, type BatchInput, type BatchWithFormula, type ServiceResult } from "../../shared/ipc";
+import {
+  IPC,
+  type BarcodeScanInput,
+  type BarcodeScanResult,
+  type BatchInput,
+  type BatchWithFormula,
+  type ServiceResult
+} from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
+import { processBarcodeValue } from "../barcode-logic";
 import {
   closeBatch,
   codeExists,
@@ -8,10 +16,12 @@ import {
   createBatch,
   findBatchByCode,
   generateBatchCode,
+  getBatchByCode,
   getBatchWithFormula,
   listOpenBatches
 } from "../db/batches-repo";
-import { getFormula } from "../db/formulas-repo";
+import { getFormula, getFormulaByName } from "../db/formulas-repo";
+import { getSetting } from "../db/settings-repo";
 
 const OPEN_BATCHES_SOFT_LIMIT = 6;
 
@@ -54,4 +64,22 @@ export function registerBatchesHandlers(): void {
     closeBatch(id);
     return { ok: true, data: true };
   });
+
+  ipcMain.handle(
+    IPC.batchesScanBarcode,
+    (_e, input: BarcodeScanInput): ServiceResult<BarcodeScanResult> => {
+      const user = getCurrentUser();
+      if (!user) return { ok: false, error: "Sessão expirada." };
+
+      return processBarcodeValue(input?.barcodeValue ?? "", user.id, {
+        barcode_regex: getSetting("barcode_regex"),
+        openBatchesLimit: OPEN_BATCHES_SOFT_LIMIT,
+        getBatchByCode,
+        getFormulaByName,
+        countOpenBatches,
+        codeExists,
+        createBatch
+      });
+    }
+  );
 }
