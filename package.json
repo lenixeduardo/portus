@@ -13,6 +13,7 @@
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
     "start": "cross-env NODE_ENV=production electron . --no-sandbox",
+    "prepackage": "npm version patch --no-git-tag-version",
     "package": "npm run build && electron-builder",
     "rebuild": "electron-rebuild -f -w serialport",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
