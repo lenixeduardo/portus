@@ -80,5 +80,12 @@ CREATE TABLE IF NOT EXISTS settings (
 ALTER TABLE recipes RENAME TO formulas;
 ALTER TABLE batches RENAME COLUMN recipe_id TO formula_id;
 `
+  },
+  {
+    name: "003_readings_parse_audit",
+    sql: `
+ALTER TABLE readings ADD COLUMN parse_failure_reason TEXT;
+ALTER TABLE readings ADD COLUMN parse_regex_used TEXT;
+`
   }
 ];

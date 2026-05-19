@@ -21,6 +21,11 @@ import { IPC } from "../../shared/ipc";
 import type { ServiceResult } from "../../shared/ipc";
 import type { Equipment } from "../../shared/types";
 
+// Janela de debounce para atualizações visuais por slot (ms).
+// Todas as leituras são gravadas no banco imediatamente; apenas a última
+// dentro da janela é enviada à UI para evitar flickering.
+const UI_DEBOUNCE_MS = 500;
+
 interface ActiveSlot {
   equipment: Equipment;
   port: SerialPort;
@@ -34,10 +39,41 @@ let timer: NodeJS.Timeout | null = null;
 let remaining = 0;
 let total = 0;
 
+// Timers de debounce de UI por slotIndex
+const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
+
+// Slots cuja reconexão já foi tentada nesta sessão (evita loop infinito)
+const reconnectAttempted: Set<number> = new Set();
+
+// Slots sendo fechados intencionalmente (cleanup) — suprime trigger de reconexão
+const intentionallyClosing: Set<number> = new Set();
+
 function broadcast(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((w) => {
     if (!w.isDestroyed()) w.webContents.send(channel, data);
   });
+}
+
+function clearUiDebounce(slotIndex: number): void {
+  const t = uiDebounceTimers.get(slotIndex);
+  if (t) {
+    clearTimeout(t);
+    uiDebounceTimers.delete(slotIndex);
+  }
+}
+
+function scheduleUiBroadcast(slotIndex: number, event: SlotUpdateEvent): void {
+  clearUiDebounce(slotIndex);
+  uiDebounceTimers.set(
+    slotIndex,
+    setTimeout(() => {
+      uiDebounceTimers.delete(slotIndex);
+      // Não envia se a sessão já encerrou enquanto aguardava o debounce
+      if (sessionId !== null) {
+        broadcast(IPC.captureSlotUpdate, event);
+      }
+    }, UI_DEBOUNCE_MS)
+  );
 }
 
 function cleanup(reason: "completed" | "cancelled"): void {
@@ -46,12 +82,18 @@ function cleanup(reason: "completed" | "cancelled"): void {
     timer = null;
   }
 
-  slots.forEach((slot) => {
+  // Cancela todos os debounces pendentes antes de fechar
+  uiDebounceTimers.forEach((t) => clearTimeout(t));
+  uiDebounceTimers.clear();
+
+  slots.forEach((slot, slotIndex) => {
     if (slot.port.isOpen) {
+      intentionallyClosing.add(slotIndex);
       slot.port.close();
     }
   });
   slots.clear();
+  reconnectAttempted.clear();
 
   if (sessionId !== null) {
     if (reason === "completed") {
@@ -68,6 +110,31 @@ function cleanup(reason: "completed" | "cancelled"): void {
 
   const event: CaptureEndedEvent = { reason };
   broadcast(IPC.captureEnded, event);
+}
+
+// Tenta reabrir uma porta que fechou inesperadamente durante a sessão.
+// Apenas uma tentativa por slot por sessão.
+function attemptReconnect(slotIndex: number): void {
+  if (sessionId === null) return;
+  if (reconnectAttempted.has(slotIndex)) return;
+  reconnectAttempted.add(slotIndex);
+
+  const slot = slots.get(slotIndex);
+  if (!slot) return;
+
+  console.log(`[serial] Porta ${slot.equipment.portPath} (slot ${slotIndex}) fechou inesperadamente. Tentando reconexão...`);
+
+  slot.port.open((err) => {
+    if (err) {
+      console.error(`[serial] Reconexão falhou (slot ${slotIndex}, porta ${slot.equipment.portPath}):`, err.message);
+      slot.status = "error";
+      broadcast(IPC.captureSlotUpdate, { slotIndex, status: "error" } satisfies SlotUpdateEvent);
+    } else {
+      console.log(`[serial] Reconexão bem-sucedida (slot ${slotIndex}, porta ${slot.equipment.portPath})`);
+      slot.status = "open";
+      broadcast(IPC.captureSlotUpdate, { slotIndex, status: "open" } satisfies SlotUpdateEvent);
+    }
+  });
 }
 
 export function isActive(): boolean {
@@ -106,42 +173,62 @@ export async function startCapture(
         parity: eq.parity,
         autoOpen: false
       });
-    } catch {
+    } catch (err) {
+      console.error(`[serial] Falha ao criar porta para slot ${eq.slotIndex} (${eq.portPath}):`, (err as Error).message);
       initSlots.push({ slotIndex: eq.slotIndex, equipmentId: eq.id, name: eq.name, status: "error" });
       continue;
     }
 
     const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
-
     const slot: ActiveSlot = { equipment: eq, port, status: "open" };
     slots.set(eq.slotIndex, slot);
 
+    // --- Processamento de dados recebidos ---
     parser.on("data", (line: string) => {
       const raw = line.trim();
       if (!raw || sessionId === null || batchId === null) return;
 
       let parsed: string | null = null;
+      let parseFailureReason: string | null = null;
+      const parseRegexUsed: string | null = eq.parseRegex ?? null;
+
       if (eq.parseRegex) {
         try {
           const match = raw.match(new RegExp(eq.parseRegex));
-          parsed = match ? (match[1] ?? match[0]) : null;
-        } catch {
-          parsed = null;
+          if (match) {
+            parsed = match[1] ?? match[0];
+          } else {
+            parseFailureReason = "no_match";
+            console.warn(
+              `[serial] Parsing sem match (slot ${eq.slotIndex}, regex="${eq.parseRegex}", raw="${raw}")`
+            );
+          }
+        } catch (regexErr) {
+          parseFailureReason = "invalid_regex";
+          console.error(
+            `[serial] Regex inválida (slot ${eq.slotIndex}, regex="${eq.parseRegex}"):`,
+            (regexErr as Error).message
+          );
         }
       } else {
         parsed = raw;
       }
 
+      // Grava no banco SEMPRE, independente do resultado do parsing
       insertReading({
         batchId: batchId!,
         equipmentId: eq.id,
         valueRaw: raw,
         valueParsed: parsed,
-        captureSessionId: sessionId!
+        captureSessionId: sessionId!,
+        parseFailureReason,
+        parseRegexUsed
       });
 
       slot.status = "receiving";
 
+      // Atualização visual via debounce — só a última leitura dentro de
+      // UI_DEBOUNCE_MS chega à UI, evitando re-renders excessivos
       const event: SlotUpdateEvent = {
         slotIndex: eq.slotIndex,
         status: "receiving",
@@ -149,18 +236,31 @@ export async function startCapture(
         valueParsed: parsed ?? undefined,
         timestamp: new Date().toISOString()
       };
-      broadcast(IPC.captureSlotUpdate, event);
+      scheduleUiBroadcast(eq.slotIndex, event);
     });
 
+    // --- Reconexão automática em caso de fechamento inesperado ---
+    port.on("close", () => {
+      if (intentionallyClosing.has(eq.slotIndex)) {
+        // Fechamento intencional pelo cleanup — não reconectar
+        intentionallyClosing.delete(eq.slotIndex);
+        return;
+      }
+      clearUiDebounce(eq.slotIndex);
+      attemptReconnect(eq.slotIndex);
+    });
+
+    port.on("error", (err) => {
+      console.error(`[serial] Erro na porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
+    });
+
+    // --- Abre a porta ---
     await new Promise<void>((resolve) => {
       port.open((err) => {
         if (err) {
+          console.error(`[serial] Falha ao abrir porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
           slot.status = "error";
-          const errEvent: SlotUpdateEvent = {
-            slotIndex: eq.slotIndex,
-            status: "error"
-          };
-          broadcast(IPC.captureSlotUpdate, errEvent);
+          broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
         }
         resolve();
       });
