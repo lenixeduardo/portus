@@ -1,13 +1,13 @@
-import type { Batch, Equipment, Formula, User } from "./types";
+import type { Batch, Equipment, Product, User } from "./types";
 
 export const IPC = {
   authLogin: "auth:login",
   authLogout: "auth:logout",
   authCurrentUser: "auth:current-user",
-  formulasList: "formulas:list",
-  formulasCreate: "formulas:create",
-  formulasUpdate: "formulas:update",
-  formulasDelete: "formulas:delete",
+  productsList: "products:list",
+  productsCreate: "products:create",
+  productsUpdate: "products:update",
+  productsDelete: "products:delete",
   batchesListOpen: "batches:list-open",
   batchesCreate: "batches:create",
   batchesClose: "batches:close",
@@ -27,6 +27,7 @@ export const IPC = {
   captureSlotUpdate: "capture:slot-update",
   captureEnded: "capture:ended",
   batchesListAll: "batches:list-all",
+  batchesFindByCode: "batches:find-by-code",
   batchesScanBarcode: "batches:scan-barcode",
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv"
@@ -86,7 +87,7 @@ export interface CaptureSessionRecord {
 }
 
 export interface BatchHistory {
-  batch: BatchWithFormula;
+  batch: BatchWithProduct;
   sessions: CaptureSessionRecord[];
 }
 
@@ -99,18 +100,18 @@ export type LoginResult =
   | { ok: true; user: User }
   | { ok: false; error: string };
 
-export interface FormulaInput {
+export interface ProductInput {
   name: string;
   description?: string;
 }
 
 export interface BatchInput {
-  formulaId: number;
+  productId: number;
   code?: string;
 }
 
-export interface BatchWithFormula extends Batch {
-  formulaName: string;
+export interface BatchWithProduct extends Batch {
+  productName: string;
   operatorName: string;
   readingsCount: number;
 }
@@ -149,7 +150,7 @@ export interface BarcodeScanInput {
 }
 
 export interface BarcodeScanResult {
-  batch: BatchWithFormula;
+  batch: BatchWithProduct;
   created: boolean;
 }
 
@@ -159,17 +160,18 @@ export interface SerialReaderApi {
     logout(): Promise<void>;
     currentUser(): Promise<User | null>;
   };
-  formulas: {
-    list(): Promise<Formula[]>;
-    create(input: FormulaInput): Promise<ServiceResult<Formula>>;
-    update(id: number, input: FormulaInput): Promise<ServiceResult<Formula>>;
+  products: {
+    list(): Promise<Product[]>;
+    create(input: ProductInput): Promise<ServiceResult<Product>>;
+    update(id: number, input: ProductInput): Promise<ServiceResult<Product>>;
     remove(id: number): Promise<ServiceResult<true>>;
   };
   batches: {
-    listOpen(): Promise<BatchWithFormula[]>;
-    listAll(): Promise<BatchWithFormula[]>;
-    create(input: BatchInput): Promise<ServiceResult<BatchWithFormula>>;
+    listOpen(): Promise<BatchWithProduct[]>;
+    listAll(): Promise<BatchWithProduct[]>;
+    create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
     close(id: number): Promise<ServiceResult<true>>;
+    findByCode(code: string): Promise<BatchWithProduct | null>;
     scanBarcode(input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>>;
   };
   history: {

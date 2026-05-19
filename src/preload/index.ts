@@ -6,12 +6,12 @@ import {
   type BarcodeScanResult,
   type BatchHistory,
   type BatchInput,
-  type BatchWithFormula,
+  type BatchWithProduct,
   type CaptureEndedEvent,
   type CaptureStartResult,
   type CaptureTickEvent,
   type EquipmentUpdateInput,
-  type FormulaInput,
+  type ProductInput,
   type LoginRequest,
   type LoginResult,
   type SerialPortInfo,
@@ -21,7 +21,7 @@ import {
   type Unsubscribe,
   type UserCreateInput
 } from "../shared/ipc";
-import type { Equipment, Formula, User } from "../shared/types";
+import type { Equipment, Product, User } from "../shared/types";
 
 function subscribe<T>(channel: string, cb: (data: T) => void): Unsubscribe {
   const listener = (_e: IpcRendererEvent, data: T) => cb(data);
@@ -35,22 +35,24 @@ const api: SerialReaderApi = {
     logout: (): Promise<void> => ipcRenderer.invoke(IPC.authLogout),
     currentUser: (): Promise<User | null> => ipcRenderer.invoke(IPC.authCurrentUser)
   },
-  formulas: {
-    list: (): Promise<Formula[]> => ipcRenderer.invoke(IPC.formulasList),
-    create: (input: FormulaInput): Promise<ServiceResult<Formula>> =>
-      ipcRenderer.invoke(IPC.formulasCreate, input),
-    update: (id: number, input: FormulaInput): Promise<ServiceResult<Formula>> =>
-      ipcRenderer.invoke(IPC.formulasUpdate, id, input),
+  products: {
+    list: (): Promise<Product[]> => ipcRenderer.invoke(IPC.productsList),
+    create: (input: ProductInput): Promise<ServiceResult<Product>> =>
+      ipcRenderer.invoke(IPC.productsCreate, input),
+    update: (id: number, input: ProductInput): Promise<ServiceResult<Product>> =>
+      ipcRenderer.invoke(IPC.productsUpdate, id, input),
     remove: (id: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.formulasDelete, id)
+      ipcRenderer.invoke(IPC.productsDelete, id)
   },
   batches: {
-    listOpen: (): Promise<BatchWithFormula[]> => ipcRenderer.invoke(IPC.batchesListOpen),
-    listAll: (): Promise<BatchWithFormula[]> => ipcRenderer.invoke(IPC.batchesListAll),
-    create: (input: BatchInput): Promise<ServiceResult<BatchWithFormula>> =>
+    listOpen: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.batchesListOpen),
+    listAll: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.batchesListAll),
+    create: (input: BatchInput): Promise<ServiceResult<BatchWithProduct>> =>
       ipcRenderer.invoke(IPC.batchesCreate, input),
     close: (id: number): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.batchesClose, id),
+    findByCode: (code: string): Promise<BatchWithProduct | null> =>
+      ipcRenderer.invoke(IPC.batchesFindByCode, code),
     scanBarcode: (input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>> =>
       ipcRenderer.invoke(IPC.batchesScanBarcode, input)
   },

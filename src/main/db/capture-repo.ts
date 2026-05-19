@@ -41,17 +41,23 @@ export interface InsertReadingParams {
   valueRaw: string;
   valueParsed: string | null;
   captureSessionId: number;
+  parseFailureReason?: string | null;
+  parseRegexUsed?: string | null;
 }
 
 export function insertReading(params: InsertReadingParams): Reading {
   const id = run(
-    `INSERT INTO readings (batch_id, equipment_id, value_raw, value_parsed, capture_session_id)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO readings
+       (batch_id, equipment_id, value_raw, value_parsed, capture_session_id,
+        parse_failure_reason, parse_regex_used)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     params.batchId,
     params.equipmentId,
     params.valueRaw,
     params.valueParsed,
-    params.captureSessionId
+    params.captureSessionId,
+    params.parseFailureReason ?? null,
+    params.parseRegexUsed ?? null
   );
   const row = get<{
     id: number;

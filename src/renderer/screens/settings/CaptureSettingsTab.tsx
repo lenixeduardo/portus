@@ -64,12 +64,12 @@ export function CaptureSettingsTab() {
         <input
           value={barcodeRegex}
           onChange={(e) => { setBarcodeRegex(e.target.value); setSaved(false); }}
-          placeholder="ex.: ^(?<formula>.+)\|(?<batch_code>.+)$"
+          placeholder="ex.: ^(?<product>.+)\|(?<batch_code>.+)$"
           className="mono"
         />
         <small className="muted">
-          Use grupos nomeados <code>{"(?<formula>...)"}</code> e <code>{"(?<batch_code>...)"}</code> para extrair
-          a fórmula e o código do lote do código de barras.
+          Use grupos nomeados <code>{"(?<product>...)"}</code> e <code>{"(?<batch_code>...)"}</code> para extrair
+          o produto e o código do lote do código de barras.
           Se vazio, o código inteiro é tratado como código do lote.
         </small>
       </div>

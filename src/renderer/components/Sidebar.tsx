@@ -1,8 +1,8 @@
 import React from "react";
-import { LayoutDashboard, FlaskConical, Clock, Settings, Usb } from "lucide-react";
+import { LayoutDashboard, Package, Clock, Settings, Usb } from "lucide-react";
 import type { User } from "../../shared/types";
 
-export type Route = "dashboard" | "formulas" | "history" | "settings";
+export type Route = "dashboard" | "products" | "history" | "settings";
 
 interface Props {
   user: User;
@@ -13,7 +13,7 @@ interface Props {
 
 const NAV: Array<{ key: Route; label: string; icon: React.ElementType }> = [
   { key: "dashboard", label: "Lotes Ativos", icon: LayoutDashboard },
-  { key: "formulas", label: "Fórmulas", icon: FlaskConical },
+  { key: "products", label: "Produtos", icon: Package },
   { key: "history", label: "Histórico", icon: Clock },
   { key: "settings", label: "Configurações", icon: Settings },
 ];

@@ -7,22 +7,27 @@ import { registerAuthHandlers } from "./ipc/auth-handlers";
 import { registerBatchesHandlers } from "./ipc/batches-handlers";
 import { registerCaptureHandlers } from "./ipc/capture-handlers";
 import { registerEquipmentsHandlers } from "./ipc/equipments-handlers";
-import { registerFormulasHandlers } from "./ipc/formulas-handlers";
+import { registerProductsHandlers } from "./ipc/products-handlers";
 import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 
-const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
+const isDev = !app.isPackaged && process.env.NODE_ENV !== "production" || process.env.ELECTRON_DEV === "1";
 
 function createWindow() {
+  const preloadPath = join(app.getAppPath(), "dist/main/preload/index.js");
+  console.log("[main] isDev:", isDev);
+  console.log("[main] preload:", preloadPath);
+
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     backgroundColor: "#0c0c0e",
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: preloadPath,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false
     }
   });
 
@@ -40,7 +45,7 @@ app.whenReady().then(async () => {
   seedInitialData();
   persistDb();
   registerAuthHandlers();
-  registerFormulasHandlers();
+  registerProductsHandlers();
   registerBatchesHandlers();
   registerSettingsHandlers();
   registerEquipmentsHandlers();

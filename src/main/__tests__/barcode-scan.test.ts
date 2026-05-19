@@ -1,26 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { processBarcodeValue, type BarcodeDeps } from "../barcode-logic";
-import type { BatchWithFormula } from "../../shared/ipc";
-import type { Formula } from "../../shared/types";
+import type { BatchWithProduct } from "../../shared/ipc";
+import type { Product } from "../../shared/types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function makeBatch(overrides: Partial<BatchWithFormula> = {}): BatchWithFormula {
+function makeBatch(overrides: Partial<BatchWithProduct> = {}): BatchWithProduct {
   return {
     id: 1,
-    formulaId: 10,
+    productId: 10,
     code: "2026-0001",
     status: "open",
     openedAt: "2026-01-01 08:00:00",
     createdBy: 99,
-    formulaName: "Tinta Base A",
+    productName: "Tinta Base A",
     operatorName: "admin",
     readingsCount: 0,
     ...overrides
   };
 }
 
-function makeFormula(overrides: Partial<Formula> = {}): Formula {
+function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
     id: 10,
     name: "Tinta Base A",
@@ -35,7 +35,7 @@ function makeDeps(overrides: Partial<BarcodeDeps> = {}): BarcodeDeps {
     barcode_regex: null,
     openBatchesLimit: 6,
     getBatchByCode: () => null,
-    getFormulaByName: () => null,
+    getProductByName: () => null,
     countOpenBatches: () => 0,
     codeExists: () => false,
     createBatch: () => makeBatch(),
@@ -78,20 +78,20 @@ describe("Teste 1 — lote existente aberto", () => {
 });
 
 // ─── Teste 2 ─────────────────────────────────────────────────────────────────
-// Cenário: regex extrai formula + batch_code de um barcode composto.
+// Cenário: regex extrai product + batch_code de um barcode composto.
 // O lote não existe ainda → sistema cria automaticamente.
 // Esperado: retorna o novo lote com created=true.
 describe("Teste 2 — criação automática de lote via regex", () => {
-  it("cria lote quando regex extrai formula e batch_code válidos", () => {
-    const newBatch = makeBatch({ id: 2, code: "2026-0042", formulaName: "Verniz UV" });
-    const formula = makeFormula({ id: 10, name: "Verniz UV" });
+  it("cria lote quando regex extrai product e batch_code válidos", () => {
+    const newBatch = makeBatch({ id: 2, code: "2026-0042", productName: "Verniz UV" });
+    const product = makeProduct({ id: 10, name: "Verniz UV" });
 
     const deps = makeDeps({
-      barcode_regex: "^(?<formula>.+)\\|(?<batch_code>.+)$",
+      barcode_regex: "^(?<product>.+)\\|(?<batch_code>.+)$",
       getBatchByCode: () => null,
-      getFormulaByName: (name) => (name === "Verniz UV" ? formula : null),
+      getProductByName: (name) => (name === "Verniz UV" ? product : null),
       codeExists: () => false,
-      createBatch: (_fId, code, _uid) => ({ ...newBatch, code })
+      createBatch: (_pId, code, _uid) => ({ ...newBatch, code })
     });
 
     const result = processBarcodeValue("Verniz UV|2026-0042", 99, deps);
@@ -100,21 +100,21 @@ describe("Teste 2 — criação automática de lote via regex", () => {
     if (!result.ok) return;
     expect(result.data.created).toBe(true);
     expect(result.data.batch.code).toBe("2026-0042");
-    expect(result.data.batch.formulaName).toBe("Verniz UV");
+    expect(result.data.batch.productName).toBe("Verniz UV");
   });
 
-  it("retorna erro quando regex captura formula que não existe", () => {
+  it("retorna erro quando regex captura product que não existe", () => {
     const deps = makeDeps({
-      barcode_regex: "^(?<formula>.+)\\|(?<batch_code>.+)$",
+      barcode_regex: "^(?<product>.+)\\|(?<batch_code>.+)$",
       getBatchByCode: () => null,
-      getFormulaByName: () => null
+      getProductByName: () => null
     });
 
-    const result = processBarcodeValue("Formula Inexistente|2026-0099", 99, deps);
+    const result = processBarcodeValue("Produto Inexistente|2026-0099", 99, deps);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toContain("não encontrada");
+    expect(result.error).toContain("não encontrado");
   });
 
   it("retorna erro quando regex válida não tem grupos nomeados", () => {
@@ -123,7 +123,7 @@ describe("Teste 2 — criação automática de lote via regex", () => {
       getBatchByCode: () => null
     });
 
-    const result = processBarcodeValue("FormulaA|2026-0001", 99, deps);
+    const result = processBarcodeValue("ProdutoA|2026-0001", 99, deps);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -132,10 +132,10 @@ describe("Teste 2 — criação automática de lote via regex", () => {
 });
 
 // ─── Teste 3 ─────────────────────────────────────────────────────────────────
-// Cenário: barcode simples (sem regex) para lote inexistente e sem info de formula.
+// Cenário: barcode simples (sem regex) para lote inexistente e sem info de produto.
 // Também testa limite de lotes abertos ao tentar criar.
 describe("Teste 3 — barcode sem regex e casos de limite", () => {
-  it("retorna erro quando lote não existe e não há formula no barcode", () => {
+  it("retorna erro quando lote não existe e não há produto no barcode", () => {
     const deps = makeDeps({
       barcode_regex: null,
       getBatchByCode: () => null
@@ -149,11 +149,11 @@ describe("Teste 3 — barcode sem regex e casos de limite", () => {
   });
 
   it("retorna erro quando limite de lotes abertos é atingido ao criar via barcode", () => {
-    const formula = makeFormula({ name: "Tinta Base A" });
+    const product = makeProduct({ name: "Tinta Base A" });
     const deps = makeDeps({
-      barcode_regex: "^(?<formula>.+)\\|(?<batch_code>.+)$",
+      barcode_regex: "^(?<product>.+)\\|(?<batch_code>.+)$",
       getBatchByCode: () => null,
-      getFormulaByName: () => formula,
+      getProductByName: () => product,
       countOpenBatches: () => 6,  // já no limite
       openBatchesLimit: 6
     });
