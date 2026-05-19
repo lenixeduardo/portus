@@ -84,6 +84,11 @@ export function closeBatch(id: number): void {
   );
 }
 
+export function getBatchByCode(code: string): BatchWithFormula | null {
+  const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code);
+  return row ? rowToBatchWithFormula(row) : null;
+}
+
 export function generateBatchCode(): string {
   const year = new Date().getFullYear();
   const c = get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE code LIKE ?", `${year}-%`)?.c ?? 0;

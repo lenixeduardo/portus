@@ -27,6 +27,7 @@ export const IPC = {
   captureSlotUpdate: "capture:slot-update",
   captureEnded: "capture:ended",
   batchesListAll: "batches:list-all",
+  batchesScanBarcode: "batches:scan-barcode",
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv"
 } as const;
@@ -143,6 +144,15 @@ export type AppSettings = Record<string, string>;
 
 export type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
+export interface BarcodeScanInput {
+  barcodeValue: string;
+}
+
+export interface BarcodeScanResult {
+  batch: BatchWithFormula;
+  created: boolean;
+}
+
 export interface SerialReaderApi {
   auth: {
     login(req: LoginRequest): Promise<LoginResult>;
@@ -160,6 +170,7 @@ export interface SerialReaderApi {
     listAll(): Promise<BatchWithFormula[]>;
     create(input: BatchInput): Promise<ServiceResult<BatchWithFormula>>;
     close(id: number): Promise<ServiceResult<true>>;
+    scanBarcode(input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>>;
   };
   history: {
     getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;

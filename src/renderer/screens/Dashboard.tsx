@@ -2,16 +2,16 @@ import React, { useEffect, useState } from "react";
 import type { Formula } from "../../shared/types";
 import type { BatchWithFormula } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
-
 import { CaptureModal } from "../components/CaptureModal";
-
-import { Play, CheckSquare } from "lucide-react";
+import { BarcodeModal } from "../components/BarcodeModal";
+import { Play, CheckSquare, ScanBarcode } from "lucide-react";
 
 
 export function Dashboard() {
   const [batches, setBatches] = useState<BatchWithFormula[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
+  const [showBarcode, setShowBarcode] = useState(false);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,10 +47,31 @@ export function Dashboard() {
     setCaptureBatchId(b.id);
   }
 
+  async function handleBarcodeReady(batch: BatchWithFormula) {
+    setShowBarcode(false);
+    const already = await window.api.capture.isActive();
+    if (already) {
+      setError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
+      reload();
+      return;
+    }
+    setError(null);
+    await reload();
+    setCaptureBatchId(batch.id);
+  }
+
   return (
     <>
       <div className="page-actions">
         {error && <div className="alert">{error}</div>}
+        <button
+          className="secondary"
+          onClick={() => setShowBarcode(true)}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <ScanBarcode size={14} />
+          Scanner de Código de Barras
+        </button>
         <button onClick={() => setShowNewBatch(true)}>+ Novo Lote</button>
       </div>
 
@@ -81,6 +102,13 @@ export function Dashboard() {
             setError(null);
             reload();
           }}
+        />
+      )}
+
+      {showBarcode && (
+        <BarcodeModal
+          onClose={() => setShowBarcode(false)}
+          onBatchReady={handleBarcodeReady}
         />
       )}
 

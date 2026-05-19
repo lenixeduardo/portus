@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   IPC,
   type AppSettings,
+  type BarcodeScanInput,
+  type BarcodeScanResult,
   type BatchHistory,
   type BatchInput,
   type BatchWithFormula,
@@ -48,7 +50,9 @@ const api: SerialReaderApi = {
     create: (input: BatchInput): Promise<ServiceResult<BatchWithFormula>> =>
       ipcRenderer.invoke(IPC.batchesCreate, input),
     close: (id: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.batchesClose, id)
+      ipcRenderer.invoke(IPC.batchesClose, id),
+    scanBarcode: (input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>> =>
+      ipcRenderer.invoke(IPC.batchesScanBarcode, input)
   },
   history: {
     getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
