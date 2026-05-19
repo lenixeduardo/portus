@@ -135,7 +135,7 @@ function BatchCard({
       <div className="batch-actions">
 
         <button
-          onClick={() => alert("Captura serial será implementada na Fase 4.")}
+          onClick={onStartCapture}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Play size={13} />
