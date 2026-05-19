@@ -23,6 +23,11 @@ export function listFormulas(): Formula[] {
   return all<FormulaRow>("SELECT * FROM formulas ORDER BY name COLLATE NOCASE").map(rowToFormula);
 }
 
+export function getFormulaByName(name: string): Formula | null {
+  const row = get<FormulaRow>("SELECT * FROM formulas WHERE name = ? COLLATE NOCASE", name);
+  return row ? rowToFormula(row) : null;
+}
+
 export function getFormula(id: number): Formula | null {
   const row = get<FormulaRow>("SELECT * FROM formulas WHERE id = ?", id);
   return row ? rowToFormula(row) : null;
