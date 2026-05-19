@@ -18,6 +18,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
+  const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,6 +44,11 @@ export function Dashboard() {
     clearScannerError();
   }
 
+  function openBarcodeModal(initial?: string) {
+    setBarcodeInitial(initial);
+    setShowBarcode(true);
+  }
+
   // Auto-scanner disabled when BarcodeModal is open or capture is running
   const scannerActive = captureBatchId === null && !showBarcode;
 
@@ -51,11 +57,19 @@ export function Dashboard() {
 
     setScannerState({ phase: "detecting", code });
 
-    const batch = await window.api.batches.findByCode(code);
-    if (!batch) {
-      setScannerError(`Código "${code}" não corresponde a nenhum lote aberto.`);
+    const res = await window.api.batches.scanBarcode({ barcodeValue: code });
+    if (!res.ok) {
+      if (res.productValue) {
+        setScannerState({ phase: "idle" });
+        openBarcodeModal(code);
+      } else {
+        setScannerError(res.error);
+      }
       return;
     }
+
+    const { batch } = res.data;
+
     if (batch.status !== "open") {
       setScannerError(`Lote ${batch.code} já está finalizado.`);
       return;
@@ -68,6 +82,7 @@ export function Dashboard() {
     }
 
     setScannerState({ phase: "idle" });
+    await reload();
     setCaptureBatchId(batch.id);
   }, scannerActive);
 
@@ -94,10 +109,10 @@ export function Dashboard() {
         @media print { button { display: none; } }
       </style></head>
       <body>
+        ${batch.productName && batch.productName !== "—" ? `<div class="product">${batch.productName}</div>` : ""}
+        <canvas id="bc" style="max-width:280px;margin:12px auto;display:block"></canvas>
         <div class="label">LOTE</div>
         <div class="code">#${batch.code}</div>
-        <div class="product">${batch.productName}</div>
-        <canvas id="bc" style="max-width:280px;margin:12px auto;display:block"></canvas>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js"></script>
         <script>
           JsBarcode("#bc","${batch.code}",{format:"CODE128",height:60,displayValue:true,fontSize:12});
@@ -131,7 +146,7 @@ export function Dashboard() {
         <ScannerStatusBar state={scannerState} />
         <button
           className="secondary"
-          onClick={() => setShowBarcode(true)}
+          onClick={() => openBarcodeModal()}
           style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
           <ScanBarcode size={14} />
@@ -172,8 +187,9 @@ export function Dashboard() {
 
       {showBarcode && (
         <BarcodeModal
-          onClose={() => setShowBarcode(false)}
+          onClose={() => { setShowBarcode(false); setBarcodeInitial(undefined); }}
           onBatchReady={handleBarcodeReady}
+          initialBarcode={barcodeInitial}
         />
       )}
 

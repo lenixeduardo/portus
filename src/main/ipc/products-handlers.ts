@@ -3,7 +3,7 @@ import { IPC, type ProductInput, type ServiceResult } from "../../shared/ipc";
 import type { Product } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
 import {
-  countBatchesForProduct,
+  countOpenBatchesForProduct,
   createProduct,
   deleteProduct,
   getProduct,
@@ -63,8 +63,8 @@ export function registerProductsHandlers(): void {
 
   ipcMain.handle(IPC.productsDelete, (_e, id: number): ServiceResult<true> => {
     if (!requireAuth()) return { ok: false, error: "Sessão expirada." };
-    if (countBatchesForProduct(id) > 0) {
-      return { ok: false, error: "Produto possui lotes vinculados e não pode ser excluído." };
+    if (countOpenBatchesForProduct(id) > 0) {
+      return { ok: false, error: "Produto possui lotes abertos e não pode ser excluído." };
     }
     deleteProduct(id);
     return { ok: true, data: true };
