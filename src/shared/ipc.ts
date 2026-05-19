@@ -147,12 +147,17 @@ export type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: strin
 
 export interface BarcodeScanInput {
   barcodeValue: string;
+  productName?: string;
 }
 
 export interface BarcodeScanResult {
   batch: BatchWithProduct;
   created: boolean;
 }
+
+export type BarcodeScanResponse =
+  | { ok: true; data: BarcodeScanResult }
+  | { ok: false; error: string; productValue?: string };
 
 export interface SerialReaderApi {
   auth: {
@@ -172,7 +177,7 @@ export interface SerialReaderApi {
     create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
     close(id: number): Promise<ServiceResult<true>>;
     findByCode(code: string): Promise<BatchWithProduct | null>;
-    scanBarcode(input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>>;
+    scanBarcode(input: BarcodeScanInput): Promise<BarcodeScanResponse>;
   };
   history: {
     getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;

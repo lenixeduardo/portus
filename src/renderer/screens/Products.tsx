@@ -47,7 +47,7 @@ export function Products() {
           <thead>
             <tr>
               <th>Nome</th>
-              <th>Descrição</th>
+              <th>Valor</th>
               <th>Criado em</th>
               <th style={{ width: 140 }}>Ações</th>
             </tr>
@@ -62,7 +62,7 @@ export function Products() {
             {products.map((p) => (
               <tr key={p.id}>
                 <td><strong>{p.name}</strong></td>
-                <td className="muted">{p.description ?? "—"}</td>
+                <td className="muted mono">{p.description ?? "—"}</td>
                 <td className="muted mono" style={{ fontSize: 12 }}>{formatDate(p.createdAt)}</td>
                 <td>
                   <button className="link" onClick={() => setEdit({ mode: "edit", product: p })}>Editar</button>
@@ -136,12 +136,14 @@ function ProductFormModal({ initial, onClose, onSaved }: FormProps) {
           <input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         </div>
         <div className="field">
-          <label>Descrição</label>
-          <textarea
-            rows={3}
+          <label>Valor</label>
+          <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            className="mono"
+            placeholder="ex.: 1110.6502.0008"
           />
+          <small className="muted">Código identificador usado na leitura do código de barras.</small>
         </div>
         {error && <div className="error">{error}</div>}
         <button type="submit" style={{ display: "none" }} />

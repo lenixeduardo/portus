@@ -28,6 +28,11 @@ export function getProductByName(name: string): Product | null {
   return row ? rowToProduct(row) : null;
 }
 
+export function getProductByValue(value: string): Product | null {
+  const row = get<ProductRow>("SELECT * FROM products WHERE description = ? COLLATE NOCASE", value);
+  return row ? rowToProduct(row) : null;
+}
+
 export function getProduct(id: number): Product | null {
   const row = get<ProductRow>("SELECT * FROM products WHERE id = ?", id);
   return row ? rowToProduct(row) : null;
@@ -57,9 +62,16 @@ export function updateProduct(
 }
 
 export function deleteProduct(id: number): void {
+  run("DELETE FROM readings WHERE batch_id IN (SELECT id FROM batches WHERE product_id = ?)", id);
+  run("DELETE FROM capture_sessions WHERE batch_id IN (SELECT id FROM batches WHERE product_id = ?)", id);
+  run("DELETE FROM batches WHERE product_id = ?", id);
   run("DELETE FROM products WHERE id = ?", id);
 }
 
 export function countBatchesForProduct(id: number): number {
   return get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE product_id = ?", id)?.c ?? 0;
+}
+
+export function countOpenBatchesForProduct(id: number): number {
+  return get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE product_id = ? AND status = 'open'", id)?.c ?? 0;
 }

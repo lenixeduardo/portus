@@ -35,10 +35,11 @@ function makeDeps(overrides: Partial<BarcodeDeps> = {}): BarcodeDeps {
     barcode_regex: null,
     openBatchesLimit: 6,
     getBatchByCode: () => null,
-    getProductByName: () => null,
+    getProductByValue: () => null,
     countOpenBatches: () => 0,
     codeExists: () => false,
     createBatch: () => makeBatch(),
+    createProduct: () => makeProduct(),
     ...overrides
   };
 }
@@ -89,7 +90,7 @@ describe("Teste 2 — criação automática de lote via regex", () => {
     const deps = makeDeps({
       barcode_regex: "^(?<product>.+)\\|(?<batch_code>.+)$",
       getBatchByCode: () => null,
-      getProductByName: (name) => (name === "Verniz UV" ? product : null),
+      getProductByValue: (name) => (name === "Verniz UV" ? product : null),
       codeExists: () => false,
       createBatch: (_pId, code, _uid) => ({ ...newBatch, code })
     });
@@ -107,7 +108,7 @@ describe("Teste 2 — criação automática de lote via regex", () => {
     const deps = makeDeps({
       barcode_regex: "^(?<product>.+)\\|(?<batch_code>.+)$",
       getBatchByCode: () => null,
-      getProductByName: () => null
+      getProductByValue: () => null
     });
 
     const result = processBarcodeValue("Produto Inexistente|2026-0099", 99, deps);
@@ -153,7 +154,7 @@ describe("Teste 3 — barcode sem regex e casos de limite", () => {
     const deps = makeDeps({
       barcode_regex: "^(?<product>.+)\\|(?<batch_code>.+)$",
       getBatchByCode: () => null,
-      getProductByName: () => product,
+      getProductByValue: () => product,
       countOpenBatches: () => 6,  // já no limite
       openBatchesLimit: 6
     });

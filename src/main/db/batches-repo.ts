@@ -13,7 +13,7 @@ interface BatchRow {
 }
 
 interface BatchJoinRow extends BatchRow {
-  product_name: string;
+  product_name: string | null;
   operator_name: string;
   readings_count: number;
 }
@@ -33,7 +33,7 @@ function rowToBatch(row: BatchRow): Batch {
 function rowToBatchWithProduct(row: BatchJoinRow): BatchWithProduct {
   return {
     ...rowToBatch(row),
-    productName: row.product_name,
+    productName: row.product_name ?? "—",
     operatorName: row.operator_name,
     readingsCount: row.readings_count
   };
@@ -45,7 +45,7 @@ const JOIN_SELECT = `
          u.username AS operator_name,
          (SELECT COUNT(*) FROM readings rd WHERE rd.batch_id = b.id) AS readings_count
     FROM batches b
-    JOIN products p ON p.id = b.product_id
+    LEFT JOIN products p ON p.id = b.product_id
     JOIN users u ON u.id = b.created_by
 `;
 

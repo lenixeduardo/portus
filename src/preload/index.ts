@@ -3,7 +3,7 @@ import {
   IPC,
   type AppSettings,
   type BarcodeScanInput,
-  type BarcodeScanResult,
+  type BarcodeScanResponse,
   type BatchHistory,
   type BatchInput,
   type BatchWithProduct,
@@ -53,7 +53,7 @@ const api: SerialReaderApi = {
       ipcRenderer.invoke(IPC.batchesClose, id),
     findByCode: (code: string): Promise<BatchWithProduct | null> =>
       ipcRenderer.invoke(IPC.batchesFindByCode, code),
-    scanBarcode: (input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>> =>
+    scanBarcode: (input: BarcodeScanInput): Promise<BarcodeScanResponse> =>
       ipcRenderer.invoke(IPC.batchesScanBarcode, input)
   },
   history: {

@@ -20,7 +20,7 @@ import {
   getBatchWithProduct,
   listOpenBatches
 } from "../db/batches-repo";
-import { getProduct, getProductByName } from "../db/products-repo";
+import { createProduct, getProduct, getProductByValue } from "../db/products-repo";
 import { getSetting } from "../db/settings-repo";
 
 const OPEN_BATCHES_SOFT_LIMIT = 6;
@@ -75,11 +75,12 @@ export function registerBatchesHandlers(): void {
         barcode_regex: getSetting("barcode_regex"),
         openBatchesLimit: OPEN_BATCHES_SOFT_LIMIT,
         getBatchByCode,
-        getProductByName,
+        getProductByValue,
         countOpenBatches,
         codeExists,
-        createBatch
-      });
+        createBatch,
+        createProduct
+      }, input?.productName);
     }
   );
 }
