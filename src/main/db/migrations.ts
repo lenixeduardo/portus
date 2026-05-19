@@ -80,5 +80,12 @@ CREATE TABLE IF NOT EXISTS settings (
 ALTER TABLE recipes RENAME TO formulas;
 ALTER TABLE batches RENAME COLUMN recipe_id TO formula_id;
 `
+  },
+  {
+    name: "003_rename_formulas_to_products",
+    sql: `
+ALTER TABLE formulas RENAME TO products;
+ALTER TABLE batches RENAME COLUMN formula_id TO product_id;
+`
   }
 ];

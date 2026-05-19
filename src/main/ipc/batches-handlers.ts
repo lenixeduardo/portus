@@ -4,7 +4,7 @@ import {
   type BarcodeScanInput,
   type BarcodeScanResult,
   type BatchInput,
-  type BatchWithFormula,
+  type BatchWithProduct,
   type ServiceResult
 } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
@@ -16,22 +16,22 @@ import {
   createBatch,
   generateBatchCode,
   getBatchByCode,
-  getBatchWithFormula,
+  getBatchWithProduct,
   listOpenBatches
 } from "../db/batches-repo";
-import { getFormula, getFormulaByName } from "../db/formulas-repo";
+import { getProduct, getProductByName } from "../db/products-repo";
 import { getSetting } from "../db/settings-repo";
 
 const OPEN_BATCHES_SOFT_LIMIT = 6;
 
 export function registerBatchesHandlers(): void {
-  ipcMain.handle(IPC.batchesListOpen, (): BatchWithFormula[] => listOpenBatches());
+  ipcMain.handle(IPC.batchesListOpen, (): BatchWithProduct[] => listOpenBatches());
 
-  ipcMain.handle(IPC.batchesCreate, (_e, input: BatchInput): ServiceResult<BatchWithFormula> => {
+  ipcMain.handle(IPC.batchesCreate, (_e, input: BatchInput): ServiceResult<BatchWithProduct> => {
     const user = getCurrentUser();
     if (!user) return { ok: false, error: "Sessão expirada." };
-    if (!input?.formulaId || !getFormula(input.formulaId)) {
-      return { ok: false, error: "Fórmula inválida." };
+    if (!input?.productId || !getProduct(input.productId)) {
+      return { ok: false, error: "Produto inválido." };
     }
     if (countOpenBatches() >= OPEN_BATCHES_SOFT_LIMIT) {
       return {
@@ -44,7 +44,7 @@ export function registerBatchesHandlers(): void {
     if (codeExists(code)) return { ok: false, error: "Já existe um lote com esse código." };
 
     try {
-      const batch = createBatch(input.formulaId, code, user.id);
+      const batch = createBatch(input.productId, code, user.id);
       return { ok: true, data: batch };
     } catch {
       return { ok: false, error: "Erro ao criar lote." };
@@ -53,7 +53,7 @@ export function registerBatchesHandlers(): void {
 
   ipcMain.handle(IPC.batchesClose, (_e, id: number): ServiceResult<true> => {
     if (!getCurrentUser()) return { ok: false, error: "Sessão expirada." };
-    const batch = getBatchWithFormula(id);
+    const batch = getBatchWithProduct(id);
     if (!batch) return { ok: false, error: "Lote não encontrado." };
     if (batch.status === "closed") return { ok: false, error: "Lote já está fechado." };
     closeBatch(id);
@@ -70,7 +70,7 @@ export function registerBatchesHandlers(): void {
         barcode_regex: getSetting("barcode_regex"),
         openBatchesLimit: OPEN_BATCHES_SOFT_LIMIT,
         getBatchByCode,
-        getFormulaByName,
+        getProductByName,
         countOpenBatches,
         codeExists,
         createBatch

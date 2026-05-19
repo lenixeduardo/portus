@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import type { Formula } from "../../shared/types";
-import type { BatchWithFormula } from "../../shared/ipc";
+import type { Product } from "../../shared/types";
+import type { BatchWithProduct } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
 import { CaptureModal } from "../components/CaptureModal";
 import { BarcodeModal } from "../components/BarcodeModal";
@@ -8,7 +8,7 @@ import { Play, CheckSquare, ScanBarcode } from "lucide-react";
 
 
 export function Dashboard() {
-  const [batches, setBatches] = useState<BatchWithFormula[]>([]);
+  const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
@@ -26,7 +26,7 @@ export function Dashboard() {
     reload();
   }, []);
 
-  async function handleClose(b: BatchWithFormula) {
+  async function handleClose(b: BatchWithProduct) {
     if (!confirm(`Finalizar o lote ${b.code}?`)) return;
     const res = await window.api.batches.close(b.id);
     if (!res.ok) {
@@ -37,7 +37,7 @@ export function Dashboard() {
     reload();
   }
 
-  async function handleStartCapture(b: BatchWithFormula) {
+  async function handleStartCapture(b: BatchWithProduct) {
     const already = await window.api.capture.isActive();
     if (already) {
       setError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
@@ -47,7 +47,7 @@ export function Dashboard() {
     setCaptureBatchId(b.id);
   }
 
-  async function handleBarcodeReady(batch: BatchWithFormula) {
+  async function handleBarcodeReady(batch: BatchWithProduct) {
     setShowBarcode(false);
     const already = await window.api.capture.isActive();
     if (already) {
@@ -137,7 +137,7 @@ function BatchCard({
   onClose,
   onStartCapture
 }: {
-  batch: BatchWithFormula;
+  batch: BatchWithProduct;
   onClose: () => void;
   onStartCapture: () => void;
 }) {
@@ -146,7 +146,7 @@ function BatchCard({
       <div className="batch-card-head">
         <div>
           <div className="batch-code">#{batch.code}</div>
-          <div className="batch-recipe">{batch.formulaName}</div>
+          <div className="batch-recipe">{batch.productName}</div>
         </div>
         <span className="chip chip-green">ABERTO</span>
       </div>
@@ -195,26 +195,26 @@ interface NewBatchProps {
 }
 
 function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
-  const [formulas, setFormulas] = useState<Formula[]>([]);
-  const [formulaId, setFormulaId] = useState<number | "">("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productId, setProductId] = useState<number | "">("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    window.api.formulas.list().then(setFormulas);
+    window.api.products.list().then(setProducts);
   }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!formulaId) {
-      setError("Selecione uma fórmula.");
+    if (!productId) {
+      setError("Selecione um produto.");
       return;
     }
     setSaving(true);
     setError(null);
     const res = await window.api.batches.create({
-      formulaId: Number(formulaId),
+      productId: Number(productId),
       code: code.trim() || undefined,
     });
     setSaving(false);
@@ -240,17 +240,17 @@ function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
     >
       <form onSubmit={submit}>
         <div className="field">
-          <label>Fórmula</label>
-          {formulas.length === 0 ? (
-            <div className="muted" style={{ fontSize: 13 }}>Cadastre uma fórmula antes de criar um lote.</div>
+          <label>Produto</label>
+          {products.length === 0 ? (
+            <div className="muted" style={{ fontSize: 13 }}>Cadastre um produto antes de criar um lote.</div>
           ) : (
             <select
-              value={formulaId}
-              onChange={(e) => setFormulaId(e.target.value ? Number(e.target.value) : "")}
+              value={productId}
+              onChange={(e) => setProductId(e.target.value ? Number(e.target.value) : "")}
             >
               <option value="">Selecione...</option>
-              {formulas.map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           )}

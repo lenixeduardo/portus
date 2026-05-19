@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import type { BatchWithFormula, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
+import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 
 export function History() {
-  const [batches, setBatches] = useState<BatchWithFormula[]>([]);
+  const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,7 +62,7 @@ export function History() {
             <option value="">Selecione um lote...</option>
             {batches.map((b) => (
               <option key={b.id} value={b.id}>
-                #{b.code} — {b.formulaName}{" "}
+                #{b.code} — {b.productName}{" "}
                 {b.status === "closed" ? "(encerrado)" : "(aberto)"}
               </option>
             ))}
@@ -91,8 +91,8 @@ export function History() {
         <>
           <div className="history-summary">
             <div className="history-summary-item">
-              <span>Fórmula</span>
-              <strong>{history.batch.formulaName}</strong>
+              <span>Produto</span>
+              <strong>{history.batch.productName}</strong>
             </div>
             <div className="history-summary-item">
               <span>Código</span>

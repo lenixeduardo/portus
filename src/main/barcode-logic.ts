@@ -1,15 +1,15 @@
-import type { Formula } from "../shared/types";
+import type { Product } from "../shared/types";
 import type { BarcodeScanResult, ServiceResult } from "../shared/ipc";
-import type { BatchWithFormula } from "../shared/ipc";
+import type { BatchWithProduct } from "../shared/ipc";
 
 export interface BarcodeDeps {
   barcode_regex: string | null;
   openBatchesLimit: number;
-  getBatchByCode(code: string): BatchWithFormula | null;
-  getFormulaByName(name: string): Formula | null;
+  getBatchByCode(code: string): BatchWithProduct | null;
+  getProductByName(name: string): Product | null;
   countOpenBatches(): number;
   codeExists(code: string): boolean;
-  createBatch(formulaId: number, code: string, userId: number): BatchWithFormula;
+  createBatch(productId: number, code: string, userId: number): BatchWithProduct;
 }
 
 export function processBarcodeValue(
@@ -20,7 +20,7 @@ export function processBarcodeValue(
   const raw = barcodeValue.trim();
   if (!raw) return { ok: false, error: "Código de barras vazio." };
 
-  let formulaName: string | null = null;
+  let productName: string | null = null;
   let batchCode = raw;
 
   if (deps.barcode_regex) {
@@ -29,13 +29,13 @@ export function processBarcodeValue(
       const match = re.exec(raw);
       if (match?.groups) {
         if (match.groups["batch_code"]) batchCode = match.groups["batch_code"].trim();
-        if (match.groups["formula"]) formulaName = match.groups["formula"].trim();
+        if (match.groups["product"]) productName = match.groups["product"].trim();
       } else if (match) {
         // Regex combinou mas não tem grupos nomeados — informa o usuário explicitamente
         return {
           ok: false,
           error:
-            "A regex de código de barras não contém os grupos nomeados esperados (batch_code e/ou formula)."
+            "A regex de código de barras não contém os grupos nomeados esperados (batch_code e/ou product)."
         };
       }
       // Sem match: usa raw como batch_code (fallback)
@@ -52,16 +52,16 @@ export function processBarcodeValue(
     return { ok: true, data: { batch: existing, created: false } };
   }
 
-  if (!formulaName) {
+  if (!productName) {
     return {
       ok: false,
-      error: `Lote "${batchCode}" não encontrado. Configure a regex do código de barras para incluir a fórmula e criar automaticamente.`
+      error: `Lote "${batchCode}" não encontrado. Configure a regex do código de barras para incluir o produto e criar automaticamente.`
     };
   }
 
-  const formula = deps.getFormulaByName(formulaName);
-  if (!formula) {
-    return { ok: false, error: `Fórmula "${formulaName}" não encontrada.` };
+  const product = deps.getProductByName(productName);
+  if (!product) {
+    return { ok: false, error: `Produto "${productName}" não encontrado.` };
   }
 
   if (deps.countOpenBatches() >= deps.openBatchesLimit) {
@@ -76,7 +76,7 @@ export function processBarcodeValue(
   }
 
   try {
-    const batch = deps.createBatch(formula.id, batchCode, userId);
+    const batch = deps.createBatch(product.id, batchCode, userId);
     return { ok: true, data: { batch, created: true } };
   } catch {
     return { ok: false, error: "Erro ao criar lote." };

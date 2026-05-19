@@ -1,10 +1,10 @@
 import { all, get, run } from "./query";
 import type { Batch } from "../../shared/types";
-import type { BatchWithFormula } from "../../shared/ipc";
+import type { BatchWithProduct } from "../../shared/ipc";
 
 interface BatchRow {
   id: number;
-  formula_id: number;
+  product_id: number;
   code: string;
   status: "open" | "closed";
   opened_at: string;
@@ -13,7 +13,7 @@ interface BatchRow {
 }
 
 interface BatchJoinRow extends BatchRow {
-  formula_name: string;
+  product_name: string;
   operator_name: string;
   readings_count: number;
 }
@@ -21,7 +21,7 @@ interface BatchJoinRow extends BatchRow {
 function rowToBatch(row: BatchRow): Batch {
   return {
     id: row.id,
-    formulaId: row.formula_id,
+    productId: row.product_id,
     code: row.code,
     status: row.status,
     openedAt: row.opened_at,
@@ -30,10 +30,10 @@ function rowToBatch(row: BatchRow): Batch {
   };
 }
 
-function rowToBatchWithFormula(row: BatchJoinRow): BatchWithFormula {
+function rowToBatchWithProduct(row: BatchJoinRow): BatchWithProduct {
   return {
     ...rowToBatch(row),
-    formulaName: row.formula_name,
+    productName: row.product_name,
     operatorName: row.operator_name,
     readingsCount: row.readings_count
   };
@@ -41,27 +41,27 @@ function rowToBatchWithFormula(row: BatchJoinRow): BatchWithFormula {
 
 const JOIN_SELECT = `
   SELECT b.*,
-         f.name AS formula_name,
+         p.name AS product_name,
          u.username AS operator_name,
          (SELECT COUNT(*) FROM readings rd WHERE rd.batch_id = b.id) AS readings_count
     FROM batches b
-    JOIN formulas f ON f.id = b.formula_id
+    JOIN products p ON p.id = b.product_id
     JOIN users u ON u.id = b.created_by
 `;
 
-export function listOpenBatches(): BatchWithFormula[] {
+export function listOpenBatches(): BatchWithProduct[] {
   return all<BatchJoinRow>(`${JOIN_SELECT} WHERE b.status = 'open' ORDER BY b.opened_at DESC`).map(
-    rowToBatchWithFormula
+    rowToBatchWithProduct
   );
 }
 
-export function listAllBatches(): BatchWithFormula[] {
-  return all<BatchJoinRow>(`${JOIN_SELECT} ORDER BY b.opened_at DESC`).map(rowToBatchWithFormula);
+export function listAllBatches(): BatchWithProduct[] {
+  return all<BatchJoinRow>(`${JOIN_SELECT} ORDER BY b.opened_at DESC`).map(rowToBatchWithProduct);
 }
 
-export function getBatchWithFormula(id: number): BatchWithFormula | null {
+export function getBatchWithProduct(id: number): BatchWithProduct | null {
   const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.id = ?`, id);
-  return row ? rowToBatchWithFormula(row) : null;
+  return row ? rowToBatchWithProduct(row) : null;
 }
 
 export function countOpenBatches(): number {
@@ -72,9 +72,9 @@ export function codeExists(code: string): boolean {
   return get("SELECT 1 AS x FROM batches WHERE code = ?", code) != null;
 }
 
-export function createBatch(formulaId: number, code: string, createdBy: number): BatchWithFormula {
-  const id = run("INSERT INTO batches (formula_id, code, created_by) VALUES (?, ?, ?)", formulaId, code, createdBy);
-  return getBatchWithFormula(id)!;
+export function createBatch(productId: number, code: string, createdBy: number): BatchWithProduct {
+  const id = run("INSERT INTO batches (product_id, code, created_by) VALUES (?, ?, ?)", productId, code, createdBy);
+  return getBatchWithProduct(id)!;
 }
 
 export function closeBatch(id: number): void {
@@ -84,9 +84,9 @@ export function closeBatch(id: number): void {
   );
 }
 
-export function getBatchByCode(code: string): BatchWithFormula | null {
+export function getBatchByCode(code: string): BatchWithProduct | null {
   const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code.trim());
-  return row ? rowToBatchWithFormula(row) : null;
+  return row ? rowToBatchWithProduct(row) : null;
 }
 
 export function generateBatchCode(): string {
