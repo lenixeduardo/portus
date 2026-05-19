@@ -19,12 +19,18 @@ export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>("dashboard");
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [noElectron, setNoElectron] = useState(false);
 
   useEffect(() => {
+    if (!window.api) {
+      setNoElectron(true);
+      setBootstrapping(false);
+      return;
+    }
     window.api.auth.currentUser().then((u) => {
       setUser(u);
       setBootstrapping(false);
-    });
+    }).catch(() => setBootstrapping(false));
   }, []);
 
   async function handleLogout() {
@@ -33,7 +39,19 @@ export function App() {
     setRoute("dashboard");
   }
 
-  if (bootstrapping) return null;
+  if (bootstrapping) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f172a", color: "#94a3b8", fontFamily: "sans-serif" }}>
+      Carregando…
+    </div>
+  );
+
+  if (noElectron) return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f172a", color: "#94a3b8", fontFamily: "sans-serif", gap: 12 }}>
+      <p style={{ fontSize: 18, color: "#f1f5f9" }}>Serial Reader</p>
+      <p>Este app precisa ser aberto pelo Electron, não pelo browser.</p>
+      <code style={{ fontSize: 13 }}>npm run electron</code>
+    </div>
+  );
   if (!user) return <Login onAuthenticated={setUser} />;
 
   return (

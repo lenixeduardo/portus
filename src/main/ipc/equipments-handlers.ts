@@ -47,12 +47,11 @@ export function registerEquipmentsHandlers(): void {
       if (!getEquipment(id)) return { ok: false, error: "Equipamento não encontrado." };
       const err = validate(patch);
       if (err) return { ok: false, error: err };
-      const updated = updateEquipment(id, {
-        ...patch,
-        name: patch.name?.trim(),
-        portPath: patch.portPath?.trim(),
-        parseRegex: patch.parseRegex?.trim() || undefined
-      });
+      const cleaned: typeof patch = { ...patch };
+      if (patch.name !== undefined) cleaned.name = patch.name.trim();
+      if (patch.portPath !== undefined) cleaned.portPath = patch.portPath.trim();
+      if (patch.parseRegex !== undefined) cleaned.parseRegex = patch.parseRegex.trim() || undefined;
+      const updated = updateEquipment(id, cleaned);
       return updated ? { ok: true, data: updated } : { ok: false, error: "Falha ao atualizar." };
     }
   );

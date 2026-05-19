@@ -82,7 +82,14 @@ ALTER TABLE batches RENAME COLUMN recipe_id TO formula_id;
 `
   },
   {
-    name: "003_rename_formulas_to_products",
+    name: "003_readings_parse_audit",
+    sql: `
+ALTER TABLE readings ADD COLUMN parse_failure_reason TEXT;
+ALTER TABLE readings ADD COLUMN parse_regex_used TEXT;
+`
+  },
+  {
+    name: "004_rename_formulas_to_products",
     sql: `
 ALTER TABLE formulas RENAME TO products;
 ALTER TABLE batches RENAME COLUMN formula_id TO product_id;

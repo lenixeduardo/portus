@@ -84,10 +84,12 @@ export function closeBatch(id: number): void {
   );
 }
 
-export function getBatchByCode(code: string): BatchWithProduct | null {
+export function findBatchByCode(code: string): BatchWithProduct | null {
   const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code.trim());
   return row ? rowToBatchWithProduct(row) : null;
 }
+
+export const getBatchByCode = findBatchByCode;
 
 export function generateBatchCode(): string {
   const year = new Date().getFullYear();

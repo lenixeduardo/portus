@@ -1,9 +1,13 @@
 import { getDb, persistDb } from "./connection";
 
-type BindParams = (string | number | null | boolean)[];
+type BindParams = (string | number | null | boolean | undefined)[];
 
 function toBindArray(params: BindParams): (string | number | null)[] {
-  return params.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v));
+  return params.map((v) => {
+    if (v === undefined) return null;
+    if (typeof v === "boolean") return v ? 1 : 0;
+    return v;
+  });
 }
 
 // db.export() (called by persistDb) resets last_insert_rowid() to 0 in sql.js,

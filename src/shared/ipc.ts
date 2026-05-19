@@ -27,6 +27,7 @@ export const IPC = {
   captureSlotUpdate: "capture:slot-update",
   captureEnded: "capture:ended",
   batchesListAll: "batches:list-all",
+  batchesFindByCode: "batches:find-by-code",
   batchesScanBarcode: "batches:scan-barcode",
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv"
@@ -170,6 +171,7 @@ export interface SerialReaderApi {
     listAll(): Promise<BatchWithProduct[]>;
     create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
     close(id: number): Promise<ServiceResult<true>>;
+    findByCode(code: string): Promise<BatchWithProduct | null>;
     scanBarcode(input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>>;
   };
   history: {
