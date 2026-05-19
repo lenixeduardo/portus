@@ -17,6 +17,11 @@ export function CaptureSettingsTab() {
   }, []);
 
   async function save() {
+    const timeoutNum = Number(timeout);
+    if (!Number.isFinite(timeoutNum) || timeoutNum < 5 || timeoutNum > 600) {
+      setError("Tempo de captura deve ser entre 5 e 600 segundos.");
+      return;
+    }
     if (barcodeRegex.trim()) {
       try {
         new RegExp(barcodeRegex.trim());

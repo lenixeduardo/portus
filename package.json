@@ -18,7 +18,8 @@
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "sim:build": "tsc -p tsconfig.tools.json",
     "sim": "npm run sim:build && node dist/tools/serial-sim.js",
-    "sim:test": "npm run sim:build && node dist/tools/sim-test.js"
+    "sim:test": "npm run sim:build && node dist/tools/sim-test.js",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
@@ -47,6 +48,7 @@
     "electron-builder": "^25.0.5",
     "typescript": "^5.6.2",
     "vite": "^5.4.8",
+"vitest": "^4.1.6",
     "wait-on": "^9.0.10"
   },
   "build": {
