@@ -100,8 +100,8 @@ export function Dashboard() {
       <body>
         <div class="label">LOTE</div>
         <div class="code">#${batch.code}</div>
-        <div class="product">${batch.productName}</div>
         <canvas id="bc" style="max-width:280px;margin:12px auto;display:block"></canvas>
+        ${batch.productName && batch.productName !== "—" ? `<div class="product">${batch.productName}</div>` : ""}
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js"></script>
         <script>
           JsBarcode("#bc","${batch.code}",{format:"CODE128",height:60,displayValue:true,fontSize:12});
