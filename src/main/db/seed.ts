@@ -36,4 +36,10 @@ export function seedInitialData(): void {
     "capture_timeout_seconds",
     "30"
   );
+
+  run(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
+    "barcode_regex",
+    "^(?<product>.+)-(?<batch_code>[^-]+)$"
+  );
 }

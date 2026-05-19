@@ -7,7 +7,7 @@ import { registerAuthHandlers } from "./ipc/auth-handlers";
 import { registerBatchesHandlers } from "./ipc/batches-handlers";
 import { registerCaptureHandlers } from "./ipc/capture-handlers";
 import { registerEquipmentsHandlers } from "./ipc/equipments-handlers";
-import { registerFormulasHandlers } from "./ipc/formulas-handlers";
+import { registerProductsHandlers } from "./ipc/products-handlers";
 import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
@@ -45,7 +45,7 @@ app.whenReady().then(async () => {
   seedInitialData();
   persistDb();
   registerAuthHandlers();
-  registerFormulasHandlers();
+  registerProductsHandlers();
   registerBatchesHandlers();
   registerSettingsHandlers();
   registerEquipmentsHandlers();

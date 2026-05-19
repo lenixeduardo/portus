@@ -1,6 +1,6 @@
 import { all } from "./query";
 import type { BatchHistory, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
-import { getBatchWithFormula } from "./batches-repo";
+import { getBatchWithProduct } from "./batches-repo";
 
 interface SessionReadingRow {
   session_id: number;
@@ -18,7 +18,7 @@ interface SessionReadingRow {
 }
 
 export function getBatchHistory(batchId: number): BatchHistory | null {
-  const batch = getBatchWithFormula(batchId);
+  const batch = getBatchWithProduct(batchId);
   if (!batch) return null;
 
   const rows = all<SessionReadingRow>(
@@ -77,7 +77,7 @@ export function getBatchHistory(batchId: number): BatchHistory | null {
 export function buildCsvContent(history: BatchHistory): string {
   const lines: string[] = [];
   const header = [
-    "Lote", "Fórmula", "Sessão", "Início Sessão", "Fim Sessão",
+    "Lote", "Produto", "Sessão", "Início Sessão", "Fim Sessão",
     "Status Sessão", "Equipamento", "Slot", "Valor Bruto", "Valor Parseado", "Capturado em"
   ];
   lines.push(header.join(";"));
@@ -89,7 +89,7 @@ export function buildCsvContent(history: BatchHistory): string {
     sessionNum++;
     if (session.readings.length === 0) {
       lines.push(
-        [batch.code, batch.formulaName, sessionNum, session.startedAt,
+        [batch.code, batch.productName, sessionNum, session.startedAt,
           session.endedAt ?? "", session.status, "", "", "", "", ""]
           .map(csvCell).join(";")
       );
@@ -97,7 +97,7 @@ export function buildCsvContent(history: BatchHistory): string {
     }
     for (const r of session.readings) {
       lines.push(
-        [batch.code, batch.formulaName, sessionNum, session.startedAt,
+        [batch.code, batch.productName, sessionNum, session.startedAt,
           session.endedAt ?? "", session.status, r.equipmentName, r.slotIndex + 1,
           r.valueRaw, r.valueParsed ?? "", r.capturedAt]
           .map(csvCell).join(";")

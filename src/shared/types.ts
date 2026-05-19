@@ -4,7 +4,7 @@ export interface User {
   createdAt: string;
 }
 
-export interface Formula {
+export interface Product {
   id: number;
   name: string;
   description?: string;
@@ -14,7 +14,7 @@ export interface Formula {
 
 export interface Batch {
   id: number;
-  formulaId: number;
+  productId: number;
   code: string;
   status: "open" | "closed";
   openedAt: string;

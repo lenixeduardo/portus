@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ScanBarcode } from "lucide-react";
-import type { BarcodeScanResult, BatchWithFormula } from "../../shared/ipc";
+import type { BarcodeScanResult, BatchWithProduct } from "../../shared/ipc";
 import { Modal } from "./Modal";
 
 interface Props {
   onClose: () => void;
-  onBatchReady: (batch: BatchWithFormula) => void;
+  onBatchReady: (batch: BatchWithProduct) => void;
 }
 
 export function BarcodeModal({ onClose, onBatchReady }: Props) {
@@ -115,7 +115,7 @@ function BarcodeResult({ result }: { result: BarcodeScanResult }) {
         <div className="batch-card-head">
           <div>
             <div className="batch-code">#{batch.code}</div>
-            <div className="batch-recipe">{batch.formulaName}</div>
+            <div className="batch-recipe">{batch.productName}</div>
           </div>
           <span className="chip chip-green">ABERTO</span>
         </div>
