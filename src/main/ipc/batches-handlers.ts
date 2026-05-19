@@ -20,7 +20,7 @@ import {
   getBatchWithProduct,
   listOpenBatches
 } from "../db/batches-repo";
-import { getProduct, getProductByValue } from "../db/products-repo";
+import { createProduct, getProduct, getProductByValue } from "../db/products-repo";
 import { getSetting } from "../db/settings-repo";
 
 const OPEN_BATCHES_SOFT_LIMIT = 6;
@@ -78,8 +78,9 @@ export function registerBatchesHandlers(): void {
         getProductByValue,
         countOpenBatches,
         codeExists,
-        createBatch
-      });
+        createBatch,
+        createProduct
+      }, input?.productName);
     }
   );
 }

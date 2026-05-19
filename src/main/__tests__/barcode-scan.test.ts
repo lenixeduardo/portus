@@ -39,6 +39,7 @@ function makeDeps(overrides: Partial<BarcodeDeps> = {}): BarcodeDeps {
     countOpenBatches: () => 0,
     codeExists: () => false,
     createBatch: () => makeBatch(),
+    createProduct: () => makeProduct(),
     ...overrides
   };
 }

@@ -1,5 +1,5 @@
 import type { Product } from "../shared/types";
-import type { BarcodeScanResult, ServiceResult } from "../shared/ipc";
+import type { BarcodeScanResponse } from "../shared/ipc";
 import type { BatchWithProduct } from "../shared/ipc";
 
 export interface BarcodeDeps {
@@ -10,13 +10,15 @@ export interface BarcodeDeps {
   countOpenBatches(): number;
   codeExists(code: string): boolean;
   createBatch(productId: number, code: string, userId: number): BatchWithProduct;
+  createProduct(name: string, value: string, createdBy: number): Product;
 }
 
 export function processBarcodeValue(
   barcodeValue: string,
   userId: number,
-  deps: BarcodeDeps
-): ServiceResult<BarcodeScanResult> {
+  deps: BarcodeDeps,
+  productName?: string
+): BarcodeScanResponse {
   const raw = barcodeValue.trim();
   if (!raw) return { ok: false, error: "Código de barras vazio." };
 
@@ -59,9 +61,13 @@ export function processBarcodeValue(
     };
   }
 
-  const product = deps.getProductByValue(productValue);
+  let product = deps.getProductByValue(productValue);
   if (!product) {
-    return { ok: false, error: `Produto com valor "${productValue}" não encontrado.` };
+    if (productName) {
+      product = deps.createProduct(productName.trim(), productValue, userId);
+    } else {
+      return { ok: false, error: `Produto com valor "${productValue}" não encontrado.`, productValue };
+    }
   }
 
   if (deps.countOpenBatches() >= deps.openBatchesLimit) {

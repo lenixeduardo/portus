@@ -18,6 +18,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
+  const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,6 +44,11 @@ export function Dashboard() {
     clearScannerError();
   }
 
+  function openBarcodeModal(initial?: string) {
+    setBarcodeInitial(initial);
+    setShowBarcode(true);
+  }
+
   // Auto-scanner disabled when BarcodeModal is open or capture is running
   const scannerActive = captureBatchId === null && !showBarcode;
 
@@ -53,7 +59,12 @@ export function Dashboard() {
 
     const res = await window.api.batches.scanBarcode({ barcodeValue: code });
     if (!res.ok) {
-      setScannerError(res.error);
+      if (res.productValue) {
+        setScannerState({ phase: "idle" });
+        openBarcodeModal(code);
+      } else {
+        setScannerError(res.error);
+      }
       return;
     }
 
@@ -135,7 +146,7 @@ export function Dashboard() {
         <ScannerStatusBar state={scannerState} />
         <button
           className="secondary"
-          onClick={() => setShowBarcode(true)}
+          onClick={() => openBarcodeModal()}
           style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
           <ScanBarcode size={14} />
@@ -176,8 +187,9 @@ export function Dashboard() {
 
       {showBarcode && (
         <BarcodeModal
-          onClose={() => setShowBarcode(false)}
+          onClose={() => { setShowBarcode(false); setBarcodeInitial(undefined); }}
           onBatchReady={handleBarcodeReady}
+          initialBarcode={barcodeInitial}
         />
       )}
 
