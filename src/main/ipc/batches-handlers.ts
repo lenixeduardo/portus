@@ -6,6 +6,7 @@ import {
   codeExists,
   countOpenBatches,
   createBatch,
+  findBatchByCode,
   generateBatchCode,
   getBatchWithFormula,
   listOpenBatches
@@ -39,6 +40,10 @@ export function registerBatchesHandlers(): void {
     } catch {
       return { ok: false, error: "Erro ao criar lote." };
     }
+  });
+
+  ipcMain.handle(IPC.batchesFindByCode, (_e, code: string): BatchWithFormula | null => {
+    return findBatchByCode(code);
   });
 
   ipcMain.handle(IPC.batchesClose, (_e, id: number): ServiceResult<true> => {

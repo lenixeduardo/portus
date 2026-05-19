@@ -48,7 +48,9 @@ const api: SerialReaderApi = {
     create: (input: BatchInput): Promise<ServiceResult<BatchWithFormula>> =>
       ipcRenderer.invoke(IPC.batchesCreate, input),
     close: (id: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.batchesClose, id)
+      ipcRenderer.invoke(IPC.batchesClose, id),
+    findByCode: (code: string): Promise<BatchWithFormula | null> =>
+      ipcRenderer.invoke(IPC.batchesFindByCode, code)
   },
   history: {
     getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
