@@ -1,19 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Formula } from "../../shared/types";
 import type { BatchWithFormula } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
-
 import { CaptureModal } from "../components/CaptureModal";
+import { BarcodeDisplay } from "../components/BarcodeDisplay";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
+import { CheckSquare, Scan, Printer } from "lucide-react";
 
-import { Play, CheckSquare } from "lucide-react";
-
+type ScannerState =
+  | { phase: "idle" }
+  | { phase: "detecting"; code: string }
+  | { phase: "error"; message: string };
 
 export function Dashboard() {
   const [batches, setBatches] = useState<BatchWithFormula[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
+  const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -26,31 +31,84 @@ export function Dashboard() {
     reload();
   }, []);
 
+  function clearScannerError() {
+    if (scannerIdleTimer.current) clearTimeout(scannerIdleTimer.current);
+    scannerIdleTimer.current = setTimeout(() => setScannerState({ phase: "idle" }), 4000);
+  }
+
+  function setScannerError(message: string) {
+    setScannerState({ phase: "error", message });
+    clearScannerError();
+  }
+
+  const scannerActive = captureBatchId === null;
+
+  useBarcodeScanner(async (code) => {
+    if (captureBatchId !== null) return; // capture already running
+
+    setScannerState({ phase: "detecting", code });
+
+    const batch = await window.api.batches.findByCode(code);
+    if (!batch) {
+      setScannerError(`Código "${code}" não corresponde a nenhum lote aberto.`);
+      return;
+    }
+    if (batch.status !== "open") {
+      setScannerError(`Lote ${batch.code} já está finalizado.`);
+      return;
+    }
+
+    const already = await window.api.capture.isActive();
+    if (already) {
+      setScannerError("Já existe uma captura em andamento. Aguarde ou cancele.");
+      return;
+    }
+
+    setScannerState({ phase: "idle" });
+    setCaptureBatchId(batch.id);
+  }, scannerActive);
+
   async function handleClose(b: BatchWithFormula) {
     if (!confirm(`Finalizar o lote ${b.code}?`)) return;
     const res = await window.api.batches.close(b.id);
     if (!res.ok) {
-      setError(res.error);
+      setScannerError(res.error);
       return;
     }
-    setError(null);
     reload();
   }
 
-  async function handleStartCapture(b: BatchWithFormula) {
-    const already = await window.api.capture.isActive();
-    if (already) {
-      setError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
-      return;
-    }
-    setError(null);
-    setCaptureBatchId(b.id);
+  function handlePrintBarcode(batch: BatchWithFormula) {
+    const win = window.open("", "_blank", "width=400,height=300");
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>Código de Barras — ${batch.code}</title>
+      <style>
+        body { font-family: monospace; background: #fff; color: #000; text-align: center; padding: 24px; }
+        .label { font-size: 11px; color: #666; margin-bottom: 4px; }
+        .code  { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+        .formula { font-size: 12px; color: #444; }
+        @media print { button { display: none; } }
+      </style></head>
+      <body>
+        <div class="label">LOTE</div>
+        <div class="code">#${batch.code}</div>
+        <div class="formula">${batch.formulaName}</div>
+        <canvas id="bc" style="max-width:280px;margin:12px auto;display:block"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js"></script>
+        <script>
+          JsBarcode("#bc","${batch.code}",{format:"CODE128",height:60,displayValue:true,fontSize:12});
+          window.onload = () => window.print();
+        </script>
+      </body></html>
+    `);
+    win.document.close();
   }
 
   return (
     <>
       <div className="page-actions">
-        {error && <div className="alert">{error}</div>}
+        <ScannerStatusBar state={scannerState} />
         <button onClick={() => setShowNewBatch(true)}>+ Novo Lote</button>
       </div>
 
@@ -66,8 +124,9 @@ export function Dashboard() {
             <BatchCard
               key={b.id}
               batch={b}
+              isCapturing={captureBatchId === b.id}
               onClose={() => handleClose(b)}
-              onStartCapture={() => handleStartCapture(b)}
+              onPrint={() => handlePrintBarcode(b)}
             />
           ))}
         </div>
@@ -78,7 +137,6 @@ export function Dashboard() {
           onClose={() => setShowNewBatch(false)}
           onCreated={() => {
             setShowNewBatch(false);
-            setError(null);
             reload();
           }}
         />
@@ -98,23 +156,54 @@ export function Dashboard() {
   );
 }
 
+function ScannerStatusBar({ state }: { state: ScannerState }) {
+  if (state.phase === "error") {
+    return (
+      <div className="scanner-bar scanner-bar-error">
+        <Scan size={14} />
+        {state.message}
+      </div>
+    );
+  }
+  if (state.phase === "detecting") {
+    return (
+      <div className="scanner-bar scanner-bar-detecting">
+        <Scan size={14} className="scanner-pulse" />
+        Código detectado: <span className="mono">{state.code}</span> — validando…
+      </div>
+    );
+  }
+  return (
+    <div className="scanner-bar scanner-bar-idle">
+      <Scan size={14} />
+      Aguardando leitura de código de barras…
+    </div>
+  );
+}
+
 function BatchCard({
   batch,
+  isCapturing,
   onClose,
-  onStartCapture
+  onPrint
 }: {
   batch: BatchWithFormula;
+  isCapturing: boolean;
   onClose: () => void;
-  onStartCapture: () => void;
+  onPrint: () => void;
 }) {
   return (
-    <div className="batch-card">
+    <div className={`batch-card ${isCapturing ? "batch-card-capturing" : ""}`}>
       <div className="batch-card-head">
         <div>
           <div className="batch-code">#{batch.code}</div>
           <div className="batch-recipe">{batch.formulaName}</div>
         </div>
         <span className="chip chip-green">ABERTO</span>
+      </div>
+
+      <div className="batch-barcode">
+        <BarcodeDisplay value={batch.code} height={42} />
       </div>
 
       <div className="batch-meta">
@@ -133,13 +222,14 @@ function BatchCard({
       </div>
 
       <div className="batch-actions">
-
         <button
-          onClick={onStartCapture}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          className="secondary"
+          onClick={onPrint}
+          title="Imprimir código de barras"
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
-          <Play size={13} />
-          Iniciar Leitura
+          <Printer size={13} />
+          Imprimir
         </button>
         <button
           className="secondary"
@@ -149,7 +239,6 @@ function BatchCard({
           <CheckSquare size={13} />
           Finalizar
         </button>
-
       </div>
     </div>
   );
