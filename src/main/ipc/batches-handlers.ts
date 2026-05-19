@@ -43,6 +43,7 @@ export function registerBatchesHandlers(): void {
   });
 
   ipcMain.handle(IPC.batchesFindByCode, (_e, code: string): BatchWithFormula | null => {
+    if (!getCurrentUser()) return null;
     return findBatchByCode(code);
   });
 

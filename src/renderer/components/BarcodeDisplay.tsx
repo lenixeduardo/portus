@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import JsBarcode from "jsbarcode";
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
 
 export function BarcodeDisplay({ value, height = 44, displayValue = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -22,10 +23,19 @@ export function BarcodeDisplay({ value, height = 44, displayValue = false }: Pro
         margin: 0,
         fontSize: 10,
       });
+      setInvalid(false);
     } catch {
-      // Invalid value — leave SVG empty.
+      setInvalid(true);
     }
   }, [value, height, displayValue]);
+
+  if (invalid) {
+    return (
+      <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "monospace" }}>
+        {value}
+      </span>
+    );
+  }
 
   return <svg ref={svgRef} style={{ width: "100%", maxWidth: 200 }} />;
 }

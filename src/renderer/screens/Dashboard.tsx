@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Formula } from "../../shared/types";
 import type { BatchWithFormula } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
@@ -6,6 +6,7 @@ import { CaptureModal } from "../components/CaptureModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { CheckSquare, Scan, Printer } from "lucide-react";
+import JsBarcode from "jsbarcode";
 
 type ScannerState =
   | { phase: "idle" }
@@ -18,7 +19,7 @@ export function Dashboard() {
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
-  const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -29,16 +30,19 @@ export function Dashboard() {
 
   useEffect(() => {
     reload();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
   }, []);
 
-  function clearScannerError() {
-    if (scannerIdleTimer.current) clearTimeout(scannerIdleTimer.current);
-    scannerIdleTimer.current = setTimeout(() => setScannerState({ phase: "idle" }), 4000);
+  function scheduleIdleReturn() {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => setScannerState({ phase: "idle" }), 4000);
   }
 
   function setScannerError(message: string) {
     setScannerState({ phase: "error", message });
-    clearScannerError();
+    scheduleIdleReturn();
   }
 
   const scannerActive = captureBatchId === null;
@@ -78,32 +82,64 @@ export function Dashboard() {
     reload();
   }
 
-  function handlePrintBarcode(batch: BatchWithFormula) {
-    const win = window.open("", "_blank", "width=400,height=300");
+  const handlePrintBarcode = useCallback((batch: BatchWithFormula) => {
+    // Generate barcode SVG in-process (no CDN, no XSS risk).
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    try {
+      JsBarcode(svg, batch.code, {
+        format: "CODE128",
+        height: 60,
+        displayValue: true,
+        background: "#ffffff",
+        lineColor: "#000000",
+        fontSize: 12,
+      });
+    } catch {
+      return;
+    }
+    const svgDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(svg));
+
+    const win = window.open("", "_blank", "width=420,height=320");
     if (!win) return;
-    win.document.write(`
-      <html><head><title>Código de Barras — ${batch.code}</title>
-      <style>
-        body { font-family: monospace; background: #fff; color: #000; text-align: center; padding: 24px; }
-        .label { font-size: 11px; color: #666; margin-bottom: 4px; }
-        .code  { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
-        .formula { font-size: 12px; color: #444; }
-        @media print { button { display: none; } }
-      </style></head>
-      <body>
-        <div class="label">LOTE</div>
-        <div class="code">#${batch.code}</div>
-        <div class="formula">${batch.formulaName}</div>
-        <canvas id="bc" style="max-width:280px;margin:12px auto;display:block"></canvas>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js"></script>
-        <script>
-          JsBarcode("#bc","${batch.code}",{format:"CODE128",height:60,displayValue:true,fontSize:12});
-          window.onload = () => window.print();
-        </script>
-      </body></html>
-    `);
-    win.document.close();
-  }
+
+    const doc = win.document;
+    doc.title = `Código de Barras — ${batch.code}`;
+
+    const style = doc.createElement("style");
+    style.textContent = [
+      "body{font-family:monospace;background:#fff;color:#000;text-align:center;padding:24px;margin:0}",
+      ".label{font-size:11px;color:#666;margin-bottom:4px}",
+      ".code{font-size:16px;font-weight:bold;margin-bottom:4px}",
+      ".formula{font-size:12px;color:#444;margin-bottom:8px}",
+      "img{max-width:280px;display:block;margin:0 auto}",
+      "@media print{button{display:none}}",
+    ].join("");
+    doc.head.appendChild(style);
+
+    const label = doc.createElement("div");
+    label.className = "label";
+    label.textContent = "LOTE";
+
+    const code = doc.createElement("div");
+    code.className = "code";
+    code.textContent = `#${batch.code}`;
+
+    const formula = doc.createElement("div");
+    formula.className = "formula";
+    formula.textContent = batch.formulaName;
+
+    const img = doc.createElement("img");
+    img.src = svgDataUrl;
+    img.alt = batch.code;
+
+    doc.body.appendChild(label);
+    doc.body.appendChild(code);
+    doc.body.appendChild(formula);
+    doc.body.appendChild(img);
+
+    win.onload = () => win.print();
+    doc.close();
+  }, []);
 
   return (
     <>
