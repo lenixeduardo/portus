@@ -14,21 +14,28 @@ export function BarcodeModal({ onClose, onBatchReady }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BarcodeScanResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     inputRef.current?.focus();
+    return () => { mountedRef.current = false; };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const barcode = value.trim();
-    if (!barcode) return;
+    if (!barcode) {
+      setError("Digite ou escaneie o código de barras antes de confirmar.");
+      return;
+    }
     setLoading(true);
     setError(null);
     const res = await window.api.batches.scanBarcode({ barcodeValue: barcode });
+    if (!mountedRef.current) return;
     setLoading(false);
     if (!res.ok) {
       setError(res.error);
+      setValue("");
       return;
     }
     setResult(res.data);

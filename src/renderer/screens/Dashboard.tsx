@@ -52,12 +52,18 @@ export function Dashboard() {
     const already = await window.api.capture.isActive();
     if (already) {
       setError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
-      reload();
+      await reload();
       return;
     }
     setError(null);
     await reload();
-    setCaptureBatchId(batch.id);
+    // Verifica se o lote ainda está aberto após o reload
+    setBatches((current) => {
+      const stillOpen = current.some((b) => b.id === batch.id);
+      if (stillOpen) setCaptureBatchId(batch.id);
+      else setError(`Lote ${batch.code} foi fechado antes de iniciar a captura.`);
+      return current;
+    });
   }
 
   return (

@@ -85,7 +85,7 @@ export function closeBatch(id: number): void {
 }
 
 export function getBatchByCode(code: string): BatchWithFormula | null {
-  const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code);
+  const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code.trim());
   return row ? rowToBatchWithFormula(row) : null;
 }
 
