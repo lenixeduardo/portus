@@ -6,7 +6,7 @@ export interface BarcodeDeps {
   barcode_regex: string | null;
   openBatchesLimit: number;
   getBatchByCode(code: string): BatchWithProduct | null;
-  getProductByName(name: string): Product | null;
+  getProductByValue(value: string): Product | null;
   countOpenBatches(): number;
   codeExists(code: string): boolean;
   createBatch(productId: number, code: string, userId: number): BatchWithProduct;
@@ -20,7 +20,7 @@ export function processBarcodeValue(
   const raw = barcodeValue.trim();
   if (!raw) return { ok: false, error: "Código de barras vazio." };
 
-  let productName: string | null = null;
+  let productValue: string | null = null;
   let batchCode = raw;
 
   if (deps.barcode_regex) {
@@ -29,7 +29,7 @@ export function processBarcodeValue(
       const match = re.exec(raw);
       if (match?.groups) {
         if (match.groups["batch_code"]) batchCode = match.groups["batch_code"].trim();
-        if (match.groups["product"]) productName = match.groups["product"].trim();
+        if (match.groups["product"]) productValue = match.groups["product"].trim();
       } else if (match) {
         // Regex combinou mas não tem grupos nomeados — informa o usuário explicitamente
         return {
@@ -52,16 +52,16 @@ export function processBarcodeValue(
     return { ok: true, data: { batch: existing, created: false } };
   }
 
-  if (!productName) {
+  if (!productValue) {
     return {
       ok: false,
       error: `Lote "${batchCode}" não encontrado. Configure a regex do código de barras para incluir o produto e criar automaticamente.`
     };
   }
 
-  const product = deps.getProductByName(productName);
+  const product = deps.getProductByValue(productValue);
   if (!product) {
-    return { ok: false, error: `Produto "${productName}" não encontrado.` };
+    return { ok: false, error: `Produto com valor "${productValue}" não encontrado.` };
   }
 
   if (deps.countOpenBatches() >= deps.openBatchesLimit) {
