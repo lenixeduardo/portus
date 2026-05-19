@@ -85,9 +85,12 @@ export function closeBatch(id: number): void {
 }
 
 export function findBatchByCode(code: string): BatchWithFormula | null {
-  const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code);
+  const row = get<BatchJoinRow>(`${JOIN_SELECT} WHERE b.code = ?`, code.trim());
   return row ? rowToBatchWithFormula(row) : null;
 }
+
+// Alias mantido para compatibilidade com barcode-logic.ts
+export const getBatchByCode = findBatchByCode;
 
 export function generateBatchCode(): string {
   const year = new Date().getFullYear();
