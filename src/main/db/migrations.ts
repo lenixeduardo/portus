@@ -94,5 +94,11 @@ ALTER TABLE readings ADD COLUMN parse_regex_used TEXT;
 ALTER TABLE formulas RENAME TO products;
 ALTER TABLE batches RENAME COLUMN formula_id TO product_id;
 `
+  },
+  {
+    name: "005_add_user_role",
+    sql: `
+ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'operator'));
+`
   }
 ];

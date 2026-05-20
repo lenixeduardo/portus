@@ -6,11 +6,12 @@ interface UserRow {
   id: number;
   username: string;
   password_hash: string;
+  role: "admin" | "operator";
   created_at: string;
 }
 
 function rowToUser(row: UserRow): User {
-  return { id: row.id, username: row.username, createdAt: row.created_at };
+  return { id: row.id, username: row.username, role: row.role ?? "admin", createdAt: row.created_at };
 }
 
 export function listUsers(): User[] {
@@ -26,9 +27,9 @@ export function getUserByUsername(username: string): UserRow | undefined {
   return get<UserRow>("SELECT * FROM users WHERE username = ?", username);
 }
 
-export function createUser(username: string, password: string): User {
+export function createUser(username: string, password: string, role: "admin" | "operator" = "operator"): User {
   const hash = bcrypt.hashSync(password, 10);
-  const id = run("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, hash);
+  const id = run("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", username, hash, role);
   return getUser(id)!;
 }
 
@@ -46,6 +47,6 @@ export function countUsers(): number {
 }
 
 export function userHasReferences(id: number): boolean {
-  if (get("SELECT 1 AS x FROM formulas WHERE created_by = ? LIMIT 1", id)) return true;
+  if (get("SELECT 1 AS x FROM products WHERE created_by = ? LIMIT 1", id)) return true;
   return get("SELECT 1 AS x FROM batches WHERE created_by = ? LIMIT 1", id) != null;
 }

@@ -4,7 +4,7 @@ import { all } from "../db/query";
 import { setSetting } from "../db/settings-repo";
 import { getCurrentUser } from "../auth/auth-service";
 
-const ALLOWED_KEYS = new Set<string>(["capture_timeout_seconds"]);
+const ALLOWED_KEYS = new Set<string>(["capture_timeout_seconds", "barcode_regex"]);
 
 function validate(key: string, value: string): string | null {
   if (!ALLOWED_KEYS.has(key)) return "Configuração desconhecida.";
@@ -12,6 +12,11 @@ function validate(key: string, value: string): string | null {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 5 || n > 600) {
       return "Tempo de captura deve estar entre 5 e 600 segundos.";
+    }
+  }
+  if (key === "barcode_regex" && value.trim()) {
+    try { new RegExp(value.trim()); } catch {
+      return "Regex de código de barras inválida.";
     }
   }
   return null;

@@ -57,7 +57,9 @@ export function registerBatchesHandlers(): void {
   });
 
   ipcMain.handle(IPC.batchesClose, (_e, id: number): ServiceResult<true> => {
-    if (!getCurrentUser()) return { ok: false, error: "Sessão expirada." };
+    const user = getCurrentUser();
+    if (!user) return { ok: false, error: "Sessão expirada." };
+    if (user.role !== "admin") return { ok: false, error: "Sem permissão para finalizar lotes." };
     const batch = getBatchWithProduct(id);
     if (!batch) return { ok: false, error: "Lote não encontrado." };
     if (batch.status === "closed") return { ok: false, error: "Lote já está fechado." };

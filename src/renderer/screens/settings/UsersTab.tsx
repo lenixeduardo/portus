@@ -53,6 +53,7 @@ export function UsersTab({ currentUserId }: Props) {
           <thead>
             <tr>
               <th>Usuário</th>
+              <th>Perfil</th>
               <th>Criado em</th>
               <th style={{ width: 220 }}>Ações</th>
             </tr>
@@ -65,6 +66,11 @@ export function UsersTab({ currentUserId }: Props) {
                   {u.id === currentUserId && (
                     <span className="chip chip-blue" style={{ marginLeft: 8 }}>VOCÊ</span>
                   )}
+                </td>
+                <td>
+                  <span className={`chip ${u.role === "admin" ? "chip-blue" : "chip-green"}`}>
+                    {u.role === "admin" ? "Admin" : "Operador"}
+                  </span>
                 </td>
                 <td className="muted">{formatDate(u.createdAt)}</td>
                 <td>
@@ -109,6 +115,7 @@ export function UsersTab({ currentUserId }: Props) {
 function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"admin" | "operator">("operator");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -116,7 +123,7 @@ function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const res = await window.api.users.create({ username, password });
+    const res = await window.api.users.create({ username, password, role });
     setSaving(false);
     if (!res.ok) {
       setError(res.error);
@@ -146,6 +153,13 @@ function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
         <div className="field">
           <label>Senha</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Perfil</label>
+          <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator")}>
+            <option value="operator">Operador — pode abrir lotes e realizar leituras</option>
+            <option value="admin">Admin — acesso completo</option>
+          </select>
         </div>
         {error && <div className="error">{error}</div>}
         <button type="submit" style={{ display: "none" }} />

@@ -47,14 +47,16 @@
     "cross-env": "^10.1.0",
     "electron": "^32.1.2",
     "electron-builder": "^25.0.5",
+    "playwright-core": "^1.60.0",
     "typescript": "^5.6.2",
     "vite": "^5.4.8",
-"vitest": "^4.1.6",
+    "vitest": "^4.1.6",
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.serialreader.app",
-    "productName": "Serial Reader",
+    "appId": "com.portus.app",
+    "productName": "Portus",
+    "icon": "build/icon.png",
     "files": [
       "dist/**/*",
       "package.json"
@@ -63,7 +65,8 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     }
   }
 }

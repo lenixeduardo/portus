@@ -62,9 +62,9 @@ export function App() {
           <h2>{TITLES[route]}</h2>
         </div>
         <div className="content">
-          {route === "dashboard" && <Dashboard />}
+          {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
           {route === "products" && <Products />}
-          {route === "settings" && <Settings currentUserId={user.id} />}
+          {route === "settings" && <Settings currentUser={user} />}
           {route === "history" && <History />}
         </div>
       </div>
