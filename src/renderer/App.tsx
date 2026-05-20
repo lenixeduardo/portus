@@ -62,7 +62,7 @@ export function App() {
           <h2>{TITLES[route]}</h2>
         </div>
         <div className="content">
-          {route === "dashboard" && <Dashboard user={user} />}
+          {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
           {route === "products" && <Products />}
           {route === "settings" && <Settings currentUser={user} />}
           {route === "history" && <History />}

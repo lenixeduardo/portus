@@ -47,6 +47,6 @@ export function countUsers(): number {
 }
 
 export function userHasReferences(id: number): boolean {
-  if (get("SELECT 1 AS x FROM formulas WHERE created_by = ? LIMIT 1", id)) return true;
+  if (get("SELECT 1 AS x FROM products WHERE created_by = ? LIMIT 1", id)) return true;
   return get("SELECT 1 AS x FROM batches WHERE created_by = ? LIMIT 1", id) != null;
 }

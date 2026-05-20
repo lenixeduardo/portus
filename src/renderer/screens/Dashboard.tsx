@@ -13,7 +13,7 @@ type ScannerState =
   | { phase: "detecting"; code: string }
   | { phase: "error"; message: string };
 
-export function Dashboard({ user }: { user: User }) {
+export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
@@ -167,9 +167,10 @@ export function Dashboard({ user }: { user: User }) {
       {captureBatchId !== null && (
         <CaptureModal
           batchId={captureBatchId}
-          onClose={() => {
+          onClose={async () => {
             setCaptureBatchId(null);
-            reload();
+            await window.api.auth.logout();
+            onLogout();
           }}
           onEnded={reload}
         />
