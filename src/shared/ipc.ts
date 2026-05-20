@@ -128,6 +128,7 @@ export interface SerialPortInfo {
 export interface UserCreateInput {
   username: string;
   password: string;
+  role?: "admin" | "operator";
 }
 
 export interface EquipmentUpdateInput {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { Product } from "../../shared/types";
+import type { Product, User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
 import { Modal } from "../components/Modal";
 import { CaptureModal } from "../components/CaptureModal";
@@ -13,7 +13,7 @@ type ScannerState =
   | { phase: "detecting"; code: string }
   | { phase: "error"; message: string };
 
-export function Dashboard() {
+export function Dashboard({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBatch, setShowNewBatch] = useState(false);
@@ -52,38 +52,8 @@ export function Dashboard() {
   // Auto-scanner disabled when BarcodeModal is open or capture is running
   const scannerActive = captureBatchId === null && !showBarcode;
 
-  useBarcodeScanner(async (code) => {
-    if (captureBatchId !== null) return;
-
-    setScannerState({ phase: "detecting", code });
-
-    const res = await window.api.batches.scanBarcode({ barcodeValue: code });
-    if (!res.ok) {
-      if (res.productValue) {
-        setScannerState({ phase: "idle" });
-        openBarcodeModal(code);
-      } else {
-        setScannerError(res.error);
-      }
-      return;
-    }
-
-    const { batch } = res.data;
-
-    if (batch.status !== "open") {
-      setScannerError(`Lote ${batch.code} já está finalizado.`);
-      return;
-    }
-
-    const already = await window.api.capture.isActive();
-    if (already) {
-      setScannerError("Já existe uma captura em andamento. Aguarde ou cancele.");
-      return;
-    }
-
-    setScannerState({ phase: "idle" });
-    await reload();
-    setCaptureBatchId(batch.id);
+  useBarcodeScanner((code) => {
+    openBarcodeModal(code);
   }, scannerActive);
 
   async function handleClose(b: BatchWithProduct) {
@@ -168,6 +138,7 @@ export function Dashboard() {
               key={b.id}
               batch={b}
               isCapturing={captureBatchId === b.id}
+              canClose={user.role === "admin"}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
@@ -235,11 +206,13 @@ function ScannerStatusBar({ state }: { state: ScannerState }) {
 function BatchCard({
   batch,
   isCapturing,
+  canClose,
   onClose,
   onPrint
 }: {
   batch: BatchWithProduct;
   isCapturing: boolean;
+  canClose: boolean;
   onClose: () => void;
   onPrint: () => void;
 }) {
@@ -282,14 +255,16 @@ function BatchCard({
           <Printer size={13} />
           Imprimir
         </button>
-        <button
-          className="secondary"
-          onClick={onClose}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <CheckSquare size={13} />
-          Finalizar
-        </button>
+        {canClose && (
+          <button
+            className="secondary"
+            onClick={onClose}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <CheckSquare size={13} />
+            Finalizar
+          </button>
+        )}
       </div>
     </div>
   );

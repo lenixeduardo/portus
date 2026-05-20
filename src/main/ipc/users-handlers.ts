@@ -36,14 +36,16 @@ export function registerUsersHandlers(): void {
   ipcMain.handle(IPC.usersList, (): User[] => listUsers());
 
   ipcMain.handle(IPC.usersCreate, (_e, input: UserCreateInput): ServiceResult<User> => {
-    if (!getCurrentUser()) return { ok: false, error: "Sessão expirada." };
+    const current = getCurrentUser();
+    if (!current) return { ok: false, error: "Sessão expirada." };
+    if (current.role !== "admin") return { ok: false, error: "Sem permissão para criar usuários." };
     const eU = validateUsername(input.username);
     if (eU) return { ok: false, error: eU };
     const eP = validatePassword(input.password);
     if (eP) return { ok: false, error: eP };
     const username = input.username.trim();
     if (usernameExists(username)) return { ok: false, error: "Já existe um usuário com esse nome." };
-    const user = createUser(username, input.password);
+    const user = createUser(username, input.password, input.role ?? "operator");
     return { ok: true, data: user };
   });
 
@@ -62,6 +64,7 @@ export function registerUsersHandlers(): void {
   ipcMain.handle(IPC.usersDelete, (_e, id: number): ServiceResult<true> => {
     const current = getCurrentUser();
     if (!current) return { ok: false, error: "Sessão expirada." };
+    if (current.role !== "admin") return { ok: false, error: "Sem permissão para excluir usuários." };
     if (current.id === id) return { ok: false, error: "Não é possível excluir o usuário logado." };
     if (countUsers() <= 1) return { ok: false, error: "Deve haver ao menos um usuário no sistema." };
     if (!getUser(id)) return { ok: false, error: "Usuário não encontrado." };

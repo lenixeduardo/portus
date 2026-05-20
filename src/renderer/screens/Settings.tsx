@@ -1,27 +1,28 @@
 import React, { useState } from "react";
+import type { User } from "../../shared/types";
 import { CaptureSettingsTab } from "./settings/CaptureSettingsTab";
 import { EquipmentsTab } from "./settings/EquipmentsTab";
 import { UsersTab } from "./settings/UsersTab";
 
 type Tab = "capture" | "equipments" | "users";
 
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: "capture", label: "Captura" },
-  { key: "equipments", label: "Equipamentos" },
-  { key: "users", label: "Usuários" }
-];
-
 interface Props {
-  currentUserId: number;
+  currentUser: User;
 }
 
-export function Settings({ currentUserId }: Props) {
+export function Settings({ currentUser }: Props) {
   const [tab, setTab] = useState<Tab>("capture");
+
+  const tabs: Array<{ key: Tab; label: string }> = [
+    { key: "capture", label: "Captura" },
+    { key: "equipments", label: "Equipamentos" },
+    ...(currentUser.role === "admin" ? [{ key: "users" as Tab, label: "Usuários" }] : []),
+  ];
 
   return (
     <div>
       <div className="tabs">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             className={`tab ${tab === t.key ? "active" : ""}`}
@@ -35,7 +36,7 @@ export function Settings({ currentUserId }: Props) {
       <div className="tab-panel">
         {tab === "capture" && <CaptureSettingsTab />}
         {tab === "equipments" && <EquipmentsTab />}
-        {tab === "users" && <UsersTab currentUserId={currentUserId} />}
+        {tab === "users" && currentUser.role === "admin" && <UsersTab currentUserId={currentUser.id} />}
       </div>
     </div>
   );
