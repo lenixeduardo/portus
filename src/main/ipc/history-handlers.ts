@@ -1,9 +1,8 @@
 import { dialog, ipcMain } from "electron";
-import { writeFileSync } from "node:fs";
 import { IPC, type ServiceResult } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
 import { listAllBatches } from "../db/batches-repo";
-import { buildCsvContent, getBatchHistory } from "../db/history-repo";
+import { buildCsvContent, getBatchHistory, writeCsvFile } from "../db/history-repo";
 
 export function registerHistoryHandlers(): void {
   ipcMain.handle(IPC.batchesListAll, (): ReturnType<typeof listAllBatches> => listAllBatches());
@@ -29,8 +28,7 @@ export function registerHistoryHandlers(): void {
     if (canceled || !filePath) return { ok: false, error: "Exportação cancelada." };
 
     try {
-      const csv = buildCsvContent(history);
-      writeFileSync(filePath, "﻿" + csv, "utf-8");
+      writeCsvFile(filePath, buildCsvContent(history));
       return { ok: true, data: true };
     } catch (err) {
       return { ok: false, error: `Erro ao salvar arquivo: ${String(err)}` };

@@ -1,6 +1,8 @@
+import { writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { all } from "./query";
-import type { BatchHistory, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
-import { getBatchWithProduct } from "./batches-repo";
+import type { BatchHistory, BatchWithProduct, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
+import { getBatchWithProduct, listClosedUnexportedBatches, markBatchAutoExported } from "./batches-repo";
 
 interface SessionReadingRow {
   session_id: number;
@@ -17,8 +19,8 @@ interface SessionReadingRow {
   slot_index: number | null;
 }
 
-export function getBatchHistory(batchId: number): BatchHistory | null {
-  const batch = getBatchWithProduct(batchId);
+export function getBatchHistory(batchId: number, preloaded?: BatchWithProduct): BatchHistory | null {
+  const batch = preloaded ?? getBatchWithProduct(batchId);
   if (!batch) return null;
 
   const rows = all<SessionReadingRow>(
@@ -106,6 +108,37 @@ export function buildCsvContent(history: BatchHistory): string {
   }
 
   return lines.join("\r\n");
+}
+
+export function writeCsvFile(filePath: string, csv: string): void {
+  writeFileSync(filePath, "﻿" + csv, "utf-8");
+}
+
+export function runAutoExport(exportFolder: string): { exported: number; errors: string[] } {
+  const batches = listClosedUnexportedBatches();
+  let exported = 0;
+  const errors: string[] = [];
+
+  try {
+    mkdirSync(exportFolder, { recursive: true });
+  } catch (err) {
+    return { exported: 0, errors: [`Não foi possível criar a pasta de exportação: ${String(err)}`] };
+  }
+
+  for (const batch of batches) {
+    const history = getBatchHistory(batch.id, batch);
+    if (!history) continue;
+    try {
+      const csv = buildCsvContent(history);
+      writeCsvFile(join(exportFolder, `lote-${batch.code}.csv`), csv);
+      markBatchAutoExported(batch.id);
+      exported++;
+    } catch (err) {
+      errors.push(`Lote ${batch.code}: ${String(err)}`);
+    }
+  }
+
+  return { exported, errors };
 }
 
 function csvCell(v: unknown): string {

@@ -30,7 +30,8 @@ export const IPC = {
   batchesFindByCode: "batches:find-by-code",
   batchesScanBarcode: "batches:scan-barcode",
   historyGetBatch: "history:get-batch",
-  historyExportCsv: "history:export-csv"
+  historyExportCsv: "history:export-csv",
+  settingsSelectExportFolder: "settings:select-export-folder"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error";
@@ -187,6 +188,7 @@ export interface SerialReaderApi {
   settings: {
     getAll(): Promise<AppSettings>;
     set(key: string, value: string): Promise<ServiceResult<true>>;
+    selectExportFolder(): Promise<string | null>;
   };
   equipments: {
     list(): Promise<Equipment[]>;

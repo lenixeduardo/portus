@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { Product, User } from "../../shared/types";
+import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
-import { Modal } from "../components/Modal";
 import { CaptureModal } from "../components/CaptureModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
@@ -16,7 +15,6 @@ type ScannerState =
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNewBatch, setShowNewBatch] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
@@ -122,14 +120,13 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
           <ScanBarcode size={14} />
           Novo Lote por Código de Barras
         </button>
-        <button onClick={() => setShowNewBatch(true)}>+ Novo Lote</button>
       </div>
 
       {loading ? (
         <div className="muted mono" style={{ fontSize: 12 }}>Carregando...</div>
       ) : batches.length === 0 ? (
         <div className="placeholder">
-          Nenhum lote aberto. Clique em <strong>+ Novo Lote</strong> para começar.
+          Nenhum lote aberto. Escaneie um código de barras para criar ou abrir um lote.
         </div>
       ) : (
         <div className="batch-grid">
@@ -144,16 +141,6 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             />
           ))}
         </div>
-      )}
-
-      {showNewBatch && (
-        <NewBatchModal
-          onClose={() => setShowNewBatch(false)}
-          onCreated={() => {
-            setShowNewBatch(false);
-            reload();
-          }}
-        />
       )}
 
       {showBarcode && (
@@ -268,88 +255,6 @@ function BatchCard({
         )}
       </div>
     </div>
-  );
-}
-
-interface NewBatchProps {
-  onClose: () => void;
-  onCreated: () => void;
-}
-
-function NewBatchModal({ onClose, onCreated }: NewBatchProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productId, setProductId] = useState<number | "">("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    window.api.products.list().then(setProducts);
-  }, []);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!productId) {
-      setError("Selecione um produto.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    const res = await window.api.batches.create({
-      productId: Number(productId),
-      code: code.trim() || undefined,
-    });
-    setSaving(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    onCreated();
-  }
-
-  return (
-    <Modal
-      title="Novo Lote"
-      onClose={onClose}
-      footer={
-        <>
-          <button className="secondary" onClick={onClose}>Cancelar</button>
-          <button onClick={submit} disabled={saving}>
-            {saving ? "Criando..." : "Criar Lote"}
-          </button>
-        </>
-      }
-    >
-      <form onSubmit={submit}>
-        <div className="field">
-          <label>Produto</label>
-          {products.length === 0 ? (
-            <div className="muted" style={{ fontSize: 13 }}>Cadastre um produto antes de criar um lote.</div>
-          ) : (
-            <select
-              value={productId}
-              onChange={(e) => setProductId(e.target.value ? Number(e.target.value) : "")}
-            >
-              <option value="">Selecione...</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
-        </div>
-        <div className="field">
-          <label>Código do lote (opcional — gerado automaticamente)</label>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="ex.: 2026-0042"
-            className="mono"
-          />
-        </div>
-        {error && <div className="error">{error}</div>}
-        <button type="submit" style={{ display: "none" }} />
-      </form>
-    </Modal>
   );
 }
 

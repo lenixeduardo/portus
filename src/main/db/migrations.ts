@@ -100,5 +100,11 @@ ALTER TABLE batches RENAME COLUMN formula_id TO product_id;
     sql: `
 ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'operator'));
 `
+  },
+  {
+    name: "006_batches_auto_exported_at",
+    sql: `
+ALTER TABLE batches ADD COLUMN auto_exported_at TEXT;
+`
   }
 ];

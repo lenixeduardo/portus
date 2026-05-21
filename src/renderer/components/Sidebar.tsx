@@ -11,14 +11,16 @@ interface Props {
   onLogout: () => void;
 }
 
-const NAV: Array<{ key: Route; label: string; icon: React.ElementType }> = [
+const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly?: boolean }> = [
   { key: "dashboard", label: "Lotes Ativos", icon: LayoutDashboard },
-  { key: "products", label: "Produtos", icon: Package },
+  { key: "products", label: "Produtos", icon: Package, adminOnly: true },
   { key: "history", label: "Histórico", icon: Clock },
-  { key: "settings", label: "Configurações", icon: Settings },
+  { key: "settings", label: "Configurações", icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar({ user, current, onNavigate, onLogout }: Props) {
+  const visibleNav = NAV.filter((item) => !item.adminOnly || user.role === "admin");
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -26,7 +28,7 @@ export function Sidebar({ user, current, onNavigate, onLogout }: Props) {
         <span className="brand-name">PORTUS</span>
       </div>
       <nav>
-        {NAV.map((item) => {
+        {visibleNav.map((item) => {
           const Icon = item.icon;
           return (
             <a

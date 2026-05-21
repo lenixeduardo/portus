@@ -91,6 +91,16 @@ export function findBatchByCode(code: string): BatchWithProduct | null {
 
 export const getBatchByCode = findBatchByCode;
 
+export function listClosedUnexportedBatches(): BatchWithProduct[] {
+  return all<BatchJoinRow>(
+    `${JOIN_SELECT} WHERE b.status = 'closed' AND b.auto_exported_at IS NULL ORDER BY b.closed_at ASC`
+  ).map(rowToBatchWithProduct);
+}
+
+export function markBatchAutoExported(id: number): void {
+  run("UPDATE batches SET auto_exported_at = datetime('now') WHERE id = ?", id);
+}
+
 export function generateBatchCode(): string {
   const year = new Date().getFullYear();
   const c = get<{ c: number }>("SELECT COUNT(*) AS c FROM batches WHERE code LIKE ?", `${year}-%`)?.c ?? 0;
