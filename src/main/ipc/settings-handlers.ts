@@ -22,7 +22,7 @@ function validate(key: string, value: string): string | null {
   return null;
 }
 
-export async function selectExportFolderDialog(): Promise<string | null> {
+async function selectExportFolderDialog(): Promise<string | null> {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: "Selecionar pasta de exportação automática",
     properties: ["openDirectory", "createDirectory"]

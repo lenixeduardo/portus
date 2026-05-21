@@ -39,10 +39,8 @@ export function CaptureSettingsTab() {
     if (!r1.ok) { setSaving(false); setError(r1.error); return; }
     const r2 = await window.api.settings.set("barcode_regex", barcodeRegex.trim());
     if (!r2.ok) { setSaving(false); setError(r2.error); return; }
-    if (exportFolder.trim()) {
-      const r3 = await window.api.settings.set("auto_export_folder", exportFolder.trim());
-      if (!r3.ok) { setSaving(false); setError(r3.error); return; }
-    }
+    const r3 = await window.api.settings.set("auto_export_folder", exportFolder.trim());
+    if (!r3.ok) { setSaving(false); setError(r3.error); return; }
     setSaving(false);
     setSaved(true);
   }

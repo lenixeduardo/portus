@@ -192,7 +192,6 @@ export async function startCapture(
       const raw = line.trim();
       if (!raw || sessionId === null || batchId === null) return;
 
-      // Aceita apenas a primeira leitura por slot por sessão
       if (slotsWithReading.has(eq.slotIndex)) return;
 
       let parsed: string | null = null;

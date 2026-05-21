@@ -56,15 +56,7 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar
-        user={user}
-        current={route}
-        onNavigate={(r) => {
-          if (user.role === "operator" && (r === "settings" || r === "products")) return;
-          setRoute(r);
-        }}
-        onLogout={handleLogout}
-      />
+      <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} />
       <div className="main-area">
         <div className="topbar">
           <h2>{TITLES[route]}</h2>
