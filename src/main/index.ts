@@ -11,8 +11,31 @@ import { registerProductsHandlers } from "./ipc/products-handlers";
 import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
+import { getAutoExportFolder } from "./db/settings-repo";
+import { runAutoExport } from "./db/history-repo";
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production" || process.env.ELECTRON_DEV === "1";
+
+function scheduleNextMidnightExport(): void {
+  const now = new Date();
+  const nextMidnight = new Date(now);
+  nextMidnight.setDate(nextMidnight.getDate() + 1);
+  nextMidnight.setHours(0, 0, 0, 0);
+  const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+  setTimeout(() => {
+    const defaultFolder = join(app.getPath("documents"), "PORTUS", "exportacoes");
+    const folder = getAutoExportFolder(defaultFolder);
+    const result = runAutoExport(folder);
+    if (result.exported > 0 || result.errors.length > 0) {
+      console.log(`[auto-export] ${result.exported} lote(s) exportado(s) para "${folder}".`);
+      if (result.errors.length > 0) {
+        console.error("[auto-export] Erros:", result.errors.join("; "));
+      }
+    }
+    scheduleNextMidnightExport();
+  }, msUntilMidnight);
+}
 
 function createWindow() {
   const preloadPath = join(app.getAppPath(), "dist/main/preload/index.js");
@@ -52,6 +75,7 @@ app.whenReady().then(async () => {
   registerUsersHandlers();
   registerCaptureHandlers();
   registerHistoryHandlers();
+  scheduleNextMidnightExport();
   createWindow();
 });
 

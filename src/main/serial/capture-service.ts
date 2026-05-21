@@ -48,6 +48,9 @@ const reconnectAttempted: Set<number> = new Set();
 // Slots sendo fechados intencionalmente (cleanup) — suprime trigger de reconexão
 const intentionallyClosing: Set<number> = new Set();
 
+// Slots que já registraram uma leitura nesta sessão — aceita só a primeira por slot
+const slotsWithReading: Set<number> = new Set();
+
 function broadcast(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((w) => {
     if (!w.isDestroyed()) w.webContents.send(channel, data);
@@ -94,6 +97,7 @@ function cleanup(reason: "completed" | "cancelled"): void {
   });
   slots.clear();
   reconnectAttempted.clear();
+  slotsWithReading.clear();
 
   if (sessionId !== null) {
     if (reason === "completed") {
@@ -188,6 +192,9 @@ export async function startCapture(
       const raw = line.trim();
       if (!raw || sessionId === null || batchId === null) return;
 
+      // Aceita apenas a primeira leitura por slot por sessão
+      if (slotsWithReading.has(eq.slotIndex)) return;
+
       let parsed: string | null = null;
       let parseFailureReason: string | null = null;
       const parseRegexUsed: string | null = eq.parseRegex ?? null;
@@ -214,7 +221,6 @@ export async function startCapture(
         parsed = raw;
       }
 
-      // Grava no banco SEMPRE, independente do resultado do parsing
       insertReading({
         batchId: batchId!,
         equipmentId: eq.id,
@@ -224,6 +230,7 @@ export async function startCapture(
         parseFailureReason,
         parseRegexUsed
       });
+      slotsWithReading.add(eq.slotIndex);
 
       slot.status = "receiving";
 

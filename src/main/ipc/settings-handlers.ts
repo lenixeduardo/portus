@@ -1,10 +1,10 @@
-import { ipcMain } from "electron";
+import { dialog, ipcMain } from "electron";
 import { IPC, type AppSettings, type ServiceResult } from "../../shared/ipc";
 import { all } from "../db/query";
 import { setSetting } from "../db/settings-repo";
 import { getCurrentUser } from "../auth/auth-service";
 
-const ALLOWED_KEYS = new Set<string>(["capture_timeout_seconds", "barcode_regex"]);
+const ALLOWED_KEYS = new Set<string>(["capture_timeout_seconds", "barcode_regex", "auto_export_folder"]);
 
 function validate(key: string, value: string): string | null {
   if (!ALLOWED_KEYS.has(key)) return "Configuração desconhecida.";
@@ -22,12 +22,26 @@ function validate(key: string, value: string): string | null {
   return null;
 }
 
+export async function selectExportFolderDialog(): Promise<string | null> {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: "Selecionar pasta de exportação automática",
+    properties: ["openDirectory", "createDirectory"]
+  });
+  if (canceled || filePaths.length === 0) return null;
+  return filePaths[0];
+}
+
 export function registerSettingsHandlers(): void {
   ipcMain.handle(IPC.settingsGetAll, (): AppSettings => {
     const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
     const out: AppSettings = {};
     rows.forEach((r) => (out[r.key] = r.value));
     return out;
+  });
+
+  ipcMain.handle(IPC.settingsSelectExportFolder, async (): Promise<string | null> => {
+    if (!getCurrentUser()) return null;
+    return selectExportFolderDialog();
   });
 
   ipcMain.handle(

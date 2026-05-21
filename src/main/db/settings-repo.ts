@@ -17,3 +17,7 @@ export function getCaptureTimeoutSeconds(): number {
   const n = v ? Number(v) : 30;
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
+
+export function getAutoExportFolder(defaultFolder: string): string {
+  return getSetting("auto_export_folder") ?? defaultFolder;
+}

@@ -1,6 +1,8 @@
+import { writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { all } from "./query";
 import type { BatchHistory, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
-import { getBatchWithProduct } from "./batches-repo";
+import { getBatchWithProduct, listClosedUnexportedBatches, markBatchAutoExported } from "./batches-repo";
 
 interface SessionReadingRow {
   session_id: number;
@@ -106,6 +108,34 @@ export function buildCsvContent(history: BatchHistory): string {
   }
 
   return lines.join("\r\n");
+}
+
+export function runAutoExport(exportFolder: string): { exported: number; errors: string[] } {
+  const batches = listClosedUnexportedBatches();
+  let exported = 0;
+  const errors: string[] = [];
+
+  try {
+    mkdirSync(exportFolder, { recursive: true });
+  } catch (err) {
+    return { exported: 0, errors: [`Não foi possível criar a pasta de exportação: ${String(err)}`] };
+  }
+
+  for (const batch of batches) {
+    const history = getBatchHistory(batch.id);
+    if (!history) continue;
+    try {
+      const csv = buildCsvContent(history);
+      const filename = `lote-${batch.code}.csv`;
+      writeFileSync(join(exportFolder, filename), "﻿" + csv, "utf-8");
+      markBatchAutoExported(batch.id);
+      exported++;
+    } catch (err) {
+      errors.push(`Lote ${batch.code}: ${String(err)}`);
+    }
+  }
+
+  return { exported, errors };
 }
 
 function csvCell(v: unknown): string {
