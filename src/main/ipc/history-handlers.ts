@@ -1,11 +1,16 @@
 import { dialog, ipcMain } from "electron";
-import { IPC, type ServiceResult, type HistoryFilterInput } from "../../shared/ipc";
+import { IPC, type ReadingRecord, type ServiceResult, type HistoryFilterInput } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
 import { listAllBatches } from "../db/batches-repo";
-import { buildCsvContent, getBatchHistory, writeCsvFile } from "../db/history-repo";
+import { buildCsvContent, getBatchHistory, getLastReadingsByBatch, writeCsvFile } from "../db/history-repo";
 
 export function registerHistoryHandlers(): void {
   ipcMain.handle(IPC.batchesListAll, (): ReturnType<typeof listAllBatches> => listAllBatches());
+
+  ipcMain.handle(IPC.readingsGetLastByBatch, (_e, batchId: number): ReadingRecord[] => {
+    if (!getCurrentUser()) return [];
+    return getLastReadingsByBatch(batchId);
+  });
 
   ipcMain.handle(IPC.historyGetBatch, (_e, batchId: number): ServiceResult<ReturnType<typeof getBatchHistory>> => {
     if (!getCurrentUser()) return { ok: false, error: "Sessão expirada." };

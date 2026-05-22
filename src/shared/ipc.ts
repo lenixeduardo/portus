@@ -31,7 +31,8 @@ export const IPC = {
   batchesScanBarcode: "batches:scan-barcode",
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv",
-  settingsSelectExportFolder: "settings:select-export-folder"
+  settingsSelectExportFolder: "settings:select-export-folder",
+  readingsGetLastByBatch: "readings:get-last-by-batch"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error";
@@ -216,6 +217,9 @@ export interface SerialReaderApi {
     onTick(cb: (e: CaptureTickEvent) => void): Unsubscribe;
     onSlotUpdate(cb: (e: SlotUpdateEvent) => void): Unsubscribe;
     onEnded(cb: (e: CaptureEndedEvent) => void): Unsubscribe;
+  };
+  readings: {
+    getLastByBatch(batchId: number): Promise<ReadingRecord[]>;
   };
 }
 

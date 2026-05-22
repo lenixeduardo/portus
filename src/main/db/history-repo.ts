@@ -2,6 +2,44 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { all } from "./query";
 import type { BatchHistory, BatchWithProduct, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
+
+interface LastReadingRow {
+  id: number;
+  equipment_id: number;
+  equipment_name: string;
+  slot_index: number;
+  value_raw: string;
+  value_parsed: string | null;
+  captured_at: string;
+}
+
+export function getLastReadingsByBatch(batchId: number): ReadingRecord[] {
+  const rows = all<LastReadingRow>(
+    `SELECT r.id, r.equipment_id, e.name AS equipment_name, e.slot_index,
+            r.value_raw, r.value_parsed, r.captured_at
+     FROM readings r
+     JOIN equipments e ON e.id = r.equipment_id
+     WHERE r.batch_id = ?
+       AND r.id IN (
+         SELECT MAX(r2.id) FROM readings r2
+         WHERE r2.batch_id = ? AND r2.value_raw != ''
+         GROUP BY r2.equipment_id
+       )
+     ORDER BY e.slot_index ASC`,
+    batchId,
+    batchId
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    equipmentId: row.equipment_id,
+    equipmentName: row.equipment_name,
+    slotIndex: row.slot_index,
+    valueRaw: row.value_raw,
+    valueParsed: row.value_parsed ?? undefined,
+    capturedAt: row.captured_at
+  }));
+}
 import { getBatchWithProduct, listClosedUnexportedBatches, markBatchAutoExported } from "./batches-repo";
 
 interface SessionReadingRow {

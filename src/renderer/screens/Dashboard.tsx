@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
-import type { BatchWithProduct } from "../../shared/ipc";
+import type { BatchWithProduct, ReadingRecord } from "../../shared/ipc";
 import { CaptureModal } from "../components/CaptureModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
@@ -14,6 +14,7 @@ type ScannerState =
 
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
+  const [batchReadings, setBatchReadings] = useState<Record<number, ReadingRecord[]>>({});
   const [loading, setLoading] = useState(true);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
@@ -21,11 +22,22 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  async function loadReadings(batchList: BatchWithProduct[]) {
+    const entries = await Promise.all(
+      batchList.map(async (b) => {
+        const readings = await window.api.readings.getLastByBatch(b.id);
+        return [b.id, readings] as [number, ReadingRecord[]];
+      })
+    );
+    setBatchReadings(Object.fromEntries(entries));
+  }
+
   async function reload() {
     setLoading(true);
     const list = await window.api.batches.listOpen();
     setBatches(list);
     setLoading(false);
+    loadReadings(list);
   }
 
   useEffect(() => {
@@ -134,6 +146,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             <BatchCard
               key={b.id}
               batch={b}
+              readings={batchReadings[b.id] ?? []}
               isCapturing={captureBatchId === b.id}
               canClose={user.role === "admin"}
               onClose={() => handleClose(b)}
@@ -192,12 +205,14 @@ function ScannerStatusBar({ state }: { state: ScannerState }) {
 
 function BatchCard({
   batch,
+  readings,
   isCapturing,
   canClose,
   onClose,
   onPrint
 }: {
   batch: BatchWithProduct;
+  readings: ReadingRecord[];
   isCapturing: boolean;
   canClose: boolean;
   onClose: () => void;
@@ -232,6 +247,19 @@ function BatchCard({
         </div>
       </div>
 
+      {readings.length > 0 && (
+        <div className="batch-readings">
+          <div className="batch-readings-label">Última sessão</div>
+          {readings.map((r) => (
+            <div key={r.id} className="batch-reading-row">
+              <span className="batch-reading-name">{r.equipmentName}</span>
+              <span className="batch-reading-value mono">{r.valueParsed ?? r.valueRaw}</span>
+              <span className="batch-reading-ts">{formatTime(r.capturedAt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="batch-actions">
         <button
           className="secondary"
@@ -260,4 +288,8 @@ function BatchCard({
 function formatDate(iso: string): string {
   const d = new Date(iso.replace(" ", "T") + "Z");
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }

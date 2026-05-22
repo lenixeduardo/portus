@@ -15,6 +15,7 @@ import {
   type ProductInput,
   type LoginRequest,
   type LoginResult,
+  type ReadingRecord,
   type SerialPortInfo,
   type SerialReaderApi,
   type ServiceResult,
@@ -95,6 +96,10 @@ const api: SerialReaderApi = {
     onTick: (cb) => subscribe<CaptureTickEvent>(IPC.captureTick, cb),
     onSlotUpdate: (cb) => subscribe<SlotUpdateEvent>(IPC.captureSlotUpdate, cb),
     onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEnded, cb)
+  },
+  readings: {
+    getLastByBatch: (batchId: number): Promise<ReadingRecord[]> =>
+      ipcRenderer.invoke(IPC.readingsGetLastByBatch, batchId)
   }
 };
 
