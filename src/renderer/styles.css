@@ -805,10 +805,9 @@ label.checkbox input { width: auto; }
   flex-direction: column;
   gap: 6px;
   min-height: 80px;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s;
 }
 .capture-slot-active {
-  background: #ECFDF5;
   border-color: var(--accent);
 }
 
