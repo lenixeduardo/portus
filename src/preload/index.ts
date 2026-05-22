@@ -11,6 +11,7 @@ import {
   type CaptureStartResult,
   type CaptureTickEvent,
   type EquipmentUpdateInput,
+  type HistoryFilterInput,
   type ProductInput,
   type LoginRequest,
   type LoginResult,
@@ -59,8 +60,8 @@ const api: SerialReaderApi = {
   history: {
     getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
       ipcRenderer.invoke(IPC.historyGetBatch, batchId),
-    exportCsv: (batchId: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.historyExportCsv, batchId)
+    exportCsv: (batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>> =>
+      ipcRenderer.invoke(IPC.historyExportCsv, batchId, filters)
   },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGetAll),

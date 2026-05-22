@@ -49,23 +49,23 @@
 - [x] Equipment ganhou campo `parseRegex` em `shared/types.ts`
 - [x] Commit + push
 
-## Fase 4 — Núcleo de captura serial 🎯
-- [ ] Service `src/main/serial/capture-session.ts`
-- [ ] Abrir as 6 portas em paralelo ao iniciar sessão
-- [ ] Parser configurável por equipamento (regex em `equipment.parse_regex`)
-- [ ] Gravar cada leitura em `readings` com `capture_session_id`
-- [ ] Timer com `timeout_seconds`; ao expirar, fechar todas as portas
-- [ ] IPC events: `capture:slot-update` (cinza/verde/vermelho), `capture:tick`, `capture:ended`
-- [ ] Tolerância: erro em uma porta não derruba as outras
-- [ ] Modal de Captura Ativa (countdown + grid 2×3 de LEDs)
-- [ ] Botão Cancelar
-- [ ] Commit + push
+## Fase 4 — Núcleo de captura serial 🎯 ✅
+- [x] Service `src/main/serial/capture-service.ts`
+- [x] Abrir as 6 portas em paralelo ao iniciar sessão
+- [x] Parser configurável por equipamento (regex em `equipment.parse_regex`)
+- [x] Gravar cada leitura em `readings` com `capture_session_id`
+- [x] Timer com `timeout_seconds`; ao expirar, fechar todas as portas
+- [x] IPC events: `capture:slot-update` (cinza/verde/vermelho), `capture:tick`, `capture:ended`
+- [x] Tolerância: erro em uma porta não derruba as outras
+- [x] Modal de Captura Ativa (countdown + grid 2×3 de LEDs)
+- [x] Botão Cancelar
+- [x] Commit + push
 
-## Fase 5 — Histórico
-- [ ] Tela "Histórico do Lote" — timeline agrupada por `capture_session`
-- [ ] Exportação CSV (todas as leituras do lote)
-- [ ] Filtro por data/equipamento
-- [ ] Commit + push
+## Fase 5 — Histórico ✅
+- [x] Tela "Histórico do Lote" — timeline agrupada por `capture_session`
+- [x] Exportação CSV (todas as leituras do lote)
+- [x] Filtro por data/equipamento
+- [x] Commit + push
 
 ## Fase 6 — Simulador serial ✅
 - [x] Script `tools/serial-sim.ts` que abre uma porta virtual e envia strings

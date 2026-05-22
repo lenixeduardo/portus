@@ -864,3 +864,29 @@ label.checkbox input { width: auto; }
 }
 .capture-status-ok   { background: #D1FAE5; color: #065F46; }
 .capture-status-warn { background: #FEF3C7; color: #92400E; }
+
+/* ── History Filters ── */
+.history-filters {
+  display: flex;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+}
+.history-filters .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+.history-filters-actions {
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .history-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
