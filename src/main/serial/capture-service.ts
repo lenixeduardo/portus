@@ -165,6 +165,7 @@ export async function startCapture(
   total = timeoutSeconds;
 
   const initSlots: SlotInitState[] = [];
+  const openPromises: Promise<void>[] = [];
 
   for (const eq of equipments) {
     let port: SerialPort;
@@ -191,8 +192,6 @@ export async function startCapture(
     parser.on("data", (line: string) => {
       const raw = line.trim();
       if (!raw || sessionId === null || batchId === null) return;
-
-      if (slotsWithReading.has(eq.slotIndex)) return;
 
       let parsed: string | null = null;
       let parseFailureReason: string | null = null;
@@ -260,25 +259,29 @@ export async function startCapture(
       console.error(`[serial] Erro na porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
     });
 
-    // --- Abre a porta ---
-    await new Promise<void>((resolve) => {
+    const initSlotEntry: SlotInitState = {
+      slotIndex: eq.slotIndex,
+      equipmentId: eq.id,
+      name: eq.name,
+      status: "open"
+    };
+    initSlots.push(initSlotEntry);
+
+    const openPromise = new Promise<void>((resolve) => {
       port.open((err) => {
         if (err) {
           console.error(`[serial] Falha ao abrir porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
           slot.status = "error";
+          initSlotEntry.status = "error";
           broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
         }
         resolve();
       });
     });
-
-    initSlots.push({
-      slotIndex: eq.slotIndex,
-      equipmentId: eq.id,
-      name: eq.name,
-      status: slot.status
-    });
+    openPromises.push(openPromise);
   }
+
+  await Promise.all(openPromises);
 
   timer = setInterval(() => {
     remaining -= 1;

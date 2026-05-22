@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 
 export function History() {
@@ -10,11 +10,21 @@ export function History() {
   const [error, setError] = useState<string | null>(null);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
 
+  // Estados de filtro
+  const [filterEquipment, setFilterEquipment] = useState<string>("");
+  const [filterStartDate, setFilterStartDate] = useState<string>("");
+  const [filterEndDate, setFilterEndDate] = useState<string>("");
+
   useEffect(() => {
     window.api.batches.listAll().then(setBatches);
   }, []);
 
   useEffect(() => {
+    // Resetar filtros ao mudar de lote
+    setFilterEquipment("");
+    setFilterStartDate("");
+    setFilterEndDate("");
+
     if (!selectedId) {
       setHistory(null);
       setError(null);
@@ -33,11 +43,72 @@ export function History() {
     });
   }, [selectedId]);
 
+  // Lista de equipamentos únicos contidos no histórico deste lote
+  const uniqueEquipments = useMemo(() => {
+    if (!history) return [];
+    const eqMap = new Map<number, string>();
+    for (const session of history.sessions) {
+      for (const r of session.readings) {
+        eqMap.set(r.equipmentId, r.equipmentName);
+      }
+    }
+    return Array.from(eqMap.entries());
+  }, [history]);
+
+  // Sessões e leituras filtradas
+  const filteredSessions = useMemo(() => {
+    if (!history) return [];
+
+    const hasFilters = !!(filterEquipment || filterStartDate || filterEndDate);
+
+    return history.sessions
+      .map((session) => {
+        const filteredReadings = session.readings.filter((r) => {
+          if (filterEquipment && r.equipmentId !== Number(filterEquipment)) {
+            return false;
+          }
+
+          const rDate = new Date(r.capturedAt.replace(" ", "T") + "Z");
+
+          if (filterStartDate) {
+            const start = new Date(filterStartDate + "T00:00:00");
+            if (rDate < start) return false;
+          }
+          if (filterEndDate) {
+            const end = new Date(filterEndDate + "T23:59:59");
+            if (rDate > end) return false;
+          }
+          return true;
+        });
+
+        return {
+          ...session,
+          readings: filteredReadings
+        };
+      })
+      .filter((session) => {
+        if (hasFilters) {
+          // Oculta sessões sem leituras quando houver filtros aplicados
+          return session.readings.length > 0;
+        }
+        return true;
+      });
+  }, [history, filterEquipment, filterStartDate, filterEndDate]);
+
+  const totalReadings = filteredSessions.reduce((acc, s) => acc + s.readings.length, 0);
+
   async function handleExport() {
     if (!selectedId) return;
     setExporting(true);
     setExportMsg(null);
-    const res = await window.api.history.exportCsv(Number(selectedId));
+
+    const filters = {
+      equipmentId: filterEquipment ? Number(filterEquipment) : undefined,
+      startDate: filterStartDate || undefined,
+      endDate: filterEndDate || undefined
+    };
+
+    const res = await window.api.history.exportCsv(Number(selectedId), filters);
     setExporting(false);
     if (!res.ok) {
       setError(res.error);
@@ -47,9 +118,7 @@ export function History() {
     }
   }
 
-  const totalReadings = history
-    ? history.sessions.reduce((acc, s) => acc + s.readings.length, 0)
-    : 0;
+  const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
 
   return (
     <>
@@ -120,15 +189,73 @@ export function History() {
             </div>
           </div>
 
+          {/* Barra de Filtros */}
+          <div className="history-filters">
+            <div className="field">
+              <label>Equipamento</label>
+              <select
+                value={filterEquipment}
+                onChange={(e) => setFilterEquipment(e.target.value)}
+              >
+                <option value="">Todos os equipamentos</option>
+                {uniqueEquipments.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Data Inicial</label>
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Data Final</label>
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+              />
+            </div>
+            {isAnyFilterActive && (
+              <div className="history-filters-actions">
+                <button
+                  className="secondary"
+                  style={{ height: 38, padding: "0 16px" }}
+                  onClick={() => {
+                    setFilterEquipment("");
+                    setFilterStartDate("");
+                    setFilterEndDate("");
+                  }}
+                >
+                  Limpar
+                </button>
+              </div>
+            )}
+          </div>
+
           {history.sessions.length === 0 ? (
             <div className="placeholder" style={{ marginTop: 16 }}>
               Nenhuma sessão de captura registrada neste lote.
             </div>
+          ) : filteredSessions.length === 0 ? (
+            <div className="placeholder" style={{ marginTop: 16 }}>
+              Nenhum registro corresponde aos filtros aplicados.
+            </div>
           ) : (
             <div className="history-timeline">
-              {history.sessions.map((session, idx) => (
-                <SessionCard key={session.id} session={session} index={idx + 1} />
-              ))}
+              {filteredSessions.map((session) => {
+                const originalIdx = history.sessions.findIndex((s) => s.id === session.id);
+                return (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    index={originalIdx !== -1 ? originalIdx + 1 : 1}
+                  />
+                );
+              })}
             </div>
           )}
         </>

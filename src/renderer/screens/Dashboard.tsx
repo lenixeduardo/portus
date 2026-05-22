@@ -156,8 +156,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
           batchId={captureBatchId}
           onClose={async () => {
             setCaptureBatchId(null);
-            await window.api.auth.logout();
-            onLogout();
+            await reload();
           }}
           onEnded={reload}
         />

@@ -35,6 +35,10 @@ export function useBarcodeScanner(
         return;
       }
 
+      // Ignore modifier keys to prevent resetting the scanner buffer
+      const IGNORED_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
+      if (IGNORED_KEYS.has(e.key)) return;
+
       // Non-printable keys reset the buffer.
       if (e.key.length !== 1) {
         bufferRef.current = "";

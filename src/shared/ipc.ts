@@ -161,6 +161,12 @@ export type BarcodeScanResponse =
   | { ok: true; data: BarcodeScanResult }
   | { ok: false; error: string; productValue?: string };
 
+export interface HistoryFilterInput {
+  equipmentId?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface SerialReaderApi {
   auth: {
     login(req: LoginRequest): Promise<LoginResult>;
@@ -183,7 +189,7 @@ export interface SerialReaderApi {
   };
   history: {
     getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;
-    exportCsv(batchId: number): Promise<ServiceResult<true>>;
+    exportCsv(batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>>;
   };
   settings: {
     getAll(): Promise<AppSettings>;
