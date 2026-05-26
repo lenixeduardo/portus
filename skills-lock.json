@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "sites-premiados-tedson": {
+      "source": "tedson/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sites-premiados-tedson/SKILL.md",
+      "computedHash": ""
+    }
+  }
+}
