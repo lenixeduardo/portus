@@ -11,6 +11,7 @@ import { registerProductsHandlers } from "./ipc/products-handlers";
 import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
+import { registerShellHandlers } from "./ipc/shell-handlers";
 import { getAutoExportFolder } from "./db/settings-repo";
 import { runAutoExport } from "./db/history-repo";
 
@@ -75,6 +76,7 @@ app.whenReady().then(async () => {
   registerUsersHandlers();
   registerCaptureHandlers();
   registerHistoryHandlers();
+  registerShellHandlers();
   scheduleNextMidnightExport();
   createWindow();
 });

@@ -336,6 +336,19 @@ label.checkbox input { width: auto; }
   border-left-color: var(--accent);
 }
 
+.sidebar .ecosystem {
+  border-top: 1px solid var(--border);
+  padding: 12px 0 4px;
+}
+.sidebar .ecosystem-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0 12px 6px;
+}
+
 .sidebar .user {
   border-top: 1px solid var(--border);
   padding: 16px 12px 4px;
