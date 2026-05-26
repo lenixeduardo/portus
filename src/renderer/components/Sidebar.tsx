@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Package, Clock, Settings, Usb } from "lucide-react";
+import { LayoutDashboard, Package, Clock, Settings, Usb, ExternalLink } from "lucide-react";
 import type { User } from "../../shared/types";
 
 export type Route = "dashboard" | "products" | "history" | "settings";
@@ -46,6 +46,19 @@ export function Sidebar({ user, current, onNavigate, onLogout }: Props) {
           );
         })}
       </nav>
+      <div className="ecosystem">
+        <div className="ecosystem-label">Ecossistema</div>
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            window.api.shell.openExternal("https://kairos-connect-nine.vercel.app");
+          }}
+        >
+          <ExternalLink size={15} />
+          Kairos Connect
+        </a>
+      </div>
       <div className="user">
         <div className="name">{user.username}</div>
         <button onClick={onLogout}>Sair</button>

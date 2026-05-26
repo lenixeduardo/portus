@@ -95,6 +95,9 @@ const api: SerialReaderApi = {
     onTick: (cb) => subscribe<CaptureTickEvent>(IPC.captureTick, cb),
     onSlotUpdate: (cb) => subscribe<SlotUpdateEvent>(IPC.captureSlotUpdate, cb),
     onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEnded, cb)
+  },
+  shell: {
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, url)
   }
 };
 
