@@ -2,6 +2,8 @@ import React from "react";
 import { LayoutDashboard, Package, Clock, Settings, Usb, ExternalLink } from "lucide-react";
 import type { User } from "../../shared/types";
 
+const CONNECT_URL = "https://kairos-connect-nine.vercel.app";
+
 export type Route = "dashboard" | "products" | "history" | "settings";
 
 interface Props {
@@ -52,7 +54,7 @@ export function Sidebar({ user, current, onNavigate, onLogout }: Props) {
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            window.api.shell.openExternal("https://kairos-connect-nine.vercel.app");
+            window.api.shell.openExternal(CONNECT_URL).catch(console.error);
           }}
         >
           <ExternalLink size={15} />
