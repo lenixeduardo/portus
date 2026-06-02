@@ -106,5 +106,14 @@ ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN (
     sql: `
 ALTER TABLE batches ADD COLUMN auto_exported_at TEXT;
 `
+  },
+  {
+    name: "007_equipment_line_delimiter_and_regex_backfill",
+    sql: `
+ALTER TABLE equipments ADD COLUMN line_delimiter TEXT NOT NULL DEFAULT 'lf';
+UPDATE equipments
+   SET parse_regex = '(?<value>[-+]?\\d+(?:[.,]\\d+)?)'
+ WHERE parse_regex IS NULL;
+`
   }
 ];

@@ -12,6 +12,7 @@ import { getEquipment, listEquipments, updateEquipment } from "../db/equipments-
 
 const ALLOWED_BAUD = new Set([1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]);
 const ALLOWED_PARITY = new Set(["none", "even", "odd"]);
+const ALLOWED_DELIMITER = new Set(["crlf", "lf", "cr"]);
 
 function validate(patch: EquipmentUpdateInput): string | null {
   if (patch.name !== undefined && !patch.name.trim()) return "Nome obrigatório.";
@@ -33,6 +34,9 @@ function validate(patch: EquipmentUpdateInput): string | null {
     } catch {
       return "Regex de parsing inválida.";
     }
+  }
+  if (patch.lineDelimiter !== undefined && !ALLOWED_DELIMITER.has(patch.lineDelimiter)) {
+    return "Delimitador de linha inválido.";
   }
   return null;
 }

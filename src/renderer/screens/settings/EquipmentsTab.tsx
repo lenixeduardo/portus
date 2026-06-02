@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
-import type { Equipment } from "../../../shared/types";
+import type { Equipment, LineDelimiter } from "../../../shared/types";
 import type { EquipmentUpdateInput, SerialPortInfo } from "../../../shared/ipc";
 import { Modal } from "../../components/Modal";
 
 const BAUD_OPTIONS = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+
+const DELIMITER_OPTIONS: { value: LineDelimiter; label: string }[] = [
+  { value: "lf", label: "LF (\\n) — tolerante, cobre LF e CRLF" },
+  { value: "crlf", label: "CRLF (\\r\\n) — estrito" },
+  { value: "cr", label: "CR (\\r) — equipamentos antigos" }
+];
 
 export function EquipmentsTab() {
   const [equipments, setEquipments] = useState<Equipment[]>([]);
@@ -114,6 +120,7 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
   const [parity, setParity] = useState(equipment.parity);
   const [enabled, setEnabled] = useState(equipment.enabled);
   const [parseRegex, setParseRegex] = useState(equipment.parseRegex ?? "");
+  const [lineDelimiter, setLineDelimiter] = useState<LineDelimiter>(equipment.lineDelimiter ?? "lf");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -132,7 +139,8 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
       stopBits,
       parity,
       enabled,
-      parseRegex: parseRegex || undefined
+      parseRegex: parseRegex || undefined,
+      lineDelimiter
     };
     const res = await window.api.equipments.update(equipment.id, patch);
     setSaving(false);
@@ -234,15 +242,32 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
         </div>
 
         <div className="field">
+          <label>Terminador de linha</label>
+          <select
+            value={lineDelimiter}
+            onChange={(e) => setLineDelimiter(e.target.value as LineDelimiter)}
+          >
+            {DELIMITER_OPTIONS.map((d) => (
+              <option key={d.value} value={d.value}>{d.label}</option>
+            ))}
+          </select>
+          <small className="muted">
+            Caractere que o equipamento envia ao fim de cada leitura. Na dúvida, use LF.
+          </small>
+        </div>
+
+        <div className="field">
           <label>Regex de parsing (opcional)</label>
           <input
             className="mono"
             value={parseRegex}
             onChange={(e) => setParseRegex(e.target.value)}
-            placeholder="ex.: ([-+]?\\d+(?:\\.\\d+)?)"
+            placeholder="ex.: (?<value>[-+]?\\d+(?:[.,]\\d+)?)"
           />
           <small className="muted">
-            Primeiro grupo de captura define o valor parseado. Sem regex, grava só o valor cru.
+            Grupo nomeado <code>(?&lt;value&gt;…)</code> ou o primeiro grupo define o valor.
+            Para o espectrofotômetro (vários campos na linha), ancore no campo certo —
+            ex.: <code>ABS[:\s]*(?&lt;value&gt;\d+[.,]\d+)</code>. Vírgula decimal é normalizada para ponto.
           </small>
         </div>
 

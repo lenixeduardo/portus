@@ -1,5 +1,5 @@
 import { all, get, run } from "./query";
-import type { Equipment } from "../../shared/types";
+import type { Equipment, LineDelimiter } from "../../shared/types";
 
 interface EquipmentRow {
   id: number;
@@ -12,6 +12,7 @@ interface EquipmentRow {
   enabled: number;
   slot_index: number;
   parse_regex: string | null;
+  line_delimiter: string | null;
 }
 
 function rowToEquipment(row: EquipmentRow): Equipment {
@@ -25,7 +26,8 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     parity: row.parity as Equipment["parity"],
     enabled: row.enabled === 1,
     slotIndex: row.slot_index,
-    parseRegex: row.parse_regex ?? undefined
+    parseRegex: row.parse_regex ?? undefined,
+    lineDelimiter: (row.line_delimiter ?? "lf") as LineDelimiter
   };
 }
 
@@ -45,7 +47,7 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
   run(
     `UPDATE equipments SET
       name = ?, port_path = ?, baud_rate = ?, data_bits = ?,
-      stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?
+      stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?, line_delimiter = ?
      WHERE id = ?`,
     merged.name,
     merged.portPath,
@@ -55,6 +57,7 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
     merged.parity,
     merged.enabled ? 1 : 0,
     merged.parseRegex ?? null,
+    merged.lineDelimiter,
     id
   );
   return getEquipment(id);

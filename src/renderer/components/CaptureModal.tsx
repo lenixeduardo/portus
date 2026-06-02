@@ -29,19 +29,37 @@ export function CaptureModal({ batchId, onClose, onEnded }: Props) {
     let cancelled = false;
 
     async function init() {
-      const res = await window.api.capture.start(batchId);
+      // Reconcilia com uma captura já em andamento (ex.: remontagem do modal /
+      // reload em dev) em vez de tentar iniciar outra e cair em erro.
+      const alreadyActive = await window.api.capture.isActive();
       if (cancelled) return;
-      if (!res.ok) {
-        setError(res.error);
-        setPhase("ended");
-        return;
-      }
 
-      const { slots: initSlots, timeoutSeconds } = res.data;
-      setSlots(initSlots.map((s) => ({ ...s })));
-      setRemaining(timeoutSeconds);
-      setTotal(timeoutSeconds);
-      setPhase("active");
+      if (alreadyActive) {
+        const st = await window.api.capture.getState();
+        if (cancelled) return;
+        if (st.batchId !== batchId) {
+          setError("Já existe uma captura em andamento em outro lote.");
+          setPhase("ended");
+          return;
+        }
+        setSlots(st.slots.map((s) => ({ ...s })));
+        setRemaining(st.remaining);
+        setTotal(st.total);
+        setPhase("active");
+      } else {
+        const res = await window.api.capture.start(batchId);
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(res.error);
+          setPhase("ended");
+          return;
+        }
+        const { slots: initSlots, timeoutSeconds } = res.data;
+        setSlots(initSlots.map((s) => ({ ...s })));
+        setRemaining(timeoutSeconds);
+        setTotal(timeoutSeconds);
+        setPhase("active");
+      }
 
       const unTick = window.api.capture.onTick((e) => {
         setRemaining(e.remaining);
