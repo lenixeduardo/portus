@@ -1,4 +1,4 @@
-import type { Batch, Equipment, Product, User } from "./types";
+import type { Batch, Equipment, LineDelimiter, Product, User } from "./types";
 
 export const IPC = {
   authLogin: "auth:login",
@@ -23,6 +23,7 @@ export const IPC = {
   captureStart: "capture:start",
   captureCancel: "capture:cancel",
   captureIsActive: "capture:is-active",
+  captureGetState: "capture:get-state",
   captureTick: "capture:tick",
   captureSlotUpdate: "capture:slot-update",
   captureEnded: "capture:ended",
@@ -65,6 +66,15 @@ export interface CaptureTickEvent {
 
 export interface CaptureEndedEvent {
   reason: "completed" | "cancelled";
+}
+
+export interface CaptureStateSnapshot {
+  active: boolean;
+  batchId: number | null;
+  sessionId: number | null;
+  remaining: number;
+  total: number;
+  slots: SlotInitState[];
 }
 
 export type Unsubscribe = () => void;
@@ -142,6 +152,7 @@ export interface EquipmentUpdateInput {
   parity?: "none" | "even" | "odd";
   enabled?: boolean;
   parseRegex?: string;
+  lineDelimiter?: LineDelimiter;
 }
 
 export type AppSettings = Record<string, string>;
@@ -214,6 +225,7 @@ export interface SerialReaderApi {
     start(batchId: number): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
     isActive(): Promise<boolean>;
+    getState(): Promise<CaptureStateSnapshot>;
     onTick(cb: (e: CaptureTickEvent) => void): Unsubscribe;
     onSlotUpdate(cb: (e: SlotUpdateEvent) => void): Unsubscribe;
     onEnded(cb: (e: CaptureEndedEvent) => void): Unsubscribe;

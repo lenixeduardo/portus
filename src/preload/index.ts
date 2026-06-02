@@ -9,6 +9,7 @@ import {
   type BatchWithProduct,
   type CaptureEndedEvent,
   type CaptureStartResult,
+  type CaptureStateSnapshot,
   type CaptureTickEvent,
   type EquipmentUpdateInput,
   type HistoryFilterInput,
@@ -92,6 +93,7 @@ const api: SerialReaderApi = {
       ipcRenderer.invoke(IPC.captureStart, batchId),
     cancel: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureCancel),
     isActive: (): Promise<boolean> => ipcRenderer.invoke(IPC.captureIsActive),
+    getState: (): Promise<CaptureStateSnapshot> => ipcRenderer.invoke(IPC.captureGetState),
     onTick: (cb) => subscribe<CaptureTickEvent>(IPC.captureTick, cb),
     onSlotUpdate: (cb) => subscribe<SlotUpdateEvent>(IPC.captureSlotUpdate, cb),
     onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEnded, cb)

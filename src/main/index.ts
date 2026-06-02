@@ -51,8 +51,16 @@ function createWindow() {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: true
     }
+  });
+
+  // Hardening: nega abertura de novas janelas e bloqueia navegação para fora
+  // da aplicação (só o servidor de dev é permitido). Defesa em profundidade.
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-navigate", (e, url) => {
+    if (isDev && url.startsWith("http://localhost:5173")) return;
+    e.preventDefault();
   });
 
   if (isDev) {

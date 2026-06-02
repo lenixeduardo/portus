@@ -23,6 +23,8 @@ export interface Batch {
   createdBy: number;
 }
 
+export type LineDelimiter = "crlf" | "lf" | "cr";
+
 export interface Equipment {
   id: number;
   name: string;
@@ -34,6 +36,7 @@ export interface Equipment {
   enabled: boolean;
   slotIndex: number;
   parseRegex?: string;
+  lineDelimiter: LineDelimiter;
 }
 
 export interface Reading {
