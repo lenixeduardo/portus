@@ -8,3 +8,4 @@ fi
 cd "$CLAUDE_PROJECT_DIR"
 
 npm install
+npm run build:main
