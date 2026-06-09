@@ -2,7 +2,7 @@
   "name": "serial-reader",
   "version": "0.1.5",
   "description": "Desktop app para leitura de equipamentos via porta serial, vinculada a receitas e lotes.",
-  "main": "dist/main/main/index.js",
+  "main": "dist/main/index.js",
   "author": "",
   "license": "UNLICENSED",
   "private": true,
