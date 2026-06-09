@@ -108,6 +108,9 @@ UI em **português brasileiro**, tema claro com sidebar escura, primário azul (
 - Sem comentários óbvios; comentar só "porquês" não triviais.
 - Strings de UI em português; nomes de código/identificadores em inglês.
 - Migrations do SQLite versionadas em `src/main/db/migrations/`.
+- **Regra de Build e Empacotamento**: A saída de compilação do TypeScript principal (`tsconfig.main.json`) deve ir para `"dist"`, de modo que o entrypoint do main fique em `dist/main/index.js` (casando com `"main"` do `package.json`).
+- **Regra de Sandbox**: A janela principal deve manter `sandbox: false` para permitir que o script de preload importe arquivos e tipos do diretório `shared/`.
+- **Validação de Builds**: Qualquer alteração em scripts de build ou dependências deve ser validada gerando o pacote (`npm run package`) e iniciando o executável em modo headless com logs de console (`ELECTRON_ENABLE_LOGGING=1`) para verificar erros de carregamento e preload.
 
 ## 9. Scripts npm
 

@@ -73,11 +73,11 @@
 - [x] Presets de payload por tipo de equipamento (balança, pH, etc.)
 - [x] Commit + push
 
-## Fase 7 — Empacotamento
+## Fase 7 — Empacotamento ✅
 - [ ] Ícone do app (`build/icon.ico`)
-- [ ] `electron-builder` config final (NSIS, autoupdate opcional)
-- [ ] Smoke test do `.exe` gerado
-- [ ] Documentar processo de release no README
+- [x] `electron-builder` config final (NSIS, autoupdate opcional)
+- [x] Smoke test do `.exe` gerado
+- [x] Documentar processo de release no README
 - [ ] Commit + push
 
 ## Backlog / Ideias

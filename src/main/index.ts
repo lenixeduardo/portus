@@ -46,7 +46,7 @@ function scheduleNextMidnightExport(): void {
 }
 
 function createWindow() {
-  const preloadPath = join(app.getAppPath(), "dist/main/preload/index.js");
+  const preloadPath = join(app.getAppPath(), "dist/preload/index.js");
   console.log("[main] isDev:", isDev);
   console.log("[main] preload:", preloadPath);
 
@@ -58,7 +58,7 @@ function createWindow() {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: false
     }
   });
 
@@ -75,7 +75,7 @@ function createWindow() {
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    const htmlPath = join(__dirname, "../../renderer/index.html");
+    const htmlPath = join(__dirname, "../renderer/index.html");
     console.log("[main] loading production HTML:", htmlPath);
     win.loadFile(htmlPath).catch(err => {
       console.error("[main] failed to load HTML:", err);
