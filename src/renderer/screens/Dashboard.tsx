@@ -50,8 +50,22 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   // Auto-scanner disabled when BarcodeModal is open or capture is running
   const scannerActive = captureBatchId === null && !showBarcode;
 
+  // Leitura pelo scanner físico é totalmente automática: processa o código,
+  // cria/abre o lote e já inicia a captura, sem abrir modal nem exigir clique.
+  // O modal segue disponível apenas para a entrada manual do código.
+  async function handleScan(code: string) {
+    setScannerState({ phase: "detecting", code });
+    const res = await window.api.batches.scanBarcode({ barcodeValue: code });
+    if (!res.ok) {
+      setScannerError(res.error);
+      return;
+    }
+    setScannerState({ phase: "idle" });
+    await handleBarcodeReady(res.data.batch);
+  }
+
   useBarcodeScanner((code) => {
-    openBarcodeModal(code);
+    handleScan(code);
   }, scannerActive);
 
   async function handleClose(b: BatchWithProduct) {
