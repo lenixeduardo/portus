@@ -126,14 +126,16 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     <>
       <div className="page-actions">
         <ScannerStatusBar state={scannerState} />
-        <button
-          className="secondary"
-          onClick={() => openBarcodeModal()}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <ScanBarcode size={14} />
-          Novo Lote por Código de Barras
-        </button>
+        {user.role === "admin" && (
+          <button
+            className="secondary"
+            onClick={() => openBarcodeModal()}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <ScanBarcode size={14} />
+            Novo Lote por Código de Barras
+          </button>
+        )}
       </div>
 
       {loading ? (
