@@ -2,17 +2,18 @@
   "name": "serial-reader",
   "version": "0.1.2",
   "description": "Desktop app para leitura de equipamentos via porta serial, vinculada a receitas e lotes.",
-  "main": "dist/main/main/index.js",
+  "main": "dist/main/index.js",
   "author": "",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
     "dev": "npm run build:main && concurrently --raw -n MAIN,RENDERER,ELECTRON -c blue,green,yellow \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"vite\" \"npm run dev:electron\"",
     "dev:electron": "wait-on http://localhost:5173 && cross-env ELECTRON_DEV=1 electron . --no-sandbox",
+    "electron": "cross-env ELECTRON_DEV=1 electron . --no-sandbox",
     "build": "npm run build:renderer && npm run build:main",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
-    "start": "cross-env NODE_ENV=production electron . --no-sandbox",
+    "start": "cross-env NODE_ENV=production ELECTRON_DEV=1 electron . --no-sandbox",
     "prepackage": "npm version patch --no-git-tag-version",
     "package": "npm run build && electron-builder",
     "rebuild": "electron-rebuild -f -w serialport",
@@ -63,11 +64,34 @@
       "package.json"
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "certificateFile": null,
+      "certificatePassword": null,
+      "signingHashAlgorithms": [
+        "sha256"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Portus",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     }
   }
 }

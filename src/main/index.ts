@@ -15,7 +15,14 @@ import { registerShellHandlers } from "./ipc/shell-handlers";
 import { getAutoExportFolder } from "./db/settings-repo";
 import { runAutoExport } from "./db/history-repo";
 
-const isDev = !app.isPackaged && process.env.NODE_ENV !== "production" || process.env.ELECTRON_DEV === "1";
+const isDev = process.env.ELECTRON_DEV === "1" || (!app.isPackaged && process.env.NODE_ENV !== "production");
+
+console.log("[main] startup:", {
+  ELECTRON_DEV: process.env.ELECTRON_DEV,
+  NODE_ENV: process.env.NODE_ENV,
+  isPackaged: app.isPackaged,
+  isDev
+});
 
 function scheduleNextMidnightExport(): void {
   const now = new Date();
@@ -64,10 +71,16 @@ function createWindow() {
   });
 
   if (isDev) {
+    console.log("[main] loading dev URL: http://localhost:5173");
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    win.loadFile(join(__dirname, "../../renderer/index.html"));
+    const htmlPath = join(__dirname, "../../renderer/index.html");
+    console.log("[main] loading production HTML:", htmlPath);
+    win.loadFile(htmlPath).catch(err => {
+      console.error("[main] failed to load HTML:", err);
+      process.exit(1);
+    });
   }
 }
 
