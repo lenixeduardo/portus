@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
   description TEXT,
-  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -37,17 +37,17 @@ CREATE TABLE IF NOT EXISTS equipments (
 
 CREATE TABLE IF NOT EXISTS batches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  recipe_id INTEGER NOT NULL REFERENCES recipes(id),
+  recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE CASCADE,
   code TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL CHECK (status IN ('open','closed')) DEFAULT 'open',
   opened_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT,
-  created_by INTEGER NOT NULL REFERENCES users(id)
+  created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS capture_sessions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  batch_id INTEGER NOT NULL REFERENCES batches(id),
+  batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE ON UPDATE CASCADE,
   started_at TEXT NOT NULL DEFAULT (datetime('now')),
   ended_at TEXT,
   timeout_seconds INTEGER NOT NULL,
@@ -56,12 +56,12 @@ CREATE TABLE IF NOT EXISTS capture_sessions (
 
 CREATE TABLE IF NOT EXISTS readings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  batch_id INTEGER NOT NULL REFERENCES batches(id),
-  equipment_id INTEGER NOT NULL REFERENCES equipments(id),
+  batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  equipment_id INTEGER NOT NULL REFERENCES equipments(id) ON DELETE SET NULL ON UPDATE CASCADE,
   value_raw TEXT NOT NULL,
   value_parsed TEXT,
   captured_at TEXT NOT NULL DEFAULT (datetime('now')),
-  capture_session_id INTEGER NOT NULL REFERENCES capture_sessions(id)
+  capture_session_id INTEGER NOT NULL REFERENCES capture_sessions(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_readings_batch ON readings(batch_id);
@@ -114,6 +114,23 @@ ALTER TABLE equipments ADD COLUMN line_delimiter TEXT NOT NULL DEFAULT 'lf';
 UPDATE equipments
    SET parse_regex = '(?<value>[-+]?\\d+(?:[.,]\\d+)?)'
  WHERE parse_regex IS NULL;
+`
+  },
+  {
+    name: "008_enforce_foreign_key_constraints",
+    sql: `
+-- Enable foreign key constraints
+PRAGMA foreign_keys = ON;
+`
+  },
+  {
+    name: "009_add_cascade_delete_for_products",
+    sql: `
+-- This is a note migration for documentation.
+-- Foreign keys for products table are defined as:
+-- - batches.product_id -> products.id ON DELETE CASCADE
+-- - products.created_by -> users.id ON DELETE RESTRICT
+-- If recreating, use ON DELETE CASCADE for product cascades.
 `
   }
 ];

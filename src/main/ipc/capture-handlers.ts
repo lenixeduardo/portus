@@ -1,18 +1,30 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import { IPC } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
 import { cancelCapture, getState, isActive, startCapture } from "../serial/capture-service";
+import { compose, requireAuth, validateInput } from "./middleware";
+
+const startCaptureSchema = z.object({
+  batchId: z.number().positive("ID do lote deve ser um número positivo")
+});
 
 export function registerCaptureHandlers(): void {
-  ipcMain.handle(IPC.captureStart, async (_e, batchId: number) => {
-    if (!getCurrentUser()) return { ok: false, error: "Sessão expirada." };
-    return startCapture(batchId);
-  });
+  ipcMain.handle(
+    IPC.captureStart,
+    compose([requireAuth, validateInput(startCaptureSchema)])(
+      async (_e, input: z.infer<typeof startCaptureSchema>) => {
+        return startCapture(input.batchId);
+      }
+    )
+  );
 
-  ipcMain.handle(IPC.captureCancel, async () => {
-    if (!getCurrentUser()) return { ok: false, error: "Sessão expirada." };
-    return cancelCapture();
-  });
+  ipcMain.handle(
+    IPC.captureCancel,
+    compose([requireAuth])(async () => {
+      return cancelCapture();
+    })
+  );
 
   ipcMain.handle(IPC.captureIsActive, (): boolean => isActive());
 

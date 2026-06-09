@@ -28,6 +28,9 @@ import type { Equipment } from "../../shared/types";
 // dentro da janela é enviada à UI para evitar flickering.
 const UI_DEBOUNCE_MS = 500;
 
+// Limite de buffer por porta (100KB) para evitar acúmulo excessivo em caso de desconexão
+const BUFFER_LIMIT_BYTES = 100 * 1024;
+
 interface ActiveSlot {
   equipment: Equipment;
   port: SerialPort;
@@ -37,6 +40,12 @@ interface ActiveSlot {
   regexInvalid: boolean;
   // Acumula bytes recebidos até encontrar o delimitador de linha.
   buffer: string;
+  // Registra quantas tentativas de abertura foram feitas (para logging)
+  openAttempts: number;
+  // Registra se este slot usou fallback para porta reserva
+  usedFallback: boolean;
+  // Registra a porta original que falhou (se usedFallback=true)
+  originalPortPath?: string;
 }
 
 let sessionId: number | null = null;
@@ -304,7 +313,9 @@ export async function startCapture(
       delimiter: delimiterChars(eq.lineDelimiter),
       regex,
       regexInvalid,
-      buffer: ""
+      buffer: "",
+      openAttempts: 1,
+      usedFallback: false
     };
     slots.set(eq.slotIndex, slot);
 
