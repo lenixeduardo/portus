@@ -1,0 +1,47 @@
+name: Build instalável (Windows)
+
+# Gera o instalável NSIS (.exe) a cada PR, garantindo que sempre haja
+# uma versão instalável correta pronta para download nos artifacts.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancela builds antigos do mesmo PR quando novos commits chegam.
+concurrency:
+  group: build-installer-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: npm run package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar instalável
+        run: npm run package
+        env:
+          # Build não assinado: sem certificado, evita prompts/erros de assinatura.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Publicar instalável como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portus-installer-pr${{ github.event.pull_request.number }}
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
+          if-no-files-found: error
+          retention-days: 14
