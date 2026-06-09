@@ -208,7 +208,7 @@ describe("Teste 3 — Ciclo de Vida do Lote: Fechar e Abrir", () => {
 
     const result = closeBatchAsAdmin(batch, admin);
     expect(result.ok).toBe(true);
-    if (result.ok) {
+    if (result.ok && result.data) {
       expect(result.data.status).toBe("closed");
       expect(result.data.closedAt).toBeDefined();
     }
@@ -268,7 +268,7 @@ describe("Teste 3 — Ciclo de Vida do Lote: Fechar e Abrir", () => {
 
     const result = openBatch(1, admin);
     expect(result.ok).toBe(true);
-    if (result.ok) {
+    if (result.ok && result.data) {
       expect(result.data.status).toBe("open");
       expect(result.data.createdBy).toBe(admin.id);
     }

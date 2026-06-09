@@ -313,7 +313,9 @@ export async function startCapture(
       delimiter: delimiterChars(eq.lineDelimiter),
       regex,
       regexInvalid,
-      buffer: ""
+      buffer: "",
+      openAttempts: 1,
+      usedFallback: false
     };
     slots.set(eq.slotIndex, slot);
 
