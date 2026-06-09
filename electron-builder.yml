@@ -13,6 +13,7 @@ win:
   icon: build/icon.ico
   certificateFile: null
   certificatePassword: null
+  artifactName: "${productName} Setup ${version}.${ext}"
 
 nsis:
   oneClick: false
@@ -24,3 +25,4 @@ nsis:
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
   include: build/installer.nsh
+  runAfterFinish: true

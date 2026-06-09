@@ -1,17 +1,15 @@
 # Customização do instalador NSIS para Portus
-# Garante que os atalhos apontam para o executável correto
+# Garante que o executável seja aberto corretamente ao terminar instalação
 
 !macro customInstall
-  # Customizações após instalação
-  DetailPrint "Configurando atalhos..."
-
-  # O atalho de desktop é criado automaticamente pelo electron-builder,
-  # Mas garantimos que aponta para o executável correto
-  ${If} ${FileExists} "$DESKTOP\Portus.lnk"
-    DetailPrint "Atalho de desktop encontrado"
-  ${EndIf}
+  DetailPrint "Finalizando instalação..."
 !macroend
 
 !macro customUnInstall
   # Customizações para desinstalação
+!macroend
+
+!macro customInstallSuccess
+  # Executar o app corretamente após instalação
+  ExecShell "open" "$INSTDIR\Portus.exe"
 !macroend
