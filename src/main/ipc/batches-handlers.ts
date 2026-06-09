@@ -26,6 +26,7 @@ import {
   barcodeSchema,
   closeBatchSchema,
   createBatchSchema,
+  findBatchByCodeSchema,
   type CloseBatchInput,
   type CreateBatchInput
 } from "../validation/schemas";
@@ -34,7 +35,10 @@ import { compose, requireAdmin, requireAuth, validateInput } from "./middleware"
 const OPEN_BATCHES_SOFT_LIMIT = 6;
 
 export function registerBatchesHandlers(): void {
-  ipcMain.handle(IPC.batchesListOpen, (): BatchWithProduct[] => listOpenBatches());
+  ipcMain.handle(
+    IPC.batchesListOpen,
+    compose([requireAuth])((): BatchWithProduct[] => listOpenBatches())
+  );
 
   ipcMain.handle(
     IPC.batchesCreate,
@@ -65,9 +69,14 @@ export function registerBatchesHandlers(): void {
     )
   );
 
-  ipcMain.handle(IPC.batchesFindByCode, (_e, code: string): BatchWithProduct | null => {
-    return findBatchByCode(code);
-  });
+  ipcMain.handle(
+    IPC.batchesFindByCode,
+    compose([requireAuth, validateInput(findBatchByCodeSchema)])(
+      (_e, code: string): BatchWithProduct | null => {
+        return findBatchByCode(code);
+      }
+    )
+  );
 
   ipcMain.handle(
     IPC.batchesClose,

@@ -26,7 +26,13 @@ export function registerCaptureHandlers(): void {
     })
   );
 
-  ipcMain.handle(IPC.captureIsActive, (): boolean => isActive());
+  ipcMain.handle(
+    IPC.captureIsActive,
+    compose([requireAuth])((): boolean => isActive())
+  );
 
-  ipcMain.handle(IPC.captureGetState, () => getState());
+  ipcMain.handle(
+    IPC.captureGetState,
+    compose([requireAuth])(() => getState())
+  );
 }

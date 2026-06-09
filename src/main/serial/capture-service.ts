@@ -1,6 +1,6 @@
 import { BrowserWindow } from "electron";
 import { SerialPort } from "serialport";
-import { listEquipments } from "../db/equipments-repo";
+import { listEquipments, updateEquipment } from "../db/equipments-repo";
 import { getCaptureTimeoutSeconds } from "../db/settings-repo";
 import { getBatchWithProduct } from "../db/batches-repo";
 import {
@@ -230,6 +230,53 @@ function attemptReconnect(slotIndex: number): void {
   });
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function openPortWithRetry(
+  port: SerialPort,
+  slot: ActiveSlot,
+  openTimeoutMs: number
+): Promise<boolean> {
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    slot.openAttempts = attempt + 1;
+    const success = await new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (result: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(result);
+      };
+
+      const timeoutId = setTimeout(() => {
+        console.error(`[serial] Timeout ao abrir porta (slot ${slot.equipment.slotIndex}, ${port.path}, tentativa ${attempt + 1})`);
+        finish(false);
+      }, openTimeoutMs);
+
+      port.open((err) => {
+        if (err) {
+          console.error(`[serial] Falha ao abrir porta (slot ${slot.equipment.slotIndex}, ${port.path}, tentativa ${attempt + 1}):`, err.message);
+          finish(false);
+        } else {
+          finish(true);
+        }
+      });
+    });
+
+    if (success) {
+      return true;
+    }
+
+    if (attempt < maxRetries - 1) {
+      await sleep(100 * Math.pow(2, attempt)); // exponential backoff
+    }
+  }
+  return false;
+}
+
 export function isActive(): boolean {
   return sessionId !== null;
 }
@@ -360,35 +407,77 @@ export async function startCapture(
     };
     initSlots.push(initSlotEntry);
 
-    const openPromise = new Promise<void>((resolve) => {
-      // Garante que a abertura nunca bloqueie indefinidamente a sessão: se o
-      // driver da porta travar e o callback não retornar, o slot é marcado como
-      // erro e a captura segue (o timer de countdown não fica preso em "abrindo").
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(openTimeout);
-        resolve();
-      };
-      const openTimeout = setTimeout(() => {
-        console.error(`[serial] Timeout ao abrir porta (slot ${eq.slotIndex}, ${eq.portPath})`);
+    const openPromise = (async () => {
+      let opened = await openPortWithRetry(port, slot, OPEN_TIMEOUT_MS);
+
+      // Se falhar e for um slot de 1-5, tenta usar fallback (slot 6 "Reserva")
+      if (!opened && eq.slotIndex >= 1 && eq.slotIndex <= 5) {
+        const allEquipments = listEquipments();
+        const reserveEq = allEquipments.find((e) => e.slotIndex === 6 || e.name === "Reserva");
+        if (reserveEq && reserveEq.portPath && reserveEq.portPath !== eq.portPath) {
+          console.log(`[serial] Acionando fallback para porta reserva (slot ${eq.slotIndex}, porta ${reserveEq.portPath})`);
+          slot.usedFallback = true;
+          slot.originalPortPath = eq.portPath;
+
+          try {
+            port = new SerialPort({
+              path: reserveEq.portPath,
+              baudRate: eq.baudRate,
+              dataBits: eq.dataBits,
+              stopBits: eq.stopBits,
+              parity: eq.parity,
+              autoOpen: false
+            });
+            slot.port = port;
+
+            // Re-bind listeners para a nova porta de fallback
+            port.on("data", (chunk: Buffer) => {
+              if (sessionId === null) return;
+              slot.buffer += chunk.toString("utf8");
+              drainBuffer(slot);
+            });
+
+            port.on("close", () => {
+              if (intentionallyClosing.has(eq.slotIndex)) {
+                intentionallyClosing.delete(eq.slotIndex);
+                return;
+              }
+              clearUiDebounce(eq.slotIndex);
+              attemptReconnect(eq.slotIndex);
+            });
+
+            port.on("error", (err) => {
+              console.error(`[serial] Erro na porta de fallback (slot ${eq.slotIndex}, ${reserveEq.portPath}):`, err.message);
+              const s = slots.get(eq.slotIndex);
+              if (s && s.status !== "error") {
+                s.status = "error";
+                broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
+              }
+            });
+
+            opened = await openPortWithRetry(port, slot, OPEN_TIMEOUT_MS);
+          } catch (fallbackErr) {
+            console.error(`[serial] Falha ao criar porta de fallback para slot ${eq.slotIndex}:`, (fallbackErr as Error).message);
+          }
+        }
+      }
+
+      if (opened) {
+        slot.status = "open";
+        initSlotEntry.status = "open";
+      } else {
+        // Se falhar tudo, desabilita o equipamento no banco automaticamente
+        console.error(`[serial] Desabilitando equipamento permanentemente por falhas consecutivas de abertura (slot ${eq.slotIndex}, id ${eq.id})`);
+        try {
+          updateEquipment(eq.id, { enabled: false });
+        } catch (dbErr) {
+          console.error(`[serial] Erro ao desabilitar equipamento no banco:`, dbErr);
+        }
         slot.status = "error";
         initSlotEntry.status = "error";
         broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
-        finish();
-      }, OPEN_TIMEOUT_MS);
-
-      port.open((err) => {
-        if (err) {
-          console.error(`[serial] Falha ao abrir porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
-          slot.status = "error";
-          initSlotEntry.status = "error";
-          broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
-        }
-        finish();
-      });
-    });
+      }
+    })();
     openPromises.push(openPromise);
   }
 

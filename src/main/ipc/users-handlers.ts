@@ -27,7 +27,10 @@ function usernameExists(username: string): boolean {
 }
 
 export function registerUsersHandlers(): void {
-  ipcMain.handle(IPC.usersList, (): User[] => listUsers());
+  ipcMain.handle(
+    IPC.usersList,
+    compose([requireAdmin])((): User[] => listUsers())
+  );
 
   ipcMain.handle(
     IPC.usersCreate,

@@ -20,7 +20,10 @@ const exportCsvSchema = z.object({
 });
 
 export function registerHistoryHandlers(): void {
-  ipcMain.handle(IPC.batchesListAll, (): ReturnType<typeof listAllBatches> => listAllBatches());
+  ipcMain.handle(
+    IPC.batchesListAll,
+    compose([requireAuth])((): ReturnType<typeof listAllBatches> => listAllBatches())
+  );
 
   ipcMain.handle(
     IPC.historyGetBatch,

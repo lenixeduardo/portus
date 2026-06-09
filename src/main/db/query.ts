@@ -10,13 +10,37 @@ function toBindArray(params: BindParams): (string | number | null)[] {
   });
 }
 
+let inTransaction = false;
+
+export function transaction<T>(callback: () => T): T {
+  if (inTransaction) {
+    return callback();
+  }
+  const db = getDb();
+  db.run("BEGIN TRANSACTION");
+  inTransaction = true;
+  try {
+    const result = callback();
+    db.run("COMMIT");
+    persistDb();
+    return result;
+  } catch (err) {
+    db.run("ROLLBACK");
+    throw err;
+  } finally {
+    inTransaction = false;
+  }
+}
+
 // db.export() (called by persistDb) resets last_insert_rowid() to 0 in sql.js,
 // so run() captures the rowid before persisting and returns it.
 export function run(sql: string, ...params: BindParams): number {
   const db = getDb();
   db.run(sql, toBindArray(params));
   const rowid = getLastRowid(db);
-  persistDb();
+  if (!inTransaction) {
+    persistDb();
+  }
   return rowid;
 }
 
@@ -54,5 +78,7 @@ export function all<T = Record<string, unknown>>(sql: string, ...params: BindPar
 
 export function exec(sql: string): void {
   getDb().run(sql);
-  persistDb();
+  if (!inTransaction) {
+    persistDb();
+  }
 }

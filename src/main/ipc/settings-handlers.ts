@@ -6,7 +6,7 @@ import { getAutoBackupFolder, getAutoBackupRetention, setSetting } from "../db/s
 import { runBackup } from "../db/backup";
 import { getCurrentUser } from "../auth/auth-service";
 import { updateSettingSchema, type UpdateSettingInput } from "../validation/schemas";
-import { compose, requireAuth, validateInput } from "./middleware";
+import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
 
 const DEFAULT_BACKUP_FOLDER = (): string => join(app.getPath("documents"), "PORTUS", "backups");
 const DEFAULT_BACKUP_RETENTION = 10;
@@ -30,22 +30,29 @@ async function selectBackupFolderDialog(): Promise<string | null> {
 }
 
 export function registerSettingsHandlers(): void {
-  ipcMain.handle(IPC.settingsGetAll, (): AppSettings => {
-    const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
-    const out: AppSettings = {};
-    rows.forEach((r) => (out[r.key] = r.value));
-    return out;
-  });
+  ipcMain.handle(
+    IPC.settingsGetAll,
+    compose([requireAuth])((): AppSettings => {
+      const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
+      const out: AppSettings = {};
+      rows.forEach((r) => (out[r.key] = r.value));
+      return out;
+    })
+  );
 
-  ipcMain.handle(IPC.settingsSelectExportFolder, async (): Promise<string | null> => {
-    if (!getCurrentUser()) return null;
-    return selectExportFolderDialog();
-  });
+  ipcMain.handle(
+    IPC.settingsSelectExportFolder,
+    compose([requireAdmin])(async (): Promise<string | null> => {
+      return selectExportFolderDialog();
+    })
+  );
 
-  ipcMain.handle(IPC.settingsSelectBackupFolder, async (): Promise<string | null> => {
-    if (!getCurrentUser()) return null;
-    return selectBackupFolderDialog();
-  });
+  ipcMain.handle(
+    IPC.settingsSelectBackupFolder,
+    compose([requireAdmin])(async (): Promise<string | null> => {
+      return selectBackupFolderDialog();
+    })
+  );
 
   ipcMain.handle(
     IPC.settingsBackupNow,

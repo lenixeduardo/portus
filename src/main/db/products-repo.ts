@@ -1,4 +1,4 @@
-import { all, get, run } from "./query";
+import { all, get, run, transaction } from "./query";
 import type { Product } from "../../shared/types";
 
 interface ProductRow {
@@ -62,10 +62,12 @@ export function updateProduct(
 }
 
 export function deleteProduct(id: number): void {
-  run("DELETE FROM readings WHERE batch_id IN (SELECT id FROM batches WHERE product_id = ?)", id);
-  run("DELETE FROM capture_sessions WHERE batch_id IN (SELECT id FROM batches WHERE product_id = ?)", id);
-  run("DELETE FROM batches WHERE product_id = ?", id);
-  run("DELETE FROM products WHERE id = ?", id);
+  transaction(() => {
+    run("DELETE FROM readings WHERE batch_id IN (SELECT id FROM batches WHERE product_id = ?)", id);
+    run("DELETE FROM capture_sessions WHERE batch_id IN (SELECT id FROM batches WHERE product_id = ?)", id);
+    run("DELETE FROM batches WHERE product_id = ?", id);
+    run("DELETE FROM products WHERE id = ?", id);
+  });
 }
 
 export function countBatchesForProduct(id: number): number {
