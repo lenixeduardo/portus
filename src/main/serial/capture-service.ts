@@ -31,6 +31,10 @@ const UI_DEBOUNCE_MS = 500;
 // Limite de buffer por porta (100KB) para evitar acúmulo excessivo em caso de desconexão
 const BUFFER_LIMIT_BYTES = 100 * 1024;
 
+// Tempo máximo de espera pela abertura de cada porta antes de marcá-la como erro
+// e seguir com a sessão (evita travar a captura caso o driver não responda).
+const OPEN_TIMEOUT_MS = 5000;
+
 interface ActiveSlot {
   equipment: Equipment;
   port: SerialPort;
@@ -357,6 +361,24 @@ export async function startCapture(
     initSlots.push(initSlotEntry);
 
     const openPromise = new Promise<void>((resolve) => {
+      // Garante que a abertura nunca bloqueie indefinidamente a sessão: se o
+      // driver da porta travar e o callback não retornar, o slot é marcado como
+      // erro e a captura segue (o timer de countdown não fica preso em "abrindo").
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(openTimeout);
+        resolve();
+      };
+      const openTimeout = setTimeout(() => {
+        console.error(`[serial] Timeout ao abrir porta (slot ${eq.slotIndex}, ${eq.portPath})`);
+        slot.status = "error";
+        initSlotEntry.status = "error";
+        broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
+        finish();
+      }, OPEN_TIMEOUT_MS);
+
       port.open((err) => {
         if (err) {
           console.error(`[serial] Falha ao abrir porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
@@ -364,7 +386,7 @@ export async function startCapture(
           initSlotEntry.status = "error";
           broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);
         }
-        resolve();
+        finish();
       });
     });
     openPromises.push(openPromise);

@@ -38,7 +38,7 @@ export function registerBatchesHandlers(): void {
 
   ipcMain.handle(
     IPC.batchesCreate,
-    compose([requireAuth, validateInput(createBatchSchema)])(
+    compose([requireAdmin, validateInput(createBatchSchema)])(
       (_e, input: CreateBatchInput): ServiceResult<BatchWithProduct> => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
