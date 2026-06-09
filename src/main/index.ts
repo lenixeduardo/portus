@@ -12,8 +12,35 @@ import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 import { registerShellHandlers } from "./ipc/shell-handlers";
-import { getAutoExportFolder } from "./db/settings-repo";
+import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from "./db/settings-repo";
 import { runAutoExport } from "./db/history-repo";
+import { runBackup } from "./db/backup";
+
+const DEFAULT_BACKUP_RETENTION = 10;
+const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+function defaultBackupFolder(): string {
+  return join(app.getPath("documents"), "PORTUS", "backups");
+}
+
+function performBackup(): void {
+  const folder = getAutoBackupFolder(defaultBackupFolder());
+  const retention = getAutoBackupRetention(DEFAULT_BACKUP_RETENTION);
+  const result = runBackup(folder, retention);
+  if (result.backedUp) {
+    console.log(`[auto-backup] backup gerado em "${result.path}" (retenção: ${retention}).`);
+  }
+  if (result.errors.length > 0) {
+    console.error("[auto-backup] Erros:", result.errors.join("; "));
+  }
+}
+
+function scheduleNextBackup(): void {
+  setTimeout(() => {
+    performBackup();
+    scheduleNextBackup();
+  }, BACKUP_INTERVAL_MS);
+}
 
 const isDev = process.env.ELECTRON_DEV === "1" || (!app.isPackaged && process.env.NODE_ENV !== "production");
 
@@ -89,6 +116,7 @@ app.whenReady().then(async () => {
   runMigrations();
   seedInitialData();
   persistDb();
+  performBackup();
   registerAuthHandlers();
   registerProductsHandlers();
   registerBatchesHandlers();
@@ -99,6 +127,7 @@ app.whenReady().then(async () => {
   registerHistoryHandlers();
   registerShellHandlers();
   scheduleNextMidnightExport();
+  scheduleNextBackup();
   createWindow();
 });
 

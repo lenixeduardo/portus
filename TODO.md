@@ -82,7 +82,7 @@
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
-- [ ] Backup automático do SQLite
+- [x] Backup automático do SQLite
 - [ ] Relatório PDF do lote
 - [ ] Modo escuro
 - [ ] Integração com leitor de código de barras p/ código de lote
