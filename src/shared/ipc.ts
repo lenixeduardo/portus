@@ -33,6 +33,8 @@ export const IPC = {
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv",
   settingsSelectExportFolder: "settings:select-export-folder",
+  settingsSelectBackupFolder: "settings:select-backup-folder",
+  settingsBackupNow: "settings:backup-now",
   shellOpenExternal: "shell:open-external"
 } as const;
 
@@ -207,6 +209,8 @@ export interface SerialReaderApi {
     getAll(): Promise<AppSettings>;
     set(key: string, value: string): Promise<ServiceResult<true>>;
     selectExportFolder(): Promise<string | null>;
+    selectBackupFolder(): Promise<string | null>;
+    backupNow(): Promise<ServiceResult<{ path: string }>>;
   };
   equipments: {
     list(): Promise<Equipment[]>;

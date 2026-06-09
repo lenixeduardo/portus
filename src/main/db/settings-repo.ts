@@ -21,3 +21,14 @@ export function getCaptureTimeoutSeconds(): number {
 export function getAutoExportFolder(defaultFolder: string): string {
   return getSetting("auto_export_folder") ?? defaultFolder;
 }
+
+export function getAutoBackupFolder(defaultFolder: string): string {
+  const v = getSetting("auto_backup_folder");
+  return v && v.trim() ? v : defaultFolder;
+}
+
+export function getAutoBackupRetention(defaultRetention: number): number {
+  const v = getSetting("auto_backup_retention");
+  const n = v ? Number(v) : defaultRetention;
+  return Number.isInteger(n) && n >= 1 && n <= 100 ? n : defaultRetention;
+}

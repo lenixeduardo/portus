@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Database as SqlJsDatabase, SqlJsStatic } from "sql.js";
 
@@ -36,6 +36,16 @@ export function persistDb(): void {
   if (!db || !dbFilePath) return;
   const data = db.export();
   writeFileSync(dbFilePath, Buffer.from(data));
+}
+
+export function getDbFilePath(): string | null {
+  return dbFilePath;
+}
+
+export function backupDbTo(targetPath: string): void {
+  if (!dbFilePath) throw new Error("Database not initialized — call openDb() first");
+  persistDb();
+  copyFileSync(dbFilePath, targetPath);
 }
 
 export function closeDb(): void {

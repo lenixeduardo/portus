@@ -131,6 +131,26 @@ npm run sim -- --port /dev/pts/5 --preset balanca
 # Clicar em "Iniciar Leitura" no dashboard para capturar as leituras
 ```
 
+## Backup automático do banco de dados
+
+Os dados ficam em um arquivo SQLite local (`serial-reader.sqlite` na pasta de
+dados do usuário). Para proteger as leituras, lotes e demais registros, o app faz
+backups automáticos desse arquivo:
+
+- **Quando:** na inicialização do app e, em seguida, a cada 6 horas.
+- **Onde:** por padrão em `Documentos/PORTUS/backups`. A pasta é configurável em
+  **Configurações → Captura → Backup automático do banco de dados**.
+- **Formato:** cada backup é uma cópia do arquivo SQLite com o nome
+  `serial-reader-backup-YYYYMMDD-HHMMSS.sqlite`.
+- **Retenção:** mantém apenas os N backups mais recentes (padrão 10, configurável
+  de 1 a 100); os mais antigos são removidos automaticamente.
+- **Backup manual:** o botão **"Fazer backup agora"** na mesma tela gera um backup
+  imediato e mostra o caminho do arquivo criado.
+
+Antes de cada cópia o estado atual do banco é persistido em disco, garantindo que
+o backup contenha os dados mais recentes. Para restaurar, basta substituir o
+arquivo `serial-reader.sqlite` por um dos backups (com o app fechado).
+
 ## Fases
 
 - [x] Fase 0 — Setup inicial

@@ -69,7 +69,11 @@ const api: SerialReaderApi = {
     set: (key: string, value: string): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.settingsSet, key, value),
     selectExportFolder: (): Promise<string | null> =>
-      ipcRenderer.invoke(IPC.settingsSelectExportFolder)
+      ipcRenderer.invoke(IPC.settingsSelectExportFolder),
+    selectBackupFolder: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.settingsSelectBackupFolder),
+    backupNow: (): Promise<ServiceResult<{ path: string }>> =>
+      ipcRenderer.invoke(IPC.settingsBackupNow)
   },
   equipments: {
     list: (): Promise<Equipment[]> => ipcRenderer.invoke(IPC.equipmentsList),
