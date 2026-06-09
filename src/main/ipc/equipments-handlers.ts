@@ -19,10 +19,16 @@ export function registerEquipmentsHandlers(): void {
     compose([requireAuth, validateInput(updateEquipmentSchema)])(
       (_e, input: UpdateEquipmentInput): ServiceResult<Equipment> => {
         if (!getEquipment(input.id)) return { ok: false, error: "Equipamento não encontrado." };
-        const cleaned: typeof input = { ...input };
+        const cleaned: Record<string, any> = { id: input.id };
         if (input.name !== undefined) cleaned.name = input.name.trim();
         if (input.portPath !== undefined) cleaned.portPath = input.portPath.trim();
         if (input.parseRegex !== undefined) cleaned.parseRegex = input.parseRegex.trim() || undefined;
+        if (input.baudRate !== undefined) cleaned.baudRate = input.baudRate;
+        if (input.dataBits !== undefined) cleaned.dataBits = input.dataBits;
+        if (input.stopBits !== undefined) cleaned.stopBits = input.stopBits;
+        if (input.parity !== undefined) cleaned.parity = input.parity;
+        if (input.enabled !== undefined) cleaned.enabled = input.enabled;
+        if (input.lineDelimiter !== undefined) cleaned.lineDelimiter = input.lineDelimiter;
         const updated = updateEquipment(input.id, cleaned);
         return updated ? { ok: true, data: updated } : { ok: false, error: "Falha ao atualizar." };
       }

@@ -99,9 +99,18 @@ export const updateEquipmentSchema = z.object({
   id: z.number().positive("ID do equipamento deve ser um número positivo"),
   name: z.string().min(1, "Nome obrigatório").optional(),
   portPath: z.string().optional(),
-  baudRate: z.enum(ALLOWED_BAUD).optional(),
-  dataBits: z.enum([5, 6, 7, 8]).optional(),
-  stopBits: z.enum([1, 2]).optional(),
+  baudRate: z.number().refine(
+    (val) => ALLOWED_BAUD.includes(val as any),
+    "Taxa de baud inválida"
+  ).optional(),
+  dataBits: z.number().refine(
+    (val) => [5, 6, 7, 8].includes(val),
+    "Bits de dados inválido"
+  ).optional(),
+  stopBits: z.number().refine(
+    (val) => [1, 2].includes(val),
+    "Bits de parada inválido"
+  ).optional(),
   parity: z.enum(PARITY_VALUES).optional(),
   enabled: z.boolean().optional(),
   parseRegex: z

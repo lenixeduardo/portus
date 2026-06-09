@@ -45,7 +45,8 @@ export function validateInput<T>(schema: z.ZodSchema<T>) {
       } catch (err) {
         if (err instanceof z.ZodError) {
           // Retorna o primeiro erro de validação
-          throw new Error(err.errors[0]?.message || "Validação falhou.");
+          const firstIssue = err.issues[0];
+          throw new Error(firstIssue?.message || "Validação falhou.");
         }
         throw err;
       }
