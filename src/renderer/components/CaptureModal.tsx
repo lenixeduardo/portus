@@ -91,7 +91,13 @@ export function CaptureModal({ batchId, onClose, onEnded }: Props) {
       unsubsRef.current = [unTick, unSlot, unEnded];
     }
 
-    init();
+    init().catch((err) => {
+      if (cancelled) return;
+      // Qualquer falha ao iniciar/reconciliar a captura encerra a fase de
+      // abertura com mensagem de erro — evita o modal travar em "Abrindo portas...".
+      setError(err instanceof Error ? err.message : "Falha ao iniciar a captura.");
+      setPhase("ended");
+    });
 
     return () => {
       cancelled = true;

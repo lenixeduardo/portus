@@ -42,9 +42,9 @@ const api: SerialReaderApi = {
     create: (input: ProductInput): Promise<ServiceResult<Product>> =>
       ipcRenderer.invoke(IPC.productsCreate, input),
     update: (id: number, input: ProductInput): Promise<ServiceResult<Product>> =>
-      ipcRenderer.invoke(IPC.productsUpdate, id, input),
+      ipcRenderer.invoke(IPC.productsUpdate, { id, ...input }),
     remove: (id: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.productsDelete, id)
+      ipcRenderer.invoke(IPC.productsDelete, { id })
   },
   batches: {
     listOpen: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.batchesListOpen),
@@ -52,7 +52,7 @@ const api: SerialReaderApi = {
     create: (input: BatchInput): Promise<ServiceResult<BatchWithProduct>> =>
       ipcRenderer.invoke(IPC.batchesCreate, input),
     close: (id: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.batchesClose, id),
+      ipcRenderer.invoke(IPC.batchesClose, { id }),
     findByCode: (code: string): Promise<BatchWithProduct | null> =>
       ipcRenderer.invoke(IPC.batchesFindByCode, code),
     scanBarcode: (input: BarcodeScanInput): Promise<BarcodeScanResponse> =>
@@ -60,14 +60,14 @@ const api: SerialReaderApi = {
   },
   history: {
     getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
-      ipcRenderer.invoke(IPC.historyGetBatch, batchId),
+      ipcRenderer.invoke(IPC.historyGetBatch, { batchId }),
     exportCsv: (batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.historyExportCsv, batchId, filters)
+      ipcRenderer.invoke(IPC.historyExportCsv, { batchId, filters })
   },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGetAll),
     set: (key: string, value: string): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.settingsSet, key, value),
+      ipcRenderer.invoke(IPC.settingsSet, { key, value }),
     selectExportFolder: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC.settingsSelectExportFolder),
     selectBackupFolder: (): Promise<string | null> =>
@@ -78,23 +78,23 @@ const api: SerialReaderApi = {
   equipments: {
     list: (): Promise<Equipment[]> => ipcRenderer.invoke(IPC.equipmentsList),
     update: (id: number, patch: EquipmentUpdateInput): Promise<ServiceResult<Equipment>> =>
-      ipcRenderer.invoke(IPC.equipmentsUpdate, id, patch)
+      ipcRenderer.invoke(IPC.equipmentsUpdate, { id, ...patch })
   },
   users: {
     list: (): Promise<User[]> => ipcRenderer.invoke(IPC.usersList),
     create: (input: UserCreateInput): Promise<ServiceResult<User>> =>
       ipcRenderer.invoke(IPC.usersCreate, input),
     changePassword: (id: number, newPassword: string): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.usersChangePassword, id, newPassword),
+      ipcRenderer.invoke(IPC.usersChangePassword, { id, password: newPassword }),
     remove: (id: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.usersDelete, id)
+      ipcRenderer.invoke(IPC.usersDelete, { id })
   },
   serial: {
     listPorts: (): Promise<SerialPortInfo[]> => ipcRenderer.invoke(IPC.serialListPorts)
   },
   capture: {
     start: (batchId: number): Promise<ServiceResult<CaptureStartResult>> =>
-      ipcRenderer.invoke(IPC.captureStart, batchId),
+      ipcRenderer.invoke(IPC.captureStart, { batchId }),
     cancel: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureCancel),
     isActive: (): Promise<boolean> => ipcRenderer.invoke(IPC.captureIsActive),
     getState: (): Promise<CaptureStateSnapshot> => ipcRenderer.invoke(IPC.captureGetState),
@@ -103,7 +103,7 @@ const api: SerialReaderApi = {
     onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEnded, cb)
   },
   shell: {
-    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, url)
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url })
   }
 };
 
