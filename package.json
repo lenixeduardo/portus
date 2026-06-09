@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "npm run build:main && concurrently --raw -n MAIN,RENDERER,ELECTRON -c blue,green,yellow \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"vite\" \"npm run dev:electron\"",
     "dev:electron": "wait-on http://localhost:5173 && cross-env ELECTRON_DEV=1 electron . --no-sandbox",
+    "electron": "cross-env ELECTRON_DEV=1 electron . --no-sandbox",
     "build": "npm run build:renderer && npm run build:main",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
-    "start": "cross-env NODE_ENV=production electron . --no-sandbox",
+    "start": "cross-env NODE_ENV=production ELECTRON_DEV=1 electron . --no-sandbox",
     "prepackage": "npm version patch --no-git-tag-version",
     "package": "npm run build && electron-builder",
     "rebuild": "electron-rebuild -f -w serialport",
