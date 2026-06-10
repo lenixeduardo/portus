@@ -50,6 +50,8 @@ interface ActiveSlot {
   usedFallback: boolean;
   // Registra a porta original que falhou (se usedFallback=true)
   originalPortPath?: string;
+  // Conta linhas completas recebidas nesta sessão (para skipFirstReading)
+  linesReceived: number;
 }
 
 let sessionId: number | null = null;
@@ -104,7 +106,14 @@ function handleLine(slot: ActiveSlot, line: string): void {
   const bid = batchId;
   if (!raw || sid === null || bid === null) return;
 
+  slot.linesReceived++;
+
   const eq = slot.equipment;
+
+  if (eq.skipFirstReading && slot.linesReceived === 1) {
+    console.log(`[serial] Primeira linha ignorada (slot ${eq.slotIndex}, skipFirstReading) raw="${raw}"`);
+    return;
+  }
   const { parsed, failureReason } = parseReading(raw, slot.regex, slot.regexInvalid);
 
   if (failureReason === "no_match") {
@@ -366,7 +375,8 @@ export async function startCapture(
       regexInvalid,
       buffer: "",
       openAttempts: 1,
-      usedFallback: false
+      usedFallback: false,
+      linesReceived: 0
     };
     slots.set(eq.slotIndex, slot);
 

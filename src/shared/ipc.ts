@@ -155,6 +155,7 @@ export interface EquipmentUpdateInput {
   enabled?: boolean;
   parseRegex?: string;
   lineDelimiter?: LineDelimiter;
+  skipFirstReading?: boolean;
 }
 
 export type AppSettings = Record<string, string>;
