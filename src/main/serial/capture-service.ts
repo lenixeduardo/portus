@@ -375,7 +375,9 @@ export async function startCapture(
     // sobrevive a uma reabertura por reconexão.
     port.on("data", (chunk: Buffer) => {
       if (sessionId === null) return;
-      slot.buffer += chunk.toString("utf8");
+      // latin1 mapeia cada byte 0-255 sem substituição — preserva exatamente o
+      // que o equipamento enviou, incluindo caracteres >127 (ex.: grau, unidades).
+      slot.buffer += chunk.toString("latin1");
       drainBuffer(slot);
     });
 
@@ -433,7 +435,7 @@ export async function startCapture(
             // Re-bind listeners para a nova porta de fallback
             port.on("data", (chunk: Buffer) => {
               if (sessionId === null) return;
-              slot.buffer += chunk.toString("utf8");
+              slot.buffer += chunk.toString("latin1");
               drainBuffer(slot);
             });
 

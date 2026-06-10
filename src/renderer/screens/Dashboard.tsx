@@ -175,6 +175,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             await reload();
           }}
           onEnded={reload}
+          onLogout={onLogout}
         />
       )}
     </>
