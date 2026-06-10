@@ -1,14 +1,13 @@
 name: Build instalável (Windows)
 
-# Gera o instalável NSIS (.exe) a cada PR, garantindo que sempre haja
-# uma versão instalável correta pronta para download nos artifacts.
+# Gera o instalável NSIS (.exe) e cria uma Release a cada merge na main.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
-# Cancela builds antigos do mesmo PR quando novos commits chegam.
+# Cancela builds anteriores se outro merge chegar antes de este terminar.
 concurrency:
-  group: build-installer-${{ github.event.pull_request.number }}
+  group: build-installer-main
   cancel-in-progress: true
 
 jobs:
@@ -35,13 +34,21 @@ jobs:
           # Build não assinado: sem certificado, evita prompts/erros de assinatura.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Publicar instalável como artifact
-        uses: actions/upload-artifact@v4
+      - name: Ler versão gerada
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Criar GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: portus-installer-pr${{ github.event.pull_request.number }}
-          path: |
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Portus v${{ steps.version.outputs.version }}
+          body: |
+            Release gerada automaticamente a partir do merge na branch `main`.
+            Commit: ${{ github.sha }}
+          files: |
             release/*.exe
             release/*.exe.blockmap
             release/latest.yml
-          if-no-files-found: error
-          retention-days: 14
+          fail_on_unmatched_files: false
