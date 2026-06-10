@@ -37,6 +37,7 @@ export interface Equipment {
   slotIndex: number;
   parseRegex?: string;
   lineDelimiter: LineDelimiter;
+  skipFirstReading: boolean;
 }
 
 export interface Reading {

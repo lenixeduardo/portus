@@ -121,6 +121,7 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
   const [enabled, setEnabled] = useState(equipment.enabled);
   const [parseRegex, setParseRegex] = useState(equipment.parseRegex ?? "");
   const [lineDelimiter, setLineDelimiter] = useState<LineDelimiter>(equipment.lineDelimiter ?? "lf");
+  const [skipFirstReading, setSkipFirstReading] = useState(equipment.skipFirstReading ?? false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -140,7 +141,8 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
       parity,
       enabled,
       parseRegex: parseRegex || undefined,
-      lineDelimiter
+      lineDelimiter,
+      skipFirstReading
     };
     const res = await window.api.equipments.update(equipment.id, patch);
     setSaving(false);
@@ -268,6 +270,21 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
             Grupo nomeado <code>(?&lt;value&gt;…)</code> ou o primeiro grupo define o valor.
             Para o espectrofotômetro (vários campos na linha), ancore no campo certo —
             ex.: <code>ABS[:\s]*(?&lt;value&gt;\d+[.,]\d+)</code>. Vírgula decimal é normalizada para ponto.
+          </small>
+        </div>
+
+        <div className="field">
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={skipFirstReading}
+              onChange={(e) => setSkipFirstReading(e.target.checked)}
+            />
+            <span>Ignorar primeira leitura da sessão</span>
+          </label>
+          <small className="muted">
+            Use quando o equipamento envia uma linha incompleta (cortada) antes do valor real.
+            A segunda linha em diante é processada normalmente.
           </small>
         </div>
 

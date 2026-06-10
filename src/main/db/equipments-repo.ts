@@ -13,6 +13,7 @@ interface EquipmentRow {
   slot_index: number;
   parse_regex: string | null;
   line_delimiter: string | null;
+  skip_first_reading: number;
 }
 
 function rowToEquipment(row: EquipmentRow): Equipment {
@@ -27,7 +28,8 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     enabled: row.enabled === 1,
     slotIndex: row.slot_index,
     parseRegex: row.parse_regex ?? undefined,
-    lineDelimiter: (row.line_delimiter ?? "lf") as LineDelimiter
+    lineDelimiter: (row.line_delimiter ?? "lf") as LineDelimiter,
+    skipFirstReading: row.skip_first_reading === 1
   };
 }
 
@@ -47,7 +49,8 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
   run(
     `UPDATE equipments SET
       name = ?, port_path = ?, baud_rate = ?, data_bits = ?,
-      stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?, line_delimiter = ?
+      stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?, line_delimiter = ?,
+      skip_first_reading = ?
      WHERE id = ?`,
     merged.name,
     merged.portPath,
@@ -58,6 +61,7 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
     merged.enabled ? 1 : 0,
     merged.parseRegex ?? null,
     merged.lineDelimiter,
+    merged.skipFirstReading ? 1 : 0,
     id
   );
   return getEquipment(id);

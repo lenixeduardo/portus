@@ -132,5 +132,11 @@ PRAGMA foreign_keys = ON;
 -- - products.created_by -> users.id ON DELETE RESTRICT
 -- If recreating, use ON DELETE CASCADE for product cascades.
 `
+  },
+  {
+    name: "010_equipment_skip_first_reading",
+    sql: `
+ALTER TABLE equipments ADD COLUMN skip_first_reading INTEGER NOT NULL DEFAULT 0;
+`
   }
 ];
