@@ -6,6 +6,8 @@ import { Dashboard } from "./screens/Dashboard";
 import { Products } from "./screens/Products";
 import { History } from "./screens/History";
 import { Settings } from "./screens/Settings";
+import { Modal } from "./components/Modal";
+import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
 
 const TITLES: Record<Route, string> = {
@@ -15,11 +17,14 @@ const TITLES: Record<Route, string> = {
   settings: "Configurações",
 };
 
+const LAST_SEEN_VERSION_KEY = "portus:last-seen-version";
+
 export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>("dashboard");
   const [bootstrapping, setBootstrapping] = useState(true);
   const [noElectron, setNoElectron] = useState(false);
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
 
   useEffect(() => {
     if (!window.api) {
@@ -27,6 +32,8 @@ export function App() {
       setBootstrapping(false);
       return;
     }
+    const lastSeenVersion = window.localStorage.getItem(LAST_SEEN_VERSION_KEY);
+    setShowReleaseNotes(lastSeenVersion !== APP_VERSION);
     window.api.auth.currentUser().then((u) => {
       setUser(u);
       setBootstrapping(false);
@@ -37,6 +44,11 @@ export function App() {
     await window.api.auth.logout();
     setUser(null);
     setRoute("dashboard");
+  }
+
+  function closeReleaseNotes() {
+    window.localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
+    setShowReleaseNotes(false);
   }
 
   if (bootstrapping) return (
@@ -52,22 +64,54 @@ export function App() {
       <code style={{ fontSize: 13 }}>npm run electron</code>
     </div>
   );
-  if (!user) return <Login onAuthenticated={setUser} />;
+  if (!user) return (
+    <>
+      <Login onAuthenticated={setUser} />
+      {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+    </>
+  );
 
   return (
-    <div className="app-shell">
-      <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} />
-      <div className="main-area">
-        <div className="topbar">
-          <h2>{TITLES[route]}</h2>
-        </div>
-        <div className="content">
-          {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
-          {route === "products" && <Products />}
-          {route === "settings" && <Settings currentUser={user} />}
-          {route === "history" && <History />}
+    <>
+      <div className="app-shell">
+        <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} />
+        <div className="main-area">
+          <div className="topbar">
+            <h2>{TITLES[route]}</h2>
+          </div>
+          <div className="content">
+            {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
+            {route === "products" && <Products />}
+            {route === "settings" && <Settings currentUser={user} />}
+            {route === "history" && user.role === "admin" && <History />}
+          </div>
         </div>
       </div>
-    </div>
+      {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+    </>
+  );
+}
+
+function ReleaseNotesModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal
+      title={`Atualizações v${APP_VERSION}`}
+      onClose={onClose}
+      width={520}
+      footer={<button onClick={onClose}>Entendi</button>}
+    >
+      <div className="release-notes">
+        {RELEASE_NOTES.map((note) => (
+          <section key={note.version} className="release-note-section">
+            <h4>v{note.version}</h4>
+            <ul>
+              {note.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </Modal>
   );
 }

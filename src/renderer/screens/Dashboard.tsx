@@ -4,6 +4,7 @@ import type { BatchWithProduct } from "../../shared/ipc";
 import { CaptureModal } from "../components/CaptureModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
+import { Modal } from "../components/Modal";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { CheckSquare, Scan, Printer, ScanBarcode } from "lucide-react";
 
@@ -17,6 +18,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [loading, setLoading] = useState(true);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
+  const [printBatch, setPrintBatch] = useState<BatchWithProduct | null>(null);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,34 +77,11 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       setScannerError(res.error);
       return;
     }
-    reload();
+    await onLogout();
   }
 
   function handlePrintBarcode(batch: BatchWithProduct) {
-    const win = window.open("", "_blank", "width=400,height=300");
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>Código de Barras — ${batch.code}</title>
-      <style>
-        body { font-family: monospace; background: #fff; color: #000; text-align: center; padding: 24px; }
-        .label { font-size: 11px; color: #666; margin-bottom: 4px; }
-        .code  { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
-        .product { font-size: 12px; color: #444; }
-        @media print { button { display: none; } }
-      </style></head>
-      <body>
-        ${batch.productName && batch.productName !== "—" ? `<div class="product">${batch.productName}</div>` : ""}
-        <canvas id="bc" style="max-width:280px;margin:12px auto;display:block"></canvas>
-        <div class="label">LOTE</div>
-        <div class="code">#${batch.code}</div>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js"></script>
-        <script>
-          JsBarcode("#bc","${batch.code}",{format:"CODE128",height:60,displayValue:true,fontSize:12});
-          window.onload = () => window.print();
-        </script>
-      </body></html>
-    `);
-    win.document.close();
+    setPrintBatch(batch);
   }
 
   async function handleBarcodeReady(batch: BatchWithProduct) {
@@ -167,6 +146,10 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
         />
       )}
 
+      {printBatch && (
+        <PrintBarcodeModal batch={printBatch} onClose={() => setPrintBatch(null)} />
+      )}
+
       {captureBatchId !== null && (
         <CaptureModal
           batchId={captureBatchId}
@@ -179,6 +162,47 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
         />
       )}
     </>
+  );
+}
+
+function PrintBarcodeModal({ batch, onClose }: { batch: BatchWithProduct; onClose: () => void }) {
+  function print() {
+    document.body.classList.add("portus-printing");
+
+    const cleanup = () => {
+      document.body.classList.remove("portus-printing");
+      window.removeEventListener("afterprint", cleanup);
+    };
+
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    window.setTimeout(cleanup, 1000);
+  }
+
+  return (
+    <Modal
+      title="Imprimir código de barras"
+      onClose={onClose}
+      width={420}
+      footer={
+        <>
+          <button className="secondary" onClick={onClose}>Cancelar</button>
+          <button onClick={print} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Printer size={14} />
+            Imprimir
+          </button>
+        </>
+      }
+    >
+      <div className="print-sheet">
+        {batch.productName && batch.productName !== "—" && (
+          <div className="print-product">{batch.productName}</div>
+        )}
+        <BarcodeDisplay value={batch.code} height={60} displayValue lineColor="#111827" />
+        <div className="print-label">LOTE</div>
+        <div className="print-code">#{batch.code}</div>
+      </div>
+    </Modal>
   );
 }
 

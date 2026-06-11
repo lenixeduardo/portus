@@ -3,6 +3,7 @@ import { SerialPort } from "serialport";
 import { listEquipments, updateEquipment } from "../db/equipments-repo";
 import { getCaptureTimeoutSeconds } from "../db/settings-repo";
 import { getBatchWithProduct } from "../db/batches-repo";
+import { insertCaptureErrorLog } from "../db/capture-error-logs-repo";
 import {
   cancelCaptureSession,
   completeCaptureSession,
@@ -60,6 +61,7 @@ let slots: Map<number, ActiveSlot> = new Map();
 let timer: NodeJS.Timeout | null = null;
 let remaining = 0;
 let total = 0;
+let skipFirstReadingForSession = false;
 
 // Timers de debounce de UI por slotIndex
 const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -69,6 +71,32 @@ const reconnectAttempted: Set<number> = new Set();
 
 // Slots sendo fechados intencionalmente (cleanup) — suprime trigger de reconexão
 const intentionallyClosing: Set<number> = new Set();
+
+function logCaptureError(input: {
+  slot?: ActiveSlot;
+  slotIndex?: number;
+  severity?: "warn" | "error";
+  code: string;
+  message: string;
+  rawValue?: string | null;
+  context?: Record<string, unknown>;
+}): void {
+  try {
+    insertCaptureErrorLog({
+      batchId,
+      captureSessionId: sessionId,
+      equipmentId: input.slot?.equipment.id ?? null,
+      slotIndex: input.slot?.equipment.slotIndex ?? input.slotIndex ?? null,
+      severity: input.severity ?? "error",
+      code: input.code,
+      message: input.message,
+      rawValue: input.rawValue ?? null,
+      context: input.context
+    });
+  } catch (err) {
+    console.error("[serial] Falha ao gravar log de erro da captura:", err);
+  }
+}
 
 function broadcast(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((w) => {
@@ -110,11 +138,25 @@ function handleLine(slot: ActiveSlot, line: string): void {
 
   const eq = slot.equipment;
 
-  if (eq.skipFirstReading && slot.linesReceived === 1) {
+  if ((eq.skipFirstReading || skipFirstReadingForSession) && slot.linesReceived === 1) {
     console.log(`[serial] Primeira linha ignorada (slot ${eq.slotIndex}, skipFirstReading) raw="${raw}"`);
     return;
   }
   const { parsed, failureReason } = parseReading(raw, slot.regex, slot.regexInvalid);
+
+  if (failureReason) {
+    logCaptureError({
+      slot,
+      severity: failureReason === "no_match" ? "warn" : "error",
+      code: failureReason,
+      message:
+        failureReason === "no_match"
+          ? `Parsing sem match (slot ${eq.slotIndex}, regex="${eq.parseRegex}", raw="${raw}")`
+          : `Regex inválida (slot ${eq.slotIndex}, regex="${eq.parseRegex}")`,
+      rawValue: raw,
+      context: { regex: eq.parseRegex }
+    });
+  }
 
   if (failureReason === "no_match") {
     console.warn(
@@ -208,6 +250,7 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   batchId = null;
   remaining = 0;
   total = 0;
+  skipFirstReadingForSession = false;
 
   const event: CaptureEndedEvent = { reason };
   broadcast(IPC.captureEnded, event);
@@ -228,6 +271,12 @@ function attemptReconnect(slotIndex: number): void {
 
   slot.port.open((err) => {
     if (err) {
+      logCaptureError({
+        slot,
+        code: "serial_reconnect_failed",
+        message: `Reconexão falhou (slot ${slotIndex}, porta ${slot.equipment.portPath}): ${err.message}`,
+        context: { portPath: slot.equipment.portPath }
+      });
       console.error(`[serial] Reconexão falhou (slot ${slotIndex}, porta ${slot.equipment.portPath}):`, err.message);
       slot.status = "error";
       broadcast(IPC.captureSlotUpdate, { slotIndex, status: "error" } satisfies SlotUpdateEvent);
@@ -261,12 +310,24 @@ async function openPortWithRetry(
       };
 
       const timeoutId = setTimeout(() => {
+        logCaptureError({
+          slot,
+          code: "serial_open_timeout",
+          message: `Timeout ao abrir porta (slot ${slot.equipment.slotIndex}, ${port.path}, tentativa ${attempt + 1})`,
+          context: { portPath: port.path, attempt: attempt + 1, openTimeoutMs }
+        });
         console.error(`[serial] Timeout ao abrir porta (slot ${slot.equipment.slotIndex}, ${port.path}, tentativa ${attempt + 1})`);
         finish(false);
       }, openTimeoutMs);
 
       port.open((err) => {
         if (err) {
+          logCaptureError({
+            slot,
+            code: "serial_open_failed",
+            message: `Falha ao abrir porta (slot ${slot.equipment.slotIndex}, ${port.path}, tentativa ${attempt + 1}): ${err.message}`,
+            context: { portPath: port.path, attempt: attempt + 1 }
+          });
           console.error(`[serial] Falha ao abrir porta (slot ${slot.equipment.slotIndex}, ${port.path}, tentativa ${attempt + 1}):`, err.message);
           finish(false);
         } else {
@@ -301,7 +362,7 @@ export function getState(): CaptureStateSnapshot {
     });
   });
   slotStates.sort((a, b) => a.slotIndex - b.slotIndex);
-  return { active: isActive(), batchId, sessionId, remaining, total, slots: slotStates };
+  return { active: isActive(), batchId, sessionId, remaining, total, skipFirstReading: skipFirstReadingForSession, slots: slotStates };
 }
 
 export async function startCapture(
@@ -333,6 +394,7 @@ export async function startCapture(
   batchId = targetBatchId;
   remaining = timeoutSeconds;
   total = timeoutSeconds;
+  skipFirstReadingForSession = false;
 
   const initSlots: SlotInitState[] = [];
   const openPromises: Promise<void>[] = [];
@@ -349,6 +411,12 @@ export async function startCapture(
         autoOpen: false
       });
     } catch (err) {
+      logCaptureError({
+        slotIndex: eq.slotIndex,
+        code: "serial_port_create_failed",
+        message: `Falha ao criar porta para slot ${eq.slotIndex} (${eq.portPath}): ${(err as Error).message}`,
+        context: { equipmentId: eq.id, portPath: eq.portPath }
+      });
       console.error(`[serial] Falha ao criar porta para slot ${eq.slotIndex} (${eq.portPath}):`, (err as Error).message);
       initSlots.push({ slotIndex: eq.slotIndex, equipmentId: eq.id, name: eq.name, status: "error" });
       continue;
@@ -362,6 +430,12 @@ export async function startCapture(
         regex = new RegExp(eq.parseRegex);
       } catch {
         regexInvalid = true;
+        logCaptureError({
+          slotIndex: eq.slotIndex,
+          code: "invalid_parse_regex_on_start",
+          message: `Regex inválida ao iniciar (slot ${eq.slotIndex}, regex="${eq.parseRegex}")`,
+          context: { equipmentId: eq.id, regex: eq.parseRegex }
+        });
         console.error(`[serial] Regex inválida ao iniciar (slot ${eq.slotIndex}, regex="${eq.parseRegex}")`);
       }
     }
@@ -403,6 +477,12 @@ export async function startCapture(
     });
 
     port.on("error", (err) => {
+      logCaptureError({
+        slot,
+        code: "serial_port_error",
+        message: `Erro na porta (slot ${eq.slotIndex}, ${eq.portPath}): ${err.message}`,
+        context: { portPath: eq.portPath }
+      });
       console.error(`[serial] Erro na porta (slot ${eq.slotIndex}, ${eq.portPath}):`, err.message);
       const s = slots.get(eq.slotIndex);
       if (s && s.status !== "error") {
@@ -459,6 +539,12 @@ export async function startCapture(
             });
 
             port.on("error", (err) => {
+              logCaptureError({
+                slot,
+                code: "serial_fallback_port_error",
+                message: `Erro na porta de fallback (slot ${eq.slotIndex}, ${reserveEq.portPath}): ${err.message}`,
+                context: { originalPortPath: eq.portPath, fallbackPortPath: reserveEq.portPath }
+              });
               console.error(`[serial] Erro na porta de fallback (slot ${eq.slotIndex}, ${reserveEq.portPath}):`, err.message);
               const s = slots.get(eq.slotIndex);
               if (s && s.status !== "error") {
@@ -469,6 +555,12 @@ export async function startCapture(
 
             opened = await openPortWithRetry(port, slot, OPEN_TIMEOUT_MS);
           } catch (fallbackErr) {
+            logCaptureError({
+              slot,
+              code: "serial_fallback_create_failed",
+              message: `Falha ao criar porta de fallback para slot ${eq.slotIndex}: ${(fallbackErr as Error).message}`,
+              context: { originalPortPath: eq.portPath, fallbackPortPath: reserveEq.portPath }
+            });
             console.error(`[serial] Falha ao criar porta de fallback para slot ${eq.slotIndex}:`, (fallbackErr as Error).message);
           }
         }
@@ -479,10 +571,22 @@ export async function startCapture(
         initSlotEntry.status = "open";
       } else {
         // Se falhar tudo, desabilita o equipamento no banco automaticamente
+        logCaptureError({
+          slot,
+          code: "equipment_disabled_after_open_failures",
+          message: `Desabilitando equipamento permanentemente por falhas consecutivas de abertura (slot ${eq.slotIndex}, id ${eq.id})`,
+          context: { portPath: eq.portPath, usedFallback: slot.usedFallback, originalPortPath: slot.originalPortPath }
+        });
         console.error(`[serial] Desabilitando equipamento permanentemente por falhas consecutivas de abertura (slot ${eq.slotIndex}, id ${eq.id})`);
         try {
           updateEquipment(eq.id, { enabled: false });
         } catch (dbErr) {
+          logCaptureError({
+            slot,
+            code: "equipment_disable_failed",
+            message: `Erro ao desabilitar equipamento no banco: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`,
+            context: { equipmentId: eq.id }
+          });
           console.error(`[serial] Erro ao desabilitar equipamento no banco:`, dbErr);
         }
         slot.status = "error";
@@ -514,6 +618,15 @@ export async function startCapture(
       timeoutSeconds
     }
   };
+}
+
+export function skipFirstReading(): ServiceResult<true> {
+  if (!isActive()) {
+    return { ok: false, error: "Nenhuma captura ativa." };
+  }
+  skipFirstReadingForSession = true;
+  console.log("[serial] Primeira leitura da sessão será ignorada para todos os equipamentos.");
+  return { ok: true, data: true };
 }
 
 export async function cancelCapture(): Promise<ServiceResult<true>> {

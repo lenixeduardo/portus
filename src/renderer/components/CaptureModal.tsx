@@ -27,6 +27,7 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
   const [slots, setSlots] = useState<SlotState[]>([]);
   const [endReason, setEndReason] = useState<"completed" | "cancelled" | null>(null);
   const [logoutCountdown, setLogoutCountdown] = useState<number | null>(null);
+  const [skipFirstReading, setSkipFirstReading] = useState(false);
   const unsubsRef = useRef<Array<() => void>>([]);
   const logoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -50,6 +51,7 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
         setSlots(st.slots.map((s) => ({ ...s })));
         setRemaining(st.remaining);
         setTotal(st.total);
+        setSkipFirstReading(st.skipFirstReading);
         setPhase("active");
       } else {
         const res = await window.api.capture.start(batchId);
@@ -63,6 +65,7 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
         setSlots(initSlots.map((s) => ({ ...s })));
         setRemaining(timeoutSeconds);
         setTotal(timeoutSeconds);
+        setSkipFirstReading(false);
         setPhase("active");
       }
 
@@ -112,7 +115,7 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
   }, [batchId]);
 
   useEffect(() => {
-    if (endReason !== "completed" || !onLogout) return;
+    if (!endReason || !onLogout) return;
 
     setLogoutCountdown(LOGOUT_COUNTDOWN_SECONDS);
 
@@ -130,10 +133,19 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
     return () => {
       if (logoutTimerRef.current) clearInterval(logoutTimerRef.current);
     };
-  }, [endReason]);
+  }, [endReason, onLogout]);
 
   async function handleCancel() {
     await window.api.capture.cancel();
+  }
+
+  async function handleSkipFirstReading() {
+    const res = await window.api.capture.skipFirstReading();
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setSkipFirstReading(true);
   }
 
   const progress = total > 0 ? remaining / total : 0;
@@ -191,7 +203,16 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
 
         <div className="modal-footer">
           {isActive && (
-            <button className="secondary" onClick={handleCancel}>Cancelar Captura</button>
+            <>
+              <button
+                className="secondary"
+                onClick={handleSkipFirstReading}
+                disabled={skipFirstReading}
+              >
+                {skipFirstReading ? "Primeira captura será pulada" : "Pular primeira captura"}
+              </button>
+              <button className="secondary" onClick={handleCancel}>Cancelar Captura</button>
+            </>
           )}
           {phase === "ended" && (
             <>
@@ -201,7 +222,7 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
               {endReason === "cancelled" && (
                 <span className="capture-status-msg capture-status-warn">Captura cancelada</span>
               )}
-              {endReason === "completed" && logoutCountdown !== null ? (
+              {logoutCountdown !== null ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span className="muted" style={{ fontSize: 13 }}>
                     Encerrando sessão em {logoutCountdown}s…

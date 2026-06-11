@@ -16,7 +16,7 @@ interface Props {
 const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly?: boolean }> = [
   { key: "dashboard", label: "Lotes Ativos", icon: LayoutDashboard },
   { key: "products", label: "Produtos", icon: Package, adminOnly: true },
-  { key: "history", label: "Histórico", icon: Clock },
+  { key: "history", label: "Histórico", icon: Clock, adminOnly: true },
   { key: "settings", label: "Configurações", icon: Settings, adminOnly: true },
 ];
 

@@ -138,5 +138,27 @@ PRAGMA foreign_keys = ON;
     sql: `
 ALTER TABLE equipments ADD COLUMN skip_first_reading INTEGER NOT NULL DEFAULT 0;
 `
+  },
+  {
+    name: "011_capture_error_logs",
+    sql: `
+CREATE TABLE IF NOT EXISTS capture_error_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  capture_session_id INTEGER REFERENCES capture_sessions(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  equipment_id INTEGER REFERENCES equipments(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  slot_index INTEGER,
+  severity TEXT NOT NULL CHECK (severity IN ('warn','error')) DEFAULT 'error',
+  code TEXT NOT NULL,
+  message TEXT NOT NULL,
+  raw_value TEXT,
+  context_json TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_capture_error_logs_batch ON capture_error_logs(batch_id);
+CREATE INDEX IF NOT EXISTS idx_capture_error_logs_session ON capture_error_logs(capture_session_id);
+CREATE INDEX IF NOT EXISTS idx_capture_error_logs_created_at ON capture_error_logs(created_at);
+`
   }
 ];

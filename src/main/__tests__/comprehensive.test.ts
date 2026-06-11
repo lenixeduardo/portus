@@ -361,7 +361,7 @@ describe("Teste 5 — Visibilidade Baseada em Permissão", () => {
     viewBatches: { admin: true, operator: true },
     captureButton: { admin: true, operator: true },
     viewReadings: { admin: true, operator: true },
-    viewHistoryTab: { admin: true, operator: true }
+    viewHistoryTab: { admin: true, operator: false }
   };
 
   it("admin vê o botão 'Novo Lote', operator não", () => {
@@ -399,9 +399,9 @@ describe("Teste 5 — Visibilidade Baseada em Permissão", () => {
     expect(uiElements.viewReadings.operator).toBe(true);
   });
 
-  it("ambos acessam a aba Histórico", () => {
+  it("apenas admin acessa a aba Histórico", () => {
     expect(uiElements.viewHistoryTab.admin).toBe(true);
-    expect(uiElements.viewHistoryTab.operator).toBe(true);
+    expect(uiElements.viewHistoryTab.operator).toBe(false);
   });
 });
 

@@ -22,6 +22,7 @@ export const IPC = {
   serialListPorts: "serial:list-ports",
   captureStart: "capture:start",
   captureCancel: "capture:cancel",
+  captureSkipFirstReading: "capture:skip-first-reading",
   captureIsActive: "capture:is-active",
   captureGetState: "capture:get-state",
   captureTick: "capture:tick",
@@ -76,6 +77,7 @@ export interface CaptureStateSnapshot {
   sessionId: number | null;
   remaining: number;
   total: number;
+  skipFirstReading: boolean;
   slots: SlotInitState[];
 }
 
@@ -229,6 +231,7 @@ export interface SerialReaderApi {
   capture: {
     start(batchId: number): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
+    skipFirstReading(): Promise<ServiceResult<true>>;
     isActive(): Promise<boolean>;
     getState(): Promise<CaptureStateSnapshot>;
     onTick(cb: (e: CaptureTickEvent) => void): Unsubscribe;

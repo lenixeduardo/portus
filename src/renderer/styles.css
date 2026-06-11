@@ -646,6 +646,87 @@ label.checkbox input { width: auto; }
   background: var(--surface-raised);
 }
 
+.print-sheet {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.print-sheet svg {
+  width: 100%;
+  max-width: 280px;
+  margin: 12px auto;
+  display: block;
+}
+
+.print-product {
+  font-size: 12px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.print-label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.print-code {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.release-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.release-note-section h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.release-note-section ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 18px;
+}
+
+.release-note-section li {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media print {
+  body.portus-printing * {
+    visibility: hidden;
+  }
+
+  body.portus-printing .print-sheet,
+  body.portus-printing .print-sheet * {
+    visibility: visible;
+  }
+
+  body.portus-printing .print-sheet {
+    position: fixed;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    padding: 24px;
+  }
+}
+
 /* ── Tabs ────────────────────────────────────────────── */
 
 .tabs {

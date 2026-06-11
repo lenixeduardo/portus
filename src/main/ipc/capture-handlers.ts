@@ -2,7 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
-import { cancelCapture, getState, isActive, startCapture } from "../serial/capture-service";
+import { cancelCapture, getState, isActive, skipFirstReading, startCapture } from "../serial/capture-service";
 import { compose, requireAuth, validateInput } from "./middleware";
 
 const startCaptureSchema = z.object({
@@ -23,6 +23,13 @@ export function registerCaptureHandlers(): void {
     IPC.captureCancel,
     compose([requireAuth])(async () => {
       return cancelCapture();
+    })
+  );
+
+  ipcMain.handle(
+    IPC.captureSkipFirstReading,
+    compose([requireAuth])(() => {
+      return skipFirstReading();
     })
   );
 
