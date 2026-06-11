@@ -80,7 +80,7 @@ export function registerBatchesHandlers(): void {
 
   ipcMain.handle(
     IPC.batchesClose,
-    compose([requireAdmin, validateInput(closeBatchSchema)])(
+    compose([requireAuth, validateInput(closeBatchSchema)])(
       (_e, input: CloseBatchInput): ServiceResult<true> => {
         const batch = getBatchWithProduct(input.id);
         if (!batch) return { ok: false, error: "Lote não encontrado." };

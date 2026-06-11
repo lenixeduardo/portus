@@ -8,8 +8,8 @@ import {
   deleteUser,
   getUser,
   listUsers,
-  updateUserPassword,
-  userHasReferences
+  reassignUserReferences,
+  updateUserPassword
 } from "../db/users-repo";
 import { getUserByUsername } from "../db/users-repo";
 import {
@@ -68,12 +68,7 @@ export function registerUsersHandlers(): void {
         }
         if (countUsers() <= 1) return { ok: false, error: "Deve haver ao menos um usuário no sistema." };
         if (!getUser(input.id)) return { ok: false, error: "Usuário não encontrado." };
-        if (userHasReferences(input.id)) {
-          return {
-            ok: false,
-            error: "Usuário possui fórmulas/lotes vinculados e não pode ser excluído."
-          };
-        }
+        reassignUserReferences(input.id, current.id);
         deleteUser(input.id);
         return { ok: true, data: true };
       }

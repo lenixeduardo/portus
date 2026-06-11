@@ -38,6 +38,11 @@ export function updateUserPassword(id: number, password: string): void {
   run("UPDATE users SET password_hash = ? WHERE id = ?", hash, id);
 }
 
+export function reassignUserReferences(userId: number, newUserId: number): void {
+  run("UPDATE batches SET created_by = ? WHERE created_by = ?", newUserId, userId);
+  run("UPDATE products SET created_by = ? WHERE created_by = ?", newUserId, userId);
+}
+
 export function deleteUser(id: number): void {
   run("DELETE FROM users WHERE id = ?", id);
 }
@@ -46,7 +51,3 @@ export function countUsers(): number {
   return get<{ c: number }>("SELECT COUNT(*) AS c FROM users")?.c ?? 0;
 }
 
-export function userHasReferences(id: number): boolean {
-  if (get("SELECT 1 AS x FROM products WHERE created_by = ? LIMIT 1", id)) return true;
-  return get("SELECT 1 AS x FROM batches WHERE created_by = ? LIMIT 1", id) != null;
-}

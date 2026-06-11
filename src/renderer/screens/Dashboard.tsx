@@ -151,7 +151,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
               key={b.id}
               batch={b}
               isCapturing={captureBatchId === b.id}
-              canClose={user.role === "admin"}
+              canClose={true}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
