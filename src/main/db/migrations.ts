@@ -160,5 +160,23 @@ CREATE INDEX IF NOT EXISTS idx_capture_error_logs_batch ON capture_error_logs(ba
 CREATE INDEX IF NOT EXISTS idx_capture_error_logs_session ON capture_error_logs(capture_session_id);
 CREATE INDEX IF NOT EXISTS idx_capture_error_logs_created_at ON capture_error_logs(created_at);
 `
+  },
+  {
+    name: "012_equipment_modbus_and_scaling",
+    sql: `
+ALTER TABLE equipments ADD COLUMN protocol TEXT NOT NULL DEFAULT 'passive';
+ALTER TABLE equipments ADD COLUMN modbus_unit_id INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE equipments ADD COLUMN modbus_function INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE equipments ADD COLUMN modbus_start_address INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE equipments ADD COLUMN modbus_quantity INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE equipments ADD COLUMN modbus_register_decode TEXT NOT NULL DEFAULT 'uint16';
+ALTER TABLE equipments ADD COLUMN modbus_poll_interval_ms INTEGER NOT NULL DEFAULT 1000;
+ALTER TABLE equipments ADD COLUMN modbus_response_timeout_ms INTEGER NOT NULL DEFAULT 1000;
+ALTER TABLE equipments ADD COLUMN scale_enabled INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE equipments ADD COLUMN scale_raw_min REAL;
+ALTER TABLE equipments ADD COLUMN scale_raw_max REAL;
+ALTER TABLE equipments ADD COLUMN scale_out_min REAL;
+ALTER TABLE equipments ADD COLUMN scale_out_max REAL;
+`
   }
 ];

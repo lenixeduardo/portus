@@ -11,6 +11,7 @@ import {
   insertReading
 } from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
+import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
   CaptureStartResult,
@@ -53,6 +54,61 @@ interface ActiveSlot {
   originalPortPath?: string;
   // Conta linhas completas recebidas nesta sessão (para skipFirstReading)
   linesReceived: number;
+  // Para slots Modbus: função que interrompe o polling ativo.
+  modbusStop?: () => void;
+}
+
+// Conecta um slot Modbus aos mesmos mecanismos de persistência/UI/log usados pelo
+// modo passivo: cada resposta vira uma leitura em `readings`; erros vão para o log de
+// captura e acendem o LED vermelho do slot sem interromper o polling.
+function startModbusForSlot(slot: ActiveSlot): void {
+  const eq = slot.equipment;
+  slot.modbusStop = startModbusPolling(slot.port, eq, {
+    onReading: ({ valueRaw, valueParsed }) => {
+      const sid = sessionId;
+      const bid = batchId;
+      if (sid === null || bid === null) return;
+
+      slot.linesReceived++;
+      if ((eq.skipFirstReading || skipFirstReadingForSession) && slot.linesReceived === 1) {
+        return;
+      }
+
+      insertReading({
+        batchId: bid,
+        equipmentId: eq.id,
+        valueRaw,
+        valueParsed,
+        captureSessionId: sid,
+        parseFailureReason: null,
+        parseRegexUsed: null
+      });
+
+      slot.status = "receiving";
+      scheduleUiBroadcast(eq.slotIndex, {
+        slotIndex: eq.slotIndex,
+        status: "receiving",
+        valueRaw,
+        valueParsed: valueParsed ?? undefined,
+        timestamp: new Date().toISOString()
+      });
+    },
+    onError: (code, message) => {
+      logCaptureError({ slot, severity: "warn", code, message });
+      console.warn(`[modbus] ${message}`);
+    },
+    onStatus: (status) => {
+      if (status !== "error") return;
+      const s = slots.get(eq.slotIndex);
+      if (s && s.status !== "error") {
+        s.status = "error";
+        broadcast(IPC.captureSlotUpdate, {
+          slotIndex: eq.slotIndex,
+          status: "error"
+        } satisfies SlotUpdateEvent);
+      }
+    }
+  });
 }
 
 let sessionId: number | null = null;
@@ -203,6 +259,14 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
     clearInterval(timer);
     timer = null;
   }
+
+  // Interrompe pollers Modbus antes de qualquer flush/fechamento de porta.
+  slots.forEach((slot) => {
+    if (slot.modbusStop) {
+      slot.modbusStop();
+      slot.modbusStop = undefined;
+    }
+  });
 
   // Flush de linhas parciais ainda no buffer (sem delimitador final) antes de
   // fechar — evita perder a última leitura recebida junto do timeout.
@@ -454,16 +518,22 @@ export async function startCapture(
     };
     slots.set(eq.slotIndex, slot);
 
-    // Buffer próprio: tolera fragmentação/agregação dos chunks e respeita o
-    // delimitador configurável por equipamento. O listener fica na porta, então
-    // sobrevive a uma reabertura por reconexão.
-    port.on("data", (chunk: Buffer) => {
-      if (sessionId === null) return;
-      // latin1 mapeia cada byte 0-255 sem substituição — preserva exatamente o
-      // que o equipamento enviou, incluindo caracteres >127 (ex.: grau, unidades).
-      slot.buffer += chunk.toString("latin1");
-      drainBuffer(slot);
-    });
+    const isModbus = eq.protocol === "modbus_rtu";
+
+    // Modo passivo: buffer próprio que tolera fragmentação/agregação dos chunks e
+    // respeita o delimitador configurável por equipamento. O listener fica na porta,
+    // então sobrevive a uma reabertura por reconexão.
+    // Modo Modbus: o poller anexa seu próprio listener de dados ao iniciar, portanto
+    // não registramos o listener passivo aqui.
+    if (!isModbus) {
+      port.on("data", (chunk: Buffer) => {
+        if (sessionId === null) return;
+        // latin1 mapeia cada byte 0-255 sem substituição — preserva exatamente o
+        // que o equipamento enviou, incluindo caracteres >127 (ex.: grau, unidades).
+        slot.buffer += chunk.toString("latin1");
+        drainBuffer(slot);
+      });
+    }
 
     // --- Reconexão automática em caso de fechamento inesperado ---
     port.on("close", () => {
@@ -522,12 +592,15 @@ export async function startCapture(
             });
             slot.port = port;
 
-            // Re-bind listeners para a nova porta de fallback
-            port.on("data", (chunk: Buffer) => {
-              if (sessionId === null) return;
-              slot.buffer += chunk.toString("latin1");
-              drainBuffer(slot);
-            });
+            // Re-bind listeners para a nova porta de fallback (listener de dados
+            // apenas no modo passivo; no Modbus o poller cuida disso ao iniciar).
+            if (!isModbus) {
+              port.on("data", (chunk: Buffer) => {
+                if (sessionId === null) return;
+                slot.buffer += chunk.toString("latin1");
+                drainBuffer(slot);
+              });
+            }
 
             port.on("close", () => {
               if (intentionallyClosing.has(eq.slotIndex)) {
@@ -569,6 +642,10 @@ export async function startCapture(
       if (opened) {
         slot.status = "open";
         initSlotEntry.status = "open";
+        // Inicia o polling Modbus na porta efetivamente aberta (original ou fallback).
+        if (isModbus) {
+          startModbusForSlot(slot);
+        }
       } else {
         // Se falhar tudo, desabilita o equipamento no banco automaticamente
         logCaptureError({

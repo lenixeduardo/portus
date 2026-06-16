@@ -82,6 +82,9 @@ interface Args {
   count: number;
   baudRate: number;
   listPresets: boolean;
+  modbus: boolean;
+  unitId: number;
+  value: number | null;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -91,14 +94,107 @@ function parseArgs(argv: string[]): Args {
     return i >= 0 ? args[i + 1] : undefined;
   };
 
+  const rawValue = flag("--value");
   return {
     port: flag("--port") ?? "",
     preset: flag("--preset") ?? "balanca",
     intervalMs: parseInt(flag("--interval") ?? "3000", 10),
     count: parseInt(flag("--count") ?? "0", 10),
     baudRate: parseInt(flag("--baud") ?? "9600", 10),
-    listPresets: args.includes("--list-presets")
+    listPresets: args.includes("--list-presets"),
+    modbus: args.includes("--modbus"),
+    unitId: parseInt(flag("--unit") ?? "1", 10),
+    value: rawValue !== undefined ? parseInt(rawValue, 10) : null
   };
+}
+
+// ─── Modo escravo Modbus RTU ──────────────────────────────────────────────────
+
+function crc16Modbus(frame: Buffer): number {
+  let crc = 0xffff;
+  for (const byte of frame) {
+    crc ^= byte;
+    for (let i = 0; i < 8; i++) {
+      const carry = crc & 0x0001;
+      crc >>= 1;
+      if (carry) crc ^= 0xa001;
+    }
+  }
+  return crc & 0xffff;
+}
+
+function appendCrc(frame: Buffer): Buffer {
+  const crc = crc16Modbus(frame);
+  return Buffer.concat([frame, Buffer.from([crc & 0xff, (crc >> 8) & 0xff])]);
+}
+
+// Responde a requisições de leitura (FC 03/04) como um nó Modbus RTU.
+// Útil para teste E2E sem o equipamento físico (par de portas virtuais via socat/com0com).
+async function runModbusSlave(args: Args): Promise<void> {
+  console.log(`[sim-modbus] Porta:     ${args.port}`);
+  console.log(`[sim-modbus] Unit ID:   ${args.unitId}`);
+  console.log(`[sim-modbus] Baud rate: ${args.baudRate}`);
+  console.log(
+    `[sim-modbus] Valor reg0: ${args.value === null ? "aleatório 339–9980" : args.value}`
+  );
+  console.log();
+
+  const port = new SerialPort({ path: args.port, baudRate: args.baudRate, autoOpen: false });
+  await new Promise<void>((resolve, reject) => {
+    port.open((err) => (err ? reject(err) : resolve()));
+  });
+  console.log("[sim-modbus] Porta aberta. Aguardando requisições...\n");
+
+  let buffer = Buffer.alloc(0);
+  let answered = 0;
+
+  port.on("data", (chunk: Buffer) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    // Requisição de leitura tem 8 bytes: addr, fn, startHi, startLo, qtyHi, qtyLo, crcLo, crcHi.
+    while (buffer.length >= 8) {
+      const req = buffer.subarray(0, 8);
+      buffer = buffer.subarray(8);
+
+      const addr = req.readUInt8(0);
+      const fn = req.readUInt8(1);
+      const quantity = req.readUInt16BE(4);
+      if (fn !== 0x03 && fn !== 0x04) continue;
+      if (addr !== args.unitId) continue;
+
+      const reg0 = args.value === null ? Math.floor(rand(339, 9980, 0)) : args.value;
+      const body = Buffer.alloc(3 + quantity * 2);
+      body.writeUInt8(addr, 0);
+      body.writeUInt8(fn, 1);
+      body.writeUInt8(quantity * 2, 2);
+      body.writeUInt16BE(reg0 & 0xffff, 3);
+      // Demais registradores ficam em zero.
+      const response = appendCrc(body);
+
+      port.write(response, (err) => {
+        if (err) {
+          console.error(`[sim-modbus] Erro ao responder: ${err.message}`);
+          return;
+        }
+        answered++;
+        console.log(
+          `[sim-modbus] #${String(answered).padStart(4, "0")} reg0=${reg0} → ${response
+            .toString("hex")
+            .toUpperCase()
+            .replace(/(.{2})/g, "$1 ")
+            .trim()}`
+        );
+      });
+    }
+  });
+
+  const shutdown = (): void => {
+    port.close(() => {
+      console.log("\n[sim-modbus] Porta fechada. Até mais!");
+      process.exit(0);
+    });
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -123,9 +219,10 @@ async function main(): Promise<void> {
         "",
         "Uso:",
         "  node dist/tools/serial-sim.js --port <caminho> [opções]",
+        "  node dist/tools/serial-sim.js --port <caminho> --modbus [opções]",
         "  node dist/tools/serial-sim.js --list-presets",
         "",
-        "Opções:",
+        "Opções (modo passivo):",
         "  --port <caminho>   Porta serial (ex: /dev/pts/5, COM4)",
         "  --preset <nome>    Tipo de equipamento (padrão: balanca)",
         "  --interval <ms>    Intervalo entre leituras em ms (padrão: 3000)",
@@ -133,12 +230,22 @@ async function main(): Promise<void> {
         "  --baud <taxa>      Baud rate (padrão: 9600)",
         "  --list-presets     Lista os presets disponíveis",
         "",
+        "Opções (modo escravo Modbus RTU):",
+        "  --modbus           Atua como nó Modbus respondendo a FC 03/04",
+        "  --unit <id>        Endereço do nó (padrão: 1)",
+        "  --value <n>        Valor fixo do 1º registrador (padrão: aleatório 339–9980)",
+        "",
         "Exemplos:",
         "  node dist/tools/serial-sim.js --port /dev/pts/5 --preset balanca",
-        "  node dist/tools/serial-sim.js --port COM4 --preset ph --interval 2000 --count 5"
+        "  node dist/tools/serial-sim.js --port /dev/pts/5 --modbus --unit 16 --value 5159"
       ].join("\n")
     );
     process.exit(1);
+  }
+
+  if (args.modbus) {
+    await runModbusSlave(args);
+    return;
   }
 
   const preset = PRESETS[args.preset];

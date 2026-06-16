@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import type { Equipment, LineDelimiter } from "../../../shared/types";
+import type {
+  Equipment,
+  EquipmentProtocol,
+  LineDelimiter,
+  ModbusFunction,
+  ModbusRegisterDecode
+} from "../../../shared/types";
 import type { EquipmentUpdateInput, SerialPortInfo } from "../../../shared/ipc";
 import { Modal } from "../../components/Modal";
 
@@ -9,6 +15,13 @@ const DELIMITER_OPTIONS: { value: LineDelimiter; label: string }[] = [
   { value: "lf", label: "LF (\\n) — tolerante, cobre LF e CRLF" },
   { value: "crlf", label: "CRLF (\\r\\n) — estrito" },
   { value: "cr", label: "CR (\\r) — equipamentos antigos" }
+];
+
+const DECODE_OPTIONS: { value: ModbusRegisterDecode; label: string }[] = [
+  { value: "uint16", label: "uint16 — 1º registrador (0 a 65535)" },
+  { value: "int16", label: "int16 — 1º registrador com sinal" },
+  { value: "uint32_be", label: "uint32 high-low — 2 registradores" },
+  { value: "uint32_le", label: "uint32 low-high — 2 registradores (word swap)" }
 ];
 
 export function EquipmentsTab() {
@@ -45,6 +58,7 @@ export function EquipmentsTab() {
             <tr>
               <th style={{ width: 40 }}>#</th>
               <th>Nome</th>
+              <th>Protocolo</th>
               <th>Porta</th>
               <th>Baud</th>
               <th>Config</th>
@@ -58,6 +72,11 @@ export function EquipmentsTab() {
               <tr key={e.id}>
                 <td><strong>{e.slotIndex}</strong></td>
                 <td>{e.name}</td>
+                <td>
+                  <span className={`chip ${e.protocol === "modbus_rtu" ? "chip-green" : "chip-gray"}`}>
+                    {e.protocol === "modbus_rtu" ? "MODBUS" : "PASSIVO"}
+                  </span>
+                </td>
                 <td className="mono">{e.portPath || <span className="muted">—</span>}</td>
                 <td>{e.baudRate}</td>
                 <td className="muted">
@@ -122,8 +141,27 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
   const [parseRegex, setParseRegex] = useState(equipment.parseRegex ?? "");
   const [lineDelimiter, setLineDelimiter] = useState<LineDelimiter>(equipment.lineDelimiter ?? "lf");
   const [skipFirstReading, setSkipFirstReading] = useState(equipment.skipFirstReading ?? false);
+  const [protocol, setProtocol] = useState<EquipmentProtocol>(equipment.protocol ?? "passive");
+  const [modbusUnitId, setModbusUnitId] = useState(equipment.modbusUnitId ?? 1);
+  const [modbusFunction, setModbusFunction] = useState<ModbusFunction>(equipment.modbusFunction ?? 3);
+  const [modbusStartAddress, setModbusStartAddress] = useState(equipment.modbusStartAddress ?? 0);
+  const [modbusQuantity, setModbusQuantity] = useState(equipment.modbusQuantity ?? 2);
+  const [modbusRegisterDecode, setModbusRegisterDecode] = useState<ModbusRegisterDecode>(
+    equipment.modbusRegisterDecode ?? "uint16"
+  );
+  const [modbusPollIntervalMs, setModbusPollIntervalMs] = useState(equipment.modbusPollIntervalMs ?? 1000);
+  const [modbusResponseTimeoutMs, setModbusResponseTimeoutMs] = useState(
+    equipment.modbusResponseTimeoutMs ?? 1000
+  );
+  const [scaleEnabled, setScaleEnabled] = useState(equipment.scaleEnabled ?? false);
+  const [scaleRawMin, setScaleRawMin] = useState(equipment.scaleRawMin ?? 0);
+  const [scaleRawMax, setScaleRawMax] = useState(equipment.scaleRawMax ?? 0);
+  const [scaleOutMin, setScaleOutMin] = useState(equipment.scaleOutMin ?? 0);
+  const [scaleOutMax, setScaleOutMax] = useState(equipment.scaleOutMax ?? 0);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const isModbus = protocol === "modbus_rtu";
 
   const knownPorts = new Set(ports.map((p) => p.path));
   const showCustomPortNote = portPath && !knownPorts.has(portPath);
@@ -142,7 +180,20 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
       enabled,
       parseRegex: parseRegex || undefined,
       lineDelimiter,
-      skipFirstReading
+      skipFirstReading,
+      protocol,
+      modbusUnitId,
+      modbusFunction,
+      modbusStartAddress,
+      modbusQuantity,
+      modbusRegisterDecode,
+      modbusPollIntervalMs,
+      modbusResponseTimeoutMs,
+      scaleEnabled,
+      scaleRawMin,
+      scaleRawMax,
+      scaleOutMin,
+      scaleOutMax
     };
     const res = await window.api.equipments.update(equipment.id, patch);
     setSaving(false);
@@ -194,6 +245,22 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
           </div>
         </div>
 
+        <div className="field">
+          <label>Protocolo</label>
+          <select
+            value={protocol}
+            onChange={(e) => setProtocol(e.target.value as EquipmentProtocol)}
+          >
+            <option value="passive">Passivo — equipamento envia ao apertar PRINT</option>
+            <option value="modbus_rtu">Modbus RTU — o app envia a requisição e lê</option>
+          </select>
+          <small className="muted">
+            No modo Modbus RTU o Portus atua como mestre: envia a requisição de leitura
+            (ex.: <code>10 03 00 00 00 02 …</code>) e lê a resposta do nó. O CRC é calculado
+            automaticamente.
+          </small>
+        </div>
+
         <div className="grid-2">
           <div className="field">
             <label>Baud rate</label>
@@ -243,6 +310,8 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
           </div>
         </div>
 
+        {!isModbus && (
+        <>
         <div className="field">
           <label>Terminador de linha</label>
           <select
@@ -287,6 +356,148 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
             A segunda linha em diante é processada normalmente.
           </small>
         </div>
+        </>
+        )}
+
+        {isModbus && (
+          <>
+            <div className="grid-2">
+              <div className="field">
+                <label>Endereço do nó (unit id)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={247}
+                  value={modbusUnitId}
+                  onChange={(e) => setModbusUnitId(Number(e.target.value))}
+                />
+                <small className="muted">Decimal. Ex.: nó <code>0x10</code> = 16.</small>
+              </div>
+              <div className="field">
+                <label>Função Modbus</label>
+                <select
+                  value={modbusFunction}
+                  onChange={(e) => setModbusFunction(Number(e.target.value) as ModbusFunction)}
+                >
+                  <option value={3}>03 — Read Holding Registers</option>
+                  <option value={4}>04 — Read Input Registers</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid-2">
+              <div className="field">
+                <label>Endereço inicial</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={65535}
+                  value={modbusStartAddress}
+                  onChange={(e) => setModbusStartAddress(Number(e.target.value))}
+                />
+                <small className="muted">Offset do registrador (base 0).</small>
+              </div>
+              <div className="field">
+                <label>Quantidade de registradores</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={125}
+                  value={modbusQuantity}
+                  onChange={(e) => setModbusQuantity(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div className="field">
+              <label>Decodificação dos registradores</label>
+              <select
+                value={modbusRegisterDecode}
+                onChange={(e) => setModbusRegisterDecode(e.target.value as ModbusRegisterDecode)}
+              >
+                {DECODE_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid-2">
+              <div className="field">
+                <label>Intervalo de polling (ms)</label>
+                <input
+                  type="number"
+                  min={100}
+                  max={60000}
+                  value={modbusPollIntervalMs}
+                  onChange={(e) => setModbusPollIntervalMs(Number(e.target.value))}
+                />
+              </div>
+              <div className="field">
+                <label>Timeout de resposta (ms)</label>
+                <input
+                  type="number"
+                  min={100}
+                  max={60000}
+                  value={modbusResponseTimeoutMs}
+                  onChange={(e) => setModbusResponseTimeoutMs(Number(e.target.value))}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="field">
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={scaleEnabled}
+              onChange={(e) => setScaleEnabled(e.target.checked)}
+            />
+            <span>Aplicar linearização (regra de três)</span>
+          </label>
+          <small className="muted">
+            Converte o valor lido de uma escala para outra:&nbsp;
+            <code>saída = (x − entrada_min) × (saída_max − saída_min) / (entrada_max − entrada_min) + saída_min</code>.
+            Ex.: entrada 339–9980 → saída 0–14.
+          </small>
+        </div>
+
+        {scaleEnabled && (
+          <div className="grid-2">
+            <div className="field">
+              <label>Entrada mín.</label>
+              <input
+                type="number"
+                value={scaleRawMin}
+                onChange={(e) => setScaleRawMin(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label>Entrada máx.</label>
+              <input
+                type="number"
+                value={scaleRawMax}
+                onChange={(e) => setScaleRawMax(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label>Saída mín.</label>
+              <input
+                type="number"
+                value={scaleOutMin}
+                onChange={(e) => setScaleOutMin(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label>Saída máx.</label>
+              <input
+                type="number"
+                value={scaleOutMax}
+                onChange={(e) => setScaleOutMax(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="field">
           <label className="checkbox">
