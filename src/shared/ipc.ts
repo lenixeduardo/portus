@@ -1,4 +1,13 @@
-import type { Batch, Equipment, LineDelimiter, Product, User } from "./types";
+import type {
+  Batch,
+  Equipment,
+  EquipmentProtocol,
+  LineDelimiter,
+  ModbusFunction,
+  ModbusRegisterDecode,
+  Product,
+  User
+} from "./types";
 
 export const IPC = {
   authLogin: "auth:login",
@@ -158,6 +167,19 @@ export interface EquipmentUpdateInput {
   parseRegex?: string;
   lineDelimiter?: LineDelimiter;
   skipFirstReading?: boolean;
+  protocol?: EquipmentProtocol;
+  modbusUnitId?: number;
+  modbusFunction?: ModbusFunction;
+  modbusStartAddress?: number;
+  modbusQuantity?: number;
+  modbusRegisterDecode?: ModbusRegisterDecode;
+  modbusPollIntervalMs?: number;
+  modbusResponseTimeoutMs?: number;
+  scaleEnabled?: boolean;
+  scaleRawMin?: number;
+  scaleRawMax?: number;
+  scaleOutMin?: number;
+  scaleOutMax?: number;
 }
 
 export type AppSettings = Record<string, string>;

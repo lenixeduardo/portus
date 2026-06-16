@@ -59,3 +59,19 @@ export function parseReading(
 }
 
 export const LINE_DELIMITERS: LineDelimiter[] = ["crlf", "lf", "cr"];
+
+export interface LinearScaleConfig {
+  rawMin: number;
+  rawMax: number;
+  outMin: number;
+  outMax: number;
+}
+
+// Converte um valor de uma escala para outra por regra de três (interpolação linear):
+//   out = (x - rawMin) * (outMax - outMin) / (rawMax - rawMin) + outMin
+// Retorna null se a faixa de entrada for degenerada (rawMax === rawMin).
+export function applyLinearScale(x: number, cfg: LinearScaleConfig): number | null {
+  const span = cfg.rawMax - cfg.rawMin;
+  if (span === 0) return null;
+  return ((x - cfg.rawMin) * (cfg.outMax - cfg.outMin)) / span + cfg.outMin;
+}

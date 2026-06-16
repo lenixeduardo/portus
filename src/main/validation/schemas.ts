@@ -128,7 +128,21 @@ export const updateEquipmentSchema = z.object({
       "Regex de parsing inválida"
     )
     .optional(),
-  lineDelimiter: z.enum(DELIMITER_VALUES).optional()
+  lineDelimiter: z.enum(DELIMITER_VALUES).optional(),
+  skipFirstReading: z.boolean().optional(),
+  protocol: z.enum(["passive", "modbus_rtu"]).optional(),
+  modbusUnitId: z.number().int().min(1, "Endereço do nó entre 1 e 247").max(247, "Endereço do nó entre 1 e 247").optional(),
+  modbusFunction: z.number().refine((v) => [3, 4].includes(v), "Função Modbus deve ser 3 ou 4").optional(),
+  modbusStartAddress: z.number().int().min(0).max(65535).optional(),
+  modbusQuantity: z.number().int().min(1, "Quantidade entre 1 e 125").max(125, "Quantidade entre 1 e 125").optional(),
+  modbusRegisterDecode: z.enum(["uint16", "int16", "uint32_be", "uint32_le"]).optional(),
+  modbusPollIntervalMs: z.number().int().min(100, "Intervalo mínimo de 100ms").max(60000).optional(),
+  modbusResponseTimeoutMs: z.number().int().min(100, "Timeout mínimo de 100ms").max(60000).optional(),
+  scaleEnabled: z.boolean().optional(),
+  scaleRawMin: z.number().optional(),
+  scaleRawMax: z.number().optional(),
+  scaleOutMin: z.number().optional(),
+  scaleOutMax: z.number().optional()
 });
 
 export type UpdateEquipmentInput = z.infer<typeof updateEquipmentSchema>;

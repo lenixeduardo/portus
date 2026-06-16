@@ -32,6 +32,20 @@ export function registerEquipmentsHandlers(): void {
         if (input.parity !== undefined) cleaned.parity = input.parity;
         if (input.enabled !== undefined) cleaned.enabled = input.enabled;
         if (input.lineDelimiter !== undefined) cleaned.lineDelimiter = input.lineDelimiter;
+        if (input.skipFirstReading !== undefined) cleaned.skipFirstReading = input.skipFirstReading;
+        if (input.protocol !== undefined) cleaned.protocol = input.protocol;
+        if (input.modbusUnitId !== undefined) cleaned.modbusUnitId = input.modbusUnitId;
+        if (input.modbusFunction !== undefined) cleaned.modbusFunction = input.modbusFunction;
+        if (input.modbusStartAddress !== undefined) cleaned.modbusStartAddress = input.modbusStartAddress;
+        if (input.modbusQuantity !== undefined) cleaned.modbusQuantity = input.modbusQuantity;
+        if (input.modbusRegisterDecode !== undefined) cleaned.modbusRegisterDecode = input.modbusRegisterDecode;
+        if (input.modbusPollIntervalMs !== undefined) cleaned.modbusPollIntervalMs = input.modbusPollIntervalMs;
+        if (input.modbusResponseTimeoutMs !== undefined) cleaned.modbusResponseTimeoutMs = input.modbusResponseTimeoutMs;
+        if (input.scaleEnabled !== undefined) cleaned.scaleEnabled = input.scaleEnabled;
+        if (input.scaleRawMin !== undefined) cleaned.scaleRawMin = input.scaleRawMin;
+        if (input.scaleRawMax !== undefined) cleaned.scaleRawMax = input.scaleRawMax;
+        if (input.scaleOutMin !== undefined) cleaned.scaleOutMin = input.scaleOutMin;
+        if (input.scaleOutMax !== undefined) cleaned.scaleOutMax = input.scaleOutMax;
         const updated = updateEquipment(input.id, cleaned);
         return updated ? { ok: true, data: updated } : { ok: false, error: "Falha ao atualizar." };
       }
