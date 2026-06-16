@@ -1,4 +1,4 @@
-# Serial Reader — TODO
+# PORTUS — TODO
 
 > Lista persistente de tarefas. Atualizar marcando `[x]` ao concluir cada item.
 > Ver `CLAUDE.md` para o contexto completo do produto.

@@ -1,4 +1,4 @@
-# Relatório de Testes Abrangentes — Serial Reader
+# Relatório de Testes Abrangentes — PORTUS
 
 ## Resumo Executivo
 ✅ **66 testes rodados com sucesso (100% aprovados)**
