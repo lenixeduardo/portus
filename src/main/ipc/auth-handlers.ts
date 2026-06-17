@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { IPC, type LoginRequest, type LoginResult } from "../../shared/ipc";
 import { getCurrentUser, login, logout } from "../auth/auth-service";
+import { cancelCapture, isActive } from "../serial/capture-service";
 import { loginSchema } from "../validation/schemas";
 import { validateInput } from "./middleware";
 
@@ -14,7 +15,10 @@ export function registerAuthHandlers(): void {
     })
   );
 
-  ipcMain.handle(IPC.authLogout, () => {
+  ipcMain.handle(IPC.authLogout, async () => {
+    if (isActive()) {
+      await cancelCapture();
+    }
     logout();
   });
 
