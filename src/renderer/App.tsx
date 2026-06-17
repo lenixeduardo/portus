@@ -59,7 +59,7 @@ export function App() {
 
   if (noElectron) return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f172a", color: "#94a3b8", fontFamily: "sans-serif", gap: 12 }}>
-      <p style={{ fontSize: 18, color: "#f1f5f9" }}>Serial Reader</p>
+      <p style={{ fontSize: 18, color: "#f1f5f9" }}>PORTUS</p>
       <p>Este app precisa ser aberto pelo Electron, não pelo browser.</p>
       <code style={{ fontSize: 13 }}>npm run electron</code>
     </div>

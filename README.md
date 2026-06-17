@@ -1,4 +1,4 @@
-# Serial Reader
+# PORTUS
 
 Aplicativo desktop (Electron + React + TypeScript) para captura de leituras de equipamentos laboratoriais via porta serial, vinculadas a fórmulas e lotes.
 

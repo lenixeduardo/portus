@@ -1,5 +1,5 @@
 /**
- * Serial Reader — Simulador de Equipamento Serial
+ * PORTUS — Simulador de Equipamento Serial
  *
  * Abre uma porta serial e envia payloads formatados em intervalos regulares,
  * simulando o comportamento de equipamentos de laboratório (balança, pH-metro, etc.).
@@ -215,7 +215,7 @@ async function main(): Promise<void> {
   if (!args.port) {
     console.error(
       [
-        "Serial Reader — Simulador de Equipamento",
+        "PORTUS — Simulador de Equipamento",
         "",
         "Uso:",
         "  node dist/tools/serial-sim.js --port <caminho> [opções]",

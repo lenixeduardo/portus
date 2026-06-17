@@ -1,5 +1,5 @@
 /**
- * Serial Reader — Testes de integração do simulador serial
+ * PORTUS — Testes de integração do simulador serial
  *
  * Executa 3 testes em sequência:
  *   1. Formato de saída do simulador via porta serial real (socat)
@@ -342,7 +342,7 @@ async function testFullPipeline(): Promise<TestResult> {
 // ─── Runner ───────────────────────────────────────────────────────────────────
 
 async function run(): Promise<void> {
-  console.log(`\n${C.bold}${C.cyan}Serial Reader — Testes de integração do simulador${C.reset}`);
+  console.log(`\n${C.bold}${C.cyan}PORTUS — Testes de integração do simulador${C.reset}`);
   console.log(`${"─".repeat(54)}\n`);
 
   const tests = [testSimulatorOutput, testRegexParser, testFullPipeline];

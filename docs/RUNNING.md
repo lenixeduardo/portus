@@ -1,6 +1,6 @@
-# Como Executar o Serial Reader — Guia Completo
+# Como Executar o PORTUS — Guia Completo
 
-## IMPORTANTE: O Serial Reader DEVE ser aberto pelo Electron, não pelo browser!
+## IMPORTANTE: O PORTUS DEVE ser aberto pelo Electron, não pelo browser!
 
 ---
 

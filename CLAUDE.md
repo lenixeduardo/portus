@@ -1,4 +1,4 @@
-# Serial Reader — Contexto do Projeto
+# PORTUS — Contexto do Projeto
 
 > Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão.
 > Contém a visão completa do produto, decisões técnicas e estado atual.
@@ -6,7 +6,7 @@
 
 ## 1. Visão do produto
 
-Aplicativo **desktop (Windows)** para um laboratório industrial. Captura leituras de equipamentos de bancada (espectrofotômetro, balança, viscosímetro, pH-metro etc.) **via porta serial (COM)** e vincula cada leitura a uma **receita** e a um **lote** de produção.
+**PORTUS** — Aplicativo **desktop (Windows)** para um laboratório industrial. Captura leituras de equipamentos de bancada (espectrofotômetro, balança, viscosímetro, pH-metro etc.) **via porta serial (COM)** (nativa ou **Modbus RTU/RS-485**) e vincula cada leitura a uma **receita** e a um **lote** de produção.
 
 ### Fluxo do operador
 1. Login no sistema.

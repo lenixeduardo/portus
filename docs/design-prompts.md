@@ -1,12 +1,12 @@
-# Prompts de Design — Serial Reader
+# Prompts de Design — PORTUS
 
-Prompts prontos para gerar a interface do Serial Reader em ferramentas de design assistidas por IA.
+Prompts prontos para gerar a interface do PORTUS em ferramentas de design assistidas por IA.
 
 ---
 
 ## 1. Google Stitch
 
-**Project:** Desktop application UI (Windows, 1280×800) for an industrial laboratory tool called **"Serial Reader"** — it captures readings from lab equipment connected via serial (COM) ports and links them to recipes and production batches.
+**Project:** Desktop application UI (Windows, 1280×800) for an industrial laboratory tool called **"PORTUS"** — it captures readings from lab equipment connected via serial (COM) ports and links them to recipes and production batches.
 
 **Visual style:**
 - Clean, professional industrial/lab software aesthetic.
@@ -17,7 +17,7 @@ Prompts prontos para gerar a interface do Serial Reader em ferramentas de design
 
 **Generate the following screens:**
 
-**1. Login screen** — Centered card on a soft gray background. Logo/title "Serial Reader" at top. Username + password fields, "Entrar" primary button. Small footer with version number.
+**1. Login screen** — Centered card on a soft gray background. Logo/title "PORTUS" at top. Username + password fields, "Entrar" primary button. Small footer with version number.
 
 **2. Main Dashboard — Open Batches** — Left dark sidebar with nav: Dashboard, Receitas, Lotes, Histórico, Configurações, Sair. Logged-in user at the bottom. Top bar with title "Lotes Abertos" and two primary buttons: **"+ Nova Receita"**, **"+ Novo Lote"**. Grid of up to **6 batch cards** (3×2). Each card: batch code in bold, recipe name, opened date/time, number of readings, operator. Primary button **"▶ Iniciar Leitura"** + secondary outline **"Finalizar Lote"**. Status chip "ABERTO" in green.
 
@@ -41,7 +41,7 @@ Prompts prontos para gerar a interface do Serial Reader em ferramentas de design
 
 > Cole este prompt no Claude (claude.ai). Ele gera um artifact React funcional e navegável que você pode abrir no painel lateral e clicar entre as telas.
 
-Crie um **artifact React interativo** (single-file, sem dependências externas além de React) que sirva como **mockup navegável** da interface do "Serial Reader" — um aplicativo desktop para Windows usado em laboratório industrial para capturar leituras de equipamentos via porta serial e vinculá-las a receitas e lotes.
+Crie um **artifact React interativo** (single-file, sem dependências externas além de React) que sirva como **mockup navegável** da interface do "PORTUS" — um aplicativo desktop para Windows usado em laboratório industrial para capturar leituras de equipamentos via porta serial e vinculá-las a receitas e lotes.
 
 ### Requisitos técnicos do artifact
 - Um único componente React em TypeScript (ou JSX) exportado como default.
@@ -64,7 +64,7 @@ Crie um **artifact React interativo** (single-file, sem dependências externas a
 
 ### Telas a implementar (navegáveis pela sidebar)
 
-1. **Login** — card centralizado em fundo cinza claro. Título "Serial Reader" em azul. Campos usuário/senha, botão "Entrar". Rodapé pequeno com versão `v0.1.0`. Submeter qualquer valor entra no Dashboard.
+1. **Login** — card centralizado em fundo cinza claro. Título "PORTUS" em azul. Campos usuário/senha, botão "Entrar". Rodapé pequeno com versão `v0.1.0`. Submeter qualquer valor entra no Dashboard.
 
 2. **Dashboard — Lotes Abertos** (rota inicial após login)
    - Sidebar escura à esquerda (220px) com itens: Dashboard, Receitas, Histórico, Configurações. No rodapé da sidebar: nome do usuário e botão "Sair".

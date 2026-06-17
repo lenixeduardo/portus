@@ -1,7 +1,7 @@
 {
-  "name": "serial-reader",
-  "version": "0.1.12",
-  "description": "Desktop app para leitura de equipamentos via porta serial, vinculada a receitas e lotes.",
+  "name": "portus",
+  "version": "0.1.14",
+  "description": "PORTUS — Desktop app para leitura de equipamentos via porta serial, vinculada a receitas e lotes.",
   "main": "dist/main/index.js",
   "author": "",
   "license": "UNLICENSED",

@@ -1,4 +1,4 @@
-# Sugestões de Melhorias — Serial Reader
+# Sugestões de Melhorias — PORTUS
 > Evitar possíveis erros e aumentar robustez do aplicativo
 
 ---
