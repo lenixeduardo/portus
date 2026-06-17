@@ -11,25 +11,20 @@ interface Props {
   batchId: number;
   onClose: () => void;
   onEnded: () => void;
-  onLogout?: () => void;
 }
 
 const RING_RADIUS = 54;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-const LOGOUT_COUNTDOWN_SECONDS = 5;
-
-export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
+export function CaptureModal({ batchId, onClose, onEnded }: Props) {
   const [phase, setPhase] = useState<"starting" | "active" | "ended">("starting");
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [total, setTotal] = useState(0);
   const [slots, setSlots] = useState<SlotState[]>([]);
   const [endReason, setEndReason] = useState<"completed" | "cancelled" | null>(null);
-  const [logoutCountdown, setLogoutCountdown] = useState<number | null>(null);
   const [skipFirstReading, setSkipFirstReading] = useState(false);
   const unsubsRef = useRef<Array<() => void>>([]);
-  const logoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,26 +109,6 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
     };
   }, [batchId]);
 
-  useEffect(() => {
-    if (!endReason || !onLogout) return;
-
-    setLogoutCountdown(LOGOUT_COUNTDOWN_SECONDS);
-
-    let count = LOGOUT_COUNTDOWN_SECONDS;
-    logoutTimerRef.current = setInterval(() => {
-      count -= 1;
-      if (count <= 0) {
-        if (logoutTimerRef.current) clearInterval(logoutTimerRef.current);
-        onLogout();
-      } else {
-        setLogoutCountdown(count);
-      }
-    }, 1000);
-
-    return () => {
-      if (logoutTimerRef.current) clearInterval(logoutTimerRef.current);
-    };
-  }, [endReason, onLogout]);
 
   async function handleCancel() {
     await window.api.capture.cancel();
@@ -222,18 +197,7 @@ export function CaptureModal({ batchId, onClose, onEnded, onLogout }: Props) {
               {endReason === "cancelled" && (
                 <span className="capture-status-msg capture-status-warn">Captura cancelada</span>
               )}
-              {logoutCountdown !== null ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span className="muted" style={{ fontSize: 13 }}>
-                    Encerrando sessão em {logoutCountdown}s…
-                  </span>
-                  <button onClick={() => { if (logoutTimerRef.current) clearInterval(logoutTimerRef.current); onLogout?.(); }}>
-                    Sair agora
-                  </button>
-                </div>
-              ) : (
-                <button onClick={onClose}>Fechar</button>
-              )}
+              <button onClick={onClose}>Fechar</button>
             </>
           )}
         </div>

@@ -18,9 +18,12 @@ export function registerAuthHandlers(): void {
   ipcMain.handle(IPC.authLogout, async () => {
     if (isActive()) {
       try {
-        await cancelCapture();
+        await Promise.race([
+          cancelCapture(),
+          new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+        ]);
       } catch {
-        // cleanup pode falhar se porta já fechou; logout deve prosseguir
+        // ignore — logout deve prosseguir mesmo se cleanup falhar
       }
     }
     logout();
