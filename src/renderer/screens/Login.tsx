@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { User } from "../../shared/types";
 
 interface Props {
@@ -11,6 +11,11 @@ export function Login({ onAuthenticated }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activePort, setActivePort] = useState(0);
+  const usernameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    usernameRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -79,10 +84,10 @@ export function Login({ onAuthenticated }: Props) {
             <div className="field">
               <label>Identificação</label>
               <input
+                ref={usernameRef}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="USER_ID"
-                autoFocus
                 autoComplete="username"
                 className="mono"
               />
