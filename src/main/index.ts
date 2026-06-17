@@ -12,9 +12,11 @@ import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 import { registerShellHandlers } from "./ipc/shell-handlers";
+import { registerLogHandlers } from "./ipc/log-handlers";
 import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from "./db/settings-repo";
 import { runAutoExport } from "./db/history-repo";
 import { runBackup } from "./db/backup";
+import { initLogger, logError } from "./logger";
 
 const DEFAULT_BACKUP_RETENTION = 10;
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -41,6 +43,17 @@ function scheduleNextBackup(): void {
     scheduleNextBackup();
   }, BACKUP_INTERVAL_MS);
 }
+
+initLogger(app.getPath("userData"));
+
+process.on("uncaughtException", (err) => {
+  logError("main:uncaughtException", err.message, err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  logError("main:unhandledRejection", err.message, err);
+});
 
 const isDev = process.env.ELECTRON_DEV === "1" || (!app.isPackaged && process.env.NODE_ENV !== "production");
 
@@ -126,6 +139,7 @@ app.whenReady().then(async () => {
   registerCaptureHandlers();
   registerHistoryHandlers();
   registerShellHandlers();
+  registerLogHandlers();
   scheduleNextMidnightExport();
   scheduleNextBackup();
   createWindow();

@@ -1,3 +1,4 @@
+import "./errorReporter";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/syne/700.css";
