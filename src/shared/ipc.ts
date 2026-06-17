@@ -45,7 +45,8 @@ export const IPC = {
   settingsSelectExportFolder: "settings:select-export-folder",
   settingsSelectBackupFolder: "settings:select-backup-folder",
   settingsBackupNow: "settings:backup-now",
-  shellOpenExternal: "shell:open-external"
+  shellOpenExternal: "shell:open-external",
+  logError: "log:error"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error";
@@ -262,6 +263,9 @@ export interface SerialReaderApi {
   };
   shell: {
     openExternal(url: string): Promise<void>;
+  };
+  log: {
+    error(source: string, message: string, stack?: string): Promise<void>;
   };
 }
 

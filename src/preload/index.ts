@@ -105,6 +105,10 @@ const api: SerialReaderApi = {
   },
   shell: {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url })
+  },
+  log: {
+    error: (source: string, message: string, stack?: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.logError, source, message, stack)
   }
 };
 
