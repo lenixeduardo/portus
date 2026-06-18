@@ -171,7 +171,14 @@ export function CaptureModal({ batchId, onClose, onEnded }: Props) {
               <div className="muted" style={{ gridColumn: "1/-1", textAlign: "center" }}>Abrindo portas...</div>
             )}
             {slots.map((slot) => (
-              <CaptureSlot key={slot.slotIndex} slot={slot} />
+              <CaptureSlot
+                key={slot.slotIndex}
+                slot={slot}
+                onInject={isActive ? async (value) => {
+                  const res = await window.api.capture.injectReading({ slotIndex: slot.slotIndex, rawValue: value });
+                  if (!res.ok) setError(res.error);
+                } : undefined}
+              />
             ))}
           </div>
         </div>
@@ -206,10 +213,25 @@ export function CaptureModal({ batchId, onClose, onEnded }: Props) {
   );
 }
 
-function CaptureSlot({ slot }: { slot: SlotState }) {
+function CaptureSlot({ slot, onInject }: { slot: SlotState; onInject?: (value: string) => Promise<void> }) {
+  const [showInject, setShowInject] = useState(false);
+  const [injectValue, setInjectValue] = useState("");
+  const [injecting, setInjecting] = useState(false);
+
   const ledClass = ledStatusClass(slot.status);
   const displayValue = slot.valueParsed ?? slot.valueRaw;
   const ts = slot.timestamp ? formatTime(slot.timestamp) : null;
+
+  async function handleInjectSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const val = injectValue.trim();
+    if (!val || !onInject) return;
+    setInjecting(true);
+    await onInject(val);
+    setInjecting(false);
+    setInjectValue("");
+    setShowInject(false);
+  }
 
   return (
     <div className={`capture-slot ${slot.status === "receiving" ? "capture-slot-active" : slot.status === "completed" ? "capture-slot-completed" : ""}`}>
@@ -223,6 +245,42 @@ function CaptureSlot({ slot }: { slot: SlotState }) {
         <div className="capture-slot-empty">—</div>
       )}
       {ts && <div className="capture-slot-ts">{ts}</div>}
+      {onInject && slot.status !== "completed" && (
+        showInject ? (
+          <form onSubmit={handleInjectSubmit} style={{ display: "flex", gap: 4, marginTop: 4 }}>
+            <input
+              value={injectValue}
+              onChange={(e) => setInjectValue(e.target.value)}
+              placeholder="Valor..."
+              autoFocus
+              className="mono"
+              disabled={injecting}
+              style={{ flex: 1, fontSize: 12, padding: "3px 6px" }}
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={!injectValue.trim() || injecting}
+              style={{ padding: "3px 8px", fontSize: 12 }}
+            >✓</button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => { setShowInject(false); setInjectValue(""); }}
+              disabled={injecting}
+              style={{ padding: "3px 8px", fontSize: 12 }}
+            >✕</button>
+          </form>
+        ) : (
+          <button
+            className="secondary"
+            onClick={() => setShowInject(true)}
+            style={{ marginTop: 4, fontSize: 11, padding: "3px 8px" }}
+          >
+            Inserir valor
+          </button>
+        )
+      )}
     </div>
   );
 }

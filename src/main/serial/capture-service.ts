@@ -738,6 +738,21 @@ export async function startCapture(
   };
 }
 
+export function injectManualReading(slotIndex: number, rawValue: string): ServiceResult<true> {
+  if (!isActive()) {
+    return { ok: false, error: "Nenhuma captura ativa." };
+  }
+  const slot = slots.get(slotIndex);
+  if (!slot) {
+    return { ok: false, error: `Slot ${slotIndex} não encontrado na sessão atual.` };
+  }
+  if (slot.status === "completed") {
+    return { ok: false, error: `Slot ${slotIndex} já encerrou a leitura.` };
+  }
+  handleLine(slot, rawValue);
+  return { ok: true, data: true };
+}
+
 export function skipFirstReading(): ServiceResult<true> {
   if (!isActive()) {
     return { ok: false, error: "Nenhuma captura ativa." };
