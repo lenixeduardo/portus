@@ -48,7 +48,8 @@ export const IPC = {
   shellOpenExternal: "shell:open-external",
   logError: "log:error",
   logGetRecent: "log:get-recent",
-  logSendReport: "log:send-report"
+  logSendReport: "log:send-report",
+  captureInjectReading: "capture:inject-reading"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
@@ -210,6 +211,11 @@ export interface HistoryFilterInput {
   endDate?: string;
 }
 
+export interface CaptureInjectReadingInput {
+  slotIndex: number;
+  rawValue: string;
+}
+
 export interface SerialReaderApi {
   auth: {
     login(req: LoginRequest): Promise<LoginResult>;
@@ -258,6 +264,7 @@ export interface SerialReaderApi {
     start(batchId: number): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
     skipFirstReading(): Promise<ServiceResult<true>>;
+    injectReading(input: CaptureInjectReadingInput): Promise<ServiceResult<true>>;
     isActive(): Promise<boolean>;
     getState(): Promise<CaptureStateSnapshot>;
     onTick(cb: (e: CaptureTickEvent) => void): Unsubscribe;

@@ -6,7 +6,7 @@ import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
 import { Modal } from "../components/Modal";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { CheckSquare, Scan, Printer, ScanBarcode } from "lucide-react";
+import { CheckSquare, Scan, Printer, ScanBarcode, Zap } from "lucide-react";
 
 type ScannerState =
   | { phase: "idle" }
@@ -18,6 +18,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [loading, setLoading] = useState(true);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
+  const [showSimulateScan, setShowSimulateScan] = useState(false);
   const [printBatch, setPrintBatch] = useState<BatchWithProduct | null>(null);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
@@ -107,6 +108,16 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
         <ScannerStatusBar state={scannerState} />
         <button
           className="secondary"
+          onClick={() => setShowSimulateScan(true)}
+          disabled={!scannerActive}
+          title={scannerActive ? "Simular uma leitura de scanner físico" : "Indisponível durante captura ou com modal aberto"}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <Zap size={14} />
+          Simular Scan
+        </button>
+        <button
+          className="secondary"
           onClick={() => openBarcodeModal()}
           style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
@@ -141,6 +152,16 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
           onClose={() => { setShowBarcode(false); setBarcodeInitial(undefined); }}
           onBatchReady={handleBarcodeReady}
           initialBarcode={barcodeInitial}
+        />
+      )}
+
+      {showSimulateScan && (
+        <SimulateScanModal
+          onClose={() => setShowSimulateScan(false)}
+          onScan={(code) => {
+            setShowSimulateScan(false);
+            handleScan(code);
+          }}
         />
       )}
 
@@ -204,6 +225,52 @@ function PrintBarcodeModal({ batch, onClose }: { batch: BatchWithProduct; onClos
         <div className="print-label">LOTE</div>
         <div className="print-code">#{batch.code}</div>
       </div>
+    </Modal>
+  );
+}
+
+function SimulateScanModal({ onClose, onScan }: { onClose: () => void; onScan: (code: string) => void }) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    window.focus();
+    inputRef.current?.focus();
+  }, []);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const code = value.trim();
+    if (!code) return;
+    onScan(code);
+  }
+
+  return (
+    <Modal
+      title="Simular Leitura de Scanner"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="secondary" onClick={onClose}>Cancelar</button>
+          <button onClick={handleSubmit} disabled={!value.trim()}>Confirmar</button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="field">
+          <label>Código de barras</label>
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Digite o código para simular..."
+            className="mono"
+            autoComplete="off"
+          />
+          <small className="muted">Simula a leitura de um scanner físico HID.</small>
+        </div>
+        <button type="submit" style={{ display: "none" }} />
+      </form>
     </Modal>
   );
 }
