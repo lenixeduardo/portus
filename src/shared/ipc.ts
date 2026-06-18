@@ -46,7 +46,9 @@ export const IPC = {
   settingsSelectBackupFolder: "settings:select-backup-folder",
   settingsBackupNow: "settings:backup-now",
   shellOpenExternal: "shell:open-external",
-  logError: "log:error"
+  logError: "log:error",
+  logGetRecent: "log:get-recent",
+  logSendReport: "log:send-report"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error";
@@ -266,7 +268,18 @@ export interface SerialReaderApi {
   };
   log: {
     error(source: string, message: string, stack?: string): Promise<void>;
+    getRecent(): Promise<string[]>;
+    sendReport(input: LogReportInput): Promise<ServiceResult<LogReportData>>;
   };
+}
+
+export interface LogReportInput {
+  description: string;
+}
+
+export interface LogReportData {
+  sent: boolean;
+  filePath: string | null;
 }
 
 declare global {

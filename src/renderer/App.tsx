@@ -7,6 +7,7 @@ import { Products } from "./screens/Products";
 import { History } from "./screens/History";
 import { Settings } from "./screens/Settings";
 import { Modal } from "./components/Modal";
+import { ReportErrorModal } from "./components/ReportErrorModal";
 import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
 
@@ -25,6 +26,7 @@ export function App() {
   const [bootstrapping, setBootstrapping] = useState(true);
   const [noElectron, setNoElectron] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+  const [showReportError, setShowReportError] = useState(false);
 
   useEffect(() => {
     if (!window.api) {
@@ -74,7 +76,7 @@ export function App() {
   return (
     <>
       <div className="app-shell">
-        <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} />
+        <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} onReportError={() => setShowReportError(true)} />
         <div className="main-area">
           <div className="topbar">
             <h2>{TITLES[route]}</h2>
@@ -88,6 +90,7 @@ export function App() {
         </div>
       </div>
       {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+      {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>
   );
 }

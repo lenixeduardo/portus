@@ -3,6 +3,9 @@ import { join } from "node:path";
 
 let logsDir = "";
 
+const RING_SIZE = 500;
+const logRing: string[] = [];
+
 export function initLogger(userDataPath: string): void {
   logsDir = join(userDataPath, "logs");
   try {
@@ -12,21 +15,32 @@ export function initLogger(userDataPath: string): void {
   }
 }
 
+export function getLogsDir(): string {
+  return logsDir;
+}
+
+export function getRecentLogs(): string[] {
+  return [...logRing];
+}
+
 function logLine(level: "ERROR" | "WARN" | "INFO", source: string, message: string, extra?: string): void {
-  if (!logsDir) return;
-
   const now = new Date();
-  const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
-  const time = now.toISOString().slice(0, 19).replace("T", " "); // YYYY-MM-DD HH:MM:SS
+  const date = now.toISOString().slice(0, 10);
+  const time = now.toISOString().slice(0, 19).replace("T", " ");
 
-  const file = join(logsDir, `portus-${date}.log`);
-  let entry = `[${time}] [${level}] [${source}] ${message}\n`;
-  if (extra) entry += extra.split("\n").map(l => `  ${l}`).join("\n") + "\n";
+  let entry = `[${time}] [${level}] [${source}] ${message}`;
+  if (extra) entry += "\n" + extra.split("\n").map(l => `  ${l}`).join("\n");
 
-  try {
-    appendFileSync(file, entry, "utf-8");
-  } catch {
-    // falha silenciosa — nunca deve derrubar o app
+  logRing.push(entry);
+  if (logRing.length > RING_SIZE) logRing.shift();
+
+  if (logsDir) {
+    const file = join(logsDir, `portus-${date}.log`);
+    try {
+      appendFileSync(file, entry + "\n", "utf-8");
+    } catch {
+      // falha silenciosa — nunca deve derrubar o app
+    }
   }
 }
 

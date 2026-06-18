@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Package, Clock, Settings, Usb, ExternalLink } from "lucide-react";
+import { LayoutDashboard, Package, Clock, Settings, Usb, ExternalLink, Bug } from "lucide-react";
 import type { User } from "../../shared/types";
 
 const CONNECT_URL = "https://kairos-connect-nine.vercel.app";
@@ -11,6 +11,7 @@ interface Props {
   current: Route;
   onNavigate: (r: Route) => void;
   onLogout: () => void;
+  onReportError: () => void;
 }
 
 const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly?: boolean }> = [
@@ -20,7 +21,7 @@ const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly
   { key: "settings", label: "Configurações", icon: Settings, adminOnly: true },
 ];
 
-export function Sidebar({ user, current, onNavigate, onLogout }: Props) {
+export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: Props) {
   const visibleNav = NAV.filter((item) => !item.adminOnly || user.role === "admin");
 
   return (
@@ -63,6 +64,15 @@ export function Sidebar({ user, current, onNavigate, onLogout }: Props) {
       </div>
       <div className="user">
         <div className="name">{user.username}</div>
+        <button
+          className="secondary"
+          onClick={onReportError}
+          title="Reportar um erro ao suporte"
+          style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginBottom: 6 }}
+        >
+          <Bug size={12} />
+          Reportar Erro
+        </button>
         <button onClick={onLogout}>Sair</button>
       </div>
     </aside>

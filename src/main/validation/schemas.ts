@@ -151,7 +151,14 @@ export type UpdateEquipmentInput = z.infer<typeof updateEquipmentSchema>;
  * Validação para atualizar configuração
  */
 export const updateSettingSchema = z.object({
-  key: z.enum(["capture_timeout_seconds", "barcode_regex", "auto_export_folder"]),
+  key: z.enum([
+    "capture_timeout_seconds",
+    "barcode_regex",
+    "auto_export_folder",
+    "auto_backup_folder",
+    "auto_backup_retention",
+    "error_report_webhook"
+  ]),
   value: z.string().min(0)
 });
 
