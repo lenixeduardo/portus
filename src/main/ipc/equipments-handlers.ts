@@ -33,6 +33,7 @@ export function registerEquipmentsHandlers(): void {
         if (input.enabled !== undefined) cleaned.enabled = input.enabled;
         if (input.lineDelimiter !== undefined) cleaned.lineDelimiter = input.lineDelimiter;
         if (input.skipFirstReading !== undefined) cleaned.skipFirstReading = input.skipFirstReading;
+        if (input.stopAfterFirstReading !== undefined) cleaned.stopAfterFirstReading = input.stopAfterFirstReading;
         if (input.protocol !== undefined) cleaned.protocol = input.protocol;
         if (input.modbusUnitId !== undefined) cleaned.modbusUnitId = input.modbusUnitId;
         if (input.modbusFunction !== undefined) cleaned.modbusFunction = input.modbusFunction;

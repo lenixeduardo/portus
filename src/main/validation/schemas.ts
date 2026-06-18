@@ -130,6 +130,7 @@ export const updateEquipmentSchema = z.object({
     .optional(),
   lineDelimiter: z.enum(DELIMITER_VALUES).optional(),
   skipFirstReading: z.boolean().optional(),
+  stopAfterFirstReading: z.boolean().optional(),
   protocol: z.enum(["passive", "modbus_rtu"]).optional(),
   modbusUnitId: z.number().int().min(1, "Endereço do nó entre 1 e 247").max(247, "Endereço do nó entre 1 e 247").optional(),
   modbusFunction: z.number().refine((v) => [3, 4].includes(v), "Função Modbus deve ser 3 ou 4").optional(),

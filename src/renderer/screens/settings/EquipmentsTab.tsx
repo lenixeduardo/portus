@@ -141,6 +141,7 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
   const [parseRegex, setParseRegex] = useState(equipment.parseRegex ?? "");
   const [lineDelimiter, setLineDelimiter] = useState<LineDelimiter>(equipment.lineDelimiter ?? "lf");
   const [skipFirstReading, setSkipFirstReading] = useState(equipment.skipFirstReading ?? false);
+  const [stopAfterFirstReading, setStopAfterFirstReading] = useState(equipment.stopAfterFirstReading ?? false);
   const [protocol, setProtocol] = useState<EquipmentProtocol>(equipment.protocol ?? "passive");
   const [modbusUnitId, setModbusUnitId] = useState(equipment.modbusUnitId ?? 1);
   const [modbusFunction, setModbusFunction] = useState<ModbusFunction>(equipment.modbusFunction ?? 3);
@@ -181,6 +182,7 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
       parseRegex: parseRegex || undefined,
       lineDelimiter,
       skipFirstReading,
+      stopAfterFirstReading,
       protocol,
       modbusUnitId,
       modbusFunction,
@@ -445,6 +447,21 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
             </div>
           </>
         )}
+
+        <div className="field">
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={stopAfterFirstReading}
+              onChange={(e) => setStopAfterFirstReading(e.target.checked)}
+            />
+            <span>Encerrar após primeira leitura</span>
+          </label>
+          <small className="muted">
+            A porta é fechada automaticamente assim que uma leitura for registrada.
+            Útil para equipamentos que devem contribuir com apenas um valor por sessão (ex.: balança).
+          </small>
+        </div>
 
         <div className="field">
           <label className="checkbox">

@@ -946,6 +946,9 @@ label.checkbox input { width: auto; }
 .led-open      { background: #F59E0B; box-shadow: 0 0 6px #F59E0B88; }
 .led-receiving { background: #10B981; box-shadow: 0 0 8px #10B98199; }
 .led-error     { background: #EF4444; box-shadow: 0 0 6px #EF444488; }
+.led-completed { background: #6366F1; box-shadow: 0 0 6px #6366F188; }
+
+.capture-slot-completed { opacity: 0.85; }
 
 /* Capture status footer messages */
 .capture-status-msg {

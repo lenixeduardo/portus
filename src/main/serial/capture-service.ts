@@ -85,6 +85,12 @@ function startModbusForSlot(slot: ActiveSlot): void {
       });
 
       slot.status = "receiving";
+
+      if (eq.stopAfterFirstReading) {
+        closeSlotAfterFirstReading(eq.slotIndex);
+        return;
+      }
+
       scheduleUiBroadcast(eq.slotIndex, {
         slotIndex: eq.slotIndex,
         status: "receiving",
@@ -234,6 +240,11 @@ function handleLine(slot: ActiveSlot, line: string): void {
 
   slot.status = "receiving";
 
+  if (eq.stopAfterFirstReading) {
+    closeSlotAfterFirstReading(eq.slotIndex);
+    return;
+  }
+
   const event: SlotUpdateEvent = {
     slotIndex: eq.slotIndex,
     status: "receiving",
@@ -350,6 +361,36 @@ function attemptReconnect(slotIndex: number): void {
       broadcast(IPC.captureSlotUpdate, { slotIndex, status: "open" } satisfies SlotUpdateEvent);
     }
   });
+}
+
+function closeSlotAfterFirstReading(slotIndex: number): void {
+  const slot = slots.get(slotIndex);
+  if (!slot || slot.status === "completed") return;
+
+  if (slot.modbusStop) {
+    slot.modbusStop();
+    slot.modbusStop = undefined;
+  }
+
+  intentionallyClosing.add(slotIndex);
+
+  const pending = uiDebounceTimers.get(slotIndex);
+  if (pending) {
+    clearTimeout(pending);
+    uiDebounceTimers.delete(slotIndex);
+  }
+
+  slot.status = "completed";
+  broadcast(IPC.captureSlotUpdate, { slotIndex, status: "completed" } satisfies SlotUpdateEvent);
+
+  if (slot.port.isOpen) {
+    slot.port.close((err) => {
+      if (err) {
+        console.warn(`[serial] Erro ao fechar slot ${slotIndex} após 1ª leitura:`, err.message);
+      }
+    });
+  }
+  console.log(`[serial] Slot ${slotIndex} encerrado após primeira leitura (stopAfterFirstReading).`);
 }
 
 function sleep(ms: number): Promise<void> {

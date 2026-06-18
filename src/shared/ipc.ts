@@ -51,7 +51,7 @@ export const IPC = {
   logSendReport: "log:send-report"
 } as const;
 
-export type SlotStatus = "idle" | "open" | "receiving" | "error";
+export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
 
 export interface SlotInitState {
   slotIndex: number;
@@ -170,6 +170,7 @@ export interface EquipmentUpdateInput {
   parseRegex?: string;
   lineDelimiter?: LineDelimiter;
   skipFirstReading?: boolean;
+  stopAfterFirstReading?: boolean;
   protocol?: EquipmentProtocol;
   modbusUnitId?: number;
   modbusFunction?: ModbusFunction;

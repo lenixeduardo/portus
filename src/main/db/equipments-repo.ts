@@ -20,6 +20,7 @@ interface EquipmentRow {
   parse_regex: string | null;
   line_delimiter: string | null;
   skip_first_reading: number;
+  stop_after_first_reading: number;
   protocol: string;
   modbus_unit_id: number;
   modbus_function: number;
@@ -49,6 +50,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     parseRegex: row.parse_regex ?? undefined,
     lineDelimiter: (row.line_delimiter ?? "lf") as LineDelimiter,
     skipFirstReading: row.skip_first_reading === 1,
+    stopAfterFirstReading: row.stop_after_first_reading === 1,
     protocol: (row.protocol ?? "passive") as EquipmentProtocol,
     modbusUnitId: row.modbus_unit_id,
     modbusFunction: row.modbus_function as ModbusFunction,
@@ -82,7 +84,8 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
     `UPDATE equipments SET
       name = ?, port_path = ?, baud_rate = ?, data_bits = ?,
       stop_bits = ?, parity = ?, enabled = ?, parse_regex = ?, line_delimiter = ?,
-      skip_first_reading = ?, protocol = ?, modbus_unit_id = ?, modbus_function = ?,
+      skip_first_reading = ?, stop_after_first_reading = ?, protocol = ?,
+      modbus_unit_id = ?, modbus_function = ?,
       modbus_start_address = ?, modbus_quantity = ?, modbus_register_decode = ?,
       modbus_poll_interval_ms = ?, modbus_response_timeout_ms = ?, scale_enabled = ?,
       scale_raw_min = ?, scale_raw_max = ?, scale_out_min = ?, scale_out_max = ?
@@ -97,6 +100,7 @@ export function updateEquipment(id: number, patch: Partial<Equipment>): Equipmen
     merged.parseRegex ?? null,
     merged.lineDelimiter,
     merged.skipFirstReading ? 1 : 0,
+    merged.stopAfterFirstReading ? 1 : 0,
     merged.protocol,
     merged.modbusUnitId,
     merged.modbusFunction,
