@@ -6,6 +6,7 @@ export function CaptureSettingsTab() {
   const [exportFolder, setExportFolder] = useState<string>("");
   const [backupFolder, setBackupFolder] = useState<string>("");
   const [backupRetention, setBackupRetention] = useState<string>("10");
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,7 @@ export function CaptureSettingsTab() {
       setExportFolder(s.auto_export_folder ?? "");
       setBackupFolder(s.auto_backup_folder ?? "");
       setBackupRetention(s.auto_backup_retention ?? "10");
+      setWebhookUrl(s.error_report_webhook ?? "");
       setLoading(false);
     });
   }, []);
@@ -57,6 +59,8 @@ export function CaptureSettingsTab() {
     if (!r4.ok) { setSaving(false); setError(r4.error); return; }
     const r5 = await window.api.settings.set("auto_backup_retention", String(retentionNum));
     if (!r5.ok) { setSaving(false); setError(r5.error); return; }
+    const r6 = await window.api.settings.set("error_report_webhook", webhookUrl.trim());
+    if (!r6.ok) { setSaving(false); setError(r6.error); return; }
     setSaving(false);
     setSaved(true);
   }
@@ -181,6 +185,19 @@ export function CaptureSettingsTab() {
         </button>
         {backupMessage && <div className="success" style={{ marginTop: 8 }}>{backupMessage}</div>}
         {backupError && <div className="error" style={{ marginTop: 8 }}>{backupError}</div>}
+      </div>
+
+      <div className="field" style={{ marginTop: 28, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 20 }}>
+        <label>Webhook para relatório de erros (opcional)</label>
+        <input
+          value={webhookUrl}
+          onChange={(e) => { setWebhookUrl(e.target.value); setSaved(false); }}
+          placeholder="https://…"
+          className="mono"
+        />
+        <small className="muted">
+          URL para receber relatórios de erro via HTTP POST (JSON). Deixe vazio para salvar apenas localmente.
+        </small>
       </div>
 
       {error && <div className="error">{error}</div>}

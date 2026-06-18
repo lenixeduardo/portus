@@ -16,6 +16,7 @@ import {
   type ProductInput,
   type LoginRequest,
   type LoginResult,
+  type LogReportInput,
   type SerialPortInfo,
   type SerialReaderApi,
   type ServiceResult,
@@ -108,7 +109,11 @@ const api: SerialReaderApi = {
   },
   log: {
     error: (source: string, message: string, stack?: string): Promise<void> =>
-      ipcRenderer.invoke(IPC.logError, source, message, stack)
+      ipcRenderer.invoke(IPC.logError, source, message, stack),
+    getRecent: (): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.logGetRecent),
+    sendReport: (input: LogReportInput) =>
+      ipcRenderer.invoke(IPC.logSendReport, input)
   }
 };
 
