@@ -21,6 +21,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [showSimulateScan, setShowSimulateScan] = useState(false);
   const [printBatch, setPrintBatch] = useState<BatchWithProduct | null>(null);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
+  const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -50,8 +51,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     setShowBarcode(true);
   }
 
-  // Auto-scanner disabled when BarcodeModal is open or capture is running
-  const scannerActive = captureBatchId === null && !showBarcode;
+  // Auto-scanner disabled when BarcodeModal is open, capture is running, or confirm dialog is visible
+  const scannerActive = captureBatchId === null && !showBarcode && confirmBatch === null;
 
   // Leitura pelo scanner físico é totalmente automática: processa o código,
   // cria/abre o lote e já inicia a captura, sem abrir modal nem exigir clique.
@@ -71,8 +72,14 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     handleScan(code);
   }, scannerActive);
 
-  async function handleClose(b: BatchWithProduct) {
-    if (!confirm(`Finalizar o lote ${b.code}?`)) return;
+  function handleClose(b: BatchWithProduct) {
+    setConfirmBatch(b);
+  }
+
+  async function handleConfirmClose() {
+    if (!confirmBatch) return;
+    const b = confirmBatch;
+    setConfirmBatch(null);
     const res = await window.api.batches.close(b.id);
     if (!res.ok) {
       setScannerError(res.error);
@@ -167,6 +174,14 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
 
       {printBatch && (
         <PrintBarcodeModal batch={printBatch} onClose={() => setPrintBatch(null)} />
+      )}
+
+      {confirmBatch && (
+        <ConfirmCloseModal
+          batch={confirmBatch}
+          onClose={() => setConfirmBatch(null)}
+          onConfirm={handleConfirmClose}
+        />
       )}
 
       {captureBatchId !== null && (
@@ -364,6 +379,32 @@ function BatchCard({
         )}
       </div>
     </div>
+  );
+}
+
+function ConfirmCloseModal({
+  batch,
+  onClose,
+  onConfirm
+}: {
+  batch: BatchWithProduct;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      title="Finalizar Lote"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="secondary" onClick={onClose}>Cancelar</button>
+          <button onClick={onConfirm}>Finalizar</button>
+        </>
+      }
+    >
+      <p>Deseja finalizar o lote <strong>{batch.code}</strong>?</p>
+      <p className="muted" style={{ fontSize: 13 }}>Esta ação não pode ser desfeita.</p>
+    </Modal>
   );
 }
 
