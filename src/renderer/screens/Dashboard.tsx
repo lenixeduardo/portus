@@ -155,7 +155,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             setCaptureBatchId(null);
             await reload();
           }}
-          onEnded={reload}
+          onEnded={onLogout}
         />
       )}
     </>
