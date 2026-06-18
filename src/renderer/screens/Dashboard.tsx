@@ -77,7 +77,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       setScannerError(res.error);
       return;
     }
-    await onLogout();
+    await reload();
   }
 
   function handlePrintBarcode(batch: BatchWithProduct) {
@@ -155,7 +155,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             setCaptureBatchId(null);
             await reload();
           }}
-          onEnded={reload}
+          onEnded={onLogout}
         />
       )}
     </>
