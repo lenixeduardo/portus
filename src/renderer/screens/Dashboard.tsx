@@ -155,7 +155,12 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             setCaptureBatchId(null);
             await reload();
           }}
-          onEnded={onLogout}
+          onEnded={() => {
+            setCaptureBatchId(null);
+            // Defer logout to the next macrotask so React can unmount CaptureModal
+            // (removing IPC listeners) before the logout IPC call starts.
+            setTimeout(onLogout, 0);
+          }}
         />
       )}
     </>

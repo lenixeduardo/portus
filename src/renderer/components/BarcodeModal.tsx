@@ -21,6 +21,9 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode }: Props) {
     if (initialBarcode) {
       scan(initialBarcode);
     } else {
+      // window.focus() reacquires OS-level keyboard focus for the Electron window
+      // in case it was lost during a logout/login cycle, then focuses the input.
+      window.focus();
       inputRef.current?.focus();
     }
     return () => { mountedRef.current = false; };
