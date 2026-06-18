@@ -212,7 +212,7 @@ function CaptureSlot({ slot }: { slot: SlotState }) {
   const ts = slot.timestamp ? formatTime(slot.timestamp) : null;
 
   return (
-    <div className={`capture-slot ${slot.status === "receiving" ? "capture-slot-active" : ""}`}>
+    <div className={`capture-slot ${slot.status === "receiving" ? "capture-slot-active" : slot.status === "completed" ? "capture-slot-completed" : ""}`}>
       <div className="capture-slot-header">
         <span className={`led ${ledClass}`} title={ledLabel(slot.status)} />
         <span className="capture-slot-name">{slot.name}</span>
@@ -232,6 +232,7 @@ function ledStatusClass(status: SlotStatus): string {
     case "open": return "led-open";
     case "receiving": return "led-receiving";
     case "error": return "led-error";
+    case "completed": return "led-completed";
     default: return "led-idle";
   }
 }
@@ -241,6 +242,7 @@ function ledLabel(status: SlotStatus): string {
     case "open": return "Aguardando leitura";
     case "receiving": return "Leitura recebida";
     case "error": return "Erro na porta";
+    case "completed": return "Leitura capturada — slot encerrado";
     default: return "Inativo";
   }
 }

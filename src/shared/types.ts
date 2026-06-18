@@ -50,6 +50,7 @@ export interface Equipment {
   parseRegex?: string;
   lineDelimiter: LineDelimiter;
   skipFirstReading: boolean;
+  stopAfterFirstReading: boolean;
   protocol: EquipmentProtocol;
   modbusUnitId: number;
   modbusFunction: ModbusFunction;

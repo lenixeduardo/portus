@@ -178,5 +178,9 @@ ALTER TABLE equipments ADD COLUMN scale_raw_max REAL;
 ALTER TABLE equipments ADD COLUMN scale_out_min REAL;
 ALTER TABLE equipments ADD COLUMN scale_out_max REAL;
 `
+  },
+  {
+    name: "013_equipment_stop_after_first_reading",
+    sql: `ALTER TABLE equipments ADD COLUMN stop_after_first_reading INTEGER NOT NULL DEFAULT 0;`
   }
 ];
