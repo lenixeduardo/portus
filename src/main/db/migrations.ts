@@ -182,5 +182,9 @@ ALTER TABLE equipments ADD COLUMN scale_out_max REAL;
   {
     name: "013_equipment_stop_after_first_reading",
     sql: `ALTER TABLE equipments ADD COLUMN stop_after_first_reading INTEGER NOT NULL DEFAULT 0;`
+  },
+  {
+    name: "014_enable_stop_after_first_reading_for_scale",
+    sql: `UPDATE equipments SET stop_after_first_reading = 1 WHERE name = 'Balança';`
   }
 ];
