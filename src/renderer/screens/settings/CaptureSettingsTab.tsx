@@ -188,15 +188,16 @@ export function CaptureSettingsTab() {
       </div>
 
       <div className="field" style={{ marginTop: 28, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 20 }}>
-        <label>Webhook para relatório de erros (opcional)</label>
+        <label>Webhook adicional para relatório de erros (opcional)</label>
         <input
           value={webhookUrl}
           onChange={(e) => { setWebhookUrl(e.target.value); setSaved(false); }}
-          placeholder="https://…"
+          placeholder="https://meu-servidor.com/webhook"
           className="mono"
         />
         <small className="muted">
-          URL para receber relatórios de erro via HTTP POST (JSON). Deixe vazio para salvar apenas localmente.
+          Relatórios são sempre enviados ao painel cloud do desenvolvedor. Informe uma URL aqui para receber
+          também via HTTP POST (JSON) em outro destino, como o Obsidian webhook local.
         </small>
       </div>
 

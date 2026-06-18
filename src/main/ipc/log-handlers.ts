@@ -6,6 +6,8 @@ import { getLogsDir, getRecentLogs, logError } from "../logger";
 import { getSetting } from "../db/settings-repo";
 import { requireAuth } from "./middleware";
 
+const SUPABASE_REPORT_URL = "https://gvbzijlgvvqoelkimfzb.supabase.co/functions/v1/receive-report";
+
 export function registerLogHandlers(): void {
   ipcMain.handle(IPC.logError, (_e, source: string, message: string, stack?: string) => {
     logError(source, message, stack);
@@ -50,26 +52,41 @@ export function registerLogHandlers(): void {
         }
       }
 
+      const payload = {
+        app: "PORTUS",
+        timestamp,
+        description,
+        platform: process.platform,
+        arch: process.arch,
+        logs
+      };
+
       let sent = false;
-      if (webhookUrl) {
+
+      // Sempre envia ao endpoint Supabase (cloud do desenvolvedor)
+      try {
+        const res = await fetch(SUPABASE_REPORT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(10000)
+        });
+        sent = res.ok;
+      } catch {
+        // falha de rede — não bloqueia o relatório local
+      }
+
+      // Adicionalmente, envia ao webhook configurado pelo usuário se definido
+      if (webhookUrl && webhookUrl !== SUPABASE_REPORT_URL) {
         try {
-          const payload = {
-            app: "PORTUS",
-            timestamp,
-            description,
-            platform: process.platform,
-            arch: process.arch,
-            logs
-          };
-          const res = await fetch(webhookUrl, {
+          await fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
             signal: AbortSignal.timeout(10000)
           });
-          sent = res.ok;
         } catch {
-          // erro de rede — não bloqueia o relatório local
+          // falha silenciosa no webhook secundário
         }
       }
 
