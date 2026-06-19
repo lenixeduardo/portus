@@ -123,23 +123,30 @@ export function History() {
   return (
     <>
       <div className="history-toolbar">
-        <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-          <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : "")}
-          >
-            <option value="">Selecione um lote...</option>
-            {batches.map((b) => (
-              <option key={b.id} value={b.id}>
-                #{b.code} — {b.productName}{" "}
-                {b.status === "closed" ? "(encerrado)" : "(aberto)"}
-              </option>
-            ))}
-          </select>
+        <div className="batch-picker">
+          {batches.length === 0 ? (
+            <div className="batch-picker-item" style={{ color: "var(--text-faint)", cursor: "default" }}>
+              Nenhum lote cadastrado
+            </div>
+          ) : (
+            batches.map((b) => (
+              <button
+                key={b.id}
+                className={`batch-picker-item${selectedId === b.id ? " batch-picker-item--selected" : ""}`}
+                onClick={() => setSelectedId(selectedId === b.id ? "" : b.id)}
+              >
+                <span className="batch-picker-code">#{b.code}</span>
+                <span className="batch-picker-name">{b.productName}</span>
+                <span className={`chip ${b.status === "closed" ? "chip-gray" : "chip-green"}`}>
+                  {b.status === "closed" ? "ENCERRADO" : "ABERTO"}
+                </span>
+              </button>
+            ))
+          )}
         </div>
 
         {history && (
-          <button onClick={handleExport} disabled={exporting} className="export-btn">
+          <button onClick={handleExport} disabled={exporting} className="export-btn" style={{ alignSelf: "flex-start" }}>
             {exporting ? "Exportando..." : "⬇ Exportar CSV"}
           </button>
         )}
