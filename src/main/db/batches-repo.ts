@@ -9,6 +9,7 @@ interface BatchRow {
   status: "open" | "closed";
   opened_at: string;
   closed_at: string | null;
+  closed_by: number | null;
   created_by: number;
 }
 
@@ -26,6 +27,7 @@ function rowToBatch(row: BatchRow): Batch {
     status: row.status,
     openedAt: row.opened_at,
     closedAt: row.closed_at ?? undefined,
+    closedBy: row.closed_by ?? undefined,
     createdBy: row.created_by
   };
 }
@@ -77,10 +79,10 @@ export function createBatch(productId: number, code: string, createdBy: number):
   return getBatchWithProduct(id)!;
 }
 
-export function closeBatch(id: number): void {
+export function closeBatch(id: number, userId: number): void {
   run(
-    "UPDATE batches SET status = 'closed', closed_at = datetime('now') WHERE id = ? AND status = 'open'",
-    id
+    "UPDATE batches SET status = 'closed', closed_at = datetime('now'), closed_by = ? WHERE id = ? AND status = 'open'",
+    userId, id
   );
 }
 

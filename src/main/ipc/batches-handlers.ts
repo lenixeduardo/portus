@@ -82,10 +82,12 @@ export function registerBatchesHandlers(): void {
     IPC.batchesClose,
     compose([requireAuth, validateInput(closeBatchSchema)])(
       (_e, input: CloseBatchInput): ServiceResult<true> => {
+        const user = getCurrentUser();
+        if (!user) return { ok: false, error: "Sessão expirada." };
         const batch = getBatchWithProduct(input.id);
         if (!batch) return { ok: false, error: "Lote não encontrado." };
         if (batch.status === "closed") return { ok: false, error: "Lote já está fechado." };
-        closeBatch(input.id);
+        closeBatch(input.id, user.id);
         return { ok: true, data: true };
       }
     )

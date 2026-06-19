@@ -20,6 +20,7 @@ export interface Batch {
   status: "open" | "closed";
   openedAt: string;
   closedAt?: string;
+  closedBy?: number;
   createdBy: number;
 }
 
