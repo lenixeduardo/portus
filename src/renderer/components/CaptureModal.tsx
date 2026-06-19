@@ -10,7 +10,7 @@ interface SlotState extends SlotInitState {
 interface Props {
   batchId: number;
   onClose: () => void;
-  onEnded: () => void;
+  onEnded: (reason: "completed" | "cancelled") => void;
 }
 
 const RING_RADIUS = 54;
@@ -88,7 +88,7 @@ export function CaptureModal({ batchId, onClose, onEnded }: Props) {
       const unEnded = window.api.capture.onEnded((e) => {
         setEndReason(e.reason);
         setPhase("ended");
-        onEnded();
+        onEnded(e.reason);
       });
 
       unsubsRef.current = [unTick, unSlot, unEnded];

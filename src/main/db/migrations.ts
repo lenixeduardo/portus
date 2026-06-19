@@ -186,5 +186,9 @@ ALTER TABLE equipments ADD COLUMN scale_out_max REAL;
   {
     name: "014_enable_stop_after_first_reading_for_scale",
     sql: `UPDATE equipments SET stop_after_first_reading = 1 WHERE name = 'Balança';`
+  },
+  {
+    name: "015_batches_closed_by",
+    sql: `ALTER TABLE batches ADD COLUMN closed_by INTEGER REFERENCES users(id) ON DELETE SET NULL;`
   }
 ];
