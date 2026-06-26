@@ -471,7 +471,8 @@ export function getState(): CaptureStateSnapshot {
 }
 
 export async function startCapture(
-  targetBatchId: number
+  targetBatchId: number,
+  equipmentIds?: number[]
 ): Promise<ServiceResult<CaptureStartResult>> {
   if (isActive()) {
     return { ok: false, error: "Já existe uma captura em andamento." };
@@ -488,7 +489,9 @@ export async function startCapture(
     return { ok: false, error: "O lote já foi finalizado e não aceita novas leituras." };
   }
 
-  const equipments = listEquipments().filter((e) => e.enabled);
+  const equipments = listEquipments().filter(
+    (e) => e.enabled && (equipmentIds == null || equipmentIds.includes(e.id))
+  );
   if (equipments.length === 0) {
     return { ok: false, error: "Nenhum equipamento habilitado configurado." };
   }

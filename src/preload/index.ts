@@ -95,8 +95,8 @@ const api: SerialReaderApi = {
     listPorts: (): Promise<SerialPortInfo[]> => ipcRenderer.invoke(IPC.serialListPorts)
   },
   capture: {
-    start: (batchId: number): Promise<ServiceResult<CaptureStartResult>> =>
-      ipcRenderer.invoke(IPC.captureStart, { batchId }),
+    start: (batchId: number, equipmentIds?: number[]): Promise<ServiceResult<CaptureStartResult>> =>
+      ipcRenderer.invoke(IPC.captureStart, { batchId, equipmentIds }),
     cancel: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureCancel),
     skipFirstReading: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureSkipFirstReading),
     injectReading: (input: CaptureInjectReadingInput): Promise<ServiceResult<true>> =>

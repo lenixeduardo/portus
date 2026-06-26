@@ -6,7 +6,8 @@ import { cancelCapture, getState, injectManualReading, isActive, skipFirstReadin
 import { compose, requireAuth, validateInput } from "./middleware";
 
 const startCaptureSchema = z.object({
-  batchId: z.number().positive("ID do lote deve ser um número positivo")
+  batchId: z.number().positive("ID do lote deve ser um número positivo"),
+  equipmentIds: z.array(z.number().positive()).optional()
 });
 
 const injectReadingSchema = z.object({
@@ -19,7 +20,7 @@ export function registerCaptureHandlers(): void {
     IPC.captureStart,
     compose([requireAuth, validateInput(startCaptureSchema)])(
       async (_e, input: z.infer<typeof startCaptureSchema>) => {
-        return startCapture(input.batchId);
+        return startCapture(input.batchId, input.equipmentIds);
       }
     )
   );

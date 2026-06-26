@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
 import { CaptureModal } from "../components/CaptureModal";
+import { EquipmentSelectionModal } from "../components/EquipmentSelectionModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
 import { Modal } from "../components/Modal";
@@ -21,6 +22,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [simulatingLot, setSimulatingLot] = useState(false);
   const [printBatch, setPrintBatch] = useState<BatchWithProduct | null>(null);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
+  const [captureEquipmentIds, setCaptureEquipmentIds] = useState<number[] | null>(null);
+  const [selectionBatch, setSelectionBatch] = useState<BatchWithProduct | null>(null);
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,8 +54,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     setShowBarcode(true);
   }
 
-  // Auto-scanner disabled when BarcodeModal is open, capture is running, or confirm dialog is visible
-  const scannerActive = captureBatchId === null && !showBarcode && confirmBatch === null;
+  // Auto-scanner disabled when BarcodeModal is open, capture is running, selection modal is open, or confirm dialog is visible
+  const scannerActive = captureBatchId === null && !showBarcode && confirmBatch === null && selectionBatch === null;
 
   // Leitura pelo scanner físico é totalmente automática: processa o código,
   // cria/abre o lote e já inicia a captura, sem abrir modal nem exigir clique.
@@ -126,10 +129,17 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     await reload();
     setBatches((current) => {
       const stillOpen = current.some((b) => b.id === batch.id);
-      if (stillOpen) setCaptureBatchId(batch.id);
+      if (stillOpen) setSelectionBatch(batch);
       else setScannerError(`Lote ${batch.code} foi fechado antes de iniciar a captura.`);
       return current;
     });
+  }
+
+  function handleEquipmentSelected(ids: number[]) {
+    const batch = selectionBatch;
+    setSelectionBatch(null);
+    setCaptureEquipmentIds(ids);
+    if (batch) setCaptureBatchId(batch.id);
   }
 
   return (
@@ -197,15 +207,26 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
         />
       )}
 
+      {selectionBatch !== null && (
+        <EquipmentSelectionModal
+          batch={selectionBatch}
+          onConfirm={handleEquipmentSelected}
+          onCancel={() => setSelectionBatch(null)}
+        />
+      )}
+
       {captureBatchId !== null && (
         <CaptureModal
           batchId={captureBatchId}
+          equipmentIds={captureEquipmentIds ?? undefined}
           onClose={async () => {
             setCaptureBatchId(null);
+            setCaptureEquipmentIds(null);
             await reload();
           }}
           onEnded={(reason) => {
             setCaptureBatchId(null);
+            setCaptureEquipmentIds(null);
             if (reason === "completed") {
               // Defer logout to the next macrotask so React can unmount CaptureModal
               // (removing IPC listeners) before the logout IPC call starts.
