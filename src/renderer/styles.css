@@ -915,6 +915,74 @@ label.checkbox input { width: auto; }
 
 .reading-parsed { color: #065F46; font-weight: 600; }
 
+/* ── Equipment Selection Modal ── */
+
+.equipment-selection-batch {
+  font-size: 13px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.equipment-selection-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.equipment-selection-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.equipment-selection-item:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+}
+
+.equipment-selection-item-on {
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+
+.equipment-selection-checkbox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.equipment-selection-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.equipment-selection-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.equipment-selection-meta {
+  font-size: 12px;
+}
+
+.equipment-selection-warn {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--warn);
+}
+
 /* ── Capture Modal ── */
 .capture-modal-card { width: 640px; }
 
