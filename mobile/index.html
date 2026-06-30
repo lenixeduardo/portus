@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PORTUS — Mobile Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
+  <style>
+    /* ─────────────────────────────────────────────────
+       DESIGN TOKENS
+    ───────────────────────────────────────────────── */
+    :root {
+      /* Base backgrounds */
+      --bg-0: #020609;
+      --bg-1: #061415;
+      --bg-2: #0C1115;
+      --bg-3: #11181D;
+      --bg-4: #151E23;
+      --bg-5: #1B2B2F;
+
+      /* Brand */
+      --primary:      #17D48F;
+      --primary-h:    #25E7D1;
+      --primary-dk:   #12B8A5;
+      --primary-glow: #52F3DF;
+      --primary-dim:  rgba(23, 212, 143, 0.12);
+      --primary-dim2: rgba(23, 212, 143, 0.18);
+
+      /* Status */
+      --success: #22D38F;
+      --warning: #F66938;
+      --danger:  #FF4B4B;
+      --info:    #3AA5FF;
+
+      /* Text */
+      --t0: #FFFFFF;
+      --t1: #E5E7EB;
+      --t2: #9CA3AF;
+      --t3: #6B7280;
+      --t4: #4B5563;
+
+      /* Borders */
+      --border:        #1C252B;
+      --divider:       rgba(255, 255, 255, 0.06);
+      --glow-divider:  rgba(23, 212, 191, 0.18);
+
+      /* Radii */
+      --r-card:  18px;
+      --r-input: 14px;
+      --r-btn:   16px;
+      --r-badge: 100px;
+
+      /* Shadows */
+      --shadow:      0 10px 30px rgba(0,0,0,.30);
+      --shadow-glow: 0 0 30px rgba(23,212,191,.18);
+      --btn-glow:    0 0 24px rgba(23,212,143,.35);
+
+      /* Font */
+      --ff: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ─────────────────────────────────────────────────
+       RESET + PAGE
+    ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--ff);
+      background: #05080a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 48px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─────────────────────────────────────────────────
+       PAGE HEADER
+    ───────────────────────────────────────────────── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .page-header .logo-row {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .page-header h1 {
+      font-size: 22px; font-weight: 800; color: var(--primary);
+      letter-spacing: .06em;
+    }
+    .page-header p { font-size: 14px; color: var(--t3); }
+
+    /* ─────────────────────────────────────────────────
+       SCREEN SELECTOR
+    ───────────────────────────────────────────────── */
+    .screen-nav {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      justify-content: center; margin-bottom: 28px; max-width: 860px;
+    }
+    .screen-nav button {
+      padding: 6px 13px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--t2);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; font-family: var(--ff);
+      transition: all .15s;
+    }
+    .screen-nav button:hover { background: var(--bg-4); color: var(--t1); }
+    .screen-nav button.active {
+      background: var(--primary-dim); border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* ─────────────────────────────────────────────────
+       PHONE FRAME
+    ───────────────────────────────────────────────── */
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg-0);
+      border-radius: 50px;
+      border: 1.5px solid rgba(255,255,255,.08);
+      box-shadow:
+        0 0 0 6px rgba(0,0,0,.55),
+        0 50px 100px rgba(0,0,0,.65),
+        var(--shadow-glow);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Notch */
+    .notch {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 34px;
+      background: #000;
+      border-radius: 0 0 20px 20px;
+      z-index: 200;
+    }
+
+    /* ─────────────────────────────────────────────────
+       STATUS BAR
+    ───────────────────────────────────────────────── */
+    .status-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 28px 4px;
+      flex-shrink: 0; z-index: 100; position: relative;
+    }
+    .status-bar .time { font-size: 15px; font-weight: 700; color: var(--t0); }
+    .status-icons { display: flex; gap: 6px; align-items: center; }
+
+    /* ─────────────────────────────────────────────────
+       SCREENS CONTAINER
+    ───────────────────────────────────────────────── */
+    .screens-wrap {
+      flex: 1; overflow: hidden;
+      display: flex; flex-direction: column;
+      min-height: 0;
+    }
+    .screen {
+      display: none; flex: 1;
+      flex-direction: column; overflow: hidden;
+    }
+    .screen.active { display: flex; }
+
+    /* Scrollable area inside a screen */
+    .scroll {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      scrollbar-width: none;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* ─────────────────────────────────────────────────
+       BOTTOM NAV
+    ───────────────────────────────────────────────── */
+    .bottom-nav {
+      display: flex;
+      background: var(--bg-2);
+      border-top: 1px solid var(--glow-divider);
+      flex-shrink: 0;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 10px 4px 22px;
+      cursor: pointer; color: var(--t3);
+      font-size: 10px; font-weight: 500; gap: 4px;
+      transition: color .15s;
+      user-select: none;
+    }
+    .nav-item.active { color: var(--primary); }
+    .nav-item svg { transition: stroke .15s; }
+
+    /* ─────────────────────────────────────────────────
+       COMMON COMPONENTS
+    ───────────────────────────────────────────────── */
+
+    /* App header */
+    .app-header {
+      padding: 14px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--divider);
+      flex-shrink: 0;
+    }
+    .app-header h2 { font-size: 20px; font-weight: 700; color: var(--t0); }
+
+    /* Back header */
+    .nav-header {
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    /* Icon button */
+    .icon-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-3); border: 1px solid var(--border);
+      border-radius: 50%; cursor: pointer; color: var(--t2);
+      transition: all .15s;
+    }
+    .icon-btn:hover { background: var(--bg-4); color: var(--t1); }
+
+    /* Search bar */
+    .search-bar {
+      margin: 12px 24px 0;
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-3); border: 1px solid var(--border);
+      border-radius: var(--r-input); padding: 12px 16px;
+    }
+    .search-bar input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--t1); font-size: 15px; font-family: var(--ff);
+    }
+    .search-bar input::placeholder { color: var(--t3); }
+
+    /* Filter chips row */
+    .chips-row {
+      display: flex; gap: 8px; padding: 12px 24px;
+      overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+    }
+    .chips-row::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 7px 16px;
+      border-radius: var(--r-badge);
+      font-size: 14px; font-weight: 500; white-space: nowrap;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--bg-3); color: var(--t2);
+      display: flex; align-items: center; gap: 5px;
+      transition: all .15s; user-select: none;
+    }
+    .chip.active {
+      background: var(--primary-dim);
+      border-color: var(--primary); color: var(--primary);
+    }
+    .chip:hover:not(.active) { background: var(--bg-4); color: var(--t1); }
+
+    /* Badges */
+    .badge {
+      padding: 3px 10px;
+      border-radius: var(--r-badge);
+      font-size: 11px; font-weight: 700;
+      display: inline-flex; align-items: center;
+      white-space: nowrap;
+    }
+    .badge-ok  { background: rgba(34,211,143,.14); color: var(--success); }
+    .badge-wn  { background: rgba(246,105,56,.14); color: var(--warning); }
+    .badge-err { background: rgba(255,75,75,.14);  color: var(--danger);  }
+    .badge-inf { background: rgba(58,165,255,.14); color: var(--info);    }
+
+    /* Card */
+    .card {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r-card);
+    }
+    .card-mx { margin: 12px 24px; }
+
+    /* Reading list row */
+    .reading-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 15px 20px; border-bottom: 1px solid var(--divider);
+      cursor: pointer; transition: background .12s;
+    }
+    .reading-row:last-child { border-bottom: none; }
+    .reading-row:hover { background: rgba(255,255,255,.025); }
+    .rr-left .rr-name { font-size: 15px; font-weight: 600; color: var(--t0); margin-bottom: 2px; }
+    .rr-left .rr-sub  { font-size: 13px; color: var(--t2); }
+    .rr-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .rr-right .rr-time { font-size: 13px; color: var(--t2); }
+
+    /* Buttons */
+    .btn-primary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 16px;
+      background: var(--primary); color: #000;
+      font-size: 16px; font-weight: 700; border-radius: var(--r-btn);
+      border: none; cursor: pointer; font-family: var(--ff);
+      transition: opacity .15s, box-shadow .15s;
+      box-shadow: var(--btn-glow);
+    }
+    .btn-primary:hover { opacity: .9; }
+    .btn-secondary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 15px;
+      background: transparent; color: var(--t1);
+      font-size: 15px; font-weight: 600; border-radius: var(--r-btn);
+      border: 1px solid var(--border); cursor: pointer; font-family: var(--ff);
+      transition: all .15s;
+    }
+    .btn-secondary:hover { background: var(--bg-3); border-color: var(--t3); }
+    .btn-ghost {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 15px;
+      background: transparent; color: var(--primary);
+      font-size: 15px; font-weight: 600; border-radius: var(--r-btn);
+      border: 1px solid var(--border); cursor: pointer; font-family: var(--ff);
+      transition: all .15s;
+    }
+    .btn-ghost:hover { background: var(--primary-dim); border-color: var(--primary-h); }
+    .btn-inline {
+      background: none; border: none; cursor: pointer;
+      font-family: var(--ff); font-size: 14px; font-weight: 500;
+      color: var(--primary);
+    }
+    .btn-danger-outline {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; padding: 15px;
+      background: transparent; color: var(--danger);
+      font-size: 16px; font-weight: 600; border-radius: var(--r-btn);
+      border: 1px solid rgba(255,75,75,.3); cursor: pointer; font-family: var(--ff);
+      transition: all .15s;
+    }
+    .btn-danger-outline:hover { background: rgba(255,75,75,.07); }
+
+    /* Or divider */
+    .or-divider {
+      display: flex; align-items: center; gap: 12px;
+      color: var(--t3); font-size: 14px;
+    }
+    .or-divider::before, .or-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--divider);
+    }
+
+    /* Input field */
+    .input-field {
+      width: 100%; padding: 14px 16px;
+      background: var(--bg-3); border: 1px solid var(--border);
+      border-radius: var(--r-input); color: var(--t1);
+      font-size: 16px; font-family: var(--ff); outline: none;
+      transition: border-color .15s;
+    }
+    .input-field:focus { border-color: var(--primary); }
+    .input-field::placeholder { color: var(--t3); }
+    .input-wrap { position: relative; }
+    .input-wrap .eye {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: var(--t3); display: flex; align-items: center;
+    }
+
+    /* Section header */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px 8px;
+    }
+    .section-header h3 { font-size: 17px; font-weight: 700; color: var(--t0); }
+
+    /* Section label */
+    .section-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--t3); padding: 14px 0 10px;
+    }
+
+    /* Info row */
+    .info-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 13px 0; border-bottom: 1px solid var(--divider);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .ir-label { font-size: 14px; color: var(--t2); flex-shrink: 0; }
+    .info-row .ir-val   { font-size: 14px; font-weight: 500; color: var(--t0); text-align: right; max-width: 60%; }
+
+    /* File badge */
+    .file-badge {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0; letter-spacing: .02em;
+    }
+    .fb-pdf { background: rgba(255,75,75,.13);  color: var(--danger);  }
+    .fb-xls { background: rgba(34,211,143,.13); color: var(--success); }
+    .fb-sm  { width: 38px; height: 38px; border-radius: 10px; font-size: 10px; }
+
+    /* Report row */
+    .report-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 15px 20px; border-bottom: 1px solid var(--divider);
+    }
+    .report-row:last-child { border-bottom: none; }
+    .rp-info { flex: 1; min-width: 0; }
+    .rp-info .rp-name { font-size: 15px; font-weight: 600; color: var(--t0); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rp-info .rp-meta { font-size: 12px; color: var(--t2); }
+    .rp-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .action-btn {
+      width: 32px; height: 32px;
+      background: var(--bg-3); border: 1px solid var(--border);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--t2); transition: all .15s;
+    }
+    .action-btn:hover { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+
+    /* Download row */
+    .dl-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 15px 20px; border-bottom: 1px solid var(--divider);
+    }
+    .dl-row:last-child { border-bottom: none; }
+    .dl-info { flex: 1; min-width: 0; }
+    .dl-info .dl-name { font-size: 15px; font-weight: 600; color: var(--t0); margin-bottom: 2px; }
+    .dl-info .dl-meta { font-size: 12px; color: var(--t2); }
+    .dl-status { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    /* Progress bar */
+    .progress {
+      height: 4px; background: var(--bg-4);
+      border-radius: 2px; overflow: hidden; margin-top: 6px;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--primary-glow));
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex; padding: 0 24px;
+      border-bottom: 1px solid var(--divider);
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 12px 16px;
+      font-size: 14px; font-weight: 500; color: var(--t3);
+      cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all .15s; user-select: none;
+    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* Stat card */
+    .stat-card {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r-card); padding: 16px;
+    }
+    .sc-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--primary-dim);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary); margin-bottom: 12px;
+    }
+    .sc-label { font-size: 12px; color: var(--t2); margin-bottom: 4px; }
+    .sc-value { font-size: 22px; font-weight: 800; color: var(--t0); margin-bottom: 2px; line-height: 1.1; }
+    .sc-sub   { font-size: 12px; color: var(--t2); }
+    .sc-up    { color: var(--success); font-weight: 600; }
+
+    /* Avatar */
+    .avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--primary-dim);
+      border: 2.5px solid var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; font-weight: 800; color: var(--primary);
+    }
+
+    /* Profile section block */
+    .profile-block {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r-card); margin: 0 24px 12px; overflow: hidden;
+    }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 15px 20px; border-bottom: 1px solid var(--divider);
+      cursor: pointer; transition: background .12s;
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row:hover { background: rgba(255,255,255,.025); }
+    .sr-label { font-size: 15px; color: var(--t1); }
+    .sr-val   { font-size: 14px; color: var(--t2); display: flex; align-items: center; gap: 6px; }
+
+    /* Toggle */
+    .toggle {
+      width: 42px; height: 24px; border-radius: 12px;
+      background: var(--primary); position: relative;
+    }
+    .toggle::after {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; background: #fff; border-radius: 50%;
+      top: 3px; right: 3px;
+    }
+
+    /* File attachment card */
+    .file-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px; background: var(--bg-3);
+      border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px;
+    }
+    .file-card:last-child { margin-bottom: 0; }
+    .fc-info { flex: 1; min-width: 0; }
+    .fc-name { font-size: 14px; font-weight: 500; color: var(--t0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fc-meta { font-size: 12px; color: var(--t2); margin-top: 2px; }
+
+    /* Snackbar */
+    .snackbar {
+      position: absolute; bottom: 88px; left: 20px; right: 20px;
+      background: var(--bg-4); border: 1px solid var(--primary);
+      border-radius: 14px; padding: 13px 16px;
+      display: none; align-items: center; gap: 12px; z-index: 300;
+      animation: slideUp .3s ease;
+    }
+    .snackbar.show { display: flex; }
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .sb-text { flex: 1; font-size: 14px; font-weight: 500; color: var(--t0); }
+
+    /* State screen */
+    .state-center {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 32px; text-align: center; gap: 14px;
+    }
+    .state-circle {
+      width: 84px; height: 84px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 8px;
+    }
+    .state-center h3 { font-size: 20px; font-weight: 700; color: var(--t0); }
+    .state-center p  { font-size: 15px; color: var(--t2); line-height: 1.55; }
+
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-3) 25%, var(--bg-4) 50%, var(--bg-3) 75%);
+      background-size: 200% 100%;
+      border-radius: 8px;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 26px; height: 26px;
+      border: 2.5px solid var(--primary-dim);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+
+    /* Splash glow background */
+    .splash-bg {
+      background:
+        radial-gradient(ellipse at 50% 38%, rgba(23,212,143,.16) 0%, transparent 58%),
+        var(--bg-0);
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; padding: 16px 24px 8px;
+    }
+
+    /* P logo SVG wrapper */
+    .p-logo-sm {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--primary-dim);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .p-logo-lg {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: var(--primary-dim);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Chevron */
+    .chevron { color: var(--t3); flex-shrink: 0; }
+
+    /* Download complete state */
+    .dl-complete-circle {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: var(--primary-dim);
+      border: 3px solid var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────────────── PAGE HEADER ─────────────────────────── -->
+<div class="page-header">
+  <div class="logo-row">
+    <div class="p-logo-sm">
+      <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
+        <path d="M2 2h8a6 6 0 010 12H2V2z" stroke="#17D48F" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M2 14v6" stroke="#17D48F" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>PORTUS Mobile</h1>
+  </div>
+  <p>Protótipo interativo — Histórico &amp; Relatórios</p>
+</div>
+
+<!-- ────────────────────────── SCREEN NAV ───────────────────────────── -->
+<div class="screen-nav">
+  <button class="active" onclick="go('splash')">1. Splash</button>
+  <button onclick="go('login')">2. Login</button>
+  <button onclick="go('dashboard')">3. Dashboard</button>
+  <button onclick="go('history')">4. Histórico</button>
+  <button onclick="go('detail')">5. Detalhe Leitura</button>
+  <button onclick="go('reports')">6. Relatórios</button>
+  <button onclick="go('downloads')">7. Downloads</button>
+  <button onclick="go('profile')">8. Perfil</button>
+  <button onclick="go('empty')">∅ Sem Resultados</button>
+  <button onclick="go('error')">⚠ Erro</button>
+  <button onclick="go('offline')">↯ Offline</button>
+</div>
+
+<!-- ──────────────────────────── PHONE ──────────────────────────────── -->
+<div class="phone">
+  <div class="notch"></div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <div class="status-icons">
+      <!-- Signal bars -->
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="none">
+        <rect x="0"    y="8" width="3" height="4" rx="1" fill="white"/>
+        <rect x="4.5"  y="5.5" width="3" height="6.5" rx="1" fill="white"/>
+        <rect x="9"    y="3" width="3" height="9" rx="1" fill="white"/>
+        <rect x="13.5" y="0" width="3" height="12" rx="1" fill="white"/>
+      </svg>
+      <!-- Wifi -->
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+        <path d="M8 9.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" fill="white"/>
+        <path d="M8 6C5.8 6 3.9 7 2.6 8.5l1.4 1.4C5 8.7 6.4 8 8 8s3 .7 4 1.9l1.4-1.4C12.1 7 10.2 6 8 6z" fill="white"/>
+        <path d="M8 2.5C4.5 2.5 1.4 4 0 6.4l1.5 1.5C3 5.6 5.4 4.5 8 4.5s5 1.1 6.5 3.4L16 6.4C14.6 4 11.5 2.5 8 2.5z" fill="white"/>
+      </svg>
+      <!-- Battery -->
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+        <rect x=".5" y=".5" width="21" height="11" rx="3.5" stroke="white" stroke-opacity=".35"/>
+        <rect x="2" y="2" width="16" height="8" rx="2" fill="white"/>
+        <path d="M23 4v4a2 2 0 000-4z" fill="white" fill-opacity=".4"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ════════════════ SCREENS ════════════════ -->
+  <div class="screens-wrap">
+
+    <!-- ══════════════════════════════════════
+         1. SPLASH
+    ══════════════════════════════════════════ -->
+    <div class="screen active splash-bg" id="s-splash" style="align-items:center;justify-content:center;gap:0;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div class="p-logo-lg">
+          <svg width="38" height="46" viewBox="0 0 38 46" fill="none">
+            <path d="M4 4h16a14 14 0 010 28H4V4z" stroke="#17D48F" stroke-width="3.5" stroke-linejoin="round"/>
+            <path d="M4 32v10" stroke="#17D48F" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:34px;font-weight:800;color:var(--t0);letter-spacing:.08em;margin-bottom:10px;">PORTUS</div>
+          <p style="font-size:15px;color:var(--t2);line-height:1.6;max-width:220px;">Acompanhe suas leituras e relatórios de forma rápida, segura e prática.</p>
+        </div>
+      </div>
+      <div style="margin-top:56px;display:flex;align-items:center;gap:12px;">
+        <div class="spinner"></div>
+        <span style="color:var(--t2);font-size:14px;">Carregando...</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. LOGIN
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-login">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:28px 24px;">
+        <!-- Logo -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:40px;">
+          <div class="p-logo-lg" style="width:64px;height:64px;border-radius:16px;">
+            <svg width="32" height="38" viewBox="0 0 38 46" fill="none">
+              <path d="M4 4h16a14 14 0 010 28H4V4z" stroke="#17D48F" stroke-width="3.5" stroke-linejoin="round"/>
+              <path d="M4 32v10" stroke="#17D48F" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:26px;font-weight:800;color:var(--t0);letter-spacing:.06em;margin-bottom:6px;">PORTUS</div>
+            <p style="font-size:14px;color:var(--t2);">Bem-vindo ao PORTUS</p>
+            <p style="font-size:13px;color:var(--t3);margin-top:2px;">Acesse sua conta para continuar</p>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <input class="input-field" type="email" placeholder="seu@email.com" autocomplete="off">
+          <div class="input-wrap">
+            <input class="input-field" type="password" id="pw-input" placeholder="••••••••" style="padding-right:48px;" autocomplete="off">
+            <button class="eye" onclick="togglePw()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--t3);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+
+          <div style="text-align:right;margin-top:-2px;">
+            <button class="btn-inline">Esqueci minha senha</button>
+          </div>
+
+          <button class="btn-primary" onclick="go('dashboard')" style="margin-top:6px;">
+            Entrar
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+
+          <div class="or-divider">ou</div>
+
+          <button class="btn-secondary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 1a4 4 0 014 4v4a4 4 0 01-8 0V5a4 4 0 014-4z"/>
+              <path d="M4 12a8 8 0 0016 0" stroke-linecap="round"/>
+              <path d="M7 21c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke-linecap="round"/>
+            </svg>
+            Entrar com biometria
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. DASHBOARD
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-dashboard">
+      <div class="app-header">
+        <div>
+          <div style="font-size:22px;font-weight:700;color:var(--t0);margin-bottom:2px;">Olá, João! 👋</div>
+          <div style="font-size:14px;color:var(--t2);">Aqui está seu resumo</div>
+        </div>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--primary-dim);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--primary);">J</div>
+      </div>
+
+      <div class="scroll">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="sc-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="sc-label">Total de Leituras</div>
+            <div class="sc-value">128</div>
+            <div class="sc-sub"><span class="sc-up">+12%</span> este mês</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="sc-label">Última leitura</div>
+            <div class="sc-value" style="font-size:17px;">Hoje, 08:45</div>
+            <div class="sc-sub">Medidor A-123</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="sc-label">Relatórios</div>
+            <div class="sc-value">8</div>
+            <div class="sc-sub">Para download</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <div class="sc-label">Último download</div>
+            <div class="sc-value" style="font-size:15px;">Ontem, 14:30</div>
+            <div class="sc-sub">Rel. Semanal</div>
+          </div>
+        </div>
+
+        <!-- Last readings -->
+        <div class="section-header">
+          <h3>Últimas leituras</h3>
+          <button class="btn-inline" onclick="go('history')">Ver todas</button>
+        </div>
+        <div class="card card-mx" style="margin-bottom:20px;">
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Leitura Medidor A-123</div><div class="rr-sub">Hoje, 08:45 · Unidade 01</div></div>
+            <div class="rr-right"><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Leitura Medidor B-456</div><div class="rr-sub">Hoje, 07:30 · Unidade 02</div></div>
+            <div class="rr-right"><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Leitura Medidor C-789</div><div class="rr-sub">Ontem, 16:20 · Unidade 03</div></div>
+            <div class="rr-right"><span class="badge badge-wn">Pendente</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Leitura Medidor D-012</div><div class="rr-sub">Ontem, 09:15 · Unidade 04</div></div>
+            <div class="rr-right"><span class="badge badge-ok">Concluída</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-nav" id="bnav-dashboard">
+        <div class="nav-item active" onclick="go('history')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Histórico
+        </div>
+        <div class="nav-item" onclick="go('reports')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Relatórios
+        </div>
+        <div class="nav-item" onclick="go('downloads')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Downloads
+        </div>
+        <div class="nav-item" onclick="go('profile')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Perfil
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. HISTÓRICO DE LEITURAS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-history">
+      <div class="app-header"><h2>Histórico de Leituras</h2></div>
+
+      <div class="search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar leituras...">
+      </div>
+
+      <div class="chips-row">
+        <div class="chip" onclick="selectChip(this)">Hoje</div>
+        <div class="chip active" onclick="selectChip(this)">Semana</div>
+        <div class="chip" onclick="selectChip(this)">Mês</div>
+        <div class="chip" onclick="selectChip(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Personalizado
+        </div>
+      </div>
+
+      <div class="scroll">
+        <div class="card card-mx" style="margin-bottom:20px;">
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor A-123</div><div class="rr-sub">Unidade 01 · 15/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">08:45</div><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor B-456</div><div class="rr-sub">Unidade 02 · 15/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">07:30</div><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor C-789</div><div class="rr-sub">Unidade 03 · 14/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">16:20</div><span class="badge badge-wn">Pendente</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor D-012</div><div class="rr-sub">Unidade 04 · 14/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">09:15</div><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor E-345</div><div class="rr-sub">Unidade 05 · 13/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">14:50</div><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('empty')">
+            <div class="rr-left"><div class="rr-name">Medidor F-678</div><div class="rr-sub">Unidade 01 · 13/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">11:00</div><span class="badge badge-err">Erro</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor A-123</div><div class="rr-sub">Unidade 01 · 12/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">08:30</div><span class="badge badge-ok">Concluída</span></div>
+          </div>
+          <div class="reading-row" onclick="go('detail')">
+            <div class="rr-left"><div class="rr-name">Medidor B-456</div><div class="rr-sub">Unidade 02 · 11/05/2024</div></div>
+            <div class="rr-right"><div class="rr-time">09:10</div><span class="badge badge-ok">Concluída</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item active" onclick="go('history')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Relatórios</div>
+        <div class="nav-item" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. DETALHE DA LEITURA
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-detail">
+      <div class="nav-header">
+        <div class="icon-btn" onclick="go('history')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </div>
+        <div class="icon-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </div>
+      </div>
+
+      <div class="scroll" style="padding-bottom:24px;">
+        <!-- Title + badge -->
+        <div style="padding:0 24px 20px;">
+          <h2 style="font-size:22px;font-weight:700;color:var(--t0);margin-bottom:10px;line-height:1.2;">Leitura Medidor A-123</h2>
+          <span class="badge badge-ok" style="font-size:13px;padding:5px 14px;">Concluída</span>
+        </div>
+
+        <!-- Info block -->
+        <div class="card card-mx" style="padding:0 16px 4px;">
+          <div class="section-label">Informações gerais</div>
+          <div class="info-row">
+            <span class="ir-label">Data</span>
+            <span class="ir-val">15/05/2024</span>
+          </div>
+          <div class="info-row">
+            <span class="ir-label">Horário</span>
+            <span class="ir-val">08:45</span>
+          </div>
+          <div class="info-row">
+            <span class="ir-label">Responsável</span>
+            <span class="ir-val">João da Silva</span>
+          </div>
+          <div class="info-row">
+            <span class="ir-label">Local</span>
+            <span class="ir-val">Unidade 01</span>
+          </div>
+          <div class="info-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+            <span class="ir-label">Descrição</span>
+            <span style="font-size:14px;color:var(--t1);line-height:1.55;">Leitura realizada conforme rotina operacional.</span>
+          </div>
+        </div>
+
+        <!-- Files block -->
+        <div class="card card-mx" style="padding:16px;margin-top:12px;">
+          <div class="section-label" style="padding:0 0 12px;">Arquivos relacionados</div>
+          <div class="file-card">
+            <div class="file-badge fb-sm" style="background:rgba(58,165,255,.13);color:var(--info);">JPG</div>
+            <div class="fc-info">
+              <div class="fc-name">Foto_medidor.jpg</div>
+              <div class="fc-meta">1.2 MB · Imagem</div>
+            </div>
+            <div class="icon-btn" style="width:32px;height:32px;border-radius:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+          </div>
+          <div class="file-card">
+            <div class="file-badge fb-sm fb-pdf">PDF</div>
+            <div class="fc-info">
+              <div class="fc-name">Registro_leitura.pdf</div>
+              <div class="fc-meta">345 KB · PDF</div>
+            </div>
+            <div class="icon-btn" style="width:32px;height:32px;border-radius:8px;" onclick="showSnack()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Download CTA -->
+        <div style="padding:20px 24px 0;">
+          <button class="btn-primary" onclick="showSnack()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Baixar relatório
+          </button>
+        </div>
+      </div>
+
+      <!-- Snackbar -->
+      <div class="snackbar" id="snack">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <span class="sb-text">Relatório baixado com sucesso!</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" onclick="hideSnack()" style="cursor:pointer;flex-shrink:0;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. RELATÓRIOS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-reports">
+      <div class="app-header">
+        <div>
+          <h2>Relatórios</h2>
+          <div style="font-size:13px;color:var(--t2);margin-top:2px;">Disponíveis para download</div>
+        </div>
+      </div>
+
+      <div class="scroll">
+        <div class="card card-mx" style="margin-bottom:20px;padding:4px 0;">
+          <div class="report-row">
+            <div class="file-badge fb-pdf">PDF</div>
+            <div class="rp-info">
+              <div class="rp-name">Relatório Semanal</div>
+              <div class="rp-meta">05/05 — 12/05/2024 · PDF · 1.2 MB</div>
+            </div>
+            <div class="rp-actions">
+              <div class="action-btn" onclick="go('downloads')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+              <div class="action-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="report-row">
+            <div class="file-badge fb-xls">XLS</div>
+            <div class="rp-info">
+              <div class="rp-name">Relatório Mensal</div>
+              <div class="rp-meta">Março/2024 · Excel · 2.4 MB</div>
+            </div>
+            <div class="rp-actions">
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+            </div>
+          </div>
+          <div class="report-row">
+            <div class="file-badge fb-pdf">PDF</div>
+            <div class="rp-info">
+              <div class="rp-name">Relatório de Leituras</div>
+              <div class="rp-meta">01/04 — 30/04/2024 · PDF · 1.8 MB</div>
+            </div>
+            <div class="rp-actions">
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+            </div>
+          </div>
+          <div class="report-row">
+            <div class="file-badge fb-xls">XLS</div>
+            <div class="rp-info">
+              <div class="rp-name">Relatório Consolidado</div>
+              <div class="rp-meta">Q1 2024 · Excel · 3.1 MB</div>
+            </div>
+            <div class="rp-actions">
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+            </div>
+          </div>
+          <div class="report-row">
+            <div class="file-badge fb-pdf">PDF</div>
+            <div class="rp-info">
+              <div class="rp-name">Relatório Semanal</div>
+              <div class="rp-meta">29/04 — 05/05/2024 · PDF · 1.1 MB</div>
+            </div>
+            <div class="rp-actions">
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+            </div>
+          </div>
+          <div class="report-row" style="border-bottom:none;">
+            <div class="file-badge fb-xls">XLS</div>
+            <div class="rp-info">
+              <div class="rp-name">Dados Brutos</div>
+              <div class="rp-meta">Mai/2024 · Excel · 890 KB</div>
+            </div>
+            <div class="rp-actions">
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+              <div class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" onclick="go('history')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item active" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Relatórios</div>
+        <div class="nav-item" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. DOWNLOADS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-downloads">
+      <div class="app-header"><h2>Downloads</h2></div>
+
+      <div class="tab-bar">
+        <div class="tab active" id="dl-tab-all" onclick="dlTab('all')">Todos</div>
+        <div class="tab" id="dl-tab-done" onclick="dlTab('done')">Concluídos</div>
+        <div class="tab" id="dl-tab-prog" onclick="dlTab('prog')">Em andamento</div>
+      </div>
+
+      <div class="scroll">
+        <div class="card card-mx" style="margin-bottom:20px;padding:4px 0;">
+
+          <!-- Concluído -->
+          <div class="dl-row">
+            <div class="file-badge fb-sm fb-pdf" style="flex-shrink:0;">PDF</div>
+            <div class="dl-info">
+              <div class="dl-name">Relatório Semanal</div>
+              <div class="dl-meta">13/05/2024 · 1.2 MB</div>
+            </div>
+            <div class="dl-status">
+              <span class="badge badge-ok">Concluído</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+
+          <!-- Concluído -->
+          <div class="dl-row">
+            <div class="file-badge fb-sm fb-xls" style="flex-shrink:0;">XLS</div>
+            <div class="dl-info">
+              <div class="dl-name">Relatório Mensal</div>
+              <div class="dl-meta">10/05/2024 · 2.4 MB</div>
+            </div>
+            <div class="dl-status">
+              <span class="badge badge-ok">Concluído</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+
+          <!-- Em andamento -->
+          <div style="padding:15px 20px;border-bottom:1px solid var(--divider);">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div class="file-badge fb-sm fb-xls" style="flex-shrink:0;">XLS</div>
+              <div class="dl-info">
+                <div class="dl-name">Relatório Consolidado</div>
+                <div class="dl-meta">08/05/2024 · 3.1 MB</div>
+              </div>
+              <div class="dl-status">
+                <span style="font-size:13px;font-weight:700;color:var(--primary);">48%</span>
+              </div>
+            </div>
+            <div style="padding-left:52px;margin-top:10px;">
+              <div class="progress">
+                <div class="progress-fill" style="width:48%;transition:width 2s;"></div>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-top:5px;">Baixando...</div>
+            </div>
+          </div>
+
+          <!-- Concluído -->
+          <div class="dl-row">
+            <div class="file-badge fb-sm fb-pdf" style="flex-shrink:0;">PDF</div>
+            <div class="dl-info">
+              <div class="dl-name">Relatório de Leituras</div>
+              <div class="dl-meta">06/05/2024 · 1.8 MB</div>
+            </div>
+            <div class="dl-status">
+              <span class="badge badge-ok">Concluído</span>
+            </div>
+          </div>
+
+          <!-- Erro -->
+          <div class="dl-row" style="border-bottom:none;">
+            <div class="file-badge fb-sm" style="flex-shrink:0;background:rgba(255,75,75,.12);color:var(--danger);">PDF</div>
+            <div class="dl-info">
+              <div class="dl-name">Relatório Semanal</div>
+              <div class="dl-meta">03/05/2024 · 1.1 MB</div>
+            </div>
+            <div class="dl-status">
+              <span class="badge badge-err">Erro</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" onclick="go('history')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Relatórios</div>
+        <div class="nav-item active" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. PERFIL
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-profile">
+      <div class="app-header"><h2>Perfil</h2></div>
+
+      <div class="scroll" style="padding-bottom:24px;">
+        <!-- Avatar -->
+        <div style="display:flex;flex-direction:column;align-items:center;padding:24px;gap:10px;">
+          <div class="avatar">J</div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:var(--t0);margin-bottom:3px;">João da Silva</div>
+            <div style="font-size:14px;color:var(--t2);margin-bottom:8px;">joao.silva@empresa.com</div>
+            <span class="badge badge-inf" style="font-size:12px;padding:4px 12px;">Analista Operacional</span>
+          </div>
+        </div>
+
+        <!-- Personal info -->
+        <div style="padding:0 24px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px;">Informações pessoais</div>
+        <div class="profile-block">
+          <div class="settings-row">
+            <span class="sr-label">Empresa</span>
+            <span class="sr-val">PORTUS S.A. <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="settings-row">
+            <span class="sr-label">Email</span>
+            <span class="sr-val" style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">joao.silva@empresa.com <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="settings-row">
+            <span class="sr-label">Cargo</span>
+            <span class="sr-val">Analista Operacional <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div style="padding:16px 24px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);">Configurações</div>
+        <div class="profile-block">
+          <div class="settings-row">
+            <span class="sr-label">Alterar senha</span>
+            <span class="sr-val"><svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="settings-row">
+            <span class="sr-label">Biometria</span>
+            <span class="sr-val"><span style="color:var(--success);font-size:13px;font-weight:600;">Ativada</span> <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="settings-row">
+            <span class="sr-label">Tema</span>
+            <span class="sr-val">Escuro <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="settings-row">
+            <span class="sr-label">Idioma</span>
+            <span class="sr-val">Português <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div style="padding:16px 24px;">
+          <button class="btn-danger-outline" onclick="go('login')">Sair da conta</button>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" onclick="go('history')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Relatórios</div>
+        <div class="nav-item" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item active" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         STATE: SEM RESULTADOS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-empty">
+      <div class="app-header"><h2>Histórico de Leituras</h2></div>
+      <div class="search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar leituras..." value="medidor-xyz">
+      </div>
+      <div class="chips-row">
+        <div class="chip active">Hoje</div>
+        <div class="chip">Semana</div>
+        <div class="chip">Mês</div>
+      </div>
+      <div class="state-center">
+        <div class="state-circle" style="background:var(--bg-3);">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3>Nenhuma leitura encontrada</h3>
+        <p>Tente ajustar os filtros ou buscar por outro termo.</p>
+        <button class="btn-primary" style="width:auto;padding:14px 28px;" onclick="go('history')">Limpar filtros</button>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>Relatórios</div>
+        <div class="nav-item" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         STATE: ERRO
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-error">
+      <div class="app-header"><h2>Histórico de Leituras</h2></div>
+      <div class="search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar leituras...">
+      </div>
+      <div class="chips-row">
+        <div class="chip active">Semana</div>
+        <div class="chip">Mês</div>
+        <div class="chip">Personalizado</div>
+      </div>
+      <div class="state-center">
+        <div class="state-circle" style="background:rgba(255,75,75,.1);">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3>Ops! Algo deu errado</h3>
+        <p>Não foi possível carregar os dados.<br>Tente novamente.</p>
+        <button class="btn-primary" style="width:auto;padding:14px 28px;" onclick="go('history')">Tentar novamente</button>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>Relatórios</div>
+        <div class="nav-item" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         STATE: OFFLINE
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="s-offline">
+      <div class="app-header"><h2>Histórico de Leituras</h2></div>
+      <div class="search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar leituras...">
+      </div>
+      <div class="chips-row">
+        <div class="chip active">Semana</div>
+        <div class="chip">Mês</div>
+      </div>
+      <div class="state-center">
+        <div class="state-circle" style="background:rgba(58,165,255,.1);">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="1.5">
+            <path d="M18.36 6.64a9 9 0 010 12.73M5.64 5.64a9 9 0 000 12.72"/>
+            <path d="M15.54 9.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.08"/>
+            <circle cx="12" cy="13" r="1"/>
+            <line x1="2" y1="2" x2="22" y2="22" stroke-width="1.8"/>
+          </svg>
+        </div>
+        <h3>Você está offline</h3>
+        <p>Verifique sua conexão com a Internet e tente novamente.</p>
+        <button class="btn-primary" style="width:auto;padding:14px 28px;" onclick="go('history')">Tentar novamente</button>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+        <div class="nav-item" onclick="go('reports')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>Relatórios</div>
+        <div class="nav-item" onclick="go('downloads')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Downloads</div>
+        <div class="nav-item" onclick="go('profile')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Perfil</div>
+      </div>
+    </div>
+
+  </div><!-- end screens-wrap -->
+</div><!-- end phone -->
+
+<script>
+  const screenMap = {
+    splash: 's-splash', login: 's-login', dashboard: 's-dashboard',
+    history: 's-history', detail: 's-detail', reports: 's-reports',
+    downloads: 's-downloads', profile: 's-profile',
+    empty: 's-empty', error: 's-error', offline: 's-offline'
+  };
+
+  const navBtns = document.querySelectorAll('.screen-nav button');
+
+  function go(name) {
+    // hide all screens
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenMap[name]).classList.add('active');
+
+    // update nav pills
+    navBtns.forEach(b => b.classList.remove('active'));
+    const idx = Object.keys(screenMap).indexOf(name);
+    if (navBtns[idx]) navBtns[idx].classList.add('active');
+  }
+
+  function togglePw() {
+    const inp = document.getElementById('pw-input');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  function showSnack() {
+    const s = document.getElementById('snack');
+    s.classList.add('show');
+    setTimeout(() => s.classList.remove('show'), 3200);
+  }
+  function hideSnack() { document.getElementById('snack').classList.remove('show'); }
+
+  function selectChip(el) {
+    el.closest('.chips-row').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function dlTab(t) {
+    document.querySelectorAll('#s-downloads .tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('dl-tab-' + t).classList.add('active');
+  }
+</script>
+</body>
+</html>
