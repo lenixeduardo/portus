@@ -79,7 +79,8 @@ export function getBatchHistory(batchId: number, preloaded?: BatchWithProduct): 
 export function buildCsvContent(history: BatchHistory): string {
   const lines: string[] = [];
   const header = [
-    "Lote", "Produto", "Sessão", "Início Sessão", "Fim Sessão",
+    "Lote", "Produto", "Operador", "Abertura do Lote",
+    "Sessão", "Início Sessão", "Fim Sessão",
     "Status Sessão", "Equipamento", "Slot", "Valor Bruto", "Valor Parseado", "Capturado em"
   ];
   lines.push(header.join(";"));
@@ -91,17 +92,18 @@ export function buildCsvContent(history: BatchHistory): string {
     sessionNum++;
     if (session.readings.length === 0) {
       lines.push(
-        [batch.code, batch.productName, sessionNum, session.startedAt,
-          session.endedAt ?? "", session.status, "", "", "", "", ""]
+        [batch.code, batch.productName, batch.operatorName, batch.openedAt,
+          sessionNum, session.startedAt, session.endedAt ?? "", session.status,
+          "", "", "", "", ""]
           .map(csvCell).join(";")
       );
       continue;
     }
     for (const r of session.readings) {
       lines.push(
-        [batch.code, batch.productName, sessionNum, session.startedAt,
-          session.endedAt ?? "", session.status, r.equipmentName, r.slotIndex + 1,
-          r.valueRaw, r.valueParsed ?? "", r.capturedAt]
+        [batch.code, batch.productName, batch.operatorName, batch.openedAt,
+          sessionNum, session.startedAt, session.endedAt ?? "", session.status,
+          r.equipmentName, r.slotIndex + 1, r.valueRaw, r.valueParsed ?? "", r.capturedAt]
           .map(csvCell).join(";")
       );
     }
