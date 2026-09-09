@@ -14,6 +14,11 @@ DECLARE
   v_user_allowed BOOLEAN;
   v_application_allowed BOOLEAN;
 BEGIN
+  IF p_user_id IS NULL OR p_application_id IS NULL OR p_sector_id IS NULL THEN
+    RAISE EXCEPTION 'Usuário, aplicação e setor são obrigatórios'
+      USING ERRCODE = '22023';
+  END IF;
+
   SELECT role
     INTO v_role
     FROM users
@@ -25,13 +30,28 @@ BEGIN
       USING ERRCODE = '28000';
   END IF;
 
-  IF v_role IN ('admin', 'master') THEN
-    RETURN;
+  IF NOT EXISTS (
+    SELECT 1
+      FROM applications
+     WHERE id = p_application_id
+       AND active = TRUE
+  ) THEN
+    RAISE EXCEPTION 'Aplicação inválida ou inativa'
+      USING ERRCODE = '28000';
   END IF;
 
-  IF p_application_id IS NULL OR p_sector_id IS NULL THEN
-    RAISE EXCEPTION 'Aplicação e setor são obrigatórios'
+  IF NOT EXISTS (
+    SELECT 1
+      FROM sectors
+     WHERE id = p_sector_id
+       AND active = TRUE
+  ) THEN
+    RAISE EXCEPTION 'Setor inválido ou inativo'
       USING ERRCODE = '22023';
+  END IF;
+
+  IF v_role IN ('admin', 'master') THEN
+    RETURN;
   END IF;
 
   SELECT CASE p_action
