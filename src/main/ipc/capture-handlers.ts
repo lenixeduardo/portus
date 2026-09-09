@@ -20,7 +20,9 @@ export function registerCaptureHandlers(): void {
     IPC.captureStart,
     compose([requireAuth, validateInput(startCaptureSchema)])(
       async (_e, input: z.infer<typeof startCaptureSchema>) => {
-        return startCapture(input.batchId, input.equipmentIds);
+        const user = getCurrentUser();
+        if (!user) return { ok: false, error: "Sessão expirada." };
+        return startCapture(input.batchId, input.equipmentIds, user.username);
       }
     )
   );
