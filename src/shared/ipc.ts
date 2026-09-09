@@ -53,6 +53,7 @@ export const IPC = {
   centralStatus: "central:status",
   centralBatchesListOpen: "central:batches:list-open",
   centralBatchesListAll: "central:batches:list-all",
+  centralBatchesFindByCode: "central:batches:find-by-code",
   centralBatchesCreate: "central:batches:create",
   centralBatchesConfirmProduction: "central:batches:confirm-production",
   centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory",
