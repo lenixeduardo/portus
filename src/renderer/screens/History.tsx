@@ -8,6 +8,7 @@ export function History() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [centralAvailable, setCentralAvailable] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   // Estados de filtro
@@ -16,7 +17,10 @@ export function History() {
   const [filterEndDate, setFilterEndDate] = useState<string>("");
 
   useEffect(() => {
-    window.api.batches.listAll().then(setBatches);
+    window.api.central.status().then((status) => {
+      setCentralAvailable(status.available);
+      return status.available ? window.api.central.batches.listAll() : window.api.batches.listAll();
+    }).then(setBatches).catch(() => window.api.batches.listAll().then(setBatches));
   }, []);
 
   useEffect(() => {
@@ -33,7 +37,10 @@ export function History() {
     setLoading(true);
     setError(null);
     setHistory(null);
-    window.api.history.getBatch(Number(selectedId)).then((res) => {
+    const historyRequest = centralAvailable
+      ? window.api.central.history.getBatch(Number(selectedId))
+      : window.api.history.getBatch(Number(selectedId));
+    historyRequest.then((res) => {
       setLoading(false);
       if (!res.ok) {
         setError(res.error);
@@ -145,7 +152,7 @@ export function History() {
           )}
         </div>
 
-        {history && (
+        {history && !centralAvailable && (
           <button onClick={handleExport} disabled={exporting} className="export-btn" style={{ alignSelf: "flex-start" }}>
             {exporting ? "Exportando..." : "⬇ Exportar CSV"}
           </button>
