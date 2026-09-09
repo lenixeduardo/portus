@@ -102,7 +102,8 @@
 - [x] Criar teste transacional de idempotência e fluxo de fechamento\n- [ ] Executar teste concorrente em duas sessões PostgreSQL
 - [ ] Validar migrations e teste em PostgreSQL local antes da adaptação do Electron
 - [x] Criar adaptador PostgreSQL opcional e IPC central para lotes
-- [x] Migrar o Dashboard de lotes para a API central quando disponível\n- [ ] Migrar histórico, captura e leitura de código de barras para a API central
+- [x] Migrar o Dashboard de lotes para a API central quando disponível\n- [x] Migrar histórico e consulta de código de barras para a API central
+- [ ] Migrar sessões e leituras da captura serial para a API central
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
