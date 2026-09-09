@@ -64,6 +64,15 @@ export function registerCentralHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC.centralBatchesFindByCode,
+    compose([requireAuth])(async (_e, code: string): Promise<BatchWithProduct | null> => {
+      if (!isCentralDatabaseConfigured()) return null;
+      const { findCentralBatchByCode } = await import("../db/central-batches-repo");
+      return findCentralBatchByCode(code);
+    })
+  );
+
+  ipcMain.handle(
     IPC.centralBatchesCreate,
     compose([requireAuth, validateInput(createBatchSchema)])(
       async (_e, input: BatchInput): Promise<ServiceResult<BatchWithProduct>> => {
