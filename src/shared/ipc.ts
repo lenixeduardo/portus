@@ -286,6 +286,7 @@ export interface SerialReaderApi {
     batches: {
       listOpen(): Promise<BatchWithProduct[]>;
       listAll(): Promise<BatchWithProduct[]>;
+      findByCode(code: string): Promise<BatchWithProduct | null>;
       create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
       confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
