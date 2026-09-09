@@ -92,12 +92,12 @@
 
 ## Passo 1 — Fundação PostgreSQL central 🎯
 
-- [ ] Criar migrations PostgreSQL reproduzíveis
-- [ ] Criar tabelas de setores, aplicações e permissões
-- [ ] Evoluir `batches` com `stage`, `version` e confirmações por setor
-- [ ] Criar `batch_history`
-- [ ] Criar funções `open_batch`, `register_reading` e `move_batch_to_stage`
-- [ ] Criar funções de confirmação de fechamento da Produção e do Laboratório
+- [x] Criar migrations PostgreSQL reproduzíveis
+- [x] Criar tabelas de setores, aplicações e permissões
+- [x] Evoluir `batches` com `stage`, `version` e confirmações por setor
+- [x] Criar `batch_history`
+- [x] Criar funções `open_batch`, `register_reading` e `move_batch_to_stage`
+- [x] Criar funções de confirmação de fechamento da Produção e do Laboratório
 - [ ] Revogar escrita irrestrita nas tabelas críticas
 - [ ] Criar testes concorrentes e de idempotência
 - [ ] Validar com PostgreSQL local antes da adaptação do Electron
