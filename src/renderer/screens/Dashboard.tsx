@@ -195,7 +195,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
               key={b.id}
               batch={b}
               isCapturing={captureBatchId === b.id}
-              canClose={true}
+              canClose={true}\n              centralMode={centralAvailable}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
@@ -328,12 +328,14 @@ function BatchCard({
   batch,
   isCapturing,
   canClose,
+  centralMode,
   onClose,
   onPrint
 }: {
   batch: BatchWithProduct;
   isCapturing: boolean;
   canClose: boolean;
+  centralMode: boolean;
   onClose: () => void;
   onPrint: () => void;
 }) {
@@ -383,7 +385,7 @@ function BatchCard({
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
             <CheckSquare size={13} />
-            Finalizar
+            {centralMode ? "Confirmar Produção" : "Finalizar"}
           </button>
         )}
       </div>
@@ -411,8 +413,8 @@ function ConfirmCloseModal({
         </>
       }
     >
-      <p>Deseja finalizar o lote <strong>{batch.code}</strong>?</p>
-      <p className="muted" style={{ fontSize: 13 }}>Esta ação não pode ser desfeita.</p>
+      <p>{onConfirm ? "Registrar confirmação da Produção para o lote" : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
+      <p className="muted" style={{ fontSize: 13 }}>O fechamento definitivo depende também da confirmação do Laboratório.</p>
     </Modal>
   );
 }
