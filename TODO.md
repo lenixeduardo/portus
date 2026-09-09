@@ -120,5 +120,5 @@
 ## Portus Visão Laboratório
 - [x] Documentar escopo, atores, fluxos, permissões, dados, funções e critérios de aceite
 - [ ] Validar regras de ensaio e perfis com o responsável do Laboratório
-- [ ] Criar migration de `laboratory_results`
-- [ ] Implementar cliente do Laboratório
+- [ ] Validar equipamentos e permissões do Laboratório
+- [ ] Implementar cliente do Laboratório para captura e fechamento
