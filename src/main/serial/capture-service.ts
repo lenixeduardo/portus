@@ -79,6 +79,7 @@ function startModbusForSlot(slot: ActiveSlot): void {
       persistReading({
         batchId: bid,
         equipmentId: eq.id,
+        equipmentName: eq.name,
         valueRaw,
         valueParsed,
         captureSessionId: sid,
@@ -256,6 +257,7 @@ function handleLine(slot: ActiveSlot, line: string): void {
   persistReading({
     batchId: bid,
     equipmentId: eq.id,
+    equipmentName: eq.name,
     valueRaw: raw,
     valueParsed: parsed,
     captureSessionId: sid,
