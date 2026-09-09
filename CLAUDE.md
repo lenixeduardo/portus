@@ -33,13 +33,13 @@
 | Shell desktop | **Electron 32** |
 | UI | **React 18 + Vite + TypeScript** |
 | Serial | **`serialport`** (npm) no processo principal |
-| Banco | **SQLite** via **`better-sqlite3`** (local, single-user por máquina) |
+| Banco | **SQLite** via **`sql.js`** (local, persistido pelo processo principal) |
 | Auth | Hash bcrypt local na tabela `users` |
 | Empacotamento | **electron-builder** (target Windows / NSIS) |
 
 ### Decisões fechadas com o cliente
 1. Stack: Electron + React + SQLite ✅
-2. Multi-usuário: **só local** (auditoria), sem sincronização entre máquinas.
+2. Estado atual: **só local** (auditoria), sem sincronização entre máquinas. A Etapa 0 inicia a evolução para PostgreSQL central.
 3. Parser: **regex configurável por equipamento** + salvar valor cru também.
 4. Plataforma: **Windows** (COM ports).
 
@@ -49,8 +49,8 @@
 users(id, username, password_hash, created_at)
 equipments(id, name, port_path, baud_rate, data_bits,
            stop_bits, parity, enabled, slot_index, parse_regex)
-formulas(id, name, description, created_by, created_at)
-batches(id, formula_id, code, status['open'|'closed'],
+products(id, name, description, created_by, created_at)
+batches(id, product_id, code, status['open'|'closed'],
         opened_at, closed_at, created_by)
 capture_sessions(id, batch_id, started_at, ended_at,
                  timeout_seconds, status['active'|'completed'|'cancelled'])
@@ -91,14 +91,15 @@ UI em **português brasileiro**, tema claro com sidebar escura, primário azul (
 - ✅ **Fase 1 — Banco SQLite + login** (migrations, seed admin/admin, IPC auth, tela de login, sidebar)
 - ✅ **Fase 2 — CRUD receitas + lotes + dashboard** (repositories, IPC, tela Receitas, Dashboard com cards, geração de código de lote, limite de 6 abertos)
 - ✅ **Fase 3 — Configurações** (abas Captura/Equipamentos/Usuários, listagem de portas seriais, CRUD usuários, edição de equipamento com regex de parsing)
-- ⬜ **Fase 4 — Núcleo de captura serial** (o coração do produto)
-- ⬜ **Fase 5 — Histórico e exportação**
-- ⬜ **Fase 6 — Simulador de equipamento serial** (porta virtual)
+- ✅ **Fase 4 — Núcleo de captura serial** (implementado)
+- ✅ **Fase 5 — Histórico e exportação** (implementado)
+- ✅ **Fase 6 — Simulador de equipamento serial** (implementado)
 - ⬜ **Fase 7 — Empacotamento Windows (NSIS)**
+- 🎯 **Etapa 0 — Baseline e decisões para PostgreSQL/Lot Service** (em execução)
 
 ## 7. Branch e fluxo Git
 
-- Branch de desenvolvimento: **`claude/login-batch-management-bDj7L`**
+- Branch da Etapa 0: **`feat/portus-stage-0-database-baseline`**
 - Commits descritivos em português, push após cada fase concluída.
 
 ## 8. Convenções
@@ -107,7 +108,7 @@ UI em **português brasileiro**, tema claro com sidebar escura, primário azul (
 - IPC via `contextBridge` em `src/preload/index.ts` — **nunca** expor Node ao renderer diretamente.
 - Sem comentários óbvios; comentar só "porquês" não triviais.
 - Strings de UI em português; nomes de código/identificadores em inglês.
-- Migrations do SQLite versionadas em `src/main/db/migrations/`.
+- Migrations do SQLite são versionadas em `src/main/db/migrations/`; migrations PostgreSQL serão versionadas separadamente na Etapa 1.
 - **Regra de Build e Empacotamento**: A saída de compilação do TypeScript principal (`tsconfig.main.json`) deve ir para `"dist"`, de modo que o entrypoint do main fique em `dist/main/index.js` (casando com `"main"` do `package.json`).
 - **Regra de Sandbox**: A janela principal deve manter `sandbox: false` para permitir que o script de preload importe arquivos e tipos do diretório `shared/`.
 - **Validação de Builds**: Qualquer alteração em scripts de build ou dependências deve ser validada gerando o pacote (`npm run package`) e iniciando o executável em modo headless com logs de console (`ELECTRON_ENABLE_LOGGING=1`) para verificar erros de carregamento e preload.
