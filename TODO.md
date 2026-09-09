@@ -101,6 +101,8 @@
 - [ ] Revogar escrita irrestrita nas tabelas críticas
 - [x] Criar teste transacional de idempotência e fluxo de fechamento\n- [ ] Executar teste concorrente em duas sessões PostgreSQL
 - [ ] Validar migrations e teste em PostgreSQL local antes da adaptação do Electron
+- [x] Criar adaptador PostgreSQL opcional e IPC central para lotes
+- [ ] Migrar os fluxos de tela do Electron para usar a API central por padrão
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
