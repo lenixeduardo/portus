@@ -248,8 +248,8 @@ O PORTUS Visão Laboratório será aceito quando:
 
 - registrar a aplicação `PORTUS_LABORATORY`;
 - definir permissões do setor Laboratório;
-- criar migration de `laboratory_results`;
-- criar funções de consulta e registro;
+- criar funções de consulta e validação de captura;
+- criar testes de autorização e idempotência;
 - criar testes de autorização e idempotência.
 
 ### Fase B — Cliente
