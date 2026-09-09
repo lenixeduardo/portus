@@ -11,6 +11,7 @@ Execute as migrations em ordem:
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_schema.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
 ```
 
 Cada migration é transacional e falha ao primeiro erro.
@@ -47,3 +48,7 @@ criar os usuários de banco da infraestrutura e conceder apenas:
 
 A configuração de roles físicos do PostgreSQL depende do ambiente de instalação
 e será adicionada durante a homologação.
+
+## Validação
+
+O teste transacional em `database/tests/001_domain_functions.sql` verifica o fluxo de abertura, mudança de etapa, dupla confirmação de fechamento e idempotência. Os testes de concorrência entre duas sessões continuam pendentes da execução em um PostgreSQL real.
