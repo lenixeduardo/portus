@@ -28,11 +28,24 @@ nas tabelas críticas nem executar as funções de domínio. Execute as validaç
 como proprietário das migrations; os testes consultam os privilégios de
 `PUBLIC`, não os privilégios herdados pelo proprietário.
 
-A validação de concorrência deve ser feita em duas sessões PostgreSQL simultâneas,
-chamando \`confirm_production_close\` e
-\`confirm_laboratory_close\` para o mesmo lote. O resultado esperado é:
+A validação de concorrência abre três conexões PostgreSQL independentes: uma
+prepara e verifica a fixture, uma representa a Produção e outra representa o
+Laboratório. No PowerShell, execute:
+
+```powershell
+$env:PORTUS_DATABASE_URL="postgresql://portus_admin:portus_dev_123@127.0.0.1:5432/portus"
+npm run test:postgres:concurrency
+```
+
+Se a senha possuir caracteres reservados de URL, codifique-os antes de montar
+a conexão. O teste chama `confirm_production_close` e
+`confirm_laboratory_close` simultaneamente para o mesmo lote e valida que:
 
 1. cada confirmação aguarda o lock da linha do lote;
 2. nenhuma sessão observa um fechamento parcial incorreto;
 3. a versão final permanece consistente;
 4. o fechamento global ocorre uma única vez.
+
+A fixture usa aplicação, usuário, produto e lote exclusivos e é removida ao
+final, inclusive quando uma asserção falha. A saída esperada começa com
+`Stage 1 concurrent closure test OK`.

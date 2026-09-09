@@ -14,6 +14,7 @@ psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_securi
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/002_security_permissions.sql
+npm run test:postgres:concurrency
 ```
 
 Cada migration é transacional e falha ao primeiro erro.
@@ -59,5 +60,7 @@ usado como credencial nas estações em produção.
 O teste transacional em `database/tests/001_domain_functions.sql` verifica o
 fluxo de abertura, mudança de etapa, dupla confirmação e idempotência. O teste
 `002_security_permissions.sql` confirma que `PUBLIC` não possui escrita direta
-nem execução das funções críticas. A concorrência entre duas sessões permanece
-como teste de homologação em PostgreSQL real.
+nem execução das funções críticas. O teste
+`003_concurrent_closure.mjs` cria conexões independentes de Produção e
+Laboratório, força a disputa pelo lock do mesmo lote e valida atomicidade,
+versão, histórico e idempotência em PostgreSQL real.

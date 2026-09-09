@@ -100,6 +100,7 @@
 - [x] Criar funções de confirmação de fechamento da Produção e do Laboratório
 - [x] Revogar privilégios de `PUBLIC` nas tabelas, sequências e funções centrais
 - [x] Criar teste transacional de idempotência e fluxo de fechamento
+- [x] Automatizar teste concorrente com conexões de Produção e Laboratório
 - [ ] Executar teste concorrente em duas sessões PostgreSQL
 - [x] Validar migrations e teste de domínio em PostgreSQL local
 - [x] Criar adaptador PostgreSQL opcional e IPC central para lotes

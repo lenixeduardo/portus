@@ -21,6 +21,7 @@
     "sim:build": "tsc -p tsconfig.tools.json",
     "sim": "npm run sim:build && node dist/tools/serial-sim.js",
     "sim:test": "npm run sim:build && node dist/tools/sim-test.js",
+    "test:postgres:concurrency": "node database/tests/003_concurrent_closure.mjs",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {

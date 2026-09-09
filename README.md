@@ -148,6 +148,14 @@ npm run build      # build do renderer e do processo principal
 A base atual possui 84 testes automatizados. A validação PostgreSQL fica em
 `database/tests` e deve ser executada separadamente contra um banco de teste.
 
+```powershell
+$env:PORTUS_DATABASE_URL="postgresql://portus_admin:portus_dev_123@127.0.0.1:5432/portus"
+npm run test:postgres:concurrency
+```
+
+Esse comando automatiza a disputa pelo mesmo lote entre Produção e Laboratório
+e remove os dados temporários ao terminar.
+
 ## Simulação serial
 
 O projeto inclui presets de balança, pH, viscosímetro, espectrofotômetro e carga
@@ -206,7 +214,7 @@ tools/           Simulador serial
 
 ## Pendências de homologação
 
-- testar confirmações concorrentes em duas sessões PostgreSQL;
+- executar e registrar o teste automatizado de concorrência no ambiente de homologação;
 - validar permissões com roles físicas de runtime;
 - homologar o mapeamento dos equipamentos reais;
 - validar com o Laboratório quais leituras são obrigatórias;

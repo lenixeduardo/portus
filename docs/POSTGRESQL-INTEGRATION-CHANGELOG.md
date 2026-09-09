@@ -94,7 +94,9 @@ As estações de produção deverão usar uma role de runtime criada na homologa
 | Validação | Resultado |
 |---|---|
 | Teste de domínio PostgreSQL local | aprovado, com `ROLLBACK` |
+| Teste de permissões PostgreSQL local | aprovado, com `ROLLBACK` |
 | Histórico do teste de domínio | 5 eventos registrados |
+| Harness automatizado de concorrência | implementado; execução local pendente |
 | Testes Vitest | 84 de 84 aprovados |
 | TypeScript main + renderer | aprovado |
 | Build de produção | aprovado |
@@ -113,7 +115,7 @@ As estações de produção deverão usar uma role de runtime criada na homologa
 
 Não foram declarados como concluídos:
 
-- teste simultâneo em duas sessões PostgreSQL;
+- execução do teste simultâneo automatizado no PostgreSQL de homologação;
 - grants de uma role física de runtime no ambiente final;
 - homologação com equipamentos reais;
 - definição das leituras laboratoriais obrigatórias;
