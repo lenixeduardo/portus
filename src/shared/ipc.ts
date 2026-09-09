@@ -279,7 +279,16 @@ export interface SerialReaderApi {
   shell: {
     openExternal(url: string): Promise<void>;
   };
-  central: {\n    status(): Promise<{ configured: boolean; available: boolean }>;\n    batches: {\n      listOpen(): Promise<BatchWithProduct[]>;\n      create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;\n      confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;\n      confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;\n    };\n  };\n  log: {
+  central: {
+    status(): Promise<{ configured: boolean; available: boolean }>;
+    batches: {
+      listOpen(): Promise<BatchWithProduct[]>;
+      create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
+      confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
+    };
+  };
+  log: {
     error(source: string, message: string, stack?: string): Promise<void>;
     getRecent(): Promise<string[]>;
     sendReport(input: LogReportInput): Promise<ServiceResult<LogReportData>>;
