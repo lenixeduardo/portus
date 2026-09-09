@@ -531,6 +531,11 @@ label.checkbox input { width: auto; }
   color: var(--accent);
   border: 1px solid var(--accent-border);
 }
+.chip-laboratory {
+  background: rgba(20, 184, 166, 0.1);
+  color: #5eead4;
+  border: 1px solid rgba(20, 184, 166, 0.28);
+}
 
 /* ── Batch grid ──────────────────────────────────────── */
 
@@ -582,6 +587,34 @@ label.checkbox input { width: auto; }
   font-family: 'IBM Plex Mono', monospace;
 }
 .batch-meta strong { color: var(--text); font-weight: 500; }
+
+.batch-confirmations {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.batch-confirmations span {
+  flex: 1;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.batch-confirmations .is-confirmed {
+  color: #5eead4;
+  border-color: rgba(20, 184, 166, 0.28);
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.batch-confirmations .is-pending {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+}
 
 .batch-actions {
   display: flex;

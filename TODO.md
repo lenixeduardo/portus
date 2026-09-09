@@ -124,6 +124,10 @@
 
 ## Portus Visão Laboratório
 - [x] Documentar escopo, atores, fluxos, permissões, dados, funções e critérios de aceite
+- [x] Criar visão selecionada pelo login para Captura e Fechamento
+- [x] Exibir confirmações da Produção e do Laboratório nos lotes
+- [x] Registrar o responsável pela sessão de captura central
+- [x] Bloquear fallback local para usuários do Laboratório
 - [ ] Validar leituras obrigatórias e acúmulo dos perfis Captura/Fechamento com o Laboratório
 - [ ] Validar equipamentos e permissões do Laboratório
 - [ ] Implementar cliente do Laboratório para captura e fechamento

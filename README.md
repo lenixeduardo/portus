@@ -84,6 +84,7 @@ $psql="C:\Program Files\PostgreSQL\18\bin\psql.exe"
 & $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/001_schema.sql"
 & $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/002_domain_functions.sql"
 & $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/003_security_permissions.sql"
+& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/004_laboratory_view.sql"
 & $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/seed/reference.sql"
 ```
 
@@ -122,6 +123,17 @@ URL encoding antes de colocá-la em `PORTUS_DATABASE_URL`.
 
 O status é consultado ao autenticar e atualizado a cada 15 segundos.
 
+## Visão Laboratório
+
+A interface é definida pelo usuário autenticado. No cadastro local, selecione
+`Laboratório · Captura` para quem opera equipamentos ou
+`Laboratório · Fechamento` para quem revisa e confirma o lote. O mesmo nome de
+usuário deve existir no PostgreSQL e receber permissão no setor `LABORATORY`.
+
+A visão Laboratório não cria lotes e nunca usa o SQLite como alternativa de
+escrita. Produtos vêm do lote central, os equipamentos vêm da configuração da
+estação e o responsável por cada captura fica registrado na sessão central.
+
 ## Regra de fechamento
 
 O cliente não altera diretamente o status global. As funções PostgreSQL
@@ -145,7 +157,7 @@ npm test           # suíte automatizada
 npm run build      # build do renderer e do processo principal
 ```
 
-A base atual possui 84 testes automatizados. A validação PostgreSQL fica em
+A base atual possui 87 testes automatizados. A validação PostgreSQL fica em
 `database/tests` e deve ser executada separadamente contra um banco de teste.
 
 ```powershell

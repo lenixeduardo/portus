@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
+import type { User } from "../../shared/types";
 
-export function History() {
+export function History({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [centralAvailable, setCentralAvailable] = useState(false);
+  const [centralMode, setCentralMode] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   // Estados de filtro
@@ -18,10 +19,18 @@ export function History() {
 
   useEffect(() => {
     window.api.central.status().then((status) => {
-      setCentralAvailable(status.available);
-      return status.available ? window.api.central.batches.listAll() : window.api.batches.listAll();
-    }).then(setBatches).catch(() => window.api.batches.listAll().then(setBatches));
-  }, []);
+      const requiresCentral = status.configured || user.sectorCode === "LABORATORY";
+      setCentralMode(requiresCentral);
+      if (requiresCentral && !status.available) {
+        setError("A visão Laboratório exige conexão com a base central. Verifique o PostgreSQL e tente novamente.");
+        return [];
+      }
+      return requiresCentral ? window.api.central.batches.listAll() : window.api.batches.listAll();
+    }).then(setBatches).catch(() => {
+      setError("Não foi possível consultar o histórico na base central.");
+      setBatches([]);
+    });
+  }, [user.sectorCode]);
 
   useEffect(() => {
     // Resetar filtros ao mudar de lote
@@ -37,7 +46,7 @@ export function History() {
     setLoading(true);
     setError(null);
     setHistory(null);
-    const historyRequest = centralAvailable
+    const historyRequest = centralMode
       ? window.api.central.history.getBatch(Number(selectedId))
       : window.api.history.getBatch(Number(selectedId));
     historyRequest.then((res) => {
@@ -48,7 +57,7 @@ export function History() {
       }
       setHistory(res.data);
     });
-  }, [selectedId, centralAvailable]);
+  }, [selectedId, centralMode]);
 
   // Lista de equipamentos únicos contidos no histórico deste lote
   const uniqueEquipments = useMemo(() => {
@@ -152,7 +161,7 @@ export function History() {
           )}
         </div>
 
-        {history && !centralAvailable && (
+        {history && !centralMode && (
           <button onClick={handleExport} disabled={exporting} className="export-btn" style={{ alignSelf: "flex-start" }}>
             {exporting ? "Exportando..." : "⬇ Exportar CSV"}
           </button>
@@ -306,6 +315,11 @@ function SessionCard({ session, index }: { session: CaptureSessionRecord; index:
           <span className="session-meta-item">
             <span>Leituras:</span> {session.readings.length}
           </span>
+          {session.operatorName && (
+            <span className="session-meta-item">
+              <span>Responsável:</span> {session.operatorName}
+            </span>
+          )}
           <span className="session-toggle">{open ? "▲" : "▼"}</span>
         </div>
       </button>

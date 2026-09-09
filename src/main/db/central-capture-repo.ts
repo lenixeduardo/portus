@@ -16,15 +16,16 @@ interface SessionRow {
   status: "active" | "completed" | "cancelled";
 }
 
-async function resolveContext(username: string, sectorCode = process.env.PORTUS_SECTOR_CODE ?? "PRODUCTION"): Promise<ContextRow> {
+async function resolveContext(username: string, sectorCode = "PRODUCTION"): Promise<ContextRow> {
+  const applicationCode = sectorCode === "LABORATORY" ? "PORTUS_LABORATORY" : "PORTUS";
   const result = await centralQuery<ContextRow>(
     `SELECT u.id AS user_id, a.id AS application_id, s.id AS sector_id
        FROM users u
        CROSS JOIN applications a
        CROSS JOIN sectors s
-      WHERE u.username = $1 AND a.code = 'PORTUS' AND s.code = $2
+      WHERE u.username = $1 AND a.code = $2 AND s.code = $3
         AND u.active AND a.active AND s.active`,
-    [username, sectorCode]
+    [username, applicationCode, sectorCode]
   );
   if (!result.rows[0]) throw new Error("Usuário, aplicação ou setor não encontrado na base central.");
   return result.rows[0];
@@ -41,16 +42,21 @@ export async function getCentralBatchById(batchId: number): Promise<{ id: number
 export async function createCentralCaptureSession(
   batchId: number,
   timeoutSeconds: number,
-  username: string
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
 ): Promise<CaptureSession> {
-  const context = await resolveContext(username);
+  const context = await resolveContext(username, sectorCode);
+  await centralQuery(
+    "SELECT portus_assert_permission($1, $2, $3, 'capture')",
+    [context.user_id, context.application_id, context.sector_id]
+  );
   const result = await centralQuery<SessionRow>(
     `INSERT INTO capture_sessions (
-       batch_id, sector_id, source_application_id, timeout_seconds
+       batch_id, sector_id, source_application_id, user_id, timeout_seconds
      )
-     VALUES ($1, $2, $3, $4)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING id, batch_id, started_at, ended_at, timeout_seconds, status`,
-    [batchId, context.sector_id, context.application_id, timeoutSeconds]
+    [batchId, context.sector_id, context.application_id, context.user_id, timeoutSeconds]
   );
   const row = result.rows[0];
   if (!row) throw new Error("A base central não retornou a sessão de captura.");
@@ -67,9 +73,14 @@ export async function createCentralCaptureSession(
 export async function finishCentralCaptureSession(
   sessionId: number,
   username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY",
   status: "completed" | "cancelled"
 ): Promise<void> {
-  await resolveContext(username);
+  const context = await resolveContext(username, sectorCode);
+  await centralQuery(
+    "SELECT portus_assert_permission($1, $2, $3, 'capture')",
+    [context.user_id, context.application_id, context.sector_id]
+  );
   await centralQuery(
     `UPDATE capture_sessions
         SET status = $1, ended_at = now()
@@ -87,8 +98,9 @@ export async function insertCentralReading(input: {
   parseFailureReason?: string | null;
   parseRegexUsed?: string | null;
   username: string;
+  sectorCode: "PRODUCTION" | "LABORATORY";
 }): Promise<Reading | null> {
-  const context = await resolveContext(input.username);
+  const context = await resolveContext(input.username, input.sectorCode);
   const equipment = await centralQuery<{ id: number }>(
     "SELECT id FROM equipments WHERE name = $1 OR code = $1 ORDER BY id LIMIT 1",
     [input.equipmentName]

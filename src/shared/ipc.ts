@@ -120,6 +120,8 @@ export interface CaptureSessionRecord {
   endedAt?: string;
   timeoutSeconds: number;
   status: "active" | "completed" | "cancelled";
+  operatorName?: string;
+  sectorCode?: "PRODUCTION" | "LABORATORY";
   readings: ReadingRecord[];
 }
 
@@ -166,6 +168,8 @@ export interface UserCreateInput {
   username: string;
   password: string;
   role?: "admin" | "operator";
+  sectorCode?: "PRODUCTION" | "LABORATORY";
+  laboratoryProfile?: "capture" | "closure";
 }
 
 export interface EquipmentUpdateInput {

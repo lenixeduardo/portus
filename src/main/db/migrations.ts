@@ -190,5 +190,14 @@ ALTER TABLE equipments ADD COLUMN scale_out_max REAL;
   {
     name: "015_batches_closed_by",
     sql: `ALTER TABLE batches ADD COLUMN closed_by INTEGER REFERENCES users(id) ON DELETE SET NULL;`
+  },
+  {
+    name: "016_user_operational_context",
+    sql: `
+ALTER TABLE users ADD COLUMN sector_code TEXT NOT NULL DEFAULT 'PRODUCTION'
+  CHECK (sector_code IN ('PRODUCTION', 'LABORATORY'));
+ALTER TABLE users ADD COLUMN laboratory_profile TEXT
+  CHECK (laboratory_profile IN ('capture', 'closure'));
+`
   }
 ];

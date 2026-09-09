@@ -11,6 +11,7 @@ Execute as migrations em ordem:
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_schema.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_security_permissions.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/004_laboratory_view.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/002_security_permissions.sql
@@ -39,6 +40,12 @@ nas tabelas críticas:
 - `move_batch_to_stage`
 - `confirm_production_close`
 - `confirm_laboratory_close`
+
+A migration `004_laboratory_view.sql` registra a aplicação
+`PORTUS_LABORATORY`, concede as capacidades da aplicação no setor Laboratório e
+passa a identificar o usuário responsável em cada sessão de captura. A
+permissão de cada usuário continua obrigatória em
+`user_sector_permissions`.
 
 ## Permissões
 

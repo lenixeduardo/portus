@@ -129,6 +129,7 @@ let total = 0;
 let skipFirstReadingForSession = false;
 let centralCapture = false;
 let centralUsername: string | null = null;
+let centralSectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION";
 
 // Timers de debounce de UI por slotIndex
 const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -151,7 +152,7 @@ function persistReading(input: {
   parseRegexUsed?: string | null;
 }): void {
   if (centralCapture && centralUsername) {
-    void insertCentralReading({ ...input, username: centralUsername }).catch((error) => {
+    void insertCentralReading({ ...input, username: centralUsername, sectorCode: centralSectorCode }).catch((error) => {
       console.error("[central-db] Falha ao registrar leitura:", error);
       logCaptureError({ code: "central_reading_failed", message: String(error), rawValue: input.valueRaw });
     });
@@ -345,6 +346,7 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
       void finishCentralCaptureSession(
         sessionId,
         centralUsername,
+        centralSectorCode,
         reason === "completed" ? "completed" : "cancelled"
       ).catch((error) => console.error("[central-db] Falha ao encerrar sessão:", error));
     } else if (reason === "completed") {
@@ -361,6 +363,7 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   skipFirstReadingForSession = false;
   centralCapture = false;
   centralUsername = null;
+  centralSectorCode = "PRODUCTION";
 
   const event: CaptureEndedEvent = { reason };
   broadcast(IPC.captureEnded, event);
@@ -508,7 +511,8 @@ export function getState(): CaptureStateSnapshot {
 export async function startCapture(
   targetBatchId: number,
   equipmentIds?: number[],
-  username?: string
+  username?: string,
+  sectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION"
 ): Promise<ServiceResult<CaptureStartResult>> {
   if (isActive()) {
     return { ok: false, error: "Já existe uma captura em andamento." };
@@ -521,6 +525,7 @@ export async function startCapture(
   // testes que invocam startCapture(batchId) permanecem no repositório local.
   centralCapture = isCentralDatabaseConfigured() && Boolean(username);
   centralUsername = centralCapture ? username! : null;
+  centralSectorCode = sectorCode;
 
   const localBatch = centralCapture ? null : getBatchWithProduct(targetBatchId);
   const centralBatch = centralCapture
@@ -553,6 +558,7 @@ export async function startCapture(
     } catch (error) {
       centralCapture = false;
       centralUsername = null;
+      centralSectorCode = "PRODUCTION";
       return {
         ok: false,
         error: `Não foi possível validar a base central antes da captura: ${String(error)}`
@@ -562,7 +568,7 @@ export async function startCapture(
 
   const timeoutSeconds = getCaptureTimeoutSeconds();
   const session = centralCapture
-    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!)
+    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!, centralSectorCode)
     : createCaptureSession(targetBatchId, timeoutSeconds);
   sessionId = session.id;
   batchId = targetBatchId;

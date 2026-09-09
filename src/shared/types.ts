@@ -1,7 +1,12 @@
+export type UserSector = "PRODUCTION" | "LABORATORY";
+export type LaboratoryProfile = "capture" | "closure";
+
 export interface User {
   id: number;
   username: string;
   role: "admin" | "operator";
+  sectorCode?: UserSector;
+  laboratoryProfile?: LaboratoryProfile;
   createdAt: string;
 }
 
@@ -22,6 +27,9 @@ export interface Batch {
   closedAt?: string;
   closedBy?: number;
   createdBy: number;
+  stage?: string;
+  productionClosed?: boolean;
+  laboratoryClosed?: boolean;
 }
 
 export type LineDelimiter = "crlf" | "lf" | "cr";

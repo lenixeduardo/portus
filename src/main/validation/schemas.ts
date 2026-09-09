@@ -65,7 +65,17 @@ export const createUserSchema = z.object({
     .string()
     .min(4, "Senha deve ter ao menos 4 caracteres")
     .max(100, "Senha muito longa"),
-  role: z.enum(["admin", "operator"]).optional()
+  role: z.enum(["admin", "operator"]).optional(),
+  sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
+  laboratoryProfile: z.enum(["capture", "closure"]).optional()
+}).superRefine((value, context) => {
+  if (value.sectorCode === "LABORATORY" && !value.laboratoryProfile) {
+    context.addIssue({
+      code: "custom",
+      path: ["laboratoryProfile"],
+      message: "Selecione o perfil de Captura ou Fechamento do Laboratório"
+    });
+  }
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;

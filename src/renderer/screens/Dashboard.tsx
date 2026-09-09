@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
+import { canCaptureLaboratory, canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { CaptureModal } from "../components/CaptureModal";
 import { EquipmentSelectionModal } from "../components/EquipmentSelectionModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
@@ -17,7 +18,9 @@ type ScannerState =
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [centralConfigured, setCentralConfigured] = useState(false);
   const [centralAvailable, setCentralAvailable] = useState(false);
+  const [centralStatusResolved, setCentralStatusResolved] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [simulatingLot, setSimulatingLot] = useState(false);
@@ -28,14 +31,24 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLaboratory = isLaboratoryUser(user);
+  const canCapture = !isLaboratory || canCaptureLaboratory(user);
+  const requiresCentral = centralConfigured || isLaboratory;
 
   async function reload() {
     setLoading(true);
     try {
-      const list = centralAvailable
+      if (requiresCentral && !centralAvailable) {
+        setBatches([]);
+        return;
+      }
+      const list = requiresCentral
         ? await window.api.central.batches.listOpen()
         : await window.api.batches.listOpen();
       setBatches(list);
+    } catch {
+      setBatches([]);
+      setScannerError("Não foi possível consultar os lotes na base central.");
     } finally {
       setLoading(false);
     }
@@ -43,13 +56,19 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
 
   useEffect(() => {
     window.api.central.status().then((status) => {
+      setCentralConfigured(status.configured);
       setCentralAvailable(status.available);
-    }).catch(() => setCentralAvailable(false));
+      setCentralStatusResolved(true);
+    }).catch(() => {
+      setCentralConfigured(true);
+      setCentralAvailable(false);
+      setCentralStatusResolved(true);
+    });
   }, []);
 
   useEffect(() => {
-    reload();
-  }, [centralAvailable]);
+    if (centralStatusResolved) reload();
+  }, [centralAvailable, requiresCentral, centralStatusResolved]);
 
   function clearScannerError() {
     if (scannerIdleTimer.current) clearTimeout(scannerIdleTimer.current);
@@ -67,14 +86,19 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   }
 
   // Auto-scanner disabled when BarcodeModal is open, capture is running, selection modal is open, or confirm dialog is visible
-  const scannerActive = captureBatchId === null && !showBarcode && confirmBatch === null && selectionBatch === null;
+  const scannerActive = centralStatusResolved && canCapture && (!requiresCentral || centralAvailable) &&
+    captureBatchId === null && !showBarcode && confirmBatch === null && selectionBatch === null;
 
   // Leitura pelo scanner físico é totalmente automática: processa o código,
   // cria/abre o lote e já inicia a captura, sem abrir modal nem exigir clique.
   // O modal segue disponível apenas para a entrada manual do código.
   async function handleScan(code: string) {
     setScannerState({ phase: "detecting", code });
-    if (centralAvailable) {
+    if (requiresCentral) {
+      if (!centralAvailable) {
+        setScannerError("A base central está desconectada. A captura local foi bloqueada para proteger o lote.");
+        return;
+      }
       const centralBatch = await window.api.central.batches.findByCode(code);
       if (!centralBatch) {
         setScannerError("Lote não encontrado na base central. Crie o lote pelo fluxo central antes da captura.");
@@ -109,7 +133,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       const year = new Date().getFullYear();
       const rand = String(Math.floor(Math.random() * 9000) + 1000);
       const code = `SIM-${year}-${rand}`;
-      const res = centralAvailable
+      const res = requiresCentral
         ? await window.api.central.batches.create({ productId: product.id, code })
         : await window.api.batches.create({ productId: product.id, code });
       if (!res.ok) {
@@ -130,8 +154,10 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     if (!confirmBatch) return;
     const b = confirmBatch;
     setConfirmBatch(null);
-    const res = centralAvailable
-      ? await window.api.central.batches.confirmProduction(b.id)
+    const res = requiresCentral
+      ? isLaboratory
+        ? await window.api.central.batches.confirmLaboratory(b.id)
+        : await window.api.central.batches.confirmProduction(b.id)
       : await window.api.batches.close(b.id);
     if (!res.ok) {
       setScannerError(res.error);
@@ -171,33 +197,44 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   return (
     <>
       <div className="page-actions">
-        {centralAvailable && <div className="scanner-bar scanner-bar-idle">Base central conectada</div>}
-        <ScannerStatusBar state={scannerState} />
-        <button
-          className="secondary"
-          onClick={handleSimulateLot}
-          disabled={!scannerActive || simulatingLot}
-          title={scannerActive ? "Cria um lote com número randomizado para o primeiro produto cadastrado" : "Indisponível durante captura ou com modal aberto"}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <Zap size={14} />
-          {simulatingLot ? "Criando..." : "Simular Scan"}
-        </button>
-        <button
-          className="secondary"
-          onClick={() => openBarcodeModal()}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <ScanBarcode size={14} />
-          Novo Lote por Código de Barras
-        </button>
+        {requiresCentral && centralAvailable && <div className="scanner-bar scanner-bar-idle">Base central conectada</div>}
+        {requiresCentral && !centralAvailable && (
+          <div className="scanner-bar scanner-bar-error">Base central indisponível — operações locais bloqueadas</div>
+        )}
+        {canCapture
+          ? <ScannerStatusBar state={scannerState} />
+          : <div className="scanner-bar scanner-bar-idle">Selecione um lote para revisar e confirmar o Laboratório.</div>}
+        {!isLaboratory && (
+          <>
+            <button
+              className="secondary"
+              onClick={handleSimulateLot}
+              disabled={!scannerActive || simulatingLot}
+              title={scannerActive ? "Cria um lote com número randomizado para o primeiro produto cadastrado" : "Indisponível durante captura ou com modal aberto"}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <Zap size={14} />
+              {simulatingLot ? "Criando..." : "Simular Scan"}
+            </button>
+            <button
+              className="secondary"
+              onClick={() => openBarcodeModal()}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <ScanBarcode size={14} />
+              Novo Lote por Código de Barras
+            </button>
+          </>
+        )}
       </div>
 
       {loading ? (
         <div className="muted mono" style={{ fontSize: 12 }}>Carregando...</div>
       ) : batches.length === 0 ? (
         <div className="placeholder">
-          Nenhum lote aberto. Escaneie um código de barras para criar ou abrir um lote.
+          {isLaboratory
+            ? "Nenhum lote aguardando processamento do Laboratório."
+            : "Nenhum lote aberto. Escaneie um código de barras para criar ou abrir um lote."}
         </div>
       ) : (
         <div className="batch-grid">
@@ -206,8 +243,11 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
               key={b.id}
               batch={b}
               isCapturing={captureBatchId === b.id}
-              canClose={true}
-              centralMode={centralAvailable}
+              canClose={isLaboratory
+                ? canCloseLaboratory(user) && !b.laboratoryClosed
+                : !requiresCentral || !b.productionClosed}
+              centralMode={requiresCentral}
+              confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
@@ -230,7 +270,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       {confirmBatch && (
         <ConfirmCloseModal
           batch={confirmBatch}
-          centralMode={centralAvailable}
+          centralMode={requiresCentral}
+          confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
           onClose={() => setConfirmBatch(null)}
           onConfirm={handleConfirmClose}
         />
@@ -342,6 +383,7 @@ function BatchCard({
   isCapturing,
   canClose,
   centralMode,
+  confirmationSector,
   onClose,
   onPrint
 }: {
@@ -349,6 +391,7 @@ function BatchCard({
   isCapturing: boolean;
   canClose: boolean;
   centralMode: boolean;
+  confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onPrint: () => void;
 }) {
@@ -381,6 +424,17 @@ function BatchCard({
         </div>
       </div>
 
+      {centralMode && (
+        <div className="batch-confirmations" aria-label="Confirmações de fechamento">
+          <span className={batch.productionClosed ? "is-confirmed" : "is-pending"}>
+            Produção {batch.productionClosed ? "confirmada" : "pendente"}
+          </span>
+          <span className={batch.laboratoryClosed ? "is-confirmed" : "is-pending"}>
+            Laboratório {batch.laboratoryClosed ? "confirmado" : "pendente"}
+          </span>
+        </div>
+      )}
+
       <div className="batch-actions">
         <button
           className="secondary"
@@ -398,7 +452,9 @@ function BatchCard({
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
             <CheckSquare size={13} />
-            {centralMode ? "Confirmar Produção" : "Finalizar"}
+            {centralMode
+              ? confirmationSector === "LABORATORY" ? "Confirmar Laboratório" : "Confirmar Produção"
+              : "Finalizar"}
           </button>
         )}
       </div>
@@ -409,11 +465,13 @@ function BatchCard({
 function ConfirmCloseModal({
   batch,
   centralMode,
+  confirmationSector,
   onClose,
   onConfirm
 }: {
   batch: BatchWithProduct;
   centralMode: boolean;
+  confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -428,8 +486,20 @@ function ConfirmCloseModal({
         </>
       }
     >
-      <p>{centralMode ? "Registrar confirmação da Produção para o lote" : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
-      <p className="muted" style={{ fontSize: 13 }}>{centralMode ? "O fechamento definitivo depende também da confirmação do Laboratório." : "Esta ação não pode ser desfeita."}</p>
+      <p>{centralMode
+        ? `Registrar confirmação do ${confirmationSector === "LABORATORY" ? "Laboratório" : "setor de Produção"} para o lote`
+        : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
+      <p className="muted" style={{ fontSize: 13 }}>
+        {centralMode
+          ? confirmationSector === "LABORATORY"
+            ? batch.productionClosed
+              ? "A Produção já confirmou. Esta ação concluirá o fechamento global do lote."
+              : "O lote permanecerá aberto até a confirmação da Produção."
+            : batch.laboratoryClosed
+              ? "O Laboratório já confirmou. Esta ação concluirá o fechamento global do lote."
+              : "O lote permanecerá aberto até a confirmação do Laboratório."
+          : "Esta ação não pode ser desfeita."}
+      </p>
     </Modal>
   );
 }

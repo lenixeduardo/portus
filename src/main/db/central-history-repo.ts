@@ -1,5 +1,6 @@
 import type { BatchHistory, BatchWithProduct, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
 import { centralQuery } from "./central-connection";
+import { assertCentralReadAccess } from "./central-batches-repo";
 
 interface HistoryRow {
   session_id: number;
@@ -13,13 +14,22 @@ interface HistoryRow {
   captured_at: string | null;
   equipment_id: number | null;
   equipment_name: string | null;
+  operator_name: string | null;
+  sector_code: "PRODUCTION" | "LABORATORY" | null;
 }
 
-export async function getCentralBatchHistory(batchId: number): Promise<BatchHistory | null> {
+export async function getCentralBatchHistory(
+  batchId: number,
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchHistory | null> {
+  await assertCentralReadAccess(username, sectorCode);
   const batchResult = await centralQuery<BatchWithProduct>(
     `SELECT b.id, b.product_id, p.name AS "productName", b.code, b.status,
             b.opened_at AS "openedAt", b.closed_at AS "closedAt",
             b.closed_by AS "closedBy", b.created_by AS "createdBy",
+            b.stage, b.production_closed AS "productionClosed",
+            b.laboratory_closed AS "laboratoryClosed",
             u.username AS "operatorName",
             (SELECT COUNT(*) FROM readings r0 WHERE r0.batch_id = b.id) AS "readingsCount"
        FROM batches b
@@ -34,9 +44,12 @@ export async function getCentralBatchHistory(batchId: number): Promise<BatchHist
   const rows = await centralQuery<HistoryRow>(
     `SELECT cs.id AS session_id, cs.started_at AS session_started_at,
             cs.ended_at AS session_ended_at, cs.timeout_seconds AS session_timeout_seconds,
-            cs.status AS session_status, r.id AS reading_id, r.value_raw,
+            cs.status AS session_status, cu.username AS operator_name,
+            s.code AS sector_code, r.id AS reading_id, r.value_raw,
             r.value_parsed, r.captured_at, e.id AS equipment_id, e.name AS equipment_name
        FROM capture_sessions cs
+       LEFT JOIN users cu ON cu.id = cs.user_id
+       LEFT JOIN sectors s ON s.id = cs.sector_id
        LEFT JOIN readings r ON r.capture_session_id = cs.id
        LEFT JOIN equipments e ON e.id = r.equipment_id
       WHERE cs.batch_id = $1
@@ -53,6 +66,8 @@ export async function getCentralBatchHistory(batchId: number): Promise<BatchHist
         endedAt: row.session_ended_at ?? undefined,
         timeoutSeconds: row.session_timeout_seconds,
         status: row.session_status,
+        operatorName: row.operator_name ?? undefined,
+        sectorCode: row.sector_code ?? undefined,
         readings: []
       });
     }

@@ -8,7 +8,14 @@ export function login(username: string, password: string): User | null {
   const row = getUserByUsername(username);
   if (!row) return null;
   if (!bcrypt.compareSync(password, row.password_hash)) return null;
-  currentUser = { id: row.id, username: row.username, role: (row as any).role ?? "admin", createdAt: row.created_at };
+  currentUser = {
+    id: row.id,
+    username: row.username,
+    role: row.role ?? "admin",
+    sectorCode: row.sector_code ?? "PRODUCTION",
+    laboratoryProfile: row.laboratory_profile ?? undefined,
+    createdAt: row.created_at
+  };
   return currentUser;
 }
 

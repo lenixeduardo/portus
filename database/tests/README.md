@@ -16,6 +16,7 @@ psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f database/migrations/001_schema.sql \
   -f database/migrations/002_domain_functions.sql \
   -f database/migrations/003_security_permissions.sql \
+  -f database/migrations/004_laboratory_view.sql \
   -f database/seed/reference.sql \
   -f database/tests/001_domain_functions.sql \
   -f database/tests/002_security_permissions.sql

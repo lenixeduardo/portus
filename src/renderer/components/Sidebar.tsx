@@ -22,7 +22,9 @@ const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly
 ];
 
 export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: Props) {
-  const visibleNav = NAV.filter((item) => !item.adminOnly || user.role === "admin");
+  const visibleNav = NAV.filter((item) =>
+    !item.adminOnly || user.role === "admin" || (item.key === "history" && user.sectorCode === "LABORATORY")
+  );
 
   return (
     <aside className="sidebar">

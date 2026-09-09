@@ -14,6 +14,8 @@ interface CentralBatchRow {
   created_by: number;
   readings_count: string;
   operator_name: string;
+  production_closed: boolean;
+  laboratory_closed: boolean;
 }
 
 function toBatch(row: CentralBatchRow): BatchWithProduct {
@@ -28,13 +30,17 @@ function toBatch(row: CentralBatchRow): BatchWithProduct {
     createdBy: row.created_by,
     productName: row.product_name,
     operatorName: row.operator_name,
-    readingsCount: Number(row.readings_count)
+    readingsCount: Number(row.readings_count),
+    stage: row.stage,
+    productionClosed: row.production_closed,
+    laboratoryClosed: row.laboratory_closed
   };
 }
 
 const SELECT_BATCH = `
   SELECT b.id, b.product_id, p.name AS product_name, b.code, b.status,
          b.stage, b.opened_at, b.closed_at, b.closed_by, b.created_by,
+         b.production_closed, b.laboratory_closed,
          u.username AS operator_name,
          (SELECT COUNT(*) FROM readings r WHERE r.batch_id = b.id) AS readings_count
     FROM batches b
@@ -42,7 +48,12 @@ const SELECT_BATCH = `
     JOIN users u ON u.id = b.created_by
 `;
 
-export async function listCentralOpenBatches(): Promise<BatchWithProduct[]> {
+export async function listCentralOpenBatches(
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchWithProduct[]> {
+  const context = await resolveContext(username, sectorCode);
+  await assertReadPermission(context);
   const result = await centralQuery<CentralBatchRow>(
     `${SELECT_BATCH} WHERE b.status = 'open' ORDER BY b.opened_at DESC`
   );
@@ -50,26 +61,31 @@ export async function listCentralOpenBatches(): Promise<BatchWithProduct[]> {
 }
 
 
-export async function listCentralAllBatches(): Promise<BatchWithProduct[]> {
+export async function listCentralAllBatches(
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchWithProduct[]> {
+  const context = await resolveContext(username, sectorCode);
+  await assertReadPermission(context);
   const result = await centralQuery<CentralBatchRow>(
     `${SELECT_BATCH} ORDER BY b.opened_at DESC`
   );
   return result.rows.map(toBatch);
 }
 
-export async function findCentralBatchByCode(code: string): Promise<BatchWithProduct | null> {
+export async function findCentralBatchByCode(
+  code: string,
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchWithProduct | null> {
+  const context = await resolveContext(username, sectorCode);
+  await assertReadPermission(context);
   const result = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.code = $1`, [code.trim()]);
   return result.rows[0] ? toBatch(result.rows[0]) : null;
 }
 
-export async function listCentralBatches(): Promise<BatchWithProduct[]> {
-  const result = await centralQuery<CentralBatchRow>(
-    `${SELECT_BATCH} ORDER BY b.opened_at DESC`
-  );
-  return result.rows.map(toBatch);
-}
-
 async function resolveContext(username: string, sectorCode: string) {
+  const applicationCode = sectorCode === "LABORATORY" ? "PORTUS_LABORATORY" : "PORTUS";
   const result = await centralQuery<{
     user_id: number;
     application_id: number;
@@ -80,13 +96,32 @@ async function resolveContext(username: string, sectorCode: string) {
        CROSS JOIN applications a
        CROSS JOIN sectors s
       WHERE u.username = $1
-        AND a.code = 'PORTUS'
-        AND s.code = $2
+        AND a.code = $2
+        AND s.code = $3
         AND u.active AND a.active AND s.active`,
-    [username, sectorCode]
+    [username, applicationCode, sectorCode]
   );
   if (!result.rows[0]) throw new Error("Usuário, aplicação ou setor não encontrado na base central.");
   return result.rows[0];
+}
+
+async function assertReadPermission(context: {
+  user_id: number;
+  application_id: number;
+  sector_id: number;
+}): Promise<void> {
+  await centralQuery(
+    "SELECT portus_assert_permission($1, $2, $3, 'read')",
+    [context.user_id, context.application_id, context.sector_id]
+  );
+}
+
+export async function assertCentralReadAccess(
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<void> {
+  const context = await resolveContext(username, sectorCode);
+  await assertReadPermission(context);
 }
 
 export async function openCentralBatch(
@@ -95,7 +130,7 @@ export async function openCentralBatch(
   username: string,
   stage = "A"
 ): Promise<BatchWithProduct> {
-  const context = await resolveContext(username, process.env.PORTUS_SECTOR_CODE ?? "PRODUCTION");
+  const context = await resolveContext(username, "PRODUCTION");
   const product = await centralQuery<{ id: number }>(
     "SELECT id FROM products WHERE name = $1",
     [productName]

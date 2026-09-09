@@ -1,6 +1,6 @@
 # PORTUS Visão Laboratório — Especificação Técnica
 
-**Status:** escopo funcional consolidado; homologação operacional pendente
+**Status:** visão inicial implementada; homologação operacional pendente
 **Aplicação:** novo cliente do ecossistema PORTUS  
 **Integração:** PostgreSQL central compartilhado  
 **Dependência:** `PORTUS-DATABASE-BASELINE.md` e `PORTUS_SPEC_TECNICO(1).md`
@@ -261,6 +261,17 @@ O PORTUS Visão Laboratório será aceito quando:
 - implementar detalhe e histórico;
 - integrar o núcleo existente de captura serial;
 - implementar revisão das leituras e confirmação laboratorial.
+
+### Implementado na visão inicial
+
+- seleção automática da visão pelo contexto do usuário autenticado;
+- perfis locais `Captura` e `Fechamento` para o Laboratório;
+- fila central com estado das confirmações da Produção e do Laboratório;
+- captura serial central identificando usuário, aplicação e setor;
+- histórico com responsável por sessão;
+- confirmação laboratorial exclusiva do perfil de Fechamento;
+- bloqueio de criação, fechamento e captura local para o Laboratório;
+- aplicação central `PORTUS_LABORATORY`.
 
 ### Fase C — Homologação
 

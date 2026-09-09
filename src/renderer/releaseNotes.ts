@@ -9,6 +9,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: APP_VERSION,
     items: [
+      "Adicionada a visão Laboratório com perfis separados de Captura e Fechamento.",
+      "Os lotes centrais agora exibem separadamente as confirmações da Produção e do Laboratório.",
+      "Sessões centrais de captura agora registram o usuário e o setor responsáveis.",
       "Adicionada integração opcional com o PostgreSQL central para lotes, histórico e captura.",
       "Adicionado status de conexão do banco central no cabeçalho, atualizado a cada 15 segundos.",
       "O fechamento central agora depende das confirmações da Produção e do Laboratório.",

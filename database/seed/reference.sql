@@ -3,6 +3,7 @@ BEGIN;
 INSERT INTO applications (code, name)
 VALUES
   ('PORTUS', 'PORTUS'),
+  ('PORTUS_LABORATORY', 'PORTUS Laboratório'),
   ('SOFTWARE_B', 'Software B')
 ON CONFLICT (code) DO UPDATE
 SET name = EXCLUDED.name,

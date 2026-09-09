@@ -89,6 +89,16 @@ As estações de produção deverão usar uma role de runtime criada na homologa
 - especificação do Laboratório restrita aos perfis Captura e Fechamento;
 - capa do projeto produzida a partir da interface real.
 
+### 8. Visão Laboratório
+
+- mesma estrutura visual e navegação da Produção, selecionada pelo login;
+- perfis operacionais separados para Captura e Fechamento;
+- aplicação PostgreSQL `PORTUS_LABORATORY` com acesso ao setor Laboratório;
+- confirmação laboratorial sem alteração direta do estado global;
+- estados de confirmação da Produção e do Laboratório visíveis por lote;
+- equipamentos definidos pela estação e responsável registrado por sessão;
+- indisponibilidade da central bloqueia qualquer fallback de escrita local.
+
 ## Validação executada
 
 | Validação | Resultado |
@@ -97,7 +107,7 @@ As estações de produção deverão usar uma role de runtime criada na homologa
 | Teste de permissões PostgreSQL local | aprovado, com `ROLLBACK` |
 | Histórico do teste de domínio | 5 eventos registrados |
 | Harness automatizado de concorrência | implementado; execução local pendente |
-| Testes Vitest | 84 de 84 aprovados |
+| Testes Vitest | 87 de 87 aprovados |
 | TypeScript main + renderer | aprovado |
 | Build de produção | aprovado |
 | Instalação limpa com lockfile | aprovada |

@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
+import { canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { getCurrentUser } from "../auth/auth-service";
 import {
   checkCentralDatabase,
@@ -35,16 +36,18 @@ export function registerCentralHandlers(): void {
   ipcMain.handle(
     IPC.centralBatchesListOpen,
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
-      if (!isCentralDatabaseConfigured()) return [];
-      return listCentralOpenBatches();
+      const user = getCurrentUser();
+      if (!user || !isCentralDatabaseConfigured()) return [];
+      return listCentralOpenBatches(user.username, user.sectorCode ?? "PRODUCTION");
     })
   );
 
   ipcMain.handle(
     IPC.centralBatchesListAll,
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
-      if (!isCentralDatabaseConfigured()) return [];
-      return listCentralAllBatches();
+      const user = getCurrentUser();
+      if (!user || !isCentralDatabaseConfigured()) return [];
+      return listCentralAllBatches(user.username, user.sectorCode ?? "PRODUCTION");
     })
   );
 
@@ -52,9 +55,10 @@ export function registerCentralHandlers(): void {
     IPC.centralHistoryGetBatch,
     compose([requireAuth, validateInput(closeBatchSchema)])(
       async (_e, input: { id: number }): Promise<ServiceResult<import("../../shared/ipc").BatchHistory>> => {
-        if (!isCentralDatabaseConfigured()) return unavailable();
+        const user = getCurrentUser();
+        if (!user || !isCentralDatabaseConfigured()) return unavailable();
         try {
-          const history = await getCentralBatchHistory(input.id);
+          const history = await getCentralBatchHistory(input.id, user.username, user.sectorCode ?? "PRODUCTION");
           return history ? { ok: true, data: history } : { ok: false, error: "Lote não encontrado na base central." };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao carregar histórico central." };
@@ -66,9 +70,10 @@ export function registerCentralHandlers(): void {
   ipcMain.handle(
     IPC.centralBatchesFindByCode,
     compose([requireAuth])(async (_e, code: string): Promise<BatchWithProduct | null> => {
-      if (!isCentralDatabaseConfigured()) return null;
+      const user = getCurrentUser();
+      if (!user || !isCentralDatabaseConfigured()) return null;
       const { findCentralBatchByCode } = await import("../db/central-batches-repo");
-      return findCentralBatchByCode(code);
+      return findCentralBatchByCode(code, user.username, user.sectorCode ?? "PRODUCTION");
     })
   );
 
@@ -78,6 +83,9 @@ export function registerCentralHandlers(): void {
       async (_e, input: BatchInput): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        if (isLaboratoryUser(user)) {
+          return { ok: false, error: "O Laboratório consulta lotes abertos pela Produção; não cria novos lotes." };
+        }
         const product = getProduct(input.productId);
         if (!product) return { ok: false, error: "Produto local inválido." };
         try {
@@ -96,6 +104,9 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        if (user.sectorCode !== "PRODUCTION") {
+          return { ok: false, error: "Somente a visão Produção pode registrar esta confirmação." };
+        }
         try {
           return { ok: true, data: await confirmCentralProductionClose(input.id, user.username) };
         } catch (error) {
@@ -111,6 +122,9 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        if (!canCloseLaboratory(user)) {
+          return { ok: false, error: "Seu perfil não possui permissão de fechamento do Laboratório." };
+        }
         try {
           return { ok: true, data: await confirmCentralLaboratoryClose(input.id, user.username) };
         } catch (error) {

@@ -40,7 +40,13 @@ export function registerUsersHandlers(): void {
         if (usernameExists(username)) {
           return { ok: false, error: "Já existe um usuário com esse nome." };
         }
-        const user = createUser(username, input.password, input.role ?? "operator");
+        const user = createUser(
+          username,
+          input.password,
+          input.role ?? "operator",
+          input.sectorCode ?? "PRODUCTION",
+          input.laboratoryProfile
+        );
         return { ok: true, data: user };
       }
     )

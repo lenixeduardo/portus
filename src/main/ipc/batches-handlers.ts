@@ -42,10 +42,13 @@ export function registerBatchesHandlers(): void {
 
   ipcMain.handle(
     IPC.batchesCreate,
-    compose([requireAdmin, validateInput(createBatchSchema)])(
+    compose([requireAuth, validateInput(createBatchSchema)])(
       (_e, input: CreateBatchInput): ServiceResult<BatchWithProduct> => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
+        if (user.sectorCode === "LABORATORY") {
+          return { ok: false, error: "O Laboratório consulta lotes existentes na base central." };
+        }
         if (!getProduct(input.productId)) {
           return { ok: false, error: "Produto inválido." };
         }
@@ -84,6 +87,9 @@ export function registerBatchesHandlers(): void {
       (_e, input: CloseBatchInput): ServiceResult<true> => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
+        if (user.sectorCode === "LABORATORY") {
+          return { ok: false, error: "O Laboratório não pode finalizar lotes no banco local." };
+        }
         const batch = getBatchWithProduct(input.id);
         if (!batch) return { ok: false, error: "Lote não encontrado." };
         if (batch.status === "closed") return { ok: false, error: "Lote já está fechado." };
@@ -99,6 +105,9 @@ export function registerBatchesHandlers(): void {
       (_e, input: BarcodeScanInput): ServiceResult<BarcodeScanResult> => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
+        if (user.sectorCode === "LABORATORY") {
+          return { ok: false, error: "O Laboratório consulta lotes existentes na base central." };
+        }
 
         return processBarcodeValue(input.barcodeValue, user.id, {
           barcode_regex: getSetting("barcode_regex"),
