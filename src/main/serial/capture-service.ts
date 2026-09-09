@@ -12,7 +12,7 @@ import {
 } from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
 import { isCentralDatabaseConfigured } from "../db/central-connection";
-import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading } from "../db/central-capture-repo";
+import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, validateCentralEquipmentMapping } from "../db/central-capture-repo";
 import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
@@ -540,6 +540,25 @@ export async function startCapture(
   );
   if (equipments.length === 0) {
     return { ok: false, error: "Nenhum equipamento habilitado configurado." };
+  }
+
+  if (centralCapture) {
+    try {
+      const missingEquipment = await validateCentralEquipmentMapping(equipments.map((equipment) => equipment.name));
+      if (missingEquipment.length > 0) {
+        return {
+          ok: false,
+          error: `Equipamentos não mapeados na base central: ${missingEquipment.join(", ")}.`
+        };
+      }
+    } catch (error) {
+      centralCapture = false;
+      centralUsername = null;
+      return {
+        ok: false,
+        error: `Não foi possível validar a base central antes da captura: ${String(error)}`
+      };
+    }
   }
 
   const timeoutSeconds = getCaptureTimeoutSeconds();
