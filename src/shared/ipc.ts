@@ -52,9 +52,11 @@ export const IPC = {
   captureInjectReading: "capture:inject-reading",
   centralStatus: "central:status",
   centralBatchesListOpen: "central:batches:list-open",
+  centralBatchesListAll: "central:batches:list-all",
   centralBatchesCreate: "central:batches:create",
   centralBatchesConfirmProduction: "central:batches:confirm-production",
-  centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory"
+  centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory",
+  centralHistoryGetBatch: "central:history:get-batch"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
