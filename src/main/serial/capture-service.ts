@@ -76,7 +76,7 @@ function startModbusForSlot(slot: ActiveSlot): void {
         return;
       }
 
-      insertReading({
+      persistReading({
         batchId: bid,
         equipmentId: eq.id,
         valueRaw,
@@ -253,7 +253,7 @@ function handleLine(slot: ActiveSlot, line: string): void {
     console.error(`[serial] Regex inválida (slot ${eq.slotIndex}, regex="${eq.parseRegex}")`);
   }
 
-  insertReading({
+  persistReading({
     batchId: bid,
     equipmentId: eq.id,
     valueRaw: raw,
