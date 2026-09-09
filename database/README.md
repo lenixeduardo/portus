@@ -10,8 +10,10 @@ Execute as migrations em ordem:
 ```bash
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_schema.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_domain_functions.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_security_permissions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/002_security_permissions.sql
 ```
 
 Cada migration é transacional e falha ao primeiro erro.
@@ -46,9 +48,16 @@ criar os usuários de banco da infraestrutura e conceder apenas:
 - `EXECUTE` nas funções de domínio;
 - nenhum `INSERT`, `UPDATE` ou `DELETE` direto para clientes operacionais.
 
-A configuração de roles físicos do PostgreSQL depende do ambiente de instalação
-e será adicionada durante a homologação.
+A migration `003_security_permissions.sql` remove de `PUBLIC` o acesso às
+tabelas, sequências e funções do schema. A role usada pelo aplicativo deve ser
+criada na implantação e receber somente os `SELECT`, escritas técnicas e
+`EXECUTE` estritamente necessários. O proprietário das migrations não deve ser
+usado como credencial nas estações em produção.
 
 ## Validação
 
-O teste transacional em `database/tests/001_domain_functions.sql` verifica o fluxo de abertura, mudança de etapa, dupla confirmação de fechamento e idempotência. Os testes de concorrência entre duas sessões continuam pendentes da execução em um PostgreSQL real.
+O teste transacional em `database/tests/001_domain_functions.sql` verifica o
+fluxo de abertura, mudança de etapa, dupla confirmação e idempotência. O teste
+`002_security_permissions.sql` confirma que `PUBLIC` não possui escrita direta
+nem execução das funções críticas. A concorrência entre duas sessões permanece
+como teste de homologação em PostgreSQL real.

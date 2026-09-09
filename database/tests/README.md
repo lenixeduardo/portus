@@ -15,11 +15,18 @@ Execute após as migrations e o seed:
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f database/migrations/001_schema.sql \
   -f database/migrations/002_domain_functions.sql \
+  -f database/migrations/003_security_permissions.sql \
   -f database/seed/reference.sql \
-  -f database/tests/001_domain_functions.sql
+  -f database/tests/001_domain_functions.sql \
+  -f database/tests/002_security_permissions.sql
 \`\`\`
 
 O teste usa \`ROLLBACK\`, portanto não deixa o lote de fixture persistido.
+
+O teste de permissões valida que o papel `PUBLIC` não pode escrever diretamente
+nas tabelas críticas nem executar as funções de domínio. Execute as validações
+como proprietário das migrations; os testes consultam os privilégios de
+`PUBLIC`, não os privilégios herdados pelo proprietário.
 
 A validação de concorrência deve ser feita em duas sessões PostgreSQL simultâneas,
 chamando \`confirm_production_close\` e

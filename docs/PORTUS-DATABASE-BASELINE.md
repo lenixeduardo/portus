@@ -132,8 +132,8 @@ Todas devem:
 - [x] ADR alinhado ao PostgreSQL compartilhado.
 - [x] Regra Produção + Laboratório registrada.
 - [x] Limite global de seis lotes removido do modelo central.
-- [ ] Schema PostgreSQL aplicado em ambiente de desenvolvimento.
-- [ ] Funções de domínio testadas.
+- [x] Schema PostgreSQL aplicado em ambiente de desenvolvimento.
+- [x] Funções de domínio testadas em transação com `ROLLBACK`.
 - [ ] Permissões por setor homologadas.
 
 ## Integração Electron — Passo 1
@@ -149,6 +149,16 @@ A captura USB/serial continua local. A API central foi exposta por IPC separado 
 
 
 A captura serial permanece local no Electron, mas suas sessões e leituras passam a ser persistidas no PostgreSQL central quando a conexão estiver ativa. O mapeamento de equipamento usa `equipments.name` ou `equipments.code`; a homologação deve garantir que esses identificadores coincidam entre a configuração local e a central.
+
+O cabeçalho da aplicação consulta `central.status()` na abertura da sessão e a
+cada 15 segundos. O badge diferencia conexão disponível, falha de conexão,
+configuração ausente e verificação em andamento. A disponibilidade é confirmada
+no processo principal com `SELECT 1`; a URL do banco não é exposta ao renderer.
+
+A migration `003_security_permissions.sql` revoga de `PUBLIC` todos os
+privilégios em tabelas e sequências e a execução de funções do schema central.
+As roles físicas usadas pelas estações devem ser concedidas explicitamente na
+homologação e nunca devem reutilizar o proprietário administrativo das migrations.
 
 
 ## Homologação de captura

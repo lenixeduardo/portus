@@ -74,11 +74,11 @@
 - [x] Commit + push
 
 ## Fase 7 — Empacotamento ✅
-- [ ] Ícone do app (`build/icon.ico`)
-- [x] `electron-builder` config final (NSIS, autoupdate opcional)
+- [x] Ícone do app (`build/icon.png` e `build/icon.ico`)
+- [x] `electron-builder` config final (NSIS)
 - [x] Smoke test do `.exe` gerado
 - [x] Documentar processo de release no README
-- [ ] Commit + push
+- [x] Commit + push
 
 ## Etapa 0 — Baseline e decisões para PostgreSQL 🎯 ✅
 
@@ -98,27 +98,31 @@
 - [x] Criar `batch_history`
 - [x] Criar funções `open_batch`, `register_reading` e `move_batch_to_stage`
 - [x] Criar funções de confirmação de fechamento da Produção e do Laboratório
-- [ ] Revogar escrita irrestrita nas tabelas críticas
+- [x] Revogar privilégios de `PUBLIC` nas tabelas, sequências e funções centrais
 - [x] Criar teste transacional de idempotência e fluxo de fechamento
 - [ ] Executar teste concorrente em duas sessões PostgreSQL
-- [ ] Validar migrations e teste em PostgreSQL local antes da adaptação do Electron
+- [x] Validar migrations e teste de domínio em PostgreSQL local
 - [x] Criar adaptador PostgreSQL opcional e IPC central para lotes
 - [x] Migrar o Dashboard de lotes para a API central quando disponível
 - [x] Migrar histórico e consulta de código de barras para a API central
 - [x] Migrar sessões e leituras da captura serial para persistência central
 - [x] Implementar preflight de mapeamento e bloqueio offline seguro
+- [x] Exibir status real da conexão PostgreSQL na interface
+- [x] Sincronizar `package-lock.json` com o cliente `pg`
+- [x] Documentar integração, instalação, validação e limitações atuais
 - [ ] Executar homologação com PostgreSQL e equipamentos reais
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
 - [x] Backup automático do SQLite
 - [ ] Relatório PDF do lote
-- [ ] Modo escuro
-- [ ] Integração com leitor de código de barras p/ código de lote
+- [x] Tema escuro industrial
+- [ ] Tema claro opcional
+- [x] Integração com leitor de código de barras para código de lote
 
 
 ## Portus Visão Laboratório
 - [x] Documentar escopo, atores, fluxos, permissões, dados, funções e critérios de aceite
-- [ ] Validar regras de ensaio e perfis com o responsável do Laboratório
+- [ ] Validar leituras obrigatórias e acúmulo dos perfis Captura/Fechamento com o Laboratório
 - [ ] Validar equipamentos e permissões do Laboratório
 - [ ] Implementar cliente do Laboratório para captura e fechamento

@@ -1,6 +1,6 @@
 # PORTUS Visão Laboratório — Especificação Técnica
 
-**Status:** proposta para validação  
+**Status:** escopo funcional consolidado; homologação operacional pendente
 **Aplicação:** novo cliente do ecossistema PORTUS  
 **Integração:** PostgreSQL central compartilhado  
 **Dependência:** `PORTUS-DATABASE-BASELINE.md` e `PORTUS_SPEC_TECNICO(1).md`
@@ -16,7 +16,9 @@ O PORTUS Visão Laboratório será a interface usada pelo setor de Laboratório 
 
 O escopo inicial não inclui cadastro de ensaios, resultados laboratoriais ou observações técnicas.
 
-A aplicação não controla portas USB/serial. Essa responsabilidade permanece no PORTUS operacional.
+A captura continuará usando o núcleo serial já existente no PORTUS, executado
+localmente na estação do Laboratório. A interface nunca acessa a porta diretamente:
+o processo principal do Electron mantém essa responsabilidade.
 
 ## 2. Limites do produto
 
@@ -31,9 +33,9 @@ A aplicação não controla portas USB/serial. Essa responsabilidade permanece n
 
 ### Fora do escopo inicial
 
-- comunicação direta com equipamentos seriais;
+- comunicação serial pelo frontend ou fora do núcleo de captura existente;
 - alteração arbitrária do status global do lote;
-- exclusão física de leituras ou resultados;
+- exclusão física de leituras;
 - limite global de lotes abertos;
 - sincronização offline com posterior reconciliação;
 - Kafka, filas, CQRS, CDC ou Event Sourcing.
@@ -170,10 +172,10 @@ Funções novas recomendadas:
 
 - `get_laboratory_batch_queue`;
 - `get_laboratory_batch_detail`;
-- `register_laboratory_result`;
-- `update_laboratory_result`;
-- `cancel_laboratory_result`;
 - `validate_laboratory_batch_for_close`.
+
+Não serão criadas funções de resultado ou ensaio nesta versão. A captura grava
+somente `capture_sessions` e `readings` por meio do domínio central.
 
 As funções devem:
 
@@ -250,15 +252,15 @@ O PORTUS Visão Laboratório será aceito quando:
 - definir permissões do setor Laboratório;
 - criar funções de consulta e validação de captura;
 - criar testes de autorização e idempotência;
-- criar testes de autorização e idempotência.
+- validar que somente os perfis de Captura e Fechamento recebem ações operacionais.
 
 ### Fase B — Cliente
 
 - criar shell de autenticação;
 - implementar fila de lotes;
 - implementar detalhe e histórico;
-- implementar registro de resultados;
-- implementar revisão e confirmação.
+- integrar o núcleo existente de captura serial;
+- implementar revisão das leituras e confirmação laboratorial.
 
 ### Fase C — Homologação
 
@@ -275,8 +277,7 @@ Antes do desenvolvimento, o responsável pelo processo deve confirmar:
 
 1. quais equipamentos pertencem ao setor Laboratório;
 2. quais leituras são obrigatórias antes da confirmação;
-3. quais perfis terão permissão de captura e de fechamento;
-4. se o perfil de Fechamento também poderá capturar;
-5. se haverá anexos ou assinatura digital em etapa futura;
-6. se o cliente será Electron, web ou ambos;
-7. o código definitivo da aplicação no PostgreSQL.
+3. se o perfil de Fechamento também poderá acumular Captura;
+4. se haverá anexos ou assinatura digital em etapa futura;
+5. se o cliente será Electron, web ou ambos;
+6. o código definitivo da aplicação no PostgreSQL.
