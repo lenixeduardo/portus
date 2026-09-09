@@ -517,11 +517,10 @@ export async function startCapture(
   if (!Number.isInteger(targetBatchId)) {
     return { ok: false, error: "Lote inválido." };
   }
-  centralCapture = isCentralDatabaseConfigured();
-  centralUsername = centralCapture ? (username ?? null) : null;
-  if (centralCapture && !centralUsername) {
-    return { ok: false, error: "Usuário central não informado." };
-  }
+  // O modo central exige contexto explícito de usuário. Chamadas internas e
+  // testes que invocam startCapture(batchId) permanecem no repositório local.
+  centralCapture = isCentralDatabaseConfigured() && Boolean(username);
+  centralUsername = centralCapture ? username! : null;
 
   const localBatch = centralCapture ? null : getBatchWithProduct(targetBatchId);
   const centralBatch = centralCapture
