@@ -283,9 +283,13 @@ export interface SerialReaderApi {
     status(): Promise<{ configured: boolean; available: boolean }>;
     batches: {
       listOpen(): Promise<BatchWithProduct[]>;
+      listAll(): Promise<BatchWithProduct[]>;
       create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
       confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
+    };
+    history: {
+      getBatch(id: number): Promise<ServiceResult<BatchHistory>>;
     };
   };
   log: {
