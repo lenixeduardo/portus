@@ -13,7 +13,7 @@ import {
 } from "../db/central-batches-repo";
 import { getProduct } from "../db/products-repo";
 import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
-import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
+import { compose, requireAuth, validateInput } from "./middleware";
 
 function unavailable<T>(): ServiceResult<T> {
   return { ok: false, error: "Base central indisponível ou não configurada." };
@@ -40,7 +40,7 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesCreate,
-    compose([requireAdmin, validateInput(createBatchSchema)])(
+    compose([requireAuth, validateInput(createBatchSchema)])(
       async (_e, input: BatchInput): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
