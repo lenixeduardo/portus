@@ -4,7 +4,7 @@
 > Ver `CLAUDE.md` para o contexto completo do produto.
 
 ## Fase 0 — Setup inicial ✅
-- [x] `package.json` com Electron + React + Vite + TS + serialport + better-sqlite3
+- [x] `package.json` com Electron + React + Vite + TS + serialport + sql.js
 - [x] `tsconfig` separados (main / renderer / base)
 - [x] `vite.config.ts` apontando p/ `src/renderer`
 - [x] Esqueleto Electron (`main/index.ts`, `preload/index.ts`)
@@ -14,7 +14,7 @@
 - [x] Commit inicial e push
 
 ## Fase 1 — Banco SQLite + Login ✅
-- [x] Criar `src/main/db/connection.ts` (better-sqlite3, path em `app.getPath('userData')`)
+- [x] Criar `src/main/db/connection.ts` (sql.js, path em `app.getPath('userData')`)
 - [x] Sistema de migrations em `src/main/db/migrations.ts` (inline TS p/ sobreviver ao bundle)
 - [x] Schema: `users`, `formulas`, `batches`, `equipments`, `capture_sessions`, `readings`, `settings`
 - [x] Seed: usuário `admin/admin` + 6 equipamentos placeholder + `capture_timeout_seconds=30`
@@ -79,6 +79,19 @@
 - [x] Smoke test do `.exe` gerado
 - [x] Documentar processo de release no README
 - [ ] Commit + push
+
+## Etapa 0 — Baseline e decisões para PostgreSQL/Lot Service 🎯
+
+- [x] Criar branch `feat/portus-stage-0-database-baseline`
+- [x] Registrar ADR-001: Lot Service como autoridade central de escrita
+- [x] Registrar baseline real do banco e inventário de escritores
+- [x] Registrar lacunas de concorrência, auditoria, idempotência e versionamento
+- [x] Corrigir referências da documentação de `better-sqlite3` para `sql.js` neste TODO
+- [ ] Confirmar topologia: setores, linhas, estações e Software B
+- [ ] Validar máquina de estados e regras Produção → Laboratório
+- [ ] Definir comportamento quando o Lot Service estiver indisponível
+- [ ] Aprovar schema alvo antes de iniciar migrations PostgreSQL
+- [ ] Validar período e estratégia de migração do histórico
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
