@@ -99,8 +99,8 @@
 - [x] Criar funções `open_batch`, `register_reading` e `move_batch_to_stage`
 - [x] Criar funções de confirmação de fechamento da Produção e do Laboratório
 - [ ] Revogar escrita irrestrita nas tabelas críticas
-- [ ] Criar testes concorrentes e de idempotência
-- [ ] Validar com PostgreSQL local antes da adaptação do Electron
+- [x] Criar teste transacional de idempotência e fluxo de fechamento\n- [ ] Executar teste concorrente em duas sessões PostgreSQL
+- [ ] Validar migrations e teste em PostgreSQL local antes da adaptação do Electron
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
