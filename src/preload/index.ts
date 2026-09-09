@@ -110,7 +110,7 @@ const api: SerialReaderApi = {
   shell: {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url })
   },
-  log: {
+  central: {\n    status: (): Promise<{ configured: boolean; available: boolean }> => ipcRenderer.invoke(IPC.centralStatus),\n    batches: {\n      listOpen: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListOpen),\n      create: (input: BatchInput): Promise<ServiceResult<BatchWithProduct>> =>\n        ipcRenderer.invoke(IPC.centralBatchesCreate, input),\n      confirmProduction: (id: number): Promise<ServiceResult<BatchWithProduct>> =>\n        ipcRenderer.invoke(IPC.centralBatchesConfirmProduction, { id }),\n      confirmLaboratory: (id: number): Promise<ServiceResult<BatchWithProduct>> =>\n        ipcRenderer.invoke(IPC.centralBatchesConfirmLaboratory, { id })\n    }\n  },\n  log: {
     error: (source: string, message: string, stack?: string): Promise<void> =>
       ipcRenderer.invoke(IPC.logError, source, message, stack),
     getRecent: (): Promise<string[]> =>
