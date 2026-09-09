@@ -80,18 +80,27 @@
 - [x] Documentar processo de release no README
 - [ ] Commit + push
 
-## Etapa 0 — Baseline e decisões para PostgreSQL/Lot Service 🎯
+## Etapa 0 — Baseline e decisões para PostgreSQL 🎯 ✅
 
 - [x] Criar branch `feat/portus-stage-0-database-baseline`
-- [x] Registrar ADR-001: Lot Service como autoridade central de escrita
+- [x] Incorporar `PORTUS_SPEC_TECNICO(1).md`
+- [x] Registrar ADR-001: PostgreSQL compartilhado + funções de domínio
 - [x] Registrar baseline real do banco e inventário de escritores
-- [x] Registrar lacunas de concorrência, auditoria, idempotência e versionamento
-- [x] Corrigir referências da documentação de `better-sqlite3` para `sql.js` neste TODO
-- [ ] Confirmar topologia: setores, linhas, estações e Software B
-- [ ] Validar máquina de estados e regras Produção → Laboratório
-- [ ] Definir comportamento quando o Lot Service estiver indisponível
-- [ ] Aprovar schema alvo antes de iniciar migrations PostgreSQL
-- [ ] Validar período e estratégia de migração do histórico
+- [x] Registrar regra de fechamento Produção + Laboratório
+- [x] Remover limite global de seis lotes do modelo central
+- [x] Confirmar preservação de `batches`, `capture_sessions` e `readings`
+
+## Passo 1 — Fundação PostgreSQL central 🎯
+
+- [ ] Criar migrations PostgreSQL reproduzíveis
+- [ ] Criar tabelas de setores, aplicações e permissões
+- [ ] Evoluir `batches` com `stage`, `version` e confirmações por setor
+- [ ] Criar `batch_history`
+- [ ] Criar funções `open_batch`, `register_reading` e `move_batch_to_stage`
+- [ ] Criar funções de confirmação de fechamento da Produção e do Laboratório
+- [ ] Revogar escrita irrestrita nas tabelas críticas
+- [ ] Criar testes concorrentes e de idempotência
+- [ ] Validar com PostgreSQL local antes da adaptação do Electron
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
