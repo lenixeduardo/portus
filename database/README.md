@@ -10,6 +10,7 @@ Execute as migrations em ordem:
 ```bash
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_schema.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_domain_functions.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 ```
 
 Cada migration é transacional e falha ao primeiro erro.
