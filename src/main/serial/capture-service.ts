@@ -341,7 +341,13 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   reconnectAttempted.clear();
 
   if (sessionId !== null) {
-    if (reason === "completed") {
+    if (centralCapture && centralUsername) {
+      void finishCentralCaptureSession(
+        sessionId,
+        centralUsername,
+        reason === "completed" ? "completed" : "cancelled"
+      ).catch((error) => console.error("[central-db] Falha ao encerrar sessão:", error));
+    } else if (reason === "completed") {
       completeCaptureSession(sessionId);
     } else {
       cancelCaptureSession(sessionId);
@@ -353,6 +359,8 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   remaining = 0;
   total = 0;
   skipFirstReadingForSession = false;
+  centralCapture = false;
+  centralUsername = null;
 
   const event: CaptureEndedEvent = { reason };
   broadcast(IPC.captureEnded, event);
