@@ -10,10 +10,11 @@
 O PORTUS Visão Laboratório será a interface usada pelo setor de Laboratório para:
 
 - visualizar lotes recebidos da Produção;
-- consultar leituras e histórico de captura;
-- registrar resultados e observações laboratoriais;
-- revisar inconsistências;
+- executar a captura de leituras do Laboratório;
+- consultar o histórico de captura;
 - confirmar o fechamento do lote pelo Laboratório.
+
+O escopo inicial não inclui cadastro de ensaios, resultados laboratoriais ou observações técnicas.
 
 A aplicação não controla portas USB/serial. Essa responsabilidade permanece no PORTUS operacional.
 
@@ -24,7 +25,7 @@ A aplicação não controla portas USB/serial. Essa responsabilidade permanece n
 - consumir a base PostgreSQL central;
 - respeitar permissões por usuário, aplicação e setor;
 - apresentar apenas lotes autorizados ao Laboratório;
-- registrar resultados laboratoriais com auditoria;
+- registrar as leituras da captura do Laboratório com auditoria;
 - confirmar o fechamento laboratorial;
 - exibir claramente quando o lote ainda aguarda a Produção.
 
@@ -37,24 +38,28 @@ A aplicação não controla portas USB/serial. Essa responsabilidade permanece n
 - sincronização offline com posterior reconciliação;
 - Kafka, filas, CQRS, CDC ou Event Sourcing.
 
-## 3. Atores e permissões
+## 3. Perfis e permissões
 
-| Ator | Permissões principais |
+O Laboratório terá somente dois perfis operacionais:
+
+| Perfil | Permissões principais |
 |---|---|
-| Analista de Laboratório | consultar lotes, consultar leituras, registrar resultados, adicionar observações |
-| Supervisor de Laboratório | tudo do analista, revisar inconsistências e confirmar fechamento |
-| Administrador | configurar usuários, permissões e parâmetros |
-| Master | acesso operacional amplo para suporte e manutenção |
+| Captura | consultar lotes autorizados, consultar leituras e executar captura do Laboratório |
+| Fechamento | consultar lotes, consultar histórico e confirmar o fechamento do Laboratório |
 
-A autorização deve ser validada no PostgreSQL. O cliente não deve decidir sozinho se uma ação é permitida.
+O perfil de Fechamento pode acumular a permissão de Captura quando isso for necessário na operação, mas a confirmação laboratorial deve ser uma permissão explícita.
+
+Administrador e Master continuam sendo perfis de infraestrutura da plataforma, não perfis operacionais do Laboratório.
 
 Permissões recomendadas para a aplicação:
 
 - `read`;
-- `register_laboratory_result`;
+- `capture`;
 - `confirm_laboratory`;
 - `move`, somente se o processo exigir mudança de etapa;
 - `export`, se a exportação for liberada.
+
+A autorização deve ser validada no PostgreSQL. O cliente não deve decidir sozinho se uma ação é permitida.
 
 ## 4. Fluxo principal
 
@@ -119,38 +124,29 @@ Seções:
 
 O detalhe deve deixar evidente que “confirmar Laboratório” não significa necessariamente fechar o lote globalmente.
 
-### 5.4 Registro de resultado
+### 5.4 Captura do Laboratório
 
-Campos recomendados:
+A tela de captura deve reutilizar o fluxo de captura serial do PORTUS, respeitando:
 
-- tipo do ensaio;
-- código do ensaio;
-- valor;
-- unidade;
-- resultado textual;
-- faixa de referência;
-- interpretação;
-- observação;
-- anexo opcional, em etapa posterior;
-- usuário responsável;
-- data/hora automática.
+- equipamentos autorizados para o setor Laboratório;
+- sessões de captura vinculadas ao lote;
+- leituras brutas e parseadas;
+- erros de comunicação e parsing;
+- encerramento ou cancelamento da sessão.
 
-A primeira versão deve impedir edição silenciosa. Uma correção deve gerar novo registro ou histórico de alteração.
-
-### 5.5 Revisão e confirmação
+### 5.5 Confirmação do Laboratório
 
 Antes da confirmação, mostrar:
 
-- resultados obrigatórios ausentes;
-- resultados fora da faixa de referência;
-- leituras incompletas;
-- observações pendentes;
+- leituras registradas;
+- leituras incompletas ou com erro;
 - usuário que fará a confirmação;
+- confirmação já registrada, se houver;
 - impacto esperado: “o lote fechará somente se a Produção também tiver confirmado”.
 
-## 6. Modelo de dados recomendado
+## 6. Modelo de dados
 
-As entidades existentes continuam sendo reutilizadas:
+A primeira versão reutiliza exclusivamente as entidades existentes:
 
 - `users`;
 - `applications`;
@@ -163,31 +159,8 @@ As entidades existentes continuam sendo reutilizadas:
 
 Para resultados específicos do Laboratório, criar em uma migration posterior:
 
-### `laboratory_results`
 
-- `id`;
-- `batch_id`;
-- `test_code`;
-- `test_name`;
-- `value_numeric`;
-- `value_text`;
-- `unit`;
-- `reference_min`;
-- `reference_max`;
-- `interpretation`;
-- `observation`;
-- `status`: `pending`, `valid`, `out_of_range`, `cancelled`;
-- `created_by`;
-- `created_at`;
-- `updated_at`;
-- `version`.
-
-Regras:
-
-- pelo menos um valor entre `value_numeric` e `value_text`;
-- resultado cancelado não pode ser usado como resultado vigente;
-- exclusão física proibida;
-- alterações relevantes devem gerar `batch_history`.
+A criação de uma entidade específica para resultados laboratoriais fica fora do escopo inicial e poderá ser avaliada em uma etapa futura.
 
 ## 7. Funções de domínio
 
@@ -262,7 +235,7 @@ O PORTUS Visão Laboratório será aceito quando:
 - autenticar usuário autorizado do setor Laboratório;
 - listar somente lotes permitidos;
 - consultar leituras centralizadas;
-- registrar resultado laboratorial com auditoria;
+- executar captura do Laboratório com auditoria;
 - impedir alteração direta de status;
 - confirmar o Laboratório pela função de domínio;
 - manter o lote aberto quando a Produção não confirmou;
@@ -304,11 +277,10 @@ O PORTUS Visão Laboratório será aceito quando:
 
 Antes do desenvolvimento, o responsável pelo processo deve confirmar:
 
-1. quais ensaios são obrigatórios por produto;
-2. quais campos e unidades cada ensaio utiliza;
-3. quais faixas de referência serão cadastradas;
-4. se resultado fora da faixa bloqueia sempre o fechamento;
-5. quais perfis podem confirmar o Laboratório;
-6. se haverá anexos e assinatura digital;
-7. se o cliente será Electron, web ou ambos;
-8. o código definitivo da aplicação no PostgreSQL.
+1. quais equipamentos pertencem ao setor Laboratório;
+2. quais leituras são obrigatórias antes da confirmação;
+3. quais perfis terão permissão de captura e de fechamento;
+4. se o perfil de Fechamento também poderá capturar;
+5. se haverá anexos ou assinatura digital em etapa futura;
+6. se o cliente será Electron, web ou ambos;
+7. o código definitivo da aplicação no PostgreSQL.
