@@ -149,3 +149,8 @@ A captura USB/serial continua local. A API central foi exposta por IPC separado 
 
 
 A captura serial permanece local no Electron, mas suas sessões e leituras passam a ser persistidas no PostgreSQL central quando a conexão estiver ativa. O mapeamento de equipamento usa `equipments.name` ou `equipments.code`; a homologação deve garantir que esses identificadores coincidam entre a configuração local e a central.
+
+
+## Homologação de captura
+
+Antes de abrir as portas seriais em modo central, o Electron valida se cada equipamento local possui correspondência por `name` ou `code` em `equipments` no PostgreSQL. Se a central estiver indisponível ou houver equipamento sem mapeamento, a captura é interrompida com erro explícito; não há fallback silencioso para o banco local em lotes centrais.
