@@ -49,7 +49,12 @@ export const IPC = {
   logError: "log:error",
   logGetRecent: "log:get-recent",
   logSendReport: "log:send-report",
-  captureInjectReading: "capture:inject-reading"
+  captureInjectReading: "capture:inject-reading",
+  centralStatus: "central:status",
+  centralBatchesListOpen: "central:batches:list-open",
+  centralBatchesCreate: "central:batches:create",
+  centralBatchesConfirmProduction: "central:batches:confirm-production",
+  centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
@@ -274,7 +279,7 @@ export interface SerialReaderApi {
   shell: {
     openExternal(url: string): Promise<void>;
   };
-  log: {
+  central: {\n    status(): Promise<{ configured: boolean; available: boolean }>;\n    batches: {\n      listOpen(): Promise<BatchWithProduct[]>;\n      create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;\n      confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;\n      confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;\n    };\n  };\n  log: {
     error(source: string, message: string, stack?: string): Promise<void>;
     getRecent(): Promise<string[]>;
     sendReport(input: LogReportInput): Promise<ServiceResult<LogReportData>>;
