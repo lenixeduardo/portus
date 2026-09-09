@@ -499,7 +499,8 @@ export function getState(): CaptureStateSnapshot {
 
 export async function startCapture(
   targetBatchId: number,
-  equipmentIds?: number[]
+  equipmentIds?: number[],
+  username?: string
 ): Promise<ServiceResult<CaptureStartResult>> {
   if (isActive()) {
     return { ok: false, error: "Já existe uma captura em andamento." };
@@ -508,11 +509,21 @@ export async function startCapture(
   if (!Number.isInteger(targetBatchId)) {
     return { ok: false, error: "Lote inválido." };
   }
-  const batch = getBatchWithProduct(targetBatchId);
-  if (!batch) {
+  centralCapture = isCentralDatabaseConfigured();
+  centralUsername = centralCapture ? (username ?? null) : null;
+  if (centralCapture && !centralUsername) {
+    return { ok: false, error: "Usuário central não informado." };
+  }
+
+  const localBatch = centralCapture ? null : getBatchWithProduct(targetBatchId);
+  const centralBatch = centralCapture
+    ? await getCentralBatchById(targetBatchId).catch(() => null)
+    : null;
+  const batchStatus = centralCapture ? centralBatch?.status : localBatch?.status;
+  if (!centralBatch && !localBatch) {
     return { ok: false, error: "Lote não encontrado." };
   }
-  if (batch.status !== "open") {
+  if (batchStatus !== "open") {
     return { ok: false, error: "O lote já foi finalizado e não aceita novas leituras." };
   }
 
@@ -524,7 +535,9 @@ export async function startCapture(
   }
 
   const timeoutSeconds = getCaptureTimeoutSeconds();
-  const session = createCaptureSession(targetBatchId, timeoutSeconds);
+  const session = centralCapture
+    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!)
+    : createCaptureSession(targetBatchId, timeoutSeconds);
   sessionId = session.id;
   batchId = targetBatchId;
   remaining = timeoutSeconds;
