@@ -160,7 +160,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
 
   return (
     <>
-      <div className="page-actions">\n        {centralAvailable && <div className="scanner-bar scanner-bar-idle">Base central conectada</div>}
+      <div className="page-actions">
+        {centralAvailable && <div className="scanner-bar scanner-bar-idle">Base central conectada</div>}
         <ScannerStatusBar state={scannerState} />
         <button
           className="secondary"
@@ -195,7 +196,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
               key={b.id}
               batch={b}
               isCapturing={captureBatchId === b.id}
-              canClose={true}\n              centralMode={centralAvailable}
+              canClose={true}
+              centralMode={centralAvailable}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
