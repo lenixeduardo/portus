@@ -17,6 +17,7 @@ import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from
 import { runAutoExport } from "./db/history-repo";
 import { runBackup } from "./db/backup";
 import { initLogger, logError } from "./logger";
+import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured } from "./db/central-connection";
 
 const DEFAULT_BACKUP_RETENTION = 10;
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -126,6 +127,16 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await openDb();
+  if (isCentralDatabaseConfigured()) {
+    try {
+      await checkCentralDatabase();
+      console.log("[central-db] conexão PostgreSQL central disponível.");
+    } catch (error) {
+      console.error("[central-db] falha ao conectar; o app continuará em modo local:", error);
+    }
+  } else {
+    console.log("[central-db] PORTUS_DATABASE_URL não configurada; modo local ativo.");
+  }
   runMigrations();
   seedInitialData();
   persistDb();
@@ -146,6 +157,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  void closeCentralDatabase();
   closeDb();
   if (process.platform !== "darwin") app.quit();
 });
