@@ -11,6 +11,8 @@ import {
   insertReading
 } from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
+import { isCentralDatabaseConfigured } from "../db/central-connection";
+import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading } from "../db/central-capture-repo";
 import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
@@ -124,6 +126,8 @@ let timer: NodeJS.Timeout | null = null;
 let remaining = 0;
 let total = 0;
 let skipFirstReadingForSession = false;
+let centralCapture = false;
+let centralUsername: string | null = null;
 
 // Timers de debounce de UI por slotIndex
 const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -133,6 +137,27 @@ const reconnectAttempted: Set<number> = new Set();
 
 // Slots sendo fechados intencionalmente (cleanup) — suprime trigger de reconexão
 const intentionallyClosing: Set<number> = new Set();
+
+
+function persistReading(input: {
+  batchId: number;
+  equipmentId: number;
+  equipmentName: string;
+  valueRaw: string;
+  valueParsed: string | null;
+  captureSessionId: number;
+  parseFailureReason?: string | null;
+  parseRegexUsed?: string | null;
+}): void {
+  if (centralCapture && centralUsername) {
+    void insertCentralReading({ ...input, username: centralUsername }).catch((error) => {
+      console.error("[central-db] Falha ao registrar leitura:", error);
+      logCaptureError({ code: "central_reading_failed", message: String(error), rawValue: input.valueRaw });
+    });
+    return;
+  }
+  insertReading(input);
+}
 
 function logCaptureError(input: {
   slot?: ActiveSlot;
