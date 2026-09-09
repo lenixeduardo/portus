@@ -7,7 +7,7 @@ Aplicativo desktop (Electron + React + TypeScript) para captura de leituras de e
 - **Electron 32** — shell desktop
 - **React 18 + Vite** — UI
 - **TypeScript** — tipagem
-- **better-sqlite3** — banco local
+- **sql.js** — banco local SQLite persistido pelo processo principal
 - **serialport** — leitura das portas COM
 - **electron-builder** — empacotamento
 
@@ -17,7 +17,7 @@ Aplicativo desktop (Electron + React + TypeScript) para captura de leituras de e
 src/
   main/        Processo principal do Electron (Node, serial, DB)
   preload/     Ponte segura main <-> renderer
-  renderer/    UI React
+  renderer/    UI React (Vite)
   shared/      Tipos compartilhados
 tools/
   serial-sim.ts   Simulador de equipamento serial (desenvolvimento)
@@ -72,7 +72,7 @@ Mantenha o `socat` rodando enquanto testa.
 
 2. Abra o **Setup Command Prompt** do com0com (instalado junto):
 
-   ```
+   ```bash
    install PortName=COM10 PortName=COM11
    ```
 
@@ -108,56 +108,29 @@ node dist/tools/serial-sim.js --port COM11 --preset ph --interval 2000
 
 | Preset | Formato de saída | Regex sugerida |
 |---|---|---|
-| `balanca` | `  1.2345 kg` | `(\d+\.\d+)\s*kg` |
-| `ph` | `pH  7.23` | `pH\s*(\d+\.\d+)` |
-| `viscosimetro` | `125.3 mPa.s` | `(\d+\.\d+)\s*mPa` |
-| `espectrofotometro` | `ABS:0.523` | `ABS[:\s]*(\d+\.\d+)` |
-| `generico` | `1234.5678` | `(\d+\.\d+)` |
+| `balanca` | `  1.2345 kg` | `(\\d+\\.\\d+)\\s*kg` |
+| `ph` | `pH  7.23` | `pH\\s*(\\d+\\.\\d+)` |
+| `viscosimetro` | `125.3 mPa.s` | `(\\d+\\.\\d+)\\s*mPa` |
+| `espectrofotometro` | `ABS:0.523` | `ABS[:\\s]*(\\d+\\.\\d+)` |
+| `generico` | `1234.5678` | `(\\d+\\.\\d+)` |
 
 Configure a regex sugerida no campo **"Regex de parsing"** do equipamento em
 **Configurações → Equipamentos**.
 
-### Exemplo de sessão completa (Linux)
-
-```bash
-# Terminal 1 — par de portas virtuais
-socat -d -d pty,raw,echo=0 pty,raw,echo=0
-# → /dev/pts/4 e /dev/pts/5
-
-# Terminal 2 — simulador enviando leituras de balança a cada 3s
-npm run sim -- --port /dev/pts/5 --preset balanca
-
-# App configurado: equipamento "Balança" → porta /dev/pts/4, regex (\d+\.\d+)\s*kg
-# Clicar em "Iniciar Leitura" no dashboard para capturar as leituras
-```
-
 ## Backup automático do banco de dados
 
-Os dados ficam em um arquivo SQLite local (`serial-reader.sqlite` na pasta de
-dados do usuário). Para proteger as leituras, lotes e demais registros, o app faz
-backups automáticos desse arquivo:
-
-- **Quando:** na inicialização do app e, em seguida, a cada 6 horas.
-- **Onde:** por padrão em `Documentos/PORTUS/backups`. A pasta é configurável em
-  **Configurações → Captura → Backup automático do banco de dados**.
-- **Formato:** cada backup é uma cópia do arquivo SQLite com o nome
-  `serial-reader-backup-YYYYMMDD-HHMMSS.sqlite`.
-- **Retenção:** mantém apenas os N backups mais recentes (padrão 10, configurável
-  de 1 a 100); os mais antigos são removidos automaticamente.
-- **Backup manual:** o botão **"Fazer backup agora"** na mesma tela gera um backup
-  imediato e mostra o caminho do arquivo criado.
-
-Antes de cada cópia o estado atual do banco é persistido em disco, garantindo que
-o backup contenha os dados mais recentes. Para restaurar, basta substituir o
-arquivo `serial-reader.sqlite` por um dos backups (com o app fechado).
+Os dados ficam em um arquivo SQLite local (`serial-reader.sqlite`) na pasta de
+dados do usuário. O backup automático continua sendo uma proteção do banco local
+durante a coexistência com o futuro PostgreSQL central.
 
 ## Fases
 
 - [x] Fase 0 — Setup inicial
-- [x] Fase 1 — Banco + login
+- [x] Fase 1 — Banco local + login
 - [x] Fase 2 — CRUD fórmulas/lotes + dashboard
 - [x] Fase 3 — Configuração de portas/equipamentos
 - [x] Fase 4 — Núcleo de captura serial
-- [ ] Fase 5 — Histórico e exportação
+- [x] Fase 5 — Histórico e exportação
 - [x] Fase 6 — Simulador serial
 - [ ] Fase 7 — Empacotamento Windows
+- [ ] Etapa 0 — Baseline e decisões para PostgreSQL/Lot Service
