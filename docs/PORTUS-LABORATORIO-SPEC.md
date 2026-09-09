@@ -67,7 +67,7 @@ A autorização deve ser validada no PostgreSQL. O cliente não deve decidir soz
 flowchart TD
   A["Lote aberto pela Produção"] --> B["Laboratório consulta fila"]
   B --> C["Analista abre a visão do lote"]
-  C --> D["Consulta leituras e registra resultados"]
+  C --> D["Executa captura e consulta leituras"]
   D --> E["Supervisor revisa"]
   E --> F["Confirma fechamento do Laboratório"]
   F --> G{"Produção também confirmou?"}
@@ -117,10 +117,9 @@ Seções:
 1. identificação do lote;
 2. status e etapa;
 3. leituras capturadas;
-4. resultados laboratoriais;
-5. observações;
-6. histórico de alterações;
-7. ações disponíveis para o usuário.
+4. erros e pendências de captura;
+5. histórico de alterações;
+6. ações disponíveis para o usuário.
 
 O detalhe deve deixar evidente que “confirmar Laboratório” não significa necessariamente fechar o lote globalmente.
 
@@ -157,10 +156,7 @@ A primeira versão reutiliza exclusivamente as entidades existentes:
 - `readings`;
 - `batch_history`.
 
-Para resultados específicos do Laboratório, criar em uma migration posterior:
-
-
-A criação de uma entidade específica para resultados laboratoriais fica fora do escopo inicial e poderá ser avaliada em uma etapa futura.
+Não haverá entidade específica de resultados laboratoriais na primeira versão. Essa necessidade poderá ser avaliada em uma etapa futura.
 
 ## 7. Funções de domínio
 
@@ -222,7 +218,7 @@ O cliente não deve receber credenciais administrativas nem expor a URL do banco
 ## 10. Segurança e operação
 
 - conexão central obrigatória para escrita;
-- nenhum modo offline para confirmação ou registro de resultado;
+- nenhum modo offline para confirmação ou captura;
 - consultas podem exibir aviso de indisponibilidade, mas não devem inventar estado;
 - logs não podem registrar senha, URL completa ou dados sensíveis;
 - permissões devem ser aplicadas simultaneamente ao usuário, aplicação e setor;
