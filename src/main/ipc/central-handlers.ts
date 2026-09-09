@@ -9,9 +9,11 @@ import {
   confirmCentralLaboratoryClose,
   confirmCentralProductionClose,
   listCentralOpenBatches,
+  listCentralAllBatches,
   openCentralBatch
 } from "../db/central-batches-repo";
 import { getProduct } from "../db/products-repo";
+import { getCentralBatchHistory } from "../db/central-history-repo";
 import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
 
@@ -36,6 +38,29 @@ export function registerCentralHandlers(): void {
       if (!isCentralDatabaseConfigured()) return [];
       return listCentralOpenBatches();
     })
+  );
+
+  ipcMain.handle(
+    IPC.centralBatchesListAll,
+    compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
+      if (!isCentralDatabaseConfigured()) return [];
+      return listCentralAllBatches();
+    })
+  );
+
+  ipcMain.handle(
+    IPC.centralHistoryGetBatch,
+    compose([requireAuth, validateInput(closeBatchSchema)])(
+      async (_e, input: { id: number }): Promise<ServiceResult<import("../../shared/ipc").BatchHistory>> => {
+        if (!isCentralDatabaseConfigured()) return unavailable();
+        try {
+          const history = await getCentralBatchHistory(input.id);
+          return history ? { ok: true, data: history } : { ok: false, error: "Lote não encontrado na base central." };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Erro ao carregar histórico central." };
+        }
+      }
+    )
   );
 
   ipcMain.handle(
