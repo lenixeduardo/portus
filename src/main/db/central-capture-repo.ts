@@ -123,3 +123,13 @@ export async function insertCentralReading(input: {
     captureSessionId: row.capture_session_id
   } : null;
 }
+
+export async function validateCentralEquipmentMapping(equipmentNames: string[]): Promise<string[]> {
+  if (equipmentNames.length === 0) return [];
+  const result = await centralQuery<{ name: string; code: string | null }>(
+    `SELECT name, code FROM equipments WHERE name = ANY($1::text[]) OR code = ANY($1::text[])`,
+    [equipmentNames]
+  );
+  const mapped = new Set(result.rows.flatMap((row) => [row.name, row.code].filter(Boolean) as string[]));
+  return equipmentNames.filter((name) => !mapped.has(name));
+}
