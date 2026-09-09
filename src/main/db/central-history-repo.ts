@@ -1,6 +1,5 @@
 import type { BatchHistory, BatchWithProduct, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
 import { centralQuery } from "./central-connection";
-import { findCentralBatchByCode, listCentralBatches } from "./central-batches-repo";
 
 interface HistoryRow {
   session_id: number;
