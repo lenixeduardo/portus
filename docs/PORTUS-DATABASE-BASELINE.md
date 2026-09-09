@@ -146,3 +146,6 @@ O Electron agora possui um adaptador PostgreSQL opcional:
 - \`PORTUS_SECTOR_CODE\`: setor padrão para abertura (padrão \`PRODUCTION\`).
 
 A captura USB/serial continua local. A API central foi exposta por IPC separado para permitir a migração progressiva dos fluxos de lotes, sem substituir o funcionamento local quando a URL não estiver configurada.
+
+
+A captura serial permanece local no Electron, mas suas sessões e leituras passam a ser persistidas no PostgreSQL central quando a conexão estiver ativa. O mapeamento de equipamento usa `equipments.name` ou `equipments.code`; a homologação deve garantir que esses identificadores coincidam entre a configuração local e a central.
