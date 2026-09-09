@@ -49,6 +49,19 @@ export async function listCentralOpenBatches(): Promise<BatchWithProduct[]> {
   return result.rows.map(toBatch);
 }
 
+
+export async function listCentralAllBatches(): Promise<BatchWithProduct[]> {
+  const result = await centralQuery<CentralBatchRow>(
+    `${SELECT_BATCH} ORDER BY b.opened_at DESC`
+  );
+  return result.rows.map(toBatch);
+}
+
+export async function findCentralBatchByCode(code: string): Promise<BatchWithProduct | null> {
+  const result = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.code = $1`, [code.trim()]);
+  return result.rows[0] ? toBatch(result.rows[0]) : null;
+}
+
 export async function listCentralBatches(): Promise<BatchWithProduct[]> {
   const result = await centralQuery<CentralBatchRow>(
     `${SELECT_BATCH} ORDER BY b.opened_at DESC`
