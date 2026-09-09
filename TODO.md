@@ -103,7 +103,8 @@
 - [ ] Validar migrations e teste em PostgreSQL local antes da adaptação do Electron
 - [x] Criar adaptador PostgreSQL opcional e IPC central para lotes
 - [x] Migrar o Dashboard de lotes para a API central quando disponível\n- [x] Migrar histórico e consulta de código de barras para a API central
-- [x] Migrar sessões e leituras da captura serial para persistência central\n- [ ] Validar mapeamento de equipamentos/estações e comportamento offline
+- [x] Migrar sessões e leituras da captura serial para persistência central\n- [x] Implementar preflight de mapeamento e bloqueio offline seguro
+- [ ] Executar homologação com PostgreSQL e equipamentos reais
 
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
