@@ -17,6 +17,7 @@ type ScannerState =
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [centralAvailable, setCentralAvailable] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [simulatingLot, setSimulatingLot] = useState(false);
@@ -30,14 +31,25 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
 
   async function reload() {
     setLoading(true);
-    const list = await window.api.batches.listOpen();
-    setBatches(list);
-    setLoading(false);
+    try {
+      const list = centralAvailable
+        ? await window.api.central.batches.listOpen()
+        : await window.api.batches.listOpen();
+      setBatches(list);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    reload();
+    window.api.central.status().then((status) => {
+      setCentralAvailable(status.available);
+    }).catch(() => setCentralAvailable(false));
   }, []);
+
+  useEffect(() => {
+    reload();
+  }, [centralAvailable]);
 
   function clearScannerError() {
     if (scannerIdleTimer.current) clearTimeout(scannerIdleTimer.current);
@@ -87,7 +99,9 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       const year = new Date().getFullYear();
       const rand = String(Math.floor(Math.random() * 9000) + 1000);
       const code = `SIM-${year}-${rand}`;
-      const res = await window.api.batches.create({ productId: product.id, code });
+      const res = centralAvailable
+        ? await window.api.central.batches.create({ productId: product.id, code })
+        : await window.api.batches.create({ productId: product.id, code });
       if (!res.ok) {
         setScannerError(res.error);
         return;
@@ -106,7 +120,9 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     if (!confirmBatch) return;
     const b = confirmBatch;
     setConfirmBatch(null);
-    const res = await window.api.batches.close(b.id);
+    const res = centralAvailable
+      ? await window.api.central.batches.confirmProduction(b.id)
+      : await window.api.batches.close(b.id);
     if (!res.ok) {
       setScannerError(res.error);
       return;
@@ -144,7 +160,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
 
   return (
     <>
-      <div className="page-actions">
+      <div className="page-actions">\n        {centralAvailable && <div className="scanner-bar scanner-bar-idle">Base central conectada</div>}
         <ScannerStatusBar state={scannerState} />
         <button
           className="secondary"
