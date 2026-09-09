@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Database, RefreshCw } from "lucide-react";
+import { Database, Moon, RefreshCw, ScanLine, Sun } from "lucide-react";
 import "./styles.css";
 import { Login } from "./screens/Login";
 import { Sidebar, type Route } from "./components/Sidebar";
@@ -23,6 +23,8 @@ const LAST_SEEN_VERSION_KEY = "portus:last-seen-version";
 const DATABASE_STATUS_INTERVAL_MS = 15_000;
 
 type DatabaseStatus = "checking" | "connected" | "disconnected" | "unconfigured";
+type Theme = "dark" | "light";
+const THEME_STORAGE_KEY = "portus:theme";
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +34,14 @@ export function App() {
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showReportError, setShowReportError] = useState(false);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>("checking");
+  const [theme, setTheme] = useState<Theme>(() =>
+    window.localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark"
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!window.api) {
@@ -115,10 +125,32 @@ export function App() {
         <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} onReportError={() => setShowReportError(true)} />
         <div className="main-area">
           <div className="topbar">
-            <h2>{TITLES[route]}</h2>
-            <DatabaseStatusBadge status={databaseStatus} />
+            <div className="topbar__spacer" aria-hidden="true" />
+            <div className="topbar__telemetry">
+              <DatabaseStatusBadge status={databaseStatus} />
+              <div className="topbar__separator" aria-hidden="true" />
+              <div className="scanner-status" title="Status do leitor de código de barras">
+                <ScanLine size={16} />
+                <span><small>Leitor</small>Pronto para leitura</span>
+              </div>
+              <button
+                type="button"
+                className="theme-switch"
+                onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+                aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+                title={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+              >
+                <Sun size={13} aria-hidden="true" />
+                <span className="theme-switch__knob" />
+                <Moon size={13} aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <div className="content">
+            <header className="page-heading">
+              <h1>{TITLES[route]}</h1>
+              <p>{route === "dashboard" ? "Acompanhe e gerencie os lotes em aberto." : "Consulte e gerencie os registros operacionais."}</p>
+            </header>
             {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
             {route === "products" && <Products />}
             {route === "settings" && <Settings currentUser={user} />}
@@ -133,10 +165,10 @@ export function App() {
 }
 
 const DATABASE_STATUS_LABELS: Record<DatabaseStatus, string> = {
-  checking: "Verificando banco",
-  connected: "Banco conectado",
-  disconnected: "Banco desconectado",
-  unconfigured: "Banco não configurado",
+  checking: "Verificando",
+  connected: "Conectado",
+  disconnected: "Desconectado",
+  unconfigured: "Não configurado",
 };
 
 function DatabaseStatusBadge({ status }: { status: DatabaseStatus }) {
@@ -151,7 +183,7 @@ function DatabaseStatusBadge({ status }: { status: DatabaseStatus }) {
     >
       {checking ? <RefreshCw size={13} className="database-status__spinner" /> : <Database size={13} />}
       <span className="database-status__dot" aria-hidden="true" />
-      <span>{DATABASE_STATUS_LABELS[status]}</span>
+      <span><small>Banco de dados</small>{DATABASE_STATUS_LABELS[status]}</span>
     </div>
   );
 }

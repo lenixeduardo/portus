@@ -447,7 +447,7 @@ function BatchCard({
         </button>
         {canClose && (
           <button
-            className="secondary"
+            className="batch-finalize"
             onClick={onClose}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
