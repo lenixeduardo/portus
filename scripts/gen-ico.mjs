@@ -3,61 +3,12 @@
  * ICO format: 16x16, 32x32, 48x48, 256x256 (PNG embedded for 256)
  */
 import { deflateSync } from 'node:zlib';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderPortusIcon } from './icon-design.mjs';
 
 const ROOT = join(fileURLToPath(import.meta.url), '../..');
-
-// Re-render the icon at multiple sizes from scratch (same design)
-function renderIcon(size) {
-  const W = size, H = size;
-  const BG    = [15, 23, 42, 255];
-  const TEAL  = [20, 184, 166, 255];
-  const WHITE = [255, 255, 255, 255];
-
-  const img = new Uint8Array(W * H * 4);
-
-  function px(x, y, color) {
-    const i = (y * W + x) * 4;
-    img[i]=color[0]; img[i+1]=color[1]; img[i+2]=color[2]; img[i+3]=color[3];
-  }
-  function rect(x, y, w, h, color) {
-    for (let ry=y; ry<y+h; ry++)
-      for (let rx=x; rx<x+w; rx++)
-        if (rx>=0&&rx<W&&ry>=0&&ry<H) px(rx,ry,color);
-  }
-
-  // Fill bg
-  rect(0, 0, W, H, BG);
-
-  if (size >= 32) {
-    // Barcode border
-    const bx=Math.round(W*0.1), by=Math.round(H*0.15);
-    const bw=Math.round(W*0.8), bh=Math.round(H*0.5);
-    const s=Math.max(1,Math.round(size*0.01));
-    rect(bx,by,bw,s,TEAL); rect(bx,by+bh-s,bw,s,TEAL);
-    rect(bx,by,s,bh,TEAL); rect(bx+bw-s,by,s,bh,TEAL);
-
-    // Stripes
-    const stripeCount = Math.floor(bw / 6);
-    const gap = bw / stripeCount;
-    for (let i=0; i<stripeCount; i++) {
-      if (i % 3 !== 1) {
-        const sx = bx + s + Math.round(i * gap);
-        const sw = Math.max(1, Math.round(gap * 0.5));
-        rect(sx, by+s+1, sw, bh-s*2-2, TEAL);
-      }
-    }
-  } else {
-    // Tiny: just a teal rect
-    rect(2,2,W-4,H-4,TEAL);
-    rect(4,4,W-8,H-8,BG);
-    rect(6,6,W-12,H-12,TEAL);
-  }
-
-  return img;
-}
 
 function crc32(buf) {
   const table = new Int32Array(256);
@@ -97,7 +48,7 @@ function makePng(pixels, W, H) {
 // ICO format: header + directory + image data
 const sizes = [16, 32, 48, 256];
 const images = sizes.map(s => {
-  const pixels = renderIcon(s);
+  const pixels = renderPortusIcon(s);
   // For 256x256 use PNG embedded format (modern ICO)
   if (s === 256) {
     return makePng(pixels, s, s);
@@ -117,7 +68,7 @@ const images = sizes.map(s => {
   bmp.writeInt32LE(0, 16);    // compression
   bmp.writeInt32LE(xorSize, 20);
   // XOR (BGR, bottom-up)
-  const px = renderIcon(s);
+  const px = renderPortusIcon(s);
   for (let y = s-1; y >= 0; y--) {
     const row = (s-1-y);
     for (let x = 0; x < s; x++) {
