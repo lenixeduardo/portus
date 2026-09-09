@@ -74,6 +74,16 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   // O modal segue disponível apenas para a entrada manual do código.
   async function handleScan(code: string) {
     setScannerState({ phase: "detecting", code });
+    if (centralAvailable) {
+      const centralBatch = await window.api.central.batches.findByCode(code);
+      if (!centralBatch) {
+        setScannerError("Lote não encontrado na base central. Crie o lote pelo fluxo central antes da captura.");
+        return;
+      }
+      setScannerState({ phase: "idle" });
+      await handleBarcodeReady(centralBatch);
+      return;
+    }
     const res = await window.api.batches.scanBarcode({ barcodeValue: code });
     if (!res.ok) {
       setScannerError(res.error);
