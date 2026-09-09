@@ -115,3 +115,10 @@
 - [ ] Relatório PDF do lote
 - [ ] Modo escuro
 - [ ] Integração com leitor de código de barras p/ código de lote
+
+
+## Portus Visão Laboratório
+- [x] Documentar escopo, atores, fluxos, permissões, dados, funções e critérios de aceite
+- [ ] Validar regras de ensaio e perfis com o responsável do Laboratório
+- [ ] Criar migration de `laboratory_results`
+- [ ] Implementar cliente do Laboratório
