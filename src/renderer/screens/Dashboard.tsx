@@ -218,6 +218,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       {confirmBatch && (
         <ConfirmCloseModal
           batch={confirmBatch}
+          centralMode={centralAvailable}
           onClose={() => setConfirmBatch(null)}
           onConfirm={handleConfirmClose}
         />
@@ -395,10 +396,12 @@ function BatchCard({
 
 function ConfirmCloseModal({
   batch,
+  centralMode,
   onClose,
   onConfirm
 }: {
   batch: BatchWithProduct;
+  centralMode: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -413,8 +416,8 @@ function ConfirmCloseModal({
         </>
       }
     >
-      <p>{onConfirm ? "Registrar confirmação da Produção para o lote" : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
-      <p className="muted" style={{ fontSize: 13 }}>O fechamento definitivo depende também da confirmação do Laboratório.</p>
+      <p>{centralMode ? "Registrar confirmação da Produção para o lote" : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
+      <p className="muted" style={{ fontSize: 13 }}>{centralMode ? "O fechamento definitivo depende também da confirmação do Laboratório." : "Esta ação não pode ser desfeita."}</p>
     </Modal>
   );
 }
