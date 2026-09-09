@@ -48,7 +48,7 @@ export function History() {
       }
       setHistory(res.data);
     });
-  }, [selectedId]);
+  }, [selectedId, centralAvailable]);
 
   // Lista de equipamentos únicos contidos no histórico deste lote
   const uniqueEquipments = useMemo(() => {
