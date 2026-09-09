@@ -99,11 +99,14 @@
 - [x] Criar funções `open_batch`, `register_reading` e `move_batch_to_stage`
 - [x] Criar funções de confirmação de fechamento da Produção e do Laboratório
 - [ ] Revogar escrita irrestrita nas tabelas críticas
-- [x] Criar teste transacional de idempotência e fluxo de fechamento\n- [ ] Executar teste concorrente em duas sessões PostgreSQL
+- [x] Criar teste transacional de idempotência e fluxo de fechamento
+- [ ] Executar teste concorrente em duas sessões PostgreSQL
 - [ ] Validar migrations e teste em PostgreSQL local antes da adaptação do Electron
 - [x] Criar adaptador PostgreSQL opcional e IPC central para lotes
-- [x] Migrar o Dashboard de lotes para a API central quando disponível\n- [x] Migrar histórico e consulta de código de barras para a API central
-- [x] Migrar sessões e leituras da captura serial para persistência central\n- [x] Implementar preflight de mapeamento e bloqueio offline seguro
+- [x] Migrar o Dashboard de lotes para a API central quando disponível
+- [x] Migrar histórico e consulta de código de barras para a API central
+- [x] Migrar sessões e leituras da captura serial para persistência central
+- [x] Implementar preflight de mapeamento e bloqueio offline seguro
 - [ ] Executar homologação com PostgreSQL e equipamentos reais
 
 ## Backlog / Ideias
