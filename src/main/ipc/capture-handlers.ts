@@ -1,7 +1,9 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC } from "../../shared/ipc";
+import { canCaptureLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { getCurrentUser } from "../auth/auth-service";
+import { isCentralDatabaseConfigured, isCentralDatabaseRequired } from "../db/central-connection";
 import { cancelCapture, getState, injectManualReading, isActive, skipFirstReading, startCapture } from "../serial/capture-service";
 import { compose, requireAuth, validateInput } from "./middleware";
 
@@ -20,7 +22,18 @@ export function registerCaptureHandlers(): void {
     IPC.captureStart,
     compose([requireAuth, validateInput(startCaptureSchema)])(
       async (_e, input: z.infer<typeof startCaptureSchema>) => {
-        return startCapture(input.batchId, input.equipmentIds);
+        const user = getCurrentUser();
+        if (!user) return { ok: false, error: "Sessão expirada." };
+        if (isCentralDatabaseRequired() && !isCentralDatabaseConfigured()) {
+          return { ok: false, error: "A captura exige conexão com o PostgreSQL central." };
+        }
+        if (isLaboratoryUser(user) && !isCentralDatabaseConfigured()) {
+          return { ok: false, error: "A captura do Laboratório exige conexão com a base central." };
+        }
+        if (isLaboratoryUser(user) && !canCaptureLaboratory(user)) {
+          return { ok: false, error: "Seu perfil permite revisar e fechar lotes, mas não iniciar capturas." };
+        }
+        return startCapture(input.batchId, input.equipmentIds, user.username, user.sectorCode ?? "PRODUCTION");
       }
     )
   );

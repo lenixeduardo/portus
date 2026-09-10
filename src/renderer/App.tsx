@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Database, Moon, RefreshCw, ScanLine, Sun } from "lucide-react";
 import "./styles.css";
 import { Login } from "./screens/Login";
 import { Sidebar, type Route } from "./components/Sidebar";
@@ -19,6 +20,11 @@ const TITLES: Record<Route, string> = {
 };
 
 const LAST_SEEN_VERSION_KEY = "portus:last-seen-version";
+const DATABASE_STATUS_INTERVAL_MS = 15_000;
+
+type DatabaseStatus = "checking" | "connected" | "disconnected" | "unconfigured";
+type Theme = "dark" | "light";
+const THEME_STORAGE_KEY = "portus:theme";
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -27,6 +33,15 @@ export function App() {
   const [noElectron, setNoElectron] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showReportError, setShowReportError] = useState(false);
+  const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>("checking");
+  const [theme, setTheme] = useState<Theme>(() =>
+    window.localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark"
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!window.api) {
@@ -41,6 +56,37 @@ export function App() {
       setBootstrapping(false);
     }).catch(() => setBootstrapping(false));
   }, []);
+
+  useEffect(() => {
+    if (!user || !window.api) return;
+
+    let active = true;
+
+    async function refreshDatabaseStatus() {
+      try {
+        const status = await window.api.central.status();
+        if (!active) return;
+        setDatabaseStatus(
+          !status.configured
+            ? "unconfigured"
+            : status.available
+              ? "connected"
+              : "disconnected"
+        );
+      } catch {
+        if (active) setDatabaseStatus("disconnected");
+      }
+    }
+
+    setDatabaseStatus("checking");
+    void refreshDatabaseStatus();
+    const interval = window.setInterval(refreshDatabaseStatus, DATABASE_STATUS_INTERVAL_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [user]);
 
   async function handleLogout() {
     await window.api.auth.logout();
@@ -79,19 +125,66 @@ export function App() {
         <Sidebar user={user} current={route} onNavigate={setRoute} onLogout={handleLogout} onReportError={() => setShowReportError(true)} />
         <div className="main-area">
           <div className="topbar">
-            <h2>{TITLES[route]}</h2>
+            <div className="topbar__spacer" aria-hidden="true" />
+            <div className="topbar__telemetry">
+              <DatabaseStatusBadge status={databaseStatus} />
+              <div className="topbar__separator" aria-hidden="true" />
+              <div className="scanner-status" title="Status do leitor de código de barras">
+                <ScanLine size={16} />
+                <span><small>Leitor</small>Pronto para leitura</span>
+              </div>
+              <button
+                type="button"
+                className="theme-switch"
+                onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+                aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+                title={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+              >
+                <Sun size={13} aria-hidden="true" />
+                <span className="theme-switch__knob" />
+                <Moon size={13} aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <div className="content">
+            <header className="page-heading">
+              <h1>{TITLES[route]}</h1>
+              <p>{route === "dashboard" ? "Acompanhe e gerencie os lotes em aberto." : "Consulte e gerencie os registros operacionais."}</p>
+            </header>
             {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
             {route === "products" && <Products />}
             {route === "settings" && <Settings currentUser={user} />}
-            {route === "history" && user.role === "admin" && <History />}
+            {route === "history" && (user.role === "admin" || user.sectorCode === "LABORATORY") && <History user={user} />}
           </div>
         </div>
       </div>
       {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
       {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>
+  );
+}
+
+const DATABASE_STATUS_LABELS: Record<DatabaseStatus, string> = {
+  checking: "Verificando",
+  connected: "Conectado",
+  disconnected: "Desconectado",
+  unconfigured: "Não configurado",
+};
+
+function DatabaseStatusBadge({ status }: { status: DatabaseStatus }) {
+  const checking = status === "checking";
+
+  return (
+    <div
+      className={`database-status database-status--${status}`}
+      role="status"
+      aria-live="polite"
+      title="Status da conexão com o PostgreSQL central"
+    >
+      {checking ? <RefreshCw size={13} className="database-status__spinner" /> : <Database size={13} />}
+      <span className="database-status__dot" aria-hidden="true" />
+      <span><small>Banco de dados</small>{DATABASE_STATUS_LABELS[status]}</span>
+    </div>
   );
 }
 

@@ -13,10 +13,12 @@ import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
 import { registerShellHandlers } from "./ipc/shell-handlers";
 import { registerLogHandlers } from "./ipc/log-handlers";
+import { registerCentralHandlers } from "./ipc/central-handlers";
 import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from "./db/settings-repo";
 import { runAutoExport } from "./db/history-repo";
 import { runBackup } from "./db/backup";
 import { initLogger, logError } from "./logger";
+import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired } from "./db/central-connection";
 
 const DEFAULT_BACKUP_RETENTION = 10;
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -98,7 +100,7 @@ function createWindow() {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: true
     }
   });
 
@@ -126,6 +128,20 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await openDb();
+  if (isCentralDatabaseConfigured()) {
+    try {
+      await checkCentralDatabase();
+      console.log("[central-db] conexão PostgreSQL central disponível.");
+    } catch (error) {
+      console.error(isCentralDatabaseRequired()
+        ? "[central-db] falha ao conectar; operações de lote permanecerão bloqueadas:"
+        : "[central-db] falha ao conectar; modo local de desenvolvimento ativo:", error);
+    }
+  } else {
+    console.log(isCentralDatabaseRequired()
+      ? "[central-db] PORTUS_DATABASE_URL não configurada; operações de lote permanecerão bloqueadas."
+      : "[central-db] PORTUS_DATABASE_URL não configurada; modo local de desenvolvimento ativo.");
+  }
   runMigrations();
   seedInitialData();
   persistDb();
@@ -140,12 +156,14 @@ app.whenReady().then(async () => {
   registerHistoryHandlers();
   registerShellHandlers();
   registerLogHandlers();
+  registerCentralHandlers();
   scheduleNextMidnightExport();
   scheduleNextBackup();
   createWindow();
 });
 
 app.on("window-all-closed", () => {
+  void closeCentralDatabase();
   closeDb();
   if (process.platform !== "darwin") app.quit();
 });

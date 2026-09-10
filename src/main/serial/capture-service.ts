@@ -11,6 +11,8 @@ import {
   insertReading
 } from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
+import { isCentralDatabaseConfigured } from "../db/central-connection";
+import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, validateCentralEquipmentMapping } from "../db/central-capture-repo";
 import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
@@ -24,6 +26,7 @@ import type {
 import { IPC } from "../../shared/ipc";
 import type { ServiceResult } from "../../shared/ipc";
 import type { Equipment } from "../../shared/types";
+import { isSafeOperationalRegex } from "../validation/schemas";
 
 // Janela de debounce para atualizações visuais por slot (ms).
 // Todas as leituras são gravadas no banco imediatamente; apenas a última
@@ -74,9 +77,10 @@ function startModbusForSlot(slot: ActiveSlot): void {
         return;
       }
 
-      insertReading({
+      persistReading({
         batchId: bid,
         equipmentId: eq.id,
+        equipmentName: eq.name,
         valueRaw,
         valueParsed,
         captureSessionId: sid,
@@ -124,6 +128,10 @@ let timer: NodeJS.Timeout | null = null;
 let remaining = 0;
 let total = 0;
 let skipFirstReadingForSession = false;
+let centralCapture = false;
+let centralUsername: string | null = null;
+let centralSectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION";
+const pendingCentralWrites = new Set<Promise<void>>();
 
 // Timers de debounce de UI por slotIndex
 const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -133,6 +141,34 @@ const reconnectAttempted: Set<number> = new Set();
 
 // Slots sendo fechados intencionalmente (cleanup) — suprime trigger de reconexão
 const intentionallyClosing: Set<number> = new Set();
+
+
+function persistReading(input: {
+  batchId: number;
+  equipmentId: number;
+  equipmentName: string;
+  valueRaw: string;
+  valueParsed: string | null;
+  captureSessionId: number;
+  parseFailureReason?: string | null;
+  parseRegexUsed?: string | null;
+}): void {
+  if (centralCapture && centralUsername) {
+    const username = centralUsername;
+    const sectorCode = centralSectorCode;
+    const write = insertCentralReading({ ...input, username, sectorCode })
+      .then(() => undefined)
+      .catch((error) => {
+        console.error("[central-db] Falha ao registrar leitura:", error);
+        logCaptureError({ code: "central_reading_failed", message: String(error), rawValue: input.valueRaw });
+        throw error;
+      });
+    pendingCentralWrites.add(write);
+    void write.finally(() => pendingCentralWrites.delete(write)).catch(() => undefined);
+    return;
+  }
+  insertReading(input);
+}
 
 function logCaptureError(input: {
   slot?: ActiveSlot;
@@ -228,9 +264,10 @@ function handleLine(slot: ActiveSlot, line: string): void {
     console.error(`[serial] Regex inválida (slot ${eq.slotIndex}, regex="${eq.parseRegex}")`);
   }
 
-  insertReading({
+  persistReading({
     batchId: bid,
     equipmentId: eq.id,
+    equipmentName: eq.name,
     valueRaw: raw,
     valueParsed: parsed,
     captureSessionId: sid,
@@ -313,8 +350,28 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   slots.clear();
   reconnectAttempted.clear();
 
+  // Uma leitura central é assíncrona. Aguarde todas as gravações iniciadas
+  // antes de encerrar a sessão para não produzir relatórios incompletos.
+  const centralWriteResults = await Promise.allSettled([...pendingCentralWrites]);
+  const failedCentralWrites = centralWriteResults.filter((result) => result.status === "rejected").length;
+  if (failedCentralWrites > 0) {
+    console.error(`[central-db] ${failedCentralWrites} leitura(s) não puderam ser persistidas antes do encerramento.`);
+  }
+  pendingCentralWrites.clear();
+
   if (sessionId !== null) {
-    if (reason === "completed") {
+    if (centralCapture && centralUsername) {
+      try {
+        await finishCentralCaptureSession(
+          sessionId,
+          centralUsername,
+          centralSectorCode,
+          failedCentralWrites > 0 ? "cancelled" : reason === "completed" ? "completed" : "cancelled"
+        );
+      } catch (error) {
+        console.error("[central-db] Falha ao encerrar sessão:", error);
+      }
+    } else if (reason === "completed") {
       completeCaptureSession(sessionId);
     } else {
       cancelCaptureSession(sessionId);
@@ -326,6 +383,10 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   remaining = 0;
   total = 0;
   skipFirstReadingForSession = false;
+  centralCapture = false;
+  centralUsername = null;
+  centralSectorCode = "PRODUCTION";
+  pendingCentralWrites.clear();
 
   const event: CaptureEndedEvent = { reason };
   broadcast(IPC.captureEnded, event);
@@ -472,7 +533,9 @@ export function getState(): CaptureStateSnapshot {
 
 export async function startCapture(
   targetBatchId: number,
-  equipmentIds?: number[]
+  equipmentIds?: number[],
+  username?: string,
+  sectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION"
 ): Promise<ServiceResult<CaptureStartResult>> {
   if (isActive()) {
     return { ok: false, error: "Já existe uma captura em andamento." };
@@ -481,11 +544,21 @@ export async function startCapture(
   if (!Number.isInteger(targetBatchId)) {
     return { ok: false, error: "Lote inválido." };
   }
-  const batch = getBatchWithProduct(targetBatchId);
-  if (!batch) {
+  // O modo central exige contexto explícito de usuário. Chamadas internas e
+  // testes que invocam startCapture(batchId) permanecem no repositório local.
+  centralCapture = isCentralDatabaseConfigured() && Boolean(username);
+  centralUsername = centralCapture ? username! : null;
+  centralSectorCode = sectorCode;
+
+  const localBatch = centralCapture ? null : getBatchWithProduct(targetBatchId);
+  const centralBatch = centralCapture
+    ? await getCentralBatchById(targetBatchId).catch(() => null)
+    : null;
+  const batchStatus = centralCapture ? centralBatch?.status : localBatch?.status;
+  if (!centralBatch && !localBatch) {
     return { ok: false, error: "Lote não encontrado." };
   }
-  if (batch.status !== "open") {
+  if (batchStatus !== "open") {
     return { ok: false, error: "O lote já foi finalizado e não aceita novas leituras." };
   }
 
@@ -496,8 +569,30 @@ export async function startCapture(
     return { ok: false, error: "Nenhum equipamento habilitado configurado." };
   }
 
+  if (centralCapture) {
+    try {
+      const missingEquipment = await validateCentralEquipmentMapping(equipments.map((equipment) => equipment.name));
+      if (missingEquipment.length > 0) {
+        return {
+          ok: false,
+          error: `Equipamentos não mapeados na base central: ${missingEquipment.join(", ")}.`
+        };
+      }
+    } catch (error) {
+      centralCapture = false;
+      centralUsername = null;
+      centralSectorCode = "PRODUCTION";
+      return {
+        ok: false,
+        error: `Não foi possível validar a base central antes da captura: ${String(error)}`
+      };
+    }
+  }
+
   const timeoutSeconds = getCaptureTimeoutSeconds();
-  const session = createCaptureSession(targetBatchId, timeoutSeconds);
+  const session = centralCapture
+    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!, centralSectorCode)
+    : createCaptureSession(targetBatchId, timeoutSeconds);
   sessionId = session.id;
   batchId = targetBatchId;
   remaining = timeoutSeconds;
@@ -535,6 +630,7 @@ export async function startCapture(
     let regexInvalid = false;
     if (eq.parseRegex) {
       try {
+        if (!isSafeOperationalRegex(eq.parseRegex)) throw new Error("unsafe regex");
         regex = new RegExp(eq.parseRegex);
       } catch {
         regexInvalid = true;

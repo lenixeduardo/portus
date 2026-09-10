@@ -68,8 +68,8 @@ export function UsersTab({ currentUserId }: Props) {
                   )}
                 </td>
                 <td>
-                  <span className={`chip ${u.role === "admin" ? "chip-blue" : "chip-green"}`}>
-                    {u.role === "admin" ? "Admin" : "Operador"}
+                  <span className={`chip ${u.sectorCode === "LABORATORY" ? "chip-laboratory" : u.role === "admin" ? "chip-blue" : "chip-green"}`}>
+                    {formatAccessProfile(u)}
                   </span>
                 </td>
                 <td className="muted">{formatDate(u.createdAt)}</td>
@@ -115,7 +115,7 @@ export function UsersTab({ currentUserId }: Props) {
 function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "operator">("operator");
+  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "laboratory_capture" | "laboratory_closure">("operator");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -123,7 +123,16 @@ function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const res = await window.api.users.create({ username, password, role });
+    const laboratory = accessProfile.startsWith("laboratory_");
+    const res = await window.api.users.create({
+      username,
+      password,
+      role: accessProfile === "admin" ? "admin" : "operator",
+      sectorCode: laboratory ? "LABORATORY" : "PRODUCTION",
+      laboratoryProfile: laboratory
+        ? accessProfile === "laboratory_capture" ? "capture" : "closure"
+        : undefined
+    });
     setSaving(false);
     if (!res.ok) {
       setError(res.error);
@@ -156,9 +165,11 @@ function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
         </div>
         <div className="field">
           <label>Perfil</label>
-          <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator")}>
+          <select value={accessProfile} onChange={(e) => setAccessProfile(e.target.value as typeof accessProfile)}>
             <option value="operator">Operador — pode abrir lotes e realizar leituras</option>
             <option value="admin">Admin — acesso completo</option>
+            <option value="laboratory_capture">Laboratório · Captura — consulta lotes e realiza leituras</option>
+            <option value="laboratory_closure">Laboratório · Fechamento — revisa e confirma o lote</option>
           </select>
         </div>
         {error && <div className="error">{error}</div>}
@@ -222,4 +233,11 @@ function ChangePasswordModal({
 function formatDate(iso: string): string {
   const d = new Date(iso.replace(" ", "T") + "Z");
   return d.toLocaleString("pt-BR");
+}
+
+function formatAccessProfile(user: User): string {
+  if (user.sectorCode === "LABORATORY") {
+    return user.laboratoryProfile === "closure" ? "Laboratório · Fechamento" : "Laboratório · Captura";
+  }
+  return user.role === "admin" ? "Admin" : "Produção · Operador";
 }

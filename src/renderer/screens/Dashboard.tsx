@@ -1,22 +1,42 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
+import { canCaptureLaboratory, canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { CaptureModal } from "../components/CaptureModal";
 import { EquipmentSelectionModal } from "../components/EquipmentSelectionModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
 import { Modal } from "../components/Modal";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { CheckSquare, Scan, Printer, ScanBarcode, Zap } from "lucide-react";
+import {
+  CalendarDays,
+  CheckSquare,
+  Circle,
+  CircleCheck,
+  ClipboardList,
+  Copy,
+  List,
+  MoreVertical,
+  Printer,
+  ScanBarcode,
+  UserRound,
+  Zap
+} from "lucide-react";
 
 type ScannerState =
   | { phase: "idle" }
   | { phase: "detecting"; code: string }
   | { phase: "error"; message: string };
 
+type BatchFilter = "ALL" | "PRODUCTION" | "LABORATORY";
+
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [centralConfigured, setCentralConfigured] = useState(false);
+  const [centralAvailable, setCentralAvailable] = useState(false);
+  const [centralRequired, setCentralRequired] = useState(true);
+  const [centralStatusResolved, setCentralStatusResolved] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [simulatingLot, setSimulatingLot] = useState(false);
@@ -26,18 +46,48 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [selectionBatch, setSelectionBatch] = useState<BatchWithProduct | null>(null);
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
+  const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLaboratory = isLaboratoryUser(user);
+  const canCapture = !isLaboratory || canCaptureLaboratory(user);
+  const requiresCentral = centralRequired || centralConfigured || isLaboratory;
 
   async function reload() {
     setLoading(true);
-    const list = await window.api.batches.listOpen();
-    setBatches(list);
-    setLoading(false);
+    try {
+      if (requiresCentral && !centralAvailable) {
+        setBatches([]);
+        return;
+      }
+      const list = requiresCentral
+        ? await window.api.central.batches.listOpen()
+        : await window.api.batches.listOpen();
+      setBatches(list);
+    } catch {
+      setBatches([]);
+      setScannerError("Não foi possível consultar os lotes na base central.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    reload();
+    window.api.central.status().then((status) => {
+      setCentralConfigured(status.configured);
+      setCentralAvailable(status.available);
+      setCentralRequired(status.required);
+      setCentralStatusResolved(true);
+    }).catch(() => {
+      setCentralConfigured(true);
+      setCentralAvailable(false);
+      setCentralRequired(true);
+      setCentralStatusResolved(true);
+    });
   }, []);
+
+  useEffect(() => {
+    if (centralStatusResolved) reload();
+  }, [centralAvailable, requiresCentral, centralStatusResolved]);
 
   function clearScannerError() {
     if (scannerIdleTimer.current) clearTimeout(scannerIdleTimer.current);
@@ -55,13 +105,28 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   }
 
   // Auto-scanner disabled when BarcodeModal is open, capture is running, selection modal is open, or confirm dialog is visible
-  const scannerActive = captureBatchId === null && !showBarcode && confirmBatch === null && selectionBatch === null;
+  const scannerActive = centralStatusResolved && canCapture && (!requiresCentral || centralAvailable) &&
+    captureBatchId === null && !showBarcode && confirmBatch === null && selectionBatch === null;
 
   // Leitura pelo scanner físico é totalmente automática: processa o código,
   // cria/abre o lote e já inicia a captura, sem abrir modal nem exigir clique.
   // O modal segue disponível apenas para a entrada manual do código.
   async function handleScan(code: string) {
     setScannerState({ phase: "detecting", code });
+    if (requiresCentral) {
+      if (!centralAvailable) {
+        setScannerError("A base central está desconectada. A captura local foi bloqueada para proteger o lote.");
+        return;
+      }
+      const centralBatch = await window.api.central.batches.findByCode(code);
+      if (!centralBatch) {
+        setScannerError("Lote não encontrado na base central. Crie o lote pelo fluxo central antes da captura.");
+        return;
+      }
+      setScannerState({ phase: "idle" });
+      await handleBarcodeReady(centralBatch);
+      return;
+    }
     const res = await window.api.batches.scanBarcode({ barcodeValue: code });
     if (!res.ok) {
       setScannerError(res.error);
@@ -87,7 +152,9 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       const year = new Date().getFullYear();
       const rand = String(Math.floor(Math.random() * 9000) + 1000);
       const code = `SIM-${year}-${rand}`;
-      const res = await window.api.batches.create({ productId: product.id, code });
+      const res = requiresCentral
+        ? await window.api.central.batches.create({ productId: product.id, code })
+        : await window.api.batches.create({ productId: product.id, code });
       if (!res.ok) {
         setScannerError(res.error);
         return;
@@ -106,7 +173,11 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     if (!confirmBatch) return;
     const b = confirmBatch;
     setConfirmBatch(null);
-    const res = await window.api.batches.close(b.id);
+    const res = requiresCentral
+      ? isLaboratory
+        ? await window.api.central.batches.confirmLaboratory(b.id)
+        : await window.api.central.batches.confirmProduction(b.id)
+      : await window.api.batches.close(b.id);
     if (!res.ok) {
       setScannerError(res.error);
       return;
@@ -142,48 +213,88 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     if (batch) setCaptureBatchId(batch.id);
   }
 
+  const visibleBatches = batches.filter((batch) => {
+    if (batchFilter === "ALL") return true;
+    if (batchFilter === "PRODUCTION") return !batch.productionClosed;
+    return !batch.laboratoryClosed;
+  });
+  const productionPending = batches.filter((batch) => !batch.productionClosed).length;
+  const laboratoryPending = batches.filter((batch) => !batch.laboratoryClosed).length;
+
   return (
     <>
-      <div className="page-actions">
-        <ScannerStatusBar state={scannerState} />
-        <button
-          className="secondary"
-          onClick={handleSimulateLot}
-          disabled={!scannerActive || simulatingLot}
-          title={scannerActive ? "Cria um lote com número randomizado para o primeiro produto cadastrado" : "Indisponível durante captura ou com modal aberto"}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <Zap size={14} />
-          {simulatingLot ? "Criando..." : "Simular Scan"}
-        </button>
-        <button
-          className="secondary"
-          onClick={() => openBarcodeModal()}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <ScanBarcode size={14} />
-          Novo Lote por Código de Barras
-        </button>
+      <div className="dashboard-actions">
+        {!isLaboratory && (
+          <div className="dashboard-actions__buttons">
+            <button
+              className="secondary"
+              onClick={handleSimulateLot}
+              disabled={!scannerActive || simulatingLot}
+              title={scannerActive ? "Cria um lote com número randomizado para o primeiro produto cadastrado" : "Indisponível durante captura ou com modal aberto"}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <Zap size={14} />
+              {simulatingLot ? "Criando..." : "Simular Scan"}
+            </button>
+            <button
+              className="secondary"
+              onClick={() => openBarcodeModal()}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <ScanBarcode size={14} />
+              Novo Lote por Código de Barras
+            </button>
+          </div>
+        )}
       </div>
+
+      {requiresCentral && !centralAvailable ? (
+        <ScannerPanel state={{ phase: "error", message: "Base central indisponível — operações locais bloqueadas" }} />
+      ) : canCapture ? (
+        <ScannerPanel state={scannerState} />
+      ) : (
+        <ScannerPanel state={{ phase: "idle" }} message="Selecione um lote para revisar e confirmar o Laboratório." />
+      )}
+
+      {!loading && batches.length > 0 && (
+        <div className="batch-list-controls" aria-label="Filtros de lote">
+          <div className="batch-filter-tabs" role="tablist" aria-label="Filtrar lotes por setor">
+            <FilterTab label="Todos" count={batches.length} active={batchFilter === "ALL"} onClick={() => setBatchFilter("ALL")} />
+            <FilterTab label="Produção" count={productionPending} active={batchFilter === "PRODUCTION"} onClick={() => setBatchFilter("PRODUCTION")} />
+            <FilterTab label="Laboratório" count={laboratoryPending} active={batchFilter === "LABORATORY"} onClick={() => setBatchFilter("LABORATORY")} />
+          </div>
+          <div className="batch-list-display" aria-label="Visualização em lista">
+            <List size={16} aria-hidden="true" />
+            <span>Mais recentes</span>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="muted mono" style={{ fontSize: 12 }}>Carregando...</div>
       ) : batches.length === 0 ? (
         <div className="placeholder">
-          Nenhum lote aberto. Escaneie um código de barras para criar ou abrir um lote.
+          {isLaboratory
+            ? "Nenhum lote aguardando processamento do Laboratório."
+            : "Nenhum lote aberto. Escaneie um código de barras para criar ou abrir um lote."}
         </div>
       ) : (
-        <div className="batch-grid">
-          {batches.map((b) => (
-            <BatchCard
+        <div className="batch-list">
+          {visibleBatches.map((b) => (
+            <BatchRow
               key={b.id}
               batch={b}
               isCapturing={captureBatchId === b.id}
-              canClose={true}
+              canClose={isLaboratory
+                ? canCloseLaboratory(user) && !b.laboratoryClosed
+                : !requiresCentral || !b.productionClosed}
+              centralMode={requiresCentral}
+              confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
           ))}
+          {visibleBatches.length === 0 && <div className="placeholder">Nenhum lote corresponde ao filtro selecionado.</div>}
         </div>
       )}
 
@@ -202,6 +313,8 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       {confirmBatch && (
         <ConfirmCloseModal
           batch={confirmBatch}
+          centralMode={requiresCentral}
+          confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
           onClose={() => setConfirmBatch(null)}
           onConfirm={handleConfirmClose}
         />
@@ -283,74 +396,123 @@ function PrintBarcodeModal({ batch, onClose }: { batch: BatchWithProduct; onClos
 }
 
 
-function ScannerStatusBar({ state }: { state: ScannerState }) {
-  if (state.phase === "error") {
-    return (
-      <div className="scanner-bar scanner-bar-error">
-        <Scan size={14} />
-        {state.message}
-      </div>
-    );
-  }
-  if (state.phase === "detecting") {
-    return (
-      <div className="scanner-bar scanner-bar-detecting">
-        <Scan size={14} className="scanner-pulse" />
-        Código detectado: <span className="mono">{state.code}</span> — validando…
-      </div>
-    );
-  }
+function ScannerPanel({ state, message }: { state: ScannerState; message?: string }) {
+  const content = state.phase === "error"
+    ? { title: "Falha na leitura", description: state.message, tone: "error" }
+    : state.phase === "detecting"
+      ? { title: "Código identificado", description: `${state.code} — validando…`, tone: "detecting" }
+      : { title: "Pronto para leitura", description: message ?? "Aponte o leitor para um código de barras…", tone: "idle" };
+
   return (
-    <div className="scanner-bar scanner-bar-idle">
-      <Scan size={14} />
-      Aguardando leitura de código de barras…
-    </div>
+    <section className={`scanner-panel scanner-panel--${content.tone}`} aria-live="polite">
+      <div className="scanner-panel__copy">
+        <ScanBarcode size={26} aria-hidden="true" />
+        <div>
+          <strong>{content.title}</strong>
+          <span>{content.description}</span>
+        </div>
+      </div>
+      <div className="scanner-panel__barcode" aria-hidden="true">
+        <BarcodeDisplay value="PORTUS-SCANNER-READY" height={28} lineColor="#00d7b5" />
+      </div>
+    </section>
   );
 }
 
-function BatchCard({
+function FilterTab({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className={`batch-filter-tab ${active ? "is-active" : ""}`} onClick={onClick} role="tab" aria-selected={active}>
+      {label}<span>{count}</span>
+    </button>
+  );
+}
+
+function BatchRow({
   batch,
   isCapturing,
   canClose,
+  centralMode,
+  confirmationSector,
   onClose,
   onPrint
 }: {
   batch: BatchWithProduct;
   isCapturing: boolean;
   canClose: boolean;
+  centralMode: boolean;
+  confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onPrint: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("Copiar código");
+
+  async function copyBatchCode() {
+    try {
+      await navigator.clipboard.writeText(batch.code);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = batch.code;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    setCopyLabel("Código copiado");
+    setMenuOpen(false);
+    window.setTimeout(() => setCopyLabel("Copiar código"), 2000);
+  }
+
   return (
-    <div className={`batch-card ${isCapturing ? "batch-card-capturing" : ""}`}>
-      <div className="batch-card-head">
-        <div>
-          <div className="batch-code">#{batch.code}</div>
-          <div className="batch-recipe">{batch.productName}</div>
+    <article className={`batch-row ${isCapturing ? "batch-row-capturing" : ""}`}>
+      <section className="batch-row__identity">
+        <div className="batch-row__title">
+          <div>
+            <div className="batch-code">#{batch.code}</div>
+            <div className="batch-recipe">{batch.productName}</div>
+          </div>
+          <span className="chip chip-green">ABERTO</span>
         </div>
-        <span className="chip chip-green">ABERTO</span>
-      </div>
+        <div className="batch-barcode">
+          <BarcodeDisplay value={batch.code} height={36} displayValue />
+        </div>
+      </section>
 
-      <div className="batch-barcode">
-        <BarcodeDisplay value={batch.code} height={42} />
-      </div>
+      <section className="batch-row__operation">
+        <MetaItem icon={CalendarDays} label="Abertura em" value={formatDate(batch.openedAt)} />
+        <MetaItem icon={ClipboardList} label="Leituras" value={String(batch.readingsCount)} />
+        <MetaItem icon={UserRound} label="Operador" value={batch.operatorName} />
+        <div className="batch-stage">
+          <span>Etapa atual</span>
+          <strong>{getStageLabel(batch)}</strong>
+        </div>
 
-      <div className="batch-meta">
-        <div>
-          <span>Aberto</span>
-          <strong>{formatDate(batch.openedAt)}</strong>
+      {centralMode && batch.readingPreviews && batch.readingPreviews.length > 0 && (
+        <div className="batch-row-readings" aria-label="Últimas leituras do lote">
+          <span>Últimas leituras</span>
+          <div>
+            {batch.readingPreviews.slice(0, 3).map((reading, index) => (
+              <small key={`${reading.sectorCode}-${reading.equipmentName}-${reading.capturedAt}-${index}`}>
+                {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"} · {reading.equipmentName} <strong>{reading.value}</strong>
+              </small>
+            ))}
+          </div>
         </div>
-        <div>
-          <span>Leituras</span>
-          <strong>{batch.readingsCount}</strong>
-        </div>
-        <div>
-          <span>Operador</span>
-          <strong>{batch.operatorName}</strong>
-        </div>
-      </div>
+      )}
 
-      <div className="batch-actions">
+      </section>
+
+      {centralMode && (
+        <section className="batch-confirmations" aria-label="Fechamento por setor">
+          <span className="batch-confirmations__label">Fechamento por setor</span>
+          <ConfirmationRow label="Produção" confirmed={Boolean(batch.productionClosed)} />
+          <ConfirmationRow label="Laboratório" confirmed={Boolean(batch.laboratoryClosed)} />
+        </section>
+      )}
+
+      <div className="batch-row__actions">
         <button
           className="secondary"
           onClick={onPrint}
@@ -362,25 +524,86 @@ function BatchCard({
         </button>
         {canClose && (
           <button
-            className="secondary"
+            className="batch-finalize"
             onClick={onClose}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
             <CheckSquare size={13} />
-            Finalizar
+            {centralMode
+              ? confirmationSector === "LABORATORY" ? "Confirmar Laboratório" : "Confirmar Produção"
+              : "Finalizar"}
           </button>
         )}
+        <div
+          className="batch-more-wrap"
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);
+          }}
+        >
+          <button
+            type="button"
+            className="batch-more"
+            aria-label={`Mais ações para o lote ${batch.code}`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title="Mais ações"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <MoreVertical size={18} />
+          </button>
+          {menuOpen && (
+            <div className="batch-more-menu" role="menu">
+              <button type="button" role="menuitem" onClick={copyBatchCode}>
+                <Copy size={14} aria-hidden="true" />
+                {copyLabel}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MetaItem({ icon: Icon, label, value }: { icon: typeof CalendarDays; label: string; value: string }) {
+  return (
+    <div className="batch-meta-item">
+      <Icon size={17} aria-hidden="true" />
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
       </div>
     </div>
   );
 }
 
+function ConfirmationRow({ label, confirmed }: { label: string; confirmed: boolean }) {
+  const Icon = confirmed ? CircleCheck : Circle;
+  return (
+    <div className={confirmed ? "confirmation-row is-confirmed" : "confirmation-row is-pending"}>
+      <Icon size={16} aria-hidden="true" />
+      <strong>{label}</strong>
+      <span>{confirmed ? "confirmado" : "pendente"}</span>
+    </div>
+  );
+}
+
+function getStageLabel(batch: BatchWithProduct): string {
+  if (batch.productionClosed && batch.laboratoryClosed) return "Finalizado";
+  if (batch.productionClosed) return "Laboratório";
+  return "Produção";
+}
+
 function ConfirmCloseModal({
   batch,
+  centralMode,
+  confirmationSector,
   onClose,
   onConfirm
 }: {
   batch: BatchWithProduct;
+  centralMode: boolean;
+  confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -395,8 +618,20 @@ function ConfirmCloseModal({
         </>
       }
     >
-      <p>Deseja finalizar o lote <strong>{batch.code}</strong>?</p>
-      <p className="muted" style={{ fontSize: 13 }}>Esta ação não pode ser desfeita.</p>
+      <p>{centralMode
+        ? `Registrar confirmação do ${confirmationSector === "LABORATORY" ? "Laboratório" : "setor de Produção"} para o lote`
+        : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
+      <p className="muted" style={{ fontSize: 13 }}>
+        {centralMode
+          ? confirmationSector === "LABORATORY"
+            ? batch.productionClosed
+              ? "A Produção já confirmou. Esta ação concluirá o fechamento global do lote."
+              : "O lote permanecerá aberto até a confirmação da Produção."
+            : batch.laboratoryClosed
+              ? "O Laboratório já confirmou. Esta ação concluirá o fechamento global do lote."
+              : "O lote permanecerá aberto até a confirmação do Laboratório."
+          : "Esta ação não pode ser desfeita."}
+      </p>
     </Modal>
   );
 }

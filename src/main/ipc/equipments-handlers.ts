@@ -7,6 +7,7 @@ import {
 } from "../../shared/ipc";
 import type { Equipment } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
+import { logAudit } from "../db/audit-repo";
 import { getEquipment, listEquipments, updateEquipment } from "../db/equipments-repo";
 import { updateEquipmentSchema, type UpdateEquipmentInput } from "../validation/schemas";
 import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
@@ -48,6 +49,9 @@ export function registerEquipmentsHandlers(): void {
         if (input.scaleOutMin !== undefined) cleaned.scaleOutMin = input.scaleOutMin;
         if (input.scaleOutMax !== undefined) cleaned.scaleOutMax = input.scaleOutMax;
         const updated = updateEquipment(input.id, cleaned);
+        if (updated) {
+          logAudit({ actorUserId: getCurrentUser()?.id, action: "equipments.update", resourceType: "equipment", resourceId: input.id, details: { fields: Object.keys(cleaned).filter((key) => key !== "id") } });
+        }
         return updated ? { ok: true, data: updated } : { ok: false, error: "Falha ao atualizar." };
       }
     )

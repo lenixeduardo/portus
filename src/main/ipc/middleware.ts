@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
-import { getCurrentUser } from "../auth/auth-service";
+import { getCurrentUser, touchSession } from "../auth/auth-service";
 
 export type Handler = (event: IpcMainInvokeEvent, ...args: any[]) => any;
 
@@ -14,6 +14,7 @@ export function requireAuth(handler: Handler): Handler {
     if (!user) {
       throw new Error("Não autenticado.");
     }
+    touchSession();
     return handler(event, ...args);
   };
 }
@@ -28,6 +29,7 @@ export function requireAdmin(handler: Handler): Handler {
     if (!user || user.role !== "admin") {
       throw new Error("Acesso negado.");
     }
+    touchSession();
     return handler(event, ...args);
   };
 }

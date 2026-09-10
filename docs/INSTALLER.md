@@ -2,7 +2,7 @@
 
 ## O que o instalador faz
 
-Quando você executa `Portus Setup 0.x.x.exe`:
+Quando você executa `PORTUS-Setup-0.x.x-x64.exe` na raiz do projeto:
 
 1. ✅ Exibe diálogo de boas-vindas
 2. ✅ Permite escolher diretório de instalação
@@ -35,16 +35,13 @@ Este campo **executa automaticamente o Portus.exe** após o fim da instalação,
 ## Script customizado: build/installer.nsh
 
 ```nsh
-!macro customInstallSuccess
-  # Executar o app corretamente após instalação
-  ExecShell "open" "$INSTDIR\Portus.exe"
+!macro customInstall
+  DetailPrint "Finalizando instalação..."
 !macroend
 ```
 
-Isso garante que:
-- O executável correto é chamado
-- A shell do Windows (explorer.exe) abre o app
-- Não há tentativa de abrir em browser
+Não mantenha um segundo `ExecShell` neste arquivo: ele duplicaria a abertura
+feita pelo `runAfterFinish` do electron-builder.
 
 ## Testando o instalador
 
@@ -53,10 +50,14 @@ Isso garante que:
 npm run package
 
 # Depois de gerado, você verá:
-# release/Portus Setup 0.1.4.exe
+# PORTUS-Setup-0.1.4-x64.exe (na raiz)
 
 # Duplo-clique para instalar e abrir
 ```
+
+Antes do empacotamento, `npm run validate:release` verifica os assets canônicos,
+as migrations, os scripts do banco e o nome esperado do instalador. O teste
+final ainda deve ser feito em uma máquina Windows limpa.
 
 ## Se o app não abrir ao terminar instalação
 
@@ -113,5 +114,5 @@ Após instalação, o usuário terá:
 
 ---
 
-**Status**: ✅ Instalador pronto para produção  
-**Data**: 2026-06-09
+**Status**: configuração e validação estática concluídas; smoke test em Windows limpo pendente
+**Data**: 2026-09-10

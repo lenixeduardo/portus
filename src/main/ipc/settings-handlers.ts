@@ -5,6 +5,7 @@ import { all } from "../db/query";
 import { getAutoBackupFolder, getAutoBackupRetention, setSetting } from "../db/settings-repo";
 import { runBackup } from "../db/backup";
 import { getCurrentUser } from "../auth/auth-service";
+import { logAudit } from "../db/audit-repo";
 import { updateSettingSchema, type UpdateSettingInput } from "../validation/schemas";
 import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
 
@@ -72,6 +73,7 @@ export function registerSettingsHandlers(): void {
     compose([requireAuth, validateInput(updateSettingSchema)])(
       (_e, input: UpdateSettingInput): ServiceResult<true> => {
         setSetting(input.key, input.value);
+        logAudit({ actorUserId: getCurrentUser()?.id, action: "settings.update", resourceType: "setting", resourceId: input.key });
         return { ok: true, data: true };
       }
     )

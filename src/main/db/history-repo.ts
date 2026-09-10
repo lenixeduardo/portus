@@ -81,7 +81,7 @@ export function buildCsvContent(history: BatchHistory): string {
   const header = [
     "Lote", "Produto", "Operador", "Abertura do Lote",
     "Sessão", "Início Sessão", "Fim Sessão",
-    "Status Sessão", "Equipamento", "Slot", "Valor Bruto", "Valor Parseado", "Capturado em"
+    "Status Sessão", "Setor", "Responsável", "Equipamento", "Slot", "Valor Bruto", "Valor Parseado", "Capturado em"
   ];
   lines.push(header.join(";"));
 
@@ -94,7 +94,7 @@ export function buildCsvContent(history: BatchHistory): string {
       lines.push(
         [batch.code, batch.productName, batch.operatorName, batch.openedAt,
           sessionNum, session.startedAt, session.endedAt ?? "", session.status,
-          "", "", "", "", ""]
+          sectorLabel(session.sectorCode), session.operatorName ?? "", "", "", "", "", ""]
           .map(csvCell).join(";")
       );
       continue;
@@ -103,13 +103,18 @@ export function buildCsvContent(history: BatchHistory): string {
       lines.push(
         [batch.code, batch.productName, batch.operatorName, batch.openedAt,
           sessionNum, session.startedAt, session.endedAt ?? "", session.status,
-          r.equipmentName, r.slotIndex + 1, r.valueRaw, r.valueParsed ?? "", r.capturedAt]
+          sectorLabel(session.sectorCode), session.operatorName ?? "", r.equipmentName,
+          r.slotIndex >= 0 ? r.slotIndex + 1 : "", r.valueRaw, r.valueParsed ?? "", r.capturedAt]
           .map(csvCell).join(";")
       );
     }
   }
 
   return lines.join("\r\n");
+}
+
+function sectorLabel(sector?: CaptureSessionRecord["sectorCode"]): string {
+  return sector === "LABORATORY" ? "Laboratório" : sector === "PRODUCTION" ? "Produção" : "";
 }
 
 export function writeCsvFile(filePath: string, csv: string): void {

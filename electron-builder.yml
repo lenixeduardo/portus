@@ -13,7 +13,7 @@ win:
   icon: build/icon.ico
   certificateFile: null
   certificatePassword: null
-  artifactName: "${productName} Setup ${version}.${ext}"
+  artifactName: "PORTUS-Setup-${version}-${arch}.${ext}"
 
 nsis:
   oneClick: false

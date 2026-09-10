@@ -1,6 +1,7 @@
 import React from "react";
-import { LayoutDashboard, Package, Clock, Settings, Usb, ExternalLink, Bug } from "lucide-react";
+import { LayoutDashboard, Package, Clock, Settings, ExternalLink, Bug, LogOut } from "lucide-react";
 import type { User } from "../../shared/types";
+import { PortusLogo } from "./PortusLogo";
 
 const CONNECT_URL = "https://kairos-connect-nine.vercel.app";
 
@@ -22,13 +23,14 @@ const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly
 ];
 
 export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: Props) {
-  const visibleNav = NAV.filter((item) => !item.adminOnly || user.role === "admin");
+  const visibleNav = NAV.filter((item) =>
+    !item.adminOnly || user.role === "admin" || (item.key === "history" && user.sectorCode === "LABORATORY")
+  );
 
   return (
     <aside className="sidebar">
       <div className="brand">
-        <Usb size={16} color="#14b8a6" />
-        <span className="brand-name">PORTUS</span>
+        <PortusLogo variant="sidebar" />
       </div>
       <nav>
         {visibleNav.map((item) => {
@@ -62,18 +64,20 @@ export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: 
           Kairos Connect
         </a>
       </div>
-      <div className="user">
-        <div className="name">{user.username}</div>
+      <div className="sidebar-actions">
         <button
-          className="secondary"
+          className="sidebar-action"
           onClick={onReportError}
           title="Reportar um erro ao suporte"
           style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginBottom: 6 }}
         >
-          <Bug size={12} />
+          <Bug size={15} />
           Reportar Erro
         </button>
-        <button onClick={onLogout}>Sair</button>
+        <button className="sidebar-action" onClick={onLogout}>
+          <LogOut size={15} />
+          Sair
+        </button>
       </div>
     </aside>
   );

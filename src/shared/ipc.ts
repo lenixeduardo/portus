@@ -49,10 +49,25 @@ export const IPC = {
   logError: "log:error",
   logGetRecent: "log:get-recent",
   logSendReport: "log:send-report",
-  captureInjectReading: "capture:inject-reading"
+  captureInjectReading: "capture:inject-reading",
+  centralStatus: "central:status",
+  centralBatchesListOpen: "central:batches:list-open",
+  centralBatchesListAll: "central:batches:list-all",
+  centralBatchesFindByCode: "central:batches:find-by-code",
+  centralBatchesCreate: "central:batches:create",
+  centralBatchesConfirmProduction: "central:batches:confirm-production",
+  centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory",
+  centralHistoryGetBatch: "central:history:get-batch"
 } as const;
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
+
+export interface CentralDatabaseStatus {
+  configured: boolean;
+  available: boolean;
+  required: boolean;
+  mode: "central" | "local";
+}
 
 export interface SlotInitState {
   slotIndex: number;
@@ -112,7 +127,16 @@ export interface CaptureSessionRecord {
   endedAt?: string;
   timeoutSeconds: number;
   status: "active" | "completed" | "cancelled";
+  operatorName?: string;
+  sectorCode?: "PRODUCTION" | "LABORATORY";
   readings: ReadingRecord[];
+}
+
+export interface BatchReadingPreview {
+  sectorCode: "PRODUCTION" | "LABORATORY";
+  equipmentName: string;
+  value: string;
+  capturedAt: string;
 }
 
 export interface BatchHistory {
@@ -143,6 +167,7 @@ export interface BatchWithProduct extends Batch {
   productName: string;
   operatorName: string;
   readingsCount: number;
+  readingPreviews?: BatchReadingPreview[];
 }
 
 export interface SerialPortInfo {
@@ -158,6 +183,8 @@ export interface UserCreateInput {
   username: string;
   password: string;
   role?: "admin" | "operator";
+  sectorCode?: "PRODUCTION" | "LABORATORY";
+  laboratoryProfile?: "capture" | "closure";
 }
 
 export interface EquipmentUpdateInput {
@@ -273,6 +300,20 @@ export interface SerialReaderApi {
   };
   shell: {
     openExternal(url: string): Promise<void>;
+  };
+  central: {
+    status(): Promise<CentralDatabaseStatus>;
+    batches: {
+      listOpen(): Promise<BatchWithProduct[]>;
+      listAll(): Promise<BatchWithProduct[]>;
+      findByCode(code: string): Promise<BatchWithProduct | null>;
+      create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
+      confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
+    };
+    history: {
+      getBatch(id: number): Promise<ServiceResult<BatchHistory>>;
+    };
   };
   log: {
     error(source: string, message: string, stack?: string): Promise<void>;

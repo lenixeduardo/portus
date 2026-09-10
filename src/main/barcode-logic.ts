@@ -1,6 +1,7 @@
 import type { Product } from "../shared/types";
 import type { BarcodeScanResponse } from "../shared/ipc";
 import type { BatchWithProduct } from "../shared/ipc";
+import { isSafeOperationalRegex } from "./validation/schemas";
 
 export interface BarcodeDeps {
   barcode_regex: string | null;
@@ -27,6 +28,7 @@ export function processBarcodeValue(
 
   if (deps.barcode_regex) {
     try {
+      if (!isSafeOperationalRegex(deps.barcode_regex)) throw new Error("unsafe regex");
       const re = new RegExp(deps.barcode_regex);
       const match = re.exec(raw);
       if (match?.groups) {
@@ -42,7 +44,7 @@ export function processBarcodeValue(
       }
       // Sem match: usa raw como batch_code (fallback)
     } catch {
-      return { ok: false, error: "Regex de código de barras inválida nas configurações." };
+      return { ok: false, error: "Regex de código de barras inválida ou insegura nas configurações." };
     }
   }
 

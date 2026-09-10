@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
+import type { User } from "../../shared/types";
 
-export function History() {
+export function History({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [centralMode, setCentralMode] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   // Estados de filtro
@@ -16,8 +18,19 @@ export function History() {
   const [filterEndDate, setFilterEndDate] = useState<string>("");
 
   useEffect(() => {
-    window.api.batches.listAll().then(setBatches);
-  }, []);
+    window.api.central.status().then((status) => {
+      const requiresCentral = status.required || status.configured || user.sectorCode === "LABORATORY";
+      setCentralMode(requiresCentral);
+      if (requiresCentral && !status.available) {
+        setError("O PostgreSQL central é obrigatório e está indisponível. Verifique a configuração e tente novamente.");
+        return [];
+      }
+      return requiresCentral ? window.api.central.batches.listAll() : window.api.batches.listAll();
+    }).then(setBatches).catch(() => {
+      setError("Não foi possível consultar o histórico na base central.");
+      setBatches([]);
+    });
+  }, [user.sectorCode]);
 
   useEffect(() => {
     // Resetar filtros ao mudar de lote
@@ -33,7 +46,10 @@ export function History() {
     setLoading(true);
     setError(null);
     setHistory(null);
-    window.api.history.getBatch(Number(selectedId)).then((res) => {
+    const historyRequest = centralMode
+      ? window.api.central.history.getBatch(Number(selectedId))
+      : window.api.history.getBatch(Number(selectedId));
+    historyRequest.then((res) => {
       setLoading(false);
       if (!res.ok) {
         setError(res.error);
@@ -41,7 +57,7 @@ export function History() {
       }
       setHistory(res.data);
     });
-  }, [selectedId]);
+  }, [selectedId, centralMode]);
 
   // Lista de equipamentos únicos contidos no histórico deste lote
   const uniqueEquipments = useMemo(() => {
@@ -96,6 +112,13 @@ export function History() {
   }, [history, filterEquipment, filterStartDate, filterEndDate]);
 
   const totalReadings = filteredSessions.reduce((acc, s) => acc + s.readings.length, 0);
+  const unifiedReadings = useMemo(() => filteredSessions.flatMap((session) =>
+    session.readings.map((reading) => ({
+      reading,
+      session,
+      sessionNumber: history ? history.sessions.findIndex((item) => item.id === session.id) + 1 : 0
+    }))
+  ), [filteredSessions, history]);
 
   async function handleExport() {
     if (!selectedId) return;
@@ -247,28 +270,53 @@ export function History() {
             <div className="placeholder" style={{ marginTop: 16 }}>
               Nenhuma sessão de captura registrada neste lote.
             </div>
-          ) : filteredSessions.length === 0 ? (
+          ) : unifiedReadings.length === 0 ? (
             <div className="placeholder" style={{ marginTop: 16 }}>
               Nenhum registro corresponde aos filtros aplicados.
             </div>
           ) : (
-            <div className="history-timeline">
-              {filteredSessions.map((session) => {
-                const originalIdx = history.sessions.findIndex((s) => s.id === session.id);
-                return (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    index={originalIdx !== -1 ? originalIdx + 1 : 1}
-                  />
-                );
-              })}
+            <div className="history-unified-table-wrap">
+              <table className="data-table history-unified-table">
+                <thead>
+                  <tr>
+                    <th>Setor</th>
+                    <th>Sessão</th>
+                    <th>Responsável</th>
+                    <th>Equipamento</th>
+                    <th>Canal</th>
+                    <th>Valor capturado</th>
+                    <th>Valor bruto</th>
+                    <th>Data e hora</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unifiedReadings.map(({ reading, session, sessionNumber }) => (
+                    <tr key={reading.id}>
+                      <td><SectorChip sectorCode={session.sectorCode} /></td>
+                      <td className="mono">#{sessionNumber}</td>
+                      <td>{session.operatorName ?? "—"}</td>
+                      <td>{reading.equipmentName}</td>
+                      <td>{reading.slotIndex >= 0 ? `Slot ${reading.slotIndex + 1}` : "—"}</td>
+                      <td><span className="mono reading-parsed">{reading.valueParsed ?? reading.valueRaw}</span></td>
+                      <td><span className="mono">{reading.valueRaw}</span></td>
+                      <td className="small muted">{formatDate(reading.capturedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </>
       )}
     </>
   );
+}
+
+function SectorChip({ sectorCode }: { sectorCode?: CaptureSessionRecord["sectorCode"] }) {
+  const laboratory = sectorCode === "LABORATORY";
+  return <span className={`chip ${laboratory ? "chip-laboratory" : "chip-green"}`}>
+    {laboratory ? "LABORATÓRIO" : sectorCode === "PRODUCTION" ? "PRODUÇÃO" : "LOCAL"}
+  </span>;
 }
 
 function SessionCard({ session, index }: { session: CaptureSessionRecord; index: number }) {
@@ -299,6 +347,11 @@ function SessionCard({ session, index }: { session: CaptureSessionRecord; index:
           <span className="session-meta-item">
             <span>Leituras:</span> {session.readings.length}
           </span>
+          {session.operatorName && (
+            <span className="session-meta-item">
+              <span>Responsável:</span> {session.operatorName}
+            </span>
+          )}
           <span className="session-toggle">{open ? "▲" : "▼"}</span>
         </div>
       </button>

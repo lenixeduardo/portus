@@ -110,6 +110,24 @@ const api: SerialReaderApi = {
   shell: {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url })
   },
+  central: {
+    status: (): Promise<import("../shared/ipc").CentralDatabaseStatus> => ipcRenderer.invoke(IPC.centralStatus),
+    batches: {
+      listOpen: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListOpen),
+      listAll: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListAll),
+      findByCode: (code: string): Promise<BatchWithProduct | null> => ipcRenderer.invoke(IPC.centralBatchesFindByCode, code),
+      create: (input: BatchInput): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesCreate, input),
+      confirmProduction: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesConfirmProduction, { id }),
+      confirmLaboratory: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesConfirmLaboratory, { id })
+    },
+    history: {
+      getBatch: (id: number): Promise<ServiceResult<import("../shared/ipc").BatchHistory>> =>
+        ipcRenderer.invoke(IPC.centralHistoryGetBatch, { id })
+    }
+  },
   log: {
     error: (source: string, message: string, stack?: string): Promise<void> =>
       ipcRenderer.invoke(IPC.logError, source, message, stack),

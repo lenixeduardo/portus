@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { User } from "../../shared/types";
+import { PortusLogo } from "../components/PortusLogo";
 
 interface Props {
   onAuthenticated: (user: User) => void;
@@ -45,19 +46,7 @@ export function Login({ onAuthenticated }: Props) {
       <div className="login-split">
         <div className="login-left">
           <div className="login-brand">
-            <div className="login-logo-mark">
-              <svg width="60" height="40" viewBox="0 0 60 40" fill="none">
-                <rect x="1" y="1" width="58" height="38" stroke="#14b8a6" strokeWidth="1.5" />
-                <rect x="8" y="8" width="2" height="24" fill="#14b8a6" />
-                <rect x="14" y="8" width="4" height="24" fill="#14b8a6" />
-                <rect x="22" y="8" width="1" height="24" fill="#14b8a6" />
-                <rect x="27" y="8" width="6" height="24" fill="#14b8a6" />
-                <rect x="37" y="8" width="2" height="24" fill="#14b8a6" />
-                <rect x="43" y="8" width="3" height="24" fill="#14b8a6" />
-                <rect x="50" y="8" width="2" height="24" fill="#14b8a6" />
-              </svg>
-            </div>
-            <h1 className="login-title">PORTUS</h1>
+            <PortusLogo variant="login" />
             <p className="login-subtitle mono">INDUSTRIAL CAPTURE INTERFACE</p>
           </div>
 

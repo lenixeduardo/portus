@@ -1,5 +1,5 @@
-# Customização do instalador NSIS para Portus
-# Garante que o executável seja aberto corretamente ao terminar instalação
+# Customização do instalador NSIS para Portus.
+# A abertura ao concluir é controlada por runAfterFinish no electron-builder.
 
 !macro customInstall
   DetailPrint "Finalizando instalação..."
@@ -7,9 +7,4 @@
 
 !macro customUnInstall
   # Customizações para desinstalação
-!macroend
-
-!macro customInstallSuccess
-  # Executar o app corretamente após instalação
-  ExecShell "open" "$INSTDIR\Portus.exe"
 !macroend
