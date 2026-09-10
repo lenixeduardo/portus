@@ -11,6 +11,22 @@ export const DELIMITER_VALUES = ["crlf", "lf", "cr"] as const;
 export const ALLOWED_BAUD = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200] as const;
 
 /**
+ * Validação conservadora para regex executada no processo principal. Além de
+ * compilar, rejeita padrões com quantificadores aninhados e backreferences,
+ * formas comuns de backtracking catastrófico (ReDoS) em entradas seriais.
+ */
+export function isSafeOperationalRegex(value: string): boolean {
+  if (value.length > 256) return false;
+  try {
+    new RegExp(value);
+  } catch {
+    return false;
+  }
+  if (/\\[1-9]/.test(value)) return false;
+  return !/\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]/.test(value);
+}
+
+/**
  * Validação de login
  */
 export const loginSchema = z.object({
@@ -63,7 +79,7 @@ export const createUserSchema = z.object({
     .regex(/^[a-zA-Z0-9._-]+$/, "Usuário aceita apenas letras, números, '.', '_' e '-'"),
   password: z
     .string()
-    .min(4, "Senha deve ter ao menos 4 caracteres")
+    .min(8, "Senha deve ter ao menos 8 caracteres")
     .max(100, "Senha muito longa"),
   role: z.enum(["admin", "operator"]).optional(),
   sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
@@ -87,7 +103,7 @@ export const changePasswordSchema = z.object({
   id: z.number().positive("ID do usuário deve ser um número positivo"),
   password: z
     .string()
-    .min(4, "Senha deve ter ao menos 4 caracteres")
+    .min(8, "Senha deve ter ao menos 8 caracteres")
     .max(100, "Senha muito longa")
 });
 
@@ -128,14 +144,9 @@ export const updateEquipmentSchema = z.object({
     .refine(
       (val) => {
         if (!val) return true; // regex vazia é ok
-        try {
-          new RegExp(val);
-          return true;
-        } catch {
-          return false;
-        }
+        return isSafeOperationalRegex(val);
       },
-      "Regex de parsing inválida"
+      "Regex de parsing inválida ou insegura"
     )
     .optional(),
   lineDelimiter: z.enum(DELIMITER_VALUES).optional(),

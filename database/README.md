@@ -5,6 +5,43 @@ Esta pasta contém a fundação do banco central definida no
 
 ## Ordem de aplicação
 
+## Instalação no Windows (máquina nova)
+
+O instalador do aplicativo não instala o PostgreSQL. Após instalar o PostgreSQL
+18 e manter o serviço em execução, na raiz do projeto execute:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\database\install-portus-database.ps1
+```
+
+Ou dê duplo clique em `database\install-portus-database.bat`. O script pede a
+senha do `postgres` e cria/atualiza de forma idempotente o banco `portus` e o
+usuário operacional `portus_admin`; a senha nunca é salva em arquivo. Ao fim,
+ele executa as migrations, o seed e os testes SQL 001/002. Para instalação sem
+testes, use `-SkipTests`.
+
+### Gerar o ZIP autocontido
+
+Para entregar somente o instalador do banco, sem o restante do código do
+PORTUS, execute:
+
+```bash
+npm run package:database-installer
+```
+
+O arquivo gerado em `release/portus-database-installer.zip` inclui o instalador
+principal, diagnóstico, atualização de migrations, schema real, seed e testes.
+No Windows, o ponto de entrada é `database\install-portus-database.bat`.
+
+Para uma instalação com PostgreSQL em outro caminho, por exemplo versão 17:
+
+```powershell
+.\database\install-portus-database.ps1 -PostgresBin "C:\Program Files\PostgreSQL\17\bin"
+```
+
+## Ordem de aplicação manual
+
 Execute as migrations em ordem:
 
 ```bash

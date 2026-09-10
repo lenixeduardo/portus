@@ -199,5 +199,21 @@ ALTER TABLE users ADD COLUMN sector_code TEXT NOT NULL DEFAULT 'PRODUCTION'
 ALTER TABLE users ADD COLUMN laboratory_profile TEXT
   CHECK (laboratory_profile IN ('capture', 'closure'));
 `
+  },
+  {
+    name: "017_audit_log",
+    sql: `
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  resource_type TEXT NOT NULL,
+  resource_id TEXT,
+  details_json TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON audit_log(actor_user_id);
+`
   }
 ];

@@ -17,7 +17,7 @@ Laboratório.
 - PostgreSQL central opcional para lotes, sessões e leituras;
 - fechamento global somente após confirmação da Produção e do Laboratório;
 - badge de conectividade PostgreSQL atualizado a cada 15 segundos;
-- instalador Windows NSIS com ícones próprios.
+- instalador Windows NSIS e instalador idempotente do banco PostgreSQL.
 
 ## Arquitetura
 
@@ -38,7 +38,7 @@ processo principal.
 
 | Camada | Tecnologia |
 |---|---|
-| Desktop | Electron 32 |
+| Desktop | Electron 44 |
 | Interface | React 18, Vite e TypeScript |
 | Captura | serialport, protocolo passivo e Modbus RTU |
 | Banco local | sql.js |
@@ -67,35 +67,26 @@ npm install
 
 ### Configurar o PostgreSQL no Windows
 
-Abra o Query Tool do pgAdmin como administrador do PostgreSQL ou conecte com o
-usuário criado na instalação. Crie o usuário e o banco de desenvolvimento:
-
-```sql
-CREATE ROLE portus_admin WITH LOGIN PASSWORD 'SUA_SENHA_FORTE';
-CREATE DATABASE portus OWNER portus_admin;
-```
-
-No PowerShell, dentro da pasta do projeto:
+Depois de instalar PostgreSQL 18, execute no PowerShell, dentro do projeto:
 
 ```powershell
-$env:PGPASSWORD="SUA_SENHA_FORTE"
-$psql="C:\Program Files\PostgreSQL\18\bin\psql.exe"
-
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/001_schema.sql"
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/002_domain_functions.sql"
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/003_security_permissions.sql"
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/migrations/004_laboratory_view.sql"
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/seed/reference.sql"
+Set-ExecutionPolicy -Scope Process Bypass
+.\database\install-portus-database.ps1
 ```
 
-Valide a instalação:
+O instalador pede as senhas, cria o banco `portus` e o usuário operacional
+`portus_admin`, aplica cada migration somente uma vez, concede o mínimo de
+privilégios da aplicação e roda os testes SQL. Em uma máquina gráfica, a mesma
+ação pode ser iniciada com `database\install-portus-database.bat`.
 
-```powershell
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/tests/001_domain_functions.sql"
-& $psql -h 127.0.0.1 -p 5432 -U portus_admin -d portus -v ON_ERROR_STOP=1 -f "database/tests/002_security_permissions.sql"
-```
+Use `-SkipTests` apenas em automações em que a validação ocorrerá depois. Veja
+[database/README.md](database/README.md) para parâmetros de host, porta e uma
+instalação de PostgreSQL em caminho diferente.
 
-O primeiro teste termina com `ROLLBACK`, portanto não mantém o lote de teste.
+No primeiro início do aplicativo, o usuário local `admin` recebe uma senha
+aleatória exibida uma única vez. Para instalação automatizada, defina
+`PORTUS_INITIAL_ADMIN_PASSWORD` antes de iniciar o PORTUS e altere essa senha
+na primeira operação administrativa.
 
 ### Conectar o Electron à base central
 
@@ -157,7 +148,7 @@ npm test           # suíte automatizada
 npm run build      # build do renderer e do processo principal
 ```
 
-A base atual possui 87 testes automatizados. A validação PostgreSQL fica em
+A base atual possui 89 testes automatizados. A validação PostgreSQL fica em
 `database/tests` e deve ser executada separadamente contra um banco de teste.
 
 ```powershell

@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { IPC, type ServiceResult } from "../../shared/ipc";
 import type { User } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
+import { logAudit } from "../db/audit-repo";
 import {
   countUsers,
   createUser,
@@ -47,6 +48,8 @@ export function registerUsersHandlers(): void {
           input.sectorCode ?? "PRODUCTION",
           input.laboratoryProfile
         );
+        const actor = getCurrentUser();
+        logAudit({ actorUserId: actor?.id, action: "users.create", resourceType: "user", resourceId: user.id, details: { username: user.username, role: user.role, sectorCode: user.sectorCode, laboratoryProfile: user.laboratoryProfile } });
         return { ok: true, data: user };
       }
     )
@@ -58,6 +61,8 @@ export function registerUsersHandlers(): void {
       (_e, input: ChangePasswordInput): ServiceResult<true> => {
         if (!getUser(input.id)) return { ok: false, error: "Usuário não encontrado." };
         updateUserPassword(input.id, input.password);
+        const actor = getCurrentUser();
+        logAudit({ actorUserId: actor?.id, action: "users.change_password", resourceType: "user", resourceId: input.id });
         return { ok: true, data: true };
       }
     )
@@ -76,6 +81,7 @@ export function registerUsersHandlers(): void {
         if (!getUser(input.id)) return { ok: false, error: "Usuário não encontrado." };
         reassignUserReferences(input.id, current.id);
         deleteUser(input.id);
+        logAudit({ actorUserId: current.id, action: "users.delete", resourceType: "user", resourceId: input.id });
         return { ok: true, data: true };
       }
     )

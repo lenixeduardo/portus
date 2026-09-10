@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { IPC, type ServiceResult } from "../../shared/ipc";
 import type { Product } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
+import { logAudit } from "../db/audit-repo";
 import {
   countOpenBatchesForProduct,
   createProduct,
@@ -31,6 +32,7 @@ export function registerProductsHandlers(): void {
         if (!user) return { ok: false, error: "Sessão expirada." };
         try {
           const product = createProduct(input.name.trim(), input.description?.trim() || undefined, user.id);
+          logAudit({ actorUserId: user.id, action: "products.create", resourceType: "product", resourceId: product.id, details: { name: product.name } });
           return { ok: true, data: product };
         } catch (e: any) {
           if (String(e?.message).includes("UNIQUE")) {
@@ -53,6 +55,7 @@ export function registerProductsHandlers(): void {
             input.name?.trim() || "",
             input.description?.trim() || undefined
           );
+          logAudit({ actorUserId: getCurrentUser()?.id, action: "products.update", resourceType: "product", resourceId: input.id });
           return { ok: true, data: product! };
         } catch (e: any) {
           if (String(e?.message).includes("UNIQUE")) {
@@ -72,6 +75,7 @@ export function registerProductsHandlers(): void {
           return { ok: false, error: "Produto possui lotes abertos e não pode ser excluído." };
         }
         deleteProduct(input.id);
+        logAudit({ actorUserId: getCurrentUser()?.id, action: "products.delete", resourceType: "product", resourceId: input.id });
         return { ok: true, data: true };
       }
     )

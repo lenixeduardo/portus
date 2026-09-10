@@ -7,7 +7,7 @@
 
 ### 1.1 Validação de Entrada em IPC
 **Risco**: XSS, SQL Injection, Buffer Overflow  
-**Status**: ⚠️ Parcial
+**Status**: ✅ Coberto por schemas nos handlers que recebem escrita; revisão contínua para novos canais
 
 - [ ] **Adicionar schema de validação** para todos os IPC handlers (usar `zod` ou `io-ts`)
   ```typescript
@@ -19,7 +19,7 @@
   });
   ```
 
-- [ ] **Sanitizar regex** antes de compilar (pode causar ReDoS)
+- [x] **Sanitizar regex** antes de compilar (limite, rejeição de backreference e quantificador aninhado)
   ```typescript
   try {
     new RegExp(userProvidedRegex);
@@ -34,7 +34,7 @@
 
 ### 1.2 Controle de Acesso
 **Risco**: Operator executando ações de admin  
-**Status**: ✅ Testes criados, ⚠️ Implementação pendente
+**Status**: ✅ Middleware aplicado aos handlers operacionais
 
 - [ ] **Validar permissão em CADA handler IPC** (não confiar só em UI)
   ```typescript
@@ -44,7 +44,7 @@
   }
   ```
 
-- [ ] **Criar middleware de autenticação** reutilizável
+- [x] **Criar middleware de autenticação** reutilizável
   ```typescript
   function requireAdmin(handler: IPCHandler): IPCHandler {
     return (event, ...args) => {
@@ -57,15 +57,15 @@
 ### 1.3 Hash de Senha
 **Status**: ✅ Usando bcryptjs
 
-- [ ] **Validar comprimento mínimo**: 8 caracteres
-- [ ] **Rate limiting** em login: máx 5 tentativas em 15 minutos
-- [ ] **Expiração de sessão**: 2 horas inatividade (logout automático)
+- [x] **Validar comprimento mínimo**: 8 caracteres
+- [x] **Rate limiting** em login: máx 5 tentativas em 15 minutos
+- [x] **Expiração de sessão**: 2 horas inatividade (logout automático)
 
 ### 1.4 Auditoria
 **Risco**: Sem histórico de quem fez o quê  
-**Status**: ⚠️ Leituras gravadas, ações de usuário não
+**Status**: ✅ Auditoria local de login, logout e alterações críticas
 
-- [ ] **Criar tabela `audit_log`**:
+- [x] **Criar tabela `audit_log`**:
   ```sql
   CREATE TABLE audit_log (
     id INTEGER PRIMARY KEY,
@@ -78,7 +78,7 @@
   );
   ```
 
-- [ ] **Registrar**:
+- [x] **Registrar**:
   - Logout, Login (sucesso/falha)
   - Fechar lote, Abrir lote
   - Deletar usuário, Alterar permissão

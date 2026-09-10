@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Package, Clock, Settings, ScanLine, ExternalLink, Bug, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Clock, Settings, Usb, ExternalLink, Bug } from "lucide-react";
 import type { User } from "../../shared/types";
 
 const CONNECT_URL = "https://kairos-connect-nine.vercel.app";
@@ -29,7 +29,7 @@ export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: 
   return (
     <aside className="sidebar">
       <div className="brand">
-        <ScanLine size={18} />
+        <Usb size={16} color="#14b8a6" />
         <span className="brand-name">PORTUS</span>
       </div>
       <nav>
@@ -64,20 +64,18 @@ export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: 
           Kairos Connect
         </a>
       </div>
-      <div className="sidebar-actions">
+      <div className="user">
+        <div className="name">{user.username}</div>
         <button
-          className="sidebar-action"
+          className="secondary"
           onClick={onReportError}
           title="Reportar um erro ao suporte"
           style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginBottom: 6 }}
         >
-          <Bug size={15} />
+          <Bug size={12} />
           Reportar Erro
         </button>
-        <button className="sidebar-action" onClick={onLogout}>
-          <LogOut size={15} />
-          Sair
-        </button>
+        <button onClick={onLogout}>Sair</button>
       </div>
     </aside>
   );

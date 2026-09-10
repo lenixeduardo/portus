@@ -17,7 +17,7 @@
 - [x] Criar `src/main/db/connection.ts` (sql.js, path em `app.getPath('userData')`)
 - [x] Sistema de migrations em `src/main/db/migrations.ts` (inline TS p/ sobreviver ao bundle)
 - [x] Schema: `users`, `formulas`, `batches`, `equipments`, `capture_sessions`, `readings`, `settings`
-- [x] Seed: usuário `admin/admin` + 6 equipamentos placeholder + `capture_timeout_seconds=30`
+- [x] Seed: usuário inicial + 6 equipamentos placeholder + `capture_timeout_seconds=30`
 - [x] IPC handlers: `auth:login`, `auth:logout`, `auth:current-user`
 - [x] Hash de senha com `bcryptjs` (puro JS, sem build nativo)
 - [x] Tela de Login (React) — card centralizado, validação, erro
@@ -111,6 +111,8 @@
 - [x] Exibir status real da conexão PostgreSQL na interface
 - [x] Sincronizar `package-lock.json` com o cliente `pg`
 - [x] Documentar integração, instalação, validação e limitações atuais
+- [x] Criar instalador idempotente do PostgreSQL para Windows
+- [x] Restringir a credencial de runtime a privilégios explícitos e funções de domínio
 - [ ] Executar homologação com PostgreSQL e equipamentos reais
 
 ## Backlog / Ideias
@@ -118,7 +120,7 @@
 - [x] Backup automático do SQLite
 - [ ] Relatório PDF do lote
 - [x] Tema escuro industrial
-- [ ] Tema claro opcional
+- [x] Tema claro opcional
 - [x] Integração com leitor de código de barras para código de lote
 
 
@@ -130,4 +132,4 @@
 - [x] Bloquear fallback local para usuários do Laboratório
 - [ ] Validar leituras obrigatórias e acúmulo dos perfis Captura/Fechamento com o Laboratório
 - [ ] Validar equipamentos e permissões do Laboratório
-- [ ] Implementar cliente do Laboratório para captura e fechamento
+- [x] Implementar cliente do Laboratório para captura e fechamento

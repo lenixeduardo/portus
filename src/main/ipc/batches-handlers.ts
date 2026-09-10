@@ -8,6 +8,7 @@ import {
   type ServiceResult
 } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
+import { logAudit } from "../db/audit-repo";
 import { processBarcodeValue } from "../barcode-logic";
 import {
   closeBatch,
@@ -64,6 +65,7 @@ export function registerBatchesHandlers(): void {
 
         try {
           const batch = createBatch(input.productId, code, user.id);
+          logAudit({ actorUserId: user.id, action: "batches.create", resourceType: "batch", resourceId: batch.id, details: { code: batch.code, productId: input.productId } });
           return { ok: true, data: batch };
         } catch {
           return { ok: false, error: "Erro ao criar lote." };
@@ -94,6 +96,7 @@ export function registerBatchesHandlers(): void {
         if (!batch) return { ok: false, error: "Lote não encontrado." };
         if (batch.status === "closed") return { ok: false, error: "Lote já está fechado." };
         closeBatch(input.id, user.id);
+        logAudit({ actorUserId: user.id, action: "batches.close", resourceType: "batch", resourceId: input.id });
         return { ok: true, data: true };
       }
     )
@@ -109,7 +112,7 @@ export function registerBatchesHandlers(): void {
           return { ok: false, error: "O Laboratório consulta lotes existentes na base central." };
         }
 
-        return processBarcodeValue(input.barcodeValue, user.id, {
+        const result = processBarcodeValue(input.barcodeValue, user.id, {
           barcode_regex: getSetting("barcode_regex"),
           openBatchesLimit: OPEN_BATCHES_SOFT_LIMIT,
           getBatchByCode,
@@ -119,6 +122,10 @@ export function registerBatchesHandlers(): void {
           createBatch,
           createProduct
         }, input.productName);
+        if (result.ok && result.data.created) {
+          logAudit({ actorUserId: user.id, action: "batches.create_barcode", resourceType: "batch", resourceId: result.data.batch.id, details: { code: result.data.batch.code } });
+        }
+        return result;
       }
     )
   );

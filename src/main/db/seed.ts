@@ -1,4 +1,6 @@
 import bcrypt from "bcryptjs";
+import { dialog } from "electron";
+import { randomBytes } from "node:crypto";
 import { get, run } from "./query";
 import type { LineDelimiter } from "../../shared/types";
 
@@ -27,9 +29,22 @@ const DEFAULT_EQUIPMENTS: SeedEquipment[] = [
 export function seedInitialData(): void {
   const userCount = get<{ c: number }>("SELECT COUNT(*) AS c FROM users");
   if ((userCount?.c ?? 0) === 0) {
-    const hash = bcrypt.hashSync("admin", 10);
+    // Não distribui uma senha conhecida. Em estações automatizadas a senha pode
+    // ser definida antes do primeiro início; nas demais, a senha única é exibida
+    // uma vez ao operador que executa a instalação.
+    const initialPassword = process.env.PORTUS_INITIAL_ADMIN_PASSWORD || randomBytes(15).toString("base64url");
+    const hash = bcrypt.hashSync(initialPassword, 10);
     run("INSERT INTO users (username, password_hash) VALUES (?, ?)", "admin", hash);
-    console.log("[db] seeded user: admin / admin");
+    console.log("[db] seeded initial admin user");
+    if (!process.env.PORTUS_INITIAL_ADMIN_PASSWORD) {
+      dialog.showMessageBoxSync({
+        type: "warning",
+        title: "PORTUS — senha inicial",
+        message: "Usuário inicial criado: admin",
+        detail: `Anote a senha única e altere-a após entrar:\n\n${initialPassword}`,
+        buttons: ["Anotei a senha"]
+      });
+    }
   }
 
   const equipCount = get<{ c: number }>("SELECT COUNT(*) AS c FROM equipments");

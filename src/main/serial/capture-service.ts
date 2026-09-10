@@ -26,6 +26,7 @@ import type {
 import { IPC } from "../../shared/ipc";
 import type { ServiceResult } from "../../shared/ipc";
 import type { Equipment } from "../../shared/types";
+import { isSafeOperationalRegex } from "../validation/schemas";
 
 // Janela de debounce para atualizações visuais por slot (ms).
 // Todas as leituras são gravadas no banco imediatamente; apenas a última
@@ -607,6 +608,7 @@ export async function startCapture(
     let regexInvalid = false;
     if (eq.parseRegex) {
       try {
+        if (!isSafeOperationalRegex(eq.parseRegex)) throw new Error("unsafe regex");
         regex = new RegExp(eq.parseRegex);
       } catch {
         regexInvalid = true;
