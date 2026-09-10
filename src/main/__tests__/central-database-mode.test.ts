@@ -3,6 +3,7 @@ import {
   getCentralDatabaseMode,
   isCentralDatabaseConfigured,
   isCentralDatabaseRequired,
+  parseCentralDatabaseConfig,
   parseWindowsRegistryValue
 } from "../db/central-connection";
 
@@ -48,5 +49,20 @@ describe("modo do banco central", () => {
       "postgresql://portus_admin:p%40ss@127.0.0.1:5432/portus"
     );
     expect(parseWindowsRegistryValue(output, "PORTUS_DATABASE_MODE")).toBeUndefined();
+  });
+
+  it("lê o arquivo de configuração persistente do instalador", () => {
+    expect(parseCentralDatabaseConfig(JSON.stringify({
+      PORTUS_DATABASE_URL: " postgresql://portus_admin:p%40ss@127.0.0.1:5432/portus ",
+      PORTUS_DATABASE_MODE: " central "
+    }))).toEqual({
+      PORTUS_DATABASE_URL: "postgresql://portus_admin:p%40ss@127.0.0.1:5432/portus",
+      PORTUS_DATABASE_MODE: "central"
+    });
+  });
+
+  it("ignora arquivo de configuração inválido", () => {
+    expect(parseCentralDatabaseConfig("{inválido")).toEqual({});
+    expect(parseCentralDatabaseConfig("[]")).toEqual({});
   });
 });

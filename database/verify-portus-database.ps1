@@ -5,7 +5,8 @@ param(
   [string]$DatabaseHost = "127.0.0.1",
   [int]$Port = 5432,
   [string]$DatabaseName = "portus",
-  [string]$AppUser = "portus_admin"
+  [string]$AppUser = "portus_admin",
+  [switch]$SkipAppConfiguration
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,6 +60,23 @@ $$;
 '@
   & $psql -X -v ON_ERROR_STOP=1 -h $DatabaseHost -p $Port -U $AppUser -d $DatabaseName -c $validationSql
   if ($LASTEXITCODE -ne 0) { throw "Validação falhou (código $LASTEXITCODE)." }
+  if (-not $SkipAppConfiguration) {
+    $encodedUser = [Uri]::EscapeDataString($AppUser)
+    $encodedPassword = [Uri]::EscapeDataString($password)
+    $uriHost = if ($DatabaseHost.Contains(":")) { "[$DatabaseHost]" } else { $DatabaseHost }
+    $connectionString = "postgresql://${encodedUser}:${encodedPassword}@${uriHost}:${Port}/${DatabaseName}"
+    [Environment]::SetEnvironmentVariable("PORTUS_DATABASE_URL", $connectionString, "User")
+    [Environment]::SetEnvironmentVariable("PORTUS_DATABASE_MODE", "central", "User")
+    $configDirectory = Join-Path $env:LOCALAPPDATA "PORTUS"
+    $configPath = Join-Path $configDirectory "database-config.json"
+    New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+    $configJson = @{
+      PORTUS_DATABASE_URL = $connectionString
+      PORTUS_DATABASE_MODE = "central"
+    } | ConvertTo-Json
+    [IO.File]::WriteAllText($configPath, $configJson, [Text.UTF8Encoding]::new($false))
+    Write-Host "Conexão do aplicativo salva em $configPath." -ForegroundColor Green
+  }
   Write-Host "Banco PORTUS disponível." -ForegroundColor Green
 } finally {
   Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue

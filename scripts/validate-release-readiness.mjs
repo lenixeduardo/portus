@@ -54,6 +54,14 @@ if (/\[string\]\$Host\b/.test(installer)) {
 if (!installer.includes('SetEnvironmentVariable("PORTUS_DATABASE_URL"')) {
   errors.push("O instalador não configura a conexão do aplicativo após criar o banco.");
 }
+if (!installer.includes('database-config.json')) {
+  errors.push("O instalador não cria o arquivo persistente de conexão do aplicativo.");
+}
+
+const verifier = readFileSync(join(root, "database/verify-portus-database.ps1"), "utf8");
+if (!verifier.includes('database-config.json')) {
+  errors.push("O verificador não permite reparar a configuração de conexão do aplicativo.");
+}
 
 if (errors.length > 0) {
   console.error("Validação de release falhou:\n- " + errors.join("\n- "));
