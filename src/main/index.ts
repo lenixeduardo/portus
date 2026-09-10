@@ -100,8 +100,15 @@ function createWindow() {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      // O preload compilado importa dist/shared/ipc.js. Preloads sandboxed não
+      // podem carregar módulos locais CommonJS sem um bundler dedicado.
+      sandbox: false
     }
+  });
+
+  win.webContents.on("preload-error", (_event, failedPreloadPath, error) => {
+    console.error(`[main] preload failed: ${failedPreloadPath}`, error);
+    logError("main:preload", `Falha ao carregar preload: ${failedPreloadPath}`, error);
   });
 
   // Hardening: nega abertura de novas janelas e bloqueia navegação para fora
