@@ -31,6 +31,14 @@ if (artifactName !== "PORTUS-Setup-${version}-${arch}.${ext}") {
 if (!packageJson.scripts?.package?.includes("copy-installer-to-root.mjs")) {
   errors.push("O script package não copia o instalador final para a raiz.");
 }
+if (packageJson.scripts?.start?.includes("ELECTRON_DEV=1")) {
+  errors.push("O script start força o modo de desenvolvimento e tenta abrir o servidor Vite.");
+}
+
+const mainEntry = readFileSync(join(root, "src/main/index.ts"), "utf8");
+if (!/sandbox:\s*false/.test(mainEntry)) {
+  errors.push("O preload CommonJS importa módulos locais e requer sandbox: false até ser empacotado em bundle único.");
+}
 
 const installer = readFileSync(join(root, "database/install-portus-database.ps1"), "utf8");
 if (/\[string\]\$Host\b/.test(installer)) {
