@@ -1,4 +1,4 @@
-import portusWordmark from "../assets/Logotipo Pixelado PORTUS em Preto e Branco.png";
+import portusWordmark from "../assets/portus-wordmark.png";
 
 type LogoVariant = "sidebar" | "login";
 

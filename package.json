@@ -68,6 +68,12 @@
       "dist/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "build/icon.png",
+        "to": "portus-icon.png"
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build"
