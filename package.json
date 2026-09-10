@@ -14,7 +14,7 @@
     "build": "npm run build:renderer && npm run build:main",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build --configLoader runner",
-    "start": "cross-env NODE_ENV=production ELECTRON_DEV=1 electron .",
+    "start": "cross-env NODE_ENV=production electron .",
     "prepackage": "npm run validate:release && npm version patch --no-git-tag-version",
     "package": "npm run build && electron-builder && node scripts/copy-installer-to-root.mjs",
     "rebuild": "electron-builder install-app-deps",
