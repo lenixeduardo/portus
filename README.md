@@ -27,11 +27,11 @@ tools/
 
 ```bash
 npm install
-npm run rebuild    # recompila módulos nativos para Electron
-npm run dev        # roda Vite + tsc watch do main
-npm start          # abre Electron (em outro terminal, após dev)
-npm run build      # build de produção
-npm run package    # gera instalador
+npm run rebuild    # recompila módulos nativos para Electron (serialport)
+npm run dev        # inicia tsc watch + Vite dev server + Electron (tudo em um)
+npm run build      # build de produção (renderer + main)
+npm run start      # abre Electron em modo produção (requer npm run build antes)
+npm run package    # gera instalador NSIS para Windows
 npm run typecheck  # verifica tipos sem emitir arquivos
 ```
 
