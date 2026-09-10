@@ -48,15 +48,17 @@ npm run package
 ```
 
 Isso:
+- Valida assets, migrations e scripts obrigatórios
 - Incrementa a versão em `package.json` (prepackage hook)
 - Executa `electron-builder`
-- Cria o arquivo `.exe` em `release/`
+- Mantém os arquivos auxiliares em `release/`
+- Copia o instalador final para a raiz como `PORTUS-Setup-<versão>-x64.exe`
 
 ### 3. Testar o instalador
 
 ```bash
 # Windows
-release/Portus Setup 0.x.x.exe
+PORTUS-Setup-0.x.x-x64.exe
 ```
 
 O instalador deve:

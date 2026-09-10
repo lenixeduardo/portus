@@ -134,7 +134,8 @@ Todas devem:
 - [x] Limite global de seis lotes removido do modelo central.
 - [x] Schema PostgreSQL aplicado em ambiente de desenvolvimento.
 - [x] Funções de domínio testadas em transação com `ROLLBACK`.
-- [ ] Permissões por setor homologadas.
+- [x] Permissões por setor validadas por teste SQL automatizado.
+- [ ] Permissões homologadas com usuários e equipamentos reais.
 
 ## Integração Electron — Passo 1
 
@@ -144,6 +145,7 @@ O Electron agora possui um adaptador PostgreSQL opcional:
 - \`PORTUS_DATABASE_POOL_MAX\`: máximo de conexões do pool (padrão 5);
 - \`PORTUS_DATABASE_CONNECT_TIMEOUT_MS\`: timeout de conexão (padrão 5000 ms);
 - \`PORTUS_SECTOR_CODE\`: setor padrão para abertura (padrão \`PRODUCTION\`).
+- \`PORTUS_DATABASE_MODE\`: \`central\` por padrão; \`local\` somente para desenvolvimento explícito.
 
 A captura USB/serial continua local. A API central foi exposta por IPC separado para permitir a migração progressiva dos fluxos de lotes, sem substituir o funcionamento local quando a URL não estiver configurada.
 

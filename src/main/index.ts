@@ -18,7 +18,7 @@ import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from
 import { runAutoExport } from "./db/history-repo";
 import { runBackup } from "./db/backup";
 import { initLogger, logError } from "./logger";
-import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured } from "./db/central-connection";
+import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired } from "./db/central-connection";
 
 const DEFAULT_BACKUP_RETENTION = 10;
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -133,10 +133,14 @@ app.whenReady().then(async () => {
       await checkCentralDatabase();
       console.log("[central-db] conexão PostgreSQL central disponível.");
     } catch (error) {
-      console.error("[central-db] falha ao conectar; o app continuará em modo local:", error);
+      console.error(isCentralDatabaseRequired()
+        ? "[central-db] falha ao conectar; operações de lote permanecerão bloqueadas:"
+        : "[central-db] falha ao conectar; modo local de desenvolvimento ativo:", error);
     }
   } else {
-    console.log("[central-db] PORTUS_DATABASE_URL não configurada; modo local ativo.");
+    console.log(isCentralDatabaseRequired()
+      ? "[central-db] PORTUS_DATABASE_URL não configurada; operações de lote permanecerão bloqueadas."
+      : "[central-db] PORTUS_DATABASE_URL não configurada; modo local de desenvolvimento ativo.");
   }
   runMigrations();
   seedInitialData();

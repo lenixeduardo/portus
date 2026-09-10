@@ -27,18 +27,20 @@ writeFileSync(join(stagingRoot, "README.md"), `# PORTUS — instalador do banco 
 3. Informe a senha de \`postgres\` e defina uma senha forte para \`portus_admin\`.
 
 O instalador cria o banco \`portus\`, executa as migrations reais, aplica o seed,
-concede os privilégios operacionais necessários e roda os testes SQL. Ele pode
-ser executado novamente sem reaplicar migrations já registradas.
+concede os privilégios operacionais necessários, roda os testes SQL e configura
+a conexão do PORTUS no ambiente do usuário atual do Windows. Ele pode ser
+executado novamente sem reaplicar migrations já registradas.
 
 ## Diagnóstico e atualização
 
 - \`database\\check-portus-database.bat\`: testa a conexão como \`portus_admin\`.
 - \`database\\migrate-portus-database.bat\`: aplica migrations ainda pendentes.
 
-O pacote não salva senha em arquivos. Para iniciar o PORTUS, no mesmo PowerShell:
+Para configurar manualmente uma sessão de desenvolvimento:
 
 \`\`\`powershell
 $env:PORTUS_DATABASE_URL="postgresql://portus_admin:SUA_SENHA@127.0.0.1:5432/portus"
+$env:PORTUS_DATABASE_MODE="central"
 npm run dev
 \`\`\`
 
@@ -46,5 +48,13 @@ Se a senha tiver caracteres reservados de URL, faça URL encoding antes de monta
 `, "utf8");
 
 rmSync(archive, { force: true });
-execFileSync("zip", ["-qr", archive, "portus-database-installer"], { cwd: release, stdio: "inherit" });
+if (process.platform === "win32") {
+  execFileSync(
+    "powershell.exe",
+    ["-NoProfile", "-Command", `Compress-Archive -LiteralPath '${stagingRoot}' -DestinationPath '${archive}' -Force`],
+    { stdio: "inherit" }
+  );
+} else {
+  execFileSync("zip", ["-qr", archive, "portus-database-installer"], { cwd: release, stdio: "inherit" });
+}
 console.log(`Pacote gerado: ${archive}`);

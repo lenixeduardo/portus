@@ -1,6 +1,7 @@
 node_modules/
 dist/
 release/
+PORTUS-Setup-*.exe
 *.zip
 *.log
 .DS_Store

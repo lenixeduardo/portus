@@ -4,6 +4,8 @@ import { canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-ac
 import { getCurrentUser } from "../auth/auth-service";
 import {
   checkCentralDatabase,
+  getCentralDatabaseMode,
+  isCentralDatabaseRequired,
   isCentralDatabaseConfigured
 } from "../db/central-connection";
 import {
@@ -24,12 +26,14 @@ function unavailable<T>(): ServiceResult<T> {
 
 export function registerCentralHandlers(): void {
   ipcMain.handle(IPC.centralStatus, async () => {
-    if (!isCentralDatabaseConfigured()) return { configured: false, available: false };
+    const mode = getCentralDatabaseMode();
+    const required = isCentralDatabaseRequired();
+    if (!isCentralDatabaseConfigured()) return { configured: false, available: false, required, mode };
     try {
       await checkCentralDatabase();
-      return { configured: true, available: true };
+      return { configured: true, available: true, required, mode };
     } catch {
-      return { configured: true, available: false };
+      return { configured: true, available: false, required, mode };
     }
   });
 

@@ -14,8 +14,8 @@
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build --configLoader runner",
     "start": "cross-env NODE_ENV=production ELECTRON_DEV=1 electron .",
-    "prepackage": "npm version patch --no-git-tag-version",
-    "package": "npm run build && electron-builder",
+    "prepackage": "npm run validate:release && npm version patch --no-git-tag-version",
+    "package": "npm run build && electron-builder && node scripts/copy-installer-to-root.mjs",
     "rebuild": "electron-rebuild -f -w serialport",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "sim:build": "tsc -p tsconfig.tools.json",
@@ -23,6 +23,7 @@
     "sim:test": "npm run sim:build && node dist/tools/sim-test.js",
     "test:postgres:concurrency": "node database/tests/003_concurrent_closure.mjs",
     "package:database-installer": "node scripts/package-database-installer.mjs",
+    "validate:release": "node scripts/validate-release-readiness.mjs",
     "test": "vitest run --config vitest.config.ts --configLoader runner"
   },
   "dependencies": {
@@ -81,6 +82,7 @@
         }
       ],
       "icon": "build/icon.ico",
+      "artifactName": "PORTUS-Setup-${version}-${arch}.${ext}",
       "certificateFile": null,
       "certificatePassword": null,
       "signingHashAlgorithms": [

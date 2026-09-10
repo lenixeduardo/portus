@@ -107,7 +107,7 @@ As estações de produção deverão usar uma role de runtime criada na homologa
 | Teste de permissões PostgreSQL local | aprovado, com `ROLLBACK` |
 | Histórico do teste de domínio | 5 eventos registrados |
 | Harness automatizado de concorrência | implementado; execução local pendente |
-| Testes Vitest | 87 de 87 aprovados |
+| Testes Vitest | suíte aprovada; inclui modo central e relatórios por setor |
 | TypeScript main + renderer | aprovado |
 | Build de produção | aprovado |
 | Instalação limpa com lockfile | aprovada |
@@ -120,15 +120,15 @@ As estações de produção deverão usar uma role de runtime criada na homologa
 | `PORTUS_DATABASE_POOL_MAX` | não | `5` | máximo de conexões |
 | `PORTUS_DATABASE_CONNECT_TIMEOUT_MS` | não | `5000` | timeout em milissegundos |
 | `PORTUS_SECTOR_CODE` | não | `PRODUCTION` | setor da estação |
+| `PORTUS_DATABASE_MODE` | não | `central` | `local` habilita SQLite somente para desenvolvimento |
 
 ## Limitações e próximos passos
 
 Não foram declarados como concluídos:
 
 - execução do teste simultâneo automatizado no PostgreSQL de homologação;
-- grants de uma role física de runtime no ambiente final;
 - homologação com equipamentos reais;
 - definição das leituras laboratoriais obrigatórias;
-- implementação do cliente PORTUS Visão Laboratório.
+- smoke test dos instaladores em uma máquina Windows limpa.
 
 Esses itens exigem infraestrutura, dispositivos ou validação operacional externa.

@@ -62,6 +62,13 @@ export const IPC = {
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
 
+export interface CentralDatabaseStatus {
+  configured: boolean;
+  available: boolean;
+  required: boolean;
+  mode: "central" | "local";
+}
+
 export interface SlotInitState {
   slotIndex: number;
   equipmentId: number;
@@ -295,7 +302,7 @@ export interface SerialReaderApi {
     openExternal(url: string): Promise<void>;
   };
   central: {
-    status(): Promise<{ configured: boolean; available: boolean }>;
+    status(): Promise<CentralDatabaseStatus>;
     batches: {
       listOpen(): Promise<BatchWithProduct[]>;
       listAll(): Promise<BatchWithProduct[]>;

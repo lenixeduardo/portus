@@ -23,6 +23,7 @@ import {
 } from "../db/batches-repo";
 import { createProduct, getProduct, getProductByValue } from "../db/products-repo";
 import { getSetting } from "../db/settings-repo";
+import { isCentralDatabaseRequired } from "../db/central-connection";
 import {
   barcodeSchema,
   closeBatchSchema,
@@ -35,16 +36,24 @@ import { compose, requireAdmin, requireAuth, validateInput } from "./middleware"
 
 const OPEN_BATCHES_SOFT_LIMIT = 6;
 
+function centralRequired<T>(): ServiceResult<T> | null {
+  return isCentralDatabaseRequired()
+    ? { ok: false, error: "O PostgreSQL central é obrigatório. Configure PORTUS_DATABASE_URL ou use PORTUS_DATABASE_MODE=local somente para desenvolvimento." }
+    : null;
+}
+
 export function registerBatchesHandlers(): void {
   ipcMain.handle(
     IPC.batchesListOpen,
-    compose([requireAuth])((): BatchWithProduct[] => listOpenBatches())
+    compose([requireAuth])((): BatchWithProduct[] => isCentralDatabaseRequired() ? [] : listOpenBatches())
   );
 
   ipcMain.handle(
     IPC.batchesCreate,
     compose([requireAuth, validateInput(createBatchSchema)])(
       (_e, input: CreateBatchInput): ServiceResult<BatchWithProduct> => {
+        const blocked = centralRequired<BatchWithProduct>();
+        if (blocked) return blocked;
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
         if (user.sectorCode === "LABORATORY") {
@@ -78,7 +87,7 @@ export function registerBatchesHandlers(): void {
     IPC.batchesFindByCode,
     compose([requireAuth, validateInput(findBatchByCodeSchema)])(
       (_e, code: string): BatchWithProduct | null => {
-        return findBatchByCode(code);
+        return isCentralDatabaseRequired() ? null : findBatchByCode(code);
       }
     )
   );
@@ -87,6 +96,8 @@ export function registerBatchesHandlers(): void {
     IPC.batchesClose,
     compose([requireAuth, validateInput(closeBatchSchema)])(
       (_e, input: CloseBatchInput): ServiceResult<true> => {
+        const blocked = centralRequired<true>();
+        if (blocked) return blocked;
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
         if (user.sectorCode === "LABORATORY") {
@@ -106,6 +117,8 @@ export function registerBatchesHandlers(): void {
     IPC.batchesScanBarcode,
     compose([requireAuth, validateInput(barcodeSchema)])(
       (_e, input: BarcodeScanInput): ServiceResult<BarcodeScanResult> => {
+        const blocked = centralRequired<BarcodeScanResult>();
+        if (blocked) return blocked;
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
         if (user.sectorCode === "LABORATORY") {

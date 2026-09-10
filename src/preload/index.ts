@@ -111,7 +111,7 @@ const api: SerialReaderApi = {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url })
   },
   central: {
-    status: (): Promise<{ configured: boolean; available: boolean }> => ipcRenderer.invoke(IPC.centralStatus),
+    status: (): Promise<import("../shared/ipc").CentralDatabaseStatus> => ipcRenderer.invoke(IPC.centralStatus),
     batches: {
       listOpen: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListOpen),
       listAll: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListAll),

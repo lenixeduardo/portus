@@ -2,6 +2,20 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg
 
 let pool: Pool | null = null;
 
+export type CentralDatabaseMode = "central" | "local";
+
+/**
+ * PostgreSQL is authoritative by default. The legacy SQLite batch flow is
+ * available only when a developer explicitly opts into PORTUS_DATABASE_MODE=local.
+ */
+export function getCentralDatabaseMode(): CentralDatabaseMode {
+  return process.env.PORTUS_DATABASE_MODE?.trim().toLowerCase() === "local" ? "local" : "central";
+}
+
+export function isCentralDatabaseRequired(): boolean {
+  return getCentralDatabaseMode() === "central";
+}
+
 export function isCentralDatabaseConfigured(): boolean {
   return Boolean(process.env.PORTUS_DATABASE_URL?.trim());
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { IPC } from "../../shared/ipc";
 import { canCaptureLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { getCurrentUser } from "../auth/auth-service";
-import { isCentralDatabaseConfigured } from "../db/central-connection";
+import { isCentralDatabaseConfigured, isCentralDatabaseRequired } from "../db/central-connection";
 import { cancelCapture, getState, injectManualReading, isActive, skipFirstReading, startCapture } from "../serial/capture-service";
 import { compose, requireAuth, validateInput } from "./middleware";
 
@@ -24,6 +24,9 @@ export function registerCaptureHandlers(): void {
       async (_e, input: z.infer<typeof startCaptureSchema>) => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
+        if (isCentralDatabaseRequired() && !isCentralDatabaseConfigured()) {
+          return { ok: false, error: "A captura exige conexão com o PostgreSQL central." };
+        }
         if (isLaboratoryUser(user) && !isCentralDatabaseConfigured()) {
           return { ok: false, error: "A captura do Laboratório exige conexão com a base central." };
         }

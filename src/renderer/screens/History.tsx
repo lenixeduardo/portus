@@ -19,10 +19,10 @@ export function History({ user }: { user: User }) {
 
   useEffect(() => {
     window.api.central.status().then((status) => {
-      const requiresCentral = status.configured || user.sectorCode === "LABORATORY";
+      const requiresCentral = status.required || status.configured || user.sectorCode === "LABORATORY";
       setCentralMode(requiresCentral);
       if (requiresCentral && !status.available) {
-        setError("A visão Laboratório exige conexão com a base central. Verifique o PostgreSQL e tente novamente.");
+        setError("O PostgreSQL central é obrigatório e está indisponível. Verifique a configuração e tente novamente.");
         return [];
       }
       return requiresCentral ? window.api.central.batches.listAll() : window.api.batches.listAll();

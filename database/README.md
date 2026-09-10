@@ -17,9 +17,12 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 Ou dê duplo clique em `database\install-portus-database.bat`. O script pede a
 senha do `postgres` e cria/atualiza de forma idempotente o banco `portus` e o
-usuário operacional `portus_admin`; a senha nunca é salva em arquivo. Ao fim,
-ele executa as migrations, o seed e os testes SQL 001/002. Para instalação sem
-testes, use `-SkipTests`.
+usuário operacional `portus_admin`. Ao fim, ele executa as migrations, o seed
+e os testes SQL 001/002. A URL de conexão, que contém a credencial, é
+salva no ambiente do usuário atual do Windows para que o executável instalado
+consiga conectar ao PostgreSQL sem abrir um terminal. Para instalação sem
+testes, use `-SkipTests`; para não persistir essa configuração, use
+`-SkipAppConfiguration`.
 
 ### Gerar o ZIP autocontido
 
@@ -49,6 +52,7 @@ psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_schema
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_security_permissions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/004_laboratory_view.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/005_runtime_function_security.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/002_security_permissions.sql

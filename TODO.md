@@ -113,6 +113,11 @@
 - [x] Documentar integração, instalação, validação e limitações atuais
 - [x] Criar instalador idempotente do PostgreSQL para Windows
 - [x] Restringir a credencial de runtime a privilégios explícitos e funções de domínio
+- [x] Tornar PostgreSQL autoritativo e exigir opt-in explícito para modo local
+- [x] Aguardar gravações centrais antes de encerrar a sessão de captura
+- [x] Configurar automaticamente a conexão do app pelo instalador do banco
+- [x] Validar estaticamente assets, migrations e empacotamento antes da release
+- [ ] Gerar o instalador Windows e executar smoke test em máquina limpa
 - [ ] Executar homologação com PostgreSQL e equipamentos reais
 
 ## Backlog / Ideias

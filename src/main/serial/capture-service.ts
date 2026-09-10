@@ -131,6 +131,7 @@ let skipFirstReadingForSession = false;
 let centralCapture = false;
 let centralUsername: string | null = null;
 let centralSectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION";
+const pendingCentralWrites = new Set<Promise<void>>();
 
 // Timers de debounce de UI por slotIndex
 const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -153,10 +154,17 @@ function persistReading(input: {
   parseRegexUsed?: string | null;
 }): void {
   if (centralCapture && centralUsername) {
-    void insertCentralReading({ ...input, username: centralUsername, sectorCode: centralSectorCode }).catch((error) => {
-      console.error("[central-db] Falha ao registrar leitura:", error);
-      logCaptureError({ code: "central_reading_failed", message: String(error), rawValue: input.valueRaw });
-    });
+    const username = centralUsername;
+    const sectorCode = centralSectorCode;
+    const write = insertCentralReading({ ...input, username, sectorCode })
+      .then(() => undefined)
+      .catch((error) => {
+        console.error("[central-db] Falha ao registrar leitura:", error);
+        logCaptureError({ code: "central_reading_failed", message: String(error), rawValue: input.valueRaw });
+        throw error;
+      });
+    pendingCentralWrites.add(write);
+    void write.finally(() => pendingCentralWrites.delete(write)).catch(() => undefined);
     return;
   }
   insertReading(input);
@@ -342,14 +350,27 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   slots.clear();
   reconnectAttempted.clear();
 
+  // Uma leitura central é assíncrona. Aguarde todas as gravações iniciadas
+  // antes de encerrar a sessão para não produzir relatórios incompletos.
+  const centralWriteResults = await Promise.allSettled([...pendingCentralWrites]);
+  const failedCentralWrites = centralWriteResults.filter((result) => result.status === "rejected").length;
+  if (failedCentralWrites > 0) {
+    console.error(`[central-db] ${failedCentralWrites} leitura(s) não puderam ser persistidas antes do encerramento.`);
+  }
+  pendingCentralWrites.clear();
+
   if (sessionId !== null) {
     if (centralCapture && centralUsername) {
-      void finishCentralCaptureSession(
-        sessionId,
-        centralUsername,
-        centralSectorCode,
-        reason === "completed" ? "completed" : "cancelled"
-      ).catch((error) => console.error("[central-db] Falha ao encerrar sessão:", error));
+      try {
+        await finishCentralCaptureSession(
+          sessionId,
+          centralUsername,
+          centralSectorCode,
+          failedCentralWrites > 0 ? "cancelled" : reason === "completed" ? "completed" : "cancelled"
+        );
+      } catch (error) {
+        console.error("[central-db] Falha ao encerrar sessão:", error);
+      }
     } else if (reason === "completed") {
       completeCaptureSession(sessionId);
     } else {
@@ -365,6 +386,7 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   centralCapture = false;
   centralUsername = null;
   centralSectorCode = "PRODUCTION";
+  pendingCentralWrites.clear();
 
   const event: CaptureEndedEvent = { reason };
   broadcast(IPC.captureEnded, event);

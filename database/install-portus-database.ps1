@@ -1,13 +1,15 @@
 [CmdletBinding()]
 param(
   [string]$PostgresBin = "$env:ProgramFiles\PostgreSQL\18\bin",
-  [string]$Host = "127.0.0.1",
+  [Alias("Host")]
+  [string]$DatabaseHost = "127.0.0.1",
   [int]$Port = 5432,
   [string]$AdminUser = "postgres",
   [string]$DatabaseName = "portus",
   [string]$AppUser = "portus_admin",
   [switch]$MigrationsOnly,
-  [switch]$SkipTests
+  [switch]$SkipTests,
+  [switch]$SkipAppConfiguration
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,7 +31,7 @@ function Read-PlainPassword([string]$Prompt) {
 
 function Invoke-Psql([string]$User, [string]$Password, [string]$Database, [string[]]$Arguments) {
   $env:PGPASSWORD = $Password
-  & $psql -h $Host -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 @Arguments
+  & $psql -h $DatabaseHost -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 @Arguments
   if ($LASTEXITCODE -ne 0) { throw "psql falhou (código $LASTEXITCODE)." }
 }
 
@@ -71,7 +73,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
   Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", $migrationState)
   Get-ChildItem (Join-Path $PSScriptRoot "migrations") -Filter "*.sql" | Sort-Object Name | ForEach-Object {
     $name = $_.Name
-    $exists = & $psql -h $Host -p $Port -U $AdminUser -d $DatabaseName -tA -v ON_ERROR_STOP=1 -c "SELECT EXISTS (SELECT 1 FROM portus_schema_migrations WHERE name = '$name');"
+    $exists = & $psql -h $DatabaseHost -p $Port -U $AdminUser -d $DatabaseName -tA -v ON_ERROR_STOP=1 -c "SELECT EXISTS (SELECT 1 FROM portus_schema_migrations WHERE name = '$name');"
     if ($LASTEXITCODE -ne 0) { throw "Não foi possível consultar o estado da migration $name." }
     if ($exists.Trim() -eq "t") { Write-Host "Migration já aplicada: $name"; return }
     Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", $_.FullName)
@@ -109,7 +111,19 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
   if ($MigrationsOnly) {
     Write-Host "Migrations do PORTUS atualizadas com sucesso." -ForegroundColor Green
   } else {
-    Write-Host "Banco PORTUS pronto. Configure PORTUS_DATABASE_URL para apontar para $DatabaseName." -ForegroundColor Green
+    if (-not $SkipAppConfiguration) {
+      $encodedUser = [Uri]::EscapeDataString($AppUser)
+      $encodedPassword = [Uri]::EscapeDataString($appPassword)
+      $uriHost = if ($DatabaseHost.Contains(":")) { "[$DatabaseHost]" } else { $DatabaseHost }
+      $connectionString = "postgresql://${encodedUser}:${encodedPassword}@${uriHost}:${Port}/${DatabaseName}"
+      [Environment]::SetEnvironmentVariable("PORTUS_DATABASE_URL", $connectionString, "User")
+      [Environment]::SetEnvironmentVariable("PORTUS_DATABASE_MODE", "central", "User")
+      $env:PORTUS_DATABASE_URL = $connectionString
+      $env:PORTUS_DATABASE_MODE = "central"
+      Write-Host "Configuração do PORTUS salva para o usuário atual do Windows." -ForegroundColor Green
+      Write-Host "Feche e reabra o PORTUS caso ele já estivesse em execução." -ForegroundColor Yellow
+    }
+    Write-Host "Banco PORTUS pronto para uso em $DatabaseHost`:$Port/$DatabaseName." -ForegroundColor Green
   }
 } finally {
   Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue

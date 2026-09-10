@@ -76,8 +76,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 O instalador pede as senhas, cria o banco `portus` e o usuário operacional
 `portus_admin`, aplica cada migration somente uma vez, concede o mínimo de
-privilégios da aplicação e roda os testes SQL. Em uma máquina gráfica, a mesma
-ação pode ser iniciada com `database\install-portus-database.bat`.
+privilégios da aplicação, roda os testes SQL e configura a conexão do PORTUS
+para o usuário atual do Windows. Em uma máquina gráfica, a mesma ação pode ser
+iniciada com `database\install-portus-database.bat`.
 
 Use `-SkipTests` apenas em automações em que a validação ocorrerá depois. Veja
 [database/README.md](database/README.md) para parâmetros de host, porta e uma
@@ -90,18 +91,26 @@ na primeira operação administrativa.
 
 ### Conectar o Electron à base central
 
-Defina as variáveis no mesmo terminal que iniciará o aplicativo:
+O instalador do banco salva `PORTUS_DATABASE_URL` e `PORTUS_DATABASE_MODE=central`
+no perfil do Windows. Para desenvolvimento manual, defina as variáveis no mesmo
+terminal que iniciará o aplicativo:
 
 ```powershell
 $env:PORTUS_DATABASE_URL="postgresql://portus_admin:SUA_SENHA@127.0.0.1:5432/portus"
 $env:PORTUS_DATABASE_POOL_MAX="5"
 $env:PORTUS_DATABASE_CONNECT_TIMEOUT_MS="5000"
 $env:PORTUS_SECTOR_CODE="PRODUCTION"
+$env:PORTUS_DATABASE_MODE="central"
 npm run dev
 ```
 
 Se a senha possuir `@`, `:`, `/`, `#` ou outros caracteres reservados, aplique
 URL encoding antes de colocá-la em `PORTUS_DATABASE_URL`.
+
+O PostgreSQL central é o modo autoritativo padrão. O legado SQLite para lotes
+só pode ser ativado deliberadamente em desenvolvimento com
+`PORTUS_DATABASE_MODE=local`; ele não deve ser usado em estações de Produção ou
+Laboratório.
 
 ## Badge do banco central
 
@@ -146,9 +155,11 @@ npm run dev        # Vite, TypeScript watch e Electron
 npm run typecheck  # valida main e renderer
 npm test           # suíte automatizada
 npm run build      # build do renderer e do processo principal
+npm run validate:release # confere assets, migrations e configuração de empacotamento
 ```
 
-A base atual possui 89 testes automatizados. A validação PostgreSQL fica em
+A suíte automatizada cobre o núcleo serial, autorização, relatórios unificados
+e o modo autoritativo do PostgreSQL. A validação PostgreSQL fica em
 `database/tests` e deve ser executada separadamente contra um banco de teste.
 
 ```powershell
@@ -181,7 +192,9 @@ npm run rebuild
 npm run package
 ```
 
-O instalador é criado em `release/`. Os assets canônicos ficam em
+O `electron-builder` cria os arquivos auxiliares em `release/` e copia o instalador
+final para a raiz do projeto, identificado como
+`PORTUS-Setup-<versão>-x64.exe`. Os assets canônicos ficam em
 `build/icon.png` e `build/icon.ico`; para regenerá-los:
 
 ```bash
