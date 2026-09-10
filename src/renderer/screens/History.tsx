@@ -112,6 +112,13 @@ export function History({ user }: { user: User }) {
   }, [history, filterEquipment, filterStartDate, filterEndDate]);
 
   const totalReadings = filteredSessions.reduce((acc, s) => acc + s.readings.length, 0);
+  const unifiedReadings = useMemo(() => filteredSessions.flatMap((session) =>
+    session.readings.map((reading) => ({
+      reading,
+      session,
+      sessionNumber: history ? history.sessions.findIndex((item) => item.id === session.id) + 1 : 0
+    }))
+  ), [filteredSessions, history]);
 
   async function handleExport() {
     if (!selectedId) return;
@@ -161,7 +168,7 @@ export function History({ user }: { user: User }) {
           )}
         </div>
 
-        {history && !centralMode && (
+        {history && (
           <button onClick={handleExport} disabled={exporting} className="export-btn" style={{ alignSelf: "flex-start" }}>
             {exporting ? "Exportando..." : "⬇ Exportar CSV"}
           </button>
@@ -263,28 +270,53 @@ export function History({ user }: { user: User }) {
             <div className="placeholder" style={{ marginTop: 16 }}>
               Nenhuma sessão de captura registrada neste lote.
             </div>
-          ) : filteredSessions.length === 0 ? (
+          ) : unifiedReadings.length === 0 ? (
             <div className="placeholder" style={{ marginTop: 16 }}>
               Nenhum registro corresponde aos filtros aplicados.
             </div>
           ) : (
-            <div className="history-timeline">
-              {filteredSessions.map((session) => {
-                const originalIdx = history.sessions.findIndex((s) => s.id === session.id);
-                return (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    index={originalIdx !== -1 ? originalIdx + 1 : 1}
-                  />
-                );
-              })}
+            <div className="history-unified-table-wrap">
+              <table className="data-table history-unified-table">
+                <thead>
+                  <tr>
+                    <th>Setor</th>
+                    <th>Sessão</th>
+                    <th>Responsável</th>
+                    <th>Equipamento</th>
+                    <th>Canal</th>
+                    <th>Valor capturado</th>
+                    <th>Valor bruto</th>
+                    <th>Data e hora</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unifiedReadings.map(({ reading, session, sessionNumber }) => (
+                    <tr key={reading.id}>
+                      <td><SectorChip sectorCode={session.sectorCode} /></td>
+                      <td className="mono">#{sessionNumber}</td>
+                      <td>{session.operatorName ?? "—"}</td>
+                      <td>{reading.equipmentName}</td>
+                      <td>{reading.slotIndex >= 0 ? `Slot ${reading.slotIndex + 1}` : "—"}</td>
+                      <td><span className="mono reading-parsed">{reading.valueParsed ?? reading.valueRaw}</span></td>
+                      <td><span className="mono">{reading.valueRaw}</span></td>
+                      <td className="small muted">{formatDate(reading.capturedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </>
       )}
     </>
   );
+}
+
+function SectorChip({ sectorCode }: { sectorCode?: CaptureSessionRecord["sectorCode"] }) {
+  const laboratory = sectorCode === "LABORATORY";
+  return <span className={`chip ${laboratory ? "chip-laboratory" : "chip-green"}`}>
+    {laboratory ? "LABORATÓRIO" : sectorCode === "PRODUCTION" ? "PRODUÇÃO" : "LOCAL"}
+  </span>;
 }
 
 function SessionCard({ session, index }: { session: CaptureSessionRecord; index: number }) {

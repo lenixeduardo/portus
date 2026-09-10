@@ -1,4 +1,4 @@
-import type { BatchWithProduct } from "../../shared/ipc";
+import type { BatchReadingPreview, BatchWithProduct } from "../../shared/ipc";
 import { centralQuery } from "./central-connection";
 
 interface CentralBatchRow {
@@ -16,6 +16,17 @@ interface CentralBatchRow {
   operator_name: string;
   production_closed: boolean;
   laboratory_closed: boolean;
+  reading_previews: BatchReadingPreview[] | string | null;
+}
+
+function parseReadingPreviews(value: CentralBatchRow["reading_previews"]): BatchReadingPreview[] {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function toBatch(row: CentralBatchRow): BatchWithProduct {
@@ -31,6 +42,7 @@ function toBatch(row: CentralBatchRow): BatchWithProduct {
     productName: row.product_name,
     operatorName: row.operator_name,
     readingsCount: Number(row.readings_count),
+    readingPreviews: parseReadingPreviews(row.reading_previews),
     stage: row.stage,
     productionClosed: row.production_closed,
     laboratoryClosed: row.laboratory_closed
@@ -42,7 +54,23 @@ const SELECT_BATCH = `
          b.stage, b.opened_at, b.closed_at, b.closed_by, b.created_by,
          b.production_closed, b.laboratory_closed,
          u.username AS operator_name,
-         (SELECT COUNT(*) FROM readings r WHERE r.batch_id = b.id) AS readings_count
+         (SELECT COUNT(*) FROM readings r WHERE r.batch_id = b.id) AS readings_count,
+         COALESCE((
+           SELECT json_agg(preview ORDER BY preview."capturedAt" DESC)
+             FROM (
+               SELECT COALESCE(s.code, 'PRODUCTION') AS "sectorCode",
+                      e.name AS "equipmentName",
+                      COALESCE(r.value_parsed, r.value_raw) AS value,
+                      r.captured_at AS "capturedAt"
+                 FROM readings r
+                 JOIN capture_sessions cs ON cs.id = r.capture_session_id
+                 LEFT JOIN sectors s ON s.id = cs.sector_id
+                 JOIN equipments e ON e.id = r.equipment_id
+                WHERE r.batch_id = b.id
+                ORDER BY r.captured_at DESC
+                LIMIT 8
+             ) preview
+         ), '[]'::json) AS reading_previews
     FROM batches b
     JOIN products p ON p.id = b.product_id
     JOIN users u ON u.id = b.created_by

@@ -424,6 +424,23 @@ function BatchCard({
         </div>
       </div>
 
+      {centralMode && batch.readingPreviews && batch.readingPreviews.length > 0 && (
+        <div className="batch-reading-preview" aria-label="Últimas leituras do lote">
+          <span className="batch-reading-preview__label">Últimas leituras</span>
+          <div className="batch-reading-preview__rows">
+            {batch.readingPreviews.map((reading, index) => (
+              <div className="batch-reading-preview__row" key={`${reading.sectorCode}-${reading.equipmentName}-${reading.capturedAt}-${index}`}>
+                <span className={`chip ${reading.sectorCode === "LABORATORY" ? "chip-laboratory" : "chip-green"}`}>
+                  {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"}
+                </span>
+                <span className="batch-reading-preview__equipment">{reading.equipmentName}</span>
+                <strong className="mono">{reading.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {centralMode && (
         <div className="batch-confirmations" aria-label="Confirmações de fechamento">
           <span className={batch.productionClosed ? "is-confirmed" : "is-pending"}>
@@ -447,7 +464,7 @@ function BatchCard({
         </button>
         {canClose && (
           <button
-            className="secondary"
+            className="batch-finalize"
             onClick={onClose}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >

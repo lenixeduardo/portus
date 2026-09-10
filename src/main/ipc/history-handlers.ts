@@ -2,6 +2,8 @@ import { dialog, ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type ServiceResult, type HistoryFilterInput } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
+import { isCentralDatabaseConfigured } from "../db/central-connection";
+import { getCentralBatchHistory } from "../db/central-history-repo";
 import { listAllBatches } from "../db/batches-repo";
 import { buildCsvContent, getBatchHistory, writeCsvFile } from "../db/history-repo";
 import { compose, requireAuth, validateInput } from "./middleware";
@@ -40,7 +42,16 @@ export function registerHistoryHandlers(): void {
     IPC.historyExportCsv,
     compose([requireAuth, validateInput(exportCsvSchema)])(
       async (_e, input: z.infer<typeof exportCsvSchema>): Promise<ServiceResult<true>> => {
-        const history = getBatchHistory(input.batchId);
+        const user = getCurrentUser();
+        if (!user) return { ok: false, error: "Sessão expirada." };
+        let history;
+        try {
+          history = isCentralDatabaseConfigured()
+            ? await getCentralBatchHistory(input.batchId, user.username, user.sectorCode ?? "PRODUCTION")
+            : getBatchHistory(input.batchId);
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Não foi possível carregar o histórico central." };
+        }
         if (!history) return { ok: false, error: "Lote não encontrado." };
         const filters = input.filters;
 

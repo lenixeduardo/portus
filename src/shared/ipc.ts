@@ -125,6 +125,13 @@ export interface CaptureSessionRecord {
   readings: ReadingRecord[];
 }
 
+export interface BatchReadingPreview {
+  sectorCode: "PRODUCTION" | "LABORATORY";
+  equipmentName: string;
+  value: string;
+  capturedAt: string;
+}
+
 export interface BatchHistory {
   batch: BatchWithProduct;
   sessions: CaptureSessionRecord[];
@@ -153,6 +160,7 @@ export interface BatchWithProduct extends Batch {
   productName: string;
   operatorName: string;
   readingsCount: number;
+  readingPreviews?: BatchReadingPreview[];
 }
 
 export interface SerialPortInfo {

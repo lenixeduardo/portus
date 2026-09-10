@@ -76,7 +76,9 @@ export async function getCentralBatchHistory(
         id: row.reading_id,
         equipmentId: row.equipment_id ?? 0,
         equipmentName: row.equipment_name ?? "—",
-        slotIndex: 0,
+        // O modelo central não possui slot físico da estação. Não inventamos
+        // "slot 1" para todas as leituras; a interface exibe "—" nesse caso.
+        slotIndex: -1,
         valueRaw: row.value_raw ?? "",
         valueParsed: row.value_parsed ?? undefined,
         capturedAt: row.captured_at ?? ""
