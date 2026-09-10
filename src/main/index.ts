@@ -89,12 +89,16 @@ function scheduleNextMidnightExport(): void {
 
 function createWindow() {
   const preloadPath = join(app.getAppPath(), "dist/preload/index.js");
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, "portus-icon.png")
+    : join(app.getAppPath(), "build/icon.png");
   console.log("[main] isDev:", isDev);
   console.log("[main] preload:", preloadPath);
 
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: iconPath,
     backgroundColor: "#0c0c0e",
     webPreferences: {
       preload: preloadPath,

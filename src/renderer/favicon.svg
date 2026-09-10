@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Portus">
-  <rect x="2" y="2" width="60" height="60" rx="10" fill="#0c1220"/>
-  <path d="M13 14h38v36h-6V20H19v30h-6V14Z" fill="#14b8a6"/>
-  <path d="M13 44h38v6H13z" fill="#14b8a6"/>
-  <path d="M21 25h2v16h-2zm5 0h2v16h-2zm5 0h2v16h-2zm5 0h2v16h-2zm5 0h2v16h-2z" fill="#e8e8f0"/>
-</svg>

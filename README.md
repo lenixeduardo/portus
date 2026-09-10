@@ -63,12 +63,6 @@ git clone https://github.com/lenixeduardo/portus.git
 cd portus
 git checkout feat/portus-stage-0-database-baseline
 npm install
-npm run rebuild    # recompila módulos nativos para Electron (serialport)
-npm run dev        # inicia tsc watch + Vite dev server + Electron (tudo em um)
-npm run build      # build de produção (renderer + main)
-npm run start      # abre Electron em modo produção (requer npm run build antes)
-npm run package    # gera instalador NSIS para Windows
-npm run typecheck  # verifica tipos sem emitir arquivos
 ```
 
 ### Configurar o PostgreSQL no Windows
@@ -200,8 +194,9 @@ npm run package
 
 O `electron-builder` cria os arquivos auxiliares em `release/` e copia o instalador
 final para a raiz do projeto, identificado como
-`PORTUS-Setup-<versão>-x64.exe`. Os assets canônicos ficam em
-`build/icon.png` e `build/icon.ico`; para regenerá-los:
+`PORTUS-Setup-<versão>-x64.exe`. Os arquivos usados no build ficam em
+`build/icon.png` e `build/icon.ico`. A identidade oficial fica em
+`assets/branding/`; para sincronizar os arquivos:
 
 ```bash
 node scripts/gen-icon.mjs

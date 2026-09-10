@@ -12,8 +12,12 @@ function requireFile(path) {
 for (const path of [
   "build/icon.ico",
   "build/icon.png",
+  "assets/branding/portus-icon.ico",
+  "assets/branding/portus-icon.png",
+  "assets/branding/portus-favicon.png",
+  "src/renderer/favicon.png",
+  "src/renderer/assets/portus-wordmark.png",
   "build/installer.nsh",
-  "src/renderer/assets/Logotipo Pixelado PORTUS em Preto e Branco.png",
   "database/install-portus-database.bat",
   "database/install-portus-database.ps1",
   "database/verify-portus-database.ps1",
@@ -30,6 +34,9 @@ if (artifactName !== "PORTUS-Setup-${version}-${arch}.${ext}") {
 }
 if (!packageJson.scripts?.package?.includes("copy-installer-to-root.mjs")) {
   errors.push("O script package não copia o instalador final para a raiz.");
+}
+if (!packageJson.build?.extraResources?.some((entry) => entry?.to === "portus-icon.png")) {
+  errors.push("O ícone oficial não está incluído nos recursos do executável.");
 }
 if (packageJson.scripts?.start?.includes("ELECTRON_DEV=1")) {
   errors.push("O script start força o modo de desenvolvimento e tenta abrir o servidor Vite.");

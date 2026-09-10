@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   getCentralDatabaseMode,
   isCentralDatabaseConfigured,
-  isCentralDatabaseRequired
+  isCentralDatabaseRequired,
+  parseWindowsRegistryValue
 } from "../db/central-connection";
 
 const originalMode = process.env.PORTUS_DATABASE_MODE;
@@ -33,5 +34,19 @@ describe("modo do banco central", () => {
     expect(isCentralDatabaseConfigured()).toBe(false);
     process.env.PORTUS_DATABASE_URL = "postgresql://portus_admin:secret@127.0.0.1:5432/portus";
     expect(isCentralDatabaseConfigured()).toBe(true);
+  });
+
+  it("lê a configuração persistida no Registro do Windows", () => {
+    const output = [
+      "",
+      "HKEY_CURRENT_USER\\Environment",
+      "    PORTUS_DATABASE_URL    REG_SZ    postgresql://portus_admin:p%40ss@127.0.0.1:5432/portus",
+      ""
+    ].join("\r\n");
+
+    expect(parseWindowsRegistryValue(output, "PORTUS_DATABASE_URL")).toBe(
+      "postgresql://portus_admin:p%40ss@127.0.0.1:5432/portus"
+    );
+    expect(parseWindowsRegistryValue(output, "PORTUS_DATABASE_MODE")).toBeUndefined();
   });
 });
