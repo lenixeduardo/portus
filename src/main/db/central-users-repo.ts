@@ -6,7 +6,11 @@ import { centralQuery } from "./central-connection";
  * continua local; este registro é usado para permissões e auditoria central.
  */
 export async function ensureCentralUserAccess(user: User): Promise<void> {
-  const role = user.role === "admin" ? "admin" : user.sectorCode === "LABORATORY" ? "laboratory" : "operator";
+  const role = user.role === "master"
+    ? "master"
+    : user.role === "admin"
+      ? "admin"
+      : user.sectorCode === "LABORATORY" ? "laboratory" : "operator";
   const userResult = await centralQuery<{ id: number }>(
     `INSERT INTO users (username, password_hash, display_name, role, active)
      VALUES ($1, 'managed-by-portus', $1, $2, TRUE)
@@ -18,7 +22,7 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
   const userId = userResult.rows[0]?.id;
   if (!userId) throw new Error("Não foi possível sincronizar o usuário com a base central.");
 
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "admin" || user.role === "master";
   const production = user.sectorCode !== "LABORATORY";
   const laboratoryCapture = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
   const laboratoryClose = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "closure";

@@ -67,6 +67,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
   const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLaboratory = isLaboratoryUser(user);
+  const isAdmin = user.role === "admin" || user.role === "master";
   const canCapture = !isLaboratory || canCaptureLaboratory(user);
   const requiresCentral = centralRequired || centralConfigured || isLaboratory;
 
@@ -216,7 +217,9 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     const b = confirmBatch;
     setConfirmBatch(null);
     const res = requiresCentral
-      ? isLaboratory
+      ? isAdmin
+        ? await window.api.central.batches.forceClose(b.id)
+        : isLaboratory
         ? await window.api.central.batches.confirmLaboratory(b.id)
         : await window.api.central.batches.confirmProduction(b.id)
       : await window.api.batches.close(b.id);
@@ -329,8 +332,9 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
               isCapturing={captureBatchId === b.id}
               canClose={isLaboratory
                 ? canCloseLaboratory(user) && !b.laboratoryClosed
-                : !requiresCentral || !b.productionClosed}
+                : isAdmin || !requiresCentral || !b.productionClosed}
               centralMode={requiresCentral}
+              adminOverride={isAdmin}
               confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
               onClose={() => handleClose(b)}
               onPrint={() => handlePrintBarcode(b)}
@@ -357,6 +361,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
         <ConfirmCloseModal
           batch={confirmBatch}
           centralMode={requiresCentral}
+          adminOverride={isAdmin}
           confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
           onClose={() => setConfirmBatch(null)}
           onConfirm={handleConfirmClose}
@@ -475,6 +480,7 @@ function BatchRow({
   isCapturing,
   canClose,
   centralMode,
+  adminOverride,
   confirmationSector,
   onClose,
   onPrint
@@ -483,6 +489,7 @@ function BatchRow({
   isCapturing: boolean;
   canClose: boolean;
   centralMode: boolean;
+  adminOverride: boolean;
   confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onPrint: () => void;
@@ -571,8 +578,10 @@ function BatchRow({
             onClick={onClose}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
-            <CheckSquare size={13} />
-            {centralMode
+            <CircleCheck className="batch-finalize__icon" size={17} strokeWidth={1.8} aria-hidden="true" />
+            {adminOverride
+              ? "Finalizar lote"
+              : centralMode
               ? confirmationSector === "LABORATORY" ? "Confirmar Laboratório" : "Confirmar Produção"
               : "Finalizar"}
           </button>
@@ -640,12 +649,14 @@ function getStageLabel(batch: BatchWithProduct): string {
 function ConfirmCloseModal({
   batch,
   centralMode,
+  adminOverride,
   confirmationSector,
   onClose,
   onConfirm
 }: {
   batch: BatchWithProduct;
   centralMode: boolean;
+  adminOverride: boolean;
   confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onConfirm: () => void;
@@ -661,11 +672,15 @@ function ConfirmCloseModal({
         </>
       }
     >
-      <p>{centralMode
-        ? `Registrar confirmação do ${confirmationSector === "LABORATORY" ? "Laboratório" : "setor de Produção"} para o lote`
-        : "Finalizar o lote"} <strong>{batch.code}</strong>?</p>
+      <p>{adminOverride
+        ? <>Finalizar administrativamente o lote <strong>{batch.code}</strong>?</>
+        : <>{centralMode
+          ? `Registrar confirmação do ${confirmationSector === "LABORATORY" ? "Laboratório" : "setor de Produção"} para o lote`
+          : "Finalizar o lote"} <strong>{batch.code}</strong>?</>}</p>
       <p className="muted" style={{ fontSize: 13 }}>
-        {centralMode
+        {adminOverride
+          ? "Esta ação encerra o lote imediatamente e registra a exceção administrativa na auditoria."
+          : centralMode
           ? confirmationSector === "LABORATORY"
             ? batch.productionClosed
               ? "A Produção já confirmou. Esta ação concluirá o fechamento global do lote."

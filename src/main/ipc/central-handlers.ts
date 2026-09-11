@@ -11,9 +11,11 @@ import {
 import {
   confirmCentralLaboratoryClose,
   confirmCentralProductionClose,
+  forceCentralBatchClose,
   listCentralOpenBatches,
   listCentralAllBatches,
-  openCentralBatch
+  openCentralBatch,
+  reopenCentralBatch
 } from "../db/central-batches-repo";
 import { getProduct } from "../db/products-repo";
 import { getCentralBatchHistory } from "../db/central-history-repo";
@@ -141,6 +143,42 @@ export function registerCentralHandlers(): void {
           return { ok: true, data: await confirmCentralLaboratoryClose(input.id, user.username) };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao confirmar fechamento do Laboratório." };
+        }
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.centralBatchesForceClose,
+    compose([requireAuth, validateInput(closeBatchSchema)])(
+      async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
+        const user = getCurrentUser();
+        if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        await ensureCentralUserAccess(user);
+        if (user.role !== "admin" && user.role !== "master") return { ok: false, error: "Somente administradores podem finalizar um lote sem confirmações setoriais." };
+        try {
+          return { ok: true, data: await forceCentralBatchClose(input.id, user.username) };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
+        }
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.centralBatchesReopen,
+    compose([requireAuth, validateInput(closeBatchSchema)])(
+      async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
+        const user = getCurrentUser();
+        if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        if (user.role !== "master") {
+          return { ok: false, error: "Somente o usuário Master pode reabrir um lote encerrado." };
+        }
+        await ensureCentralUserAccess(user);
+        try {
+          return { ok: true, data: await reopenCentralBatch(input.id, user.username) };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Erro ao reabrir lote." };
         }
       }
     )

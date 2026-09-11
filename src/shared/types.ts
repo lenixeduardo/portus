@@ -1,10 +1,11 @@
 export type UserSector = "PRODUCTION" | "LABORATORY";
 export type LaboratoryProfile = "capture" | "closure";
+export type UserRole = "master" | "admin" | "operator";
 
 export interface User {
   id: number;
   username: string;
-  role: "admin" | "operator";
+  role: UserRole;
   sectorCode?: UserSector;
   laboratoryProfile?: LaboratoryProfile;
   createdAt: string;

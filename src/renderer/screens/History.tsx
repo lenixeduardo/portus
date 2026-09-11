@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { RotateCcw } from "lucide-react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 import type { User } from "../../shared/types";
 
@@ -8,6 +9,7 @@ export function History({ user }: { user: User }) {
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [centralMode, setCentralMode] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
@@ -141,6 +143,25 @@ export function History({ user }: { user: User }) {
     }
   }
 
+  async function handleReopen() {
+    if (!selectedId || !history || history.batch.status !== "closed") return;
+    if (!confirm(`Reabrir o lote "${history.batch.code}"? As confirmações da Produção e do Laboratório serão reiniciadas.`)) return;
+
+    setReopening(true);
+    setError(null);
+    const res = await window.api.central.batches.reopen(Number(selectedId));
+    setReopening(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+
+    setHistory((current) => current ? { ...current, batch: res.data } : current);
+    setBatches((current) => current.map((batch) => batch.id === res.data.id ? res.data : batch));
+    setExportMsg("Lote reaberto. Produção e Laboratório devem realizar um novo ciclo de leitura e fechamento.");
+    setTimeout(() => setExportMsg(null), 5000);
+  }
+
   const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
 
   return (
@@ -169,9 +190,17 @@ export function History({ user }: { user: User }) {
         </div>
 
         {history && (
-          <button onClick={handleExport} disabled={exporting} className="export-btn" style={{ alignSelf: "flex-start" }}>
-            {exporting ? "Exportando..." : "⬇ Exportar CSV"}
-          </button>
+          <div className="history-toolbar-actions">
+            {user.role === "master" && centralMode && history.batch.status === "closed" && (
+              <button onClick={handleReopen} disabled={reopening} className="secondary history-reopen-btn">
+                <RotateCcw size={15} aria-hidden="true" />
+                {reopening ? "Reabrindo..." : "Reabrir lote"}
+              </button>
+            )}
+            <button onClick={handleExport} disabled={exporting} className="export-btn">
+              {exporting ? "Exportando..." : "⬇ Exportar CSV"}
+            </button>
+          </div>
         )}
       </div>
 

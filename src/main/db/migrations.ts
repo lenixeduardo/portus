@@ -215,5 +215,38 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON audit_log(actor_user_id);
 `
+  },
+  {
+    name: "018_add_master_user_role",
+    sql: `
+PRAGMA foreign_keys = OFF;
+BEGIN TRANSACTION;
+
+CREATE TABLE users_with_master_role (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('master', 'admin', 'operator')),
+  sector_code TEXT NOT NULL DEFAULT 'PRODUCTION'
+    CHECK (sector_code IN ('PRODUCTION', 'LABORATORY')),
+  laboratory_profile TEXT
+    CHECK (laboratory_profile IN ('capture', 'closure'))
+);
+
+INSERT INTO users_with_master_role (
+  id, username, password_hash, created_at, role, sector_code, laboratory_profile
+)
+SELECT id, username, password_hash, created_at,
+       CASE WHEN username = 'admin' AND role = 'admin' THEN 'master' ELSE role END,
+       sector_code, laboratory_profile
+  FROM users;
+
+DROP TABLE users;
+ALTER TABLE users_with_master_role RENAME TO users;
+
+COMMIT;
+PRAGMA foreign_keys = ON;
+`
   }
 ];
