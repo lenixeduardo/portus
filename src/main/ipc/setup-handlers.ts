@@ -3,21 +3,29 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { IPC, type InitialSetupInput, type InitialSetupStatus, type ServiceResult } from "../../shared/ipc";
-import { checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired } from "../db/central-connection";
+import { buildCentralDatabaseUrl, checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired, persistCentralDatabaseUrl, verifyCentralDatabaseUrl } from "../db/central-connection";
 import { findPostgresBin, runInitialSetup } from "../setup/initial-setup-service";
 import { validateInput } from "./middleware";
 
 const identifier = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,62}$/, "Use letras, números e _. O nome deve começar com uma letra.");
-const setupSchema = z.object({
-  postgresBin: z.string().min(1, "Informe a pasta bin do PostgreSQL."),
+const commonSetupSchema = z.object({
   databaseHost: z.string().min(1, "Informe o host do PostgreSQL."),
   port: z.number().int().min(1).max(65535),
-  adminUser: identifier,
-  adminPassword: z.string().min(1, "Informe a senha do administrador PostgreSQL."),
   databaseName: identifier,
   appUser: identifier,
   appPassword: z.string().min(8, "A senha do PORTUS deve ter ao menos 8 caracteres.")
 });
+const setupSchema = z.discriminatedUnion("installationMode", [
+  commonSetupSchema.extend({
+    installationMode: z.literal("server"),
+    postgresBin: z.string().min(1, "Informe a pasta bin do PostgreSQL."),
+    adminUser: identifier,
+    adminPassword: z.string().min(1, "Informe a senha do administrador PostgreSQL.")
+  }),
+  commonSetupSchema.extend({
+    installationMode: z.literal("client")
+  })
+]);
 
 async function getStatus(): Promise<InitialSetupStatus> {
   const configured = isCentralDatabaseConfigured();
@@ -47,11 +55,18 @@ export function registerSetupHandlers(): void {
     IPC.setupRun,
     validateInput(setupSchema)(async (_event, input: InitialSetupInput): Promise<ServiceResult<InitialSetupStatus>> => {
       if (process.platform !== "win32") return { ok: false, error: "O assistente automático está disponível somente no Windows." };
-      const script = installerPath();
-      if (!existsSync(script)) return { ok: false, error: "Arquivos de instalação do banco não foram encontrados. Reinstale o PORTUS." };
-      if (!existsSync(join(input.postgresBin, "psql.exe"))) return { ok: false, error: "psql.exe não foi encontrado na pasta informada." };
       try {
-        await runInitialSetup(input, script);
+        if (input.installationMode === "server") {
+          const serverInput = input as InitialSetupInput & { postgresBin: string; adminUser: string; adminPassword: string };
+          const script = installerPath();
+          if (!existsSync(script)) return { ok: false, error: "Arquivos de instalação do banco não foram encontrados. Reinstale o PORTUS." };
+          if (!existsSync(join(serverInput.postgresBin, "psql.exe"))) return { ok: false, error: "psql.exe não foi encontrado na pasta informada." };
+          await runInitialSetup(serverInput, script);
+        } else {
+          const connectionString = buildCentralDatabaseUrl(input);
+          await verifyCentralDatabaseUrl(connectionString);
+          await persistCentralDatabaseUrl(connectionString);
+        }
         const status = await getStatus();
         return status.available
           ? { ok: true, data: status }
