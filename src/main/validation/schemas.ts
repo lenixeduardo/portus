@@ -81,7 +81,7 @@ export const createUserSchema = z.object({
     .string()
     .min(8, "Senha deve ter ao menos 8 caracteres")
     .max(100, "Senha muito longa"),
-  role: z.enum(["admin", "operator"]).optional(),
+  role: z.enum(["master", "admin", "operator"]).optional(),
   sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
   laboratoryProfile: z.enum(["capture", "closure"]).optional()
 }).superRefine((value, context) => {

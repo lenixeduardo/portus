@@ -37,6 +37,10 @@ export function registerUsersHandlers(): void {
     IPC.usersCreate,
     compose([requireAdmin, validateInput(createUserSchema)])(
       (_e, input: CreateUserInput): ServiceResult<User> => {
+        const actor = getCurrentUser();
+        if (input.role === "master" && actor?.role !== "master") {
+          return { ok: false, error: "Somente o usuário Master pode criar outro perfil Master." };
+        }
         const username = input.username.trim();
         if (usernameExists(username)) {
           return { ok: false, error: "Já existe um usuário com esse nome." };
@@ -48,7 +52,6 @@ export function registerUsersHandlers(): void {
           input.sectorCode ?? "PRODUCTION",
           input.laboratoryProfile
         );
-        const actor = getCurrentUser();
         logAudit({ actorUserId: actor?.id, action: "users.create", resourceType: "user", resourceId: user.id, details: { username: user.username, role: user.role, sectorCode: user.sectorCode, laboratoryProfile: user.laboratoryProfile } });
         return { ok: true, data: user };
       }
@@ -59,9 +62,18 @@ export function registerUsersHandlers(): void {
     IPC.usersChangePassword,
     compose([requireAuth, validateInput(changePasswordSchema)])(
       (_e, input: ChangePasswordInput): ServiceResult<true> => {
-        if (!getUser(input.id)) return { ok: false, error: "Usuário não encontrado." };
-        updateUserPassword(input.id, input.password);
         const actor = getCurrentUser();
+        const target = getUser(input.id);
+        if (!actor) return { ok: false, error: "Sessão expirada." };
+        if (!target) return { ok: false, error: "Usuário não encontrado." };
+        const administrative = actor.role === "admin" || actor.role === "master";
+        if (actor.id !== target.id && !administrative) {
+          return { ok: false, error: "Acesso negado." };
+        }
+        if (target.role === "master" && actor.role !== "master") {
+          return { ok: false, error: "Somente um Master pode alterar a senha de outro Master." };
+        }
+        updateUserPassword(input.id, input.password);
         logAudit({ actorUserId: actor?.id, action: "users.change_password", resourceType: "user", resourceId: input.id });
         return { ok: true, data: true };
       }
@@ -78,7 +90,11 @@ export function registerUsersHandlers(): void {
           return { ok: false, error: "Não é possível excluir o usuário logado." };
         }
         if (countUsers() <= 1) return { ok: false, error: "Deve haver ao menos um usuário no sistema." };
-        if (!getUser(input.id)) return { ok: false, error: "Usuário não encontrado." };
+        const target = getUser(input.id);
+        if (!target) return { ok: false, error: "Usuário não encontrado." };
+        if (target.role === "master" && current.role !== "master") {
+          return { ok: false, error: "Somente um Master pode excluir outro perfil Master." };
+        }
         reassignUserReferences(input.id, current.id);
         deleteUser(input.id);
         logAudit({ actorUserId: current.id, action: "users.delete", resourceType: "user", resourceId: input.id });

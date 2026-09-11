@@ -182,7 +182,7 @@ export function App() {
             {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
             {route === "products" && <Products />}
             {route === "settings" && <Settings currentUser={user} />}
-            {route === "history" && (user.role === "admin" || user.sectorCode === "LABORATORY") && <History user={user} />}
+            {route === "history" && (user.role === "master" || user.role === "admin" || user.sectorCode === "LABORATORY") && <History user={user} />}
           </div>
         </div>
       </div>

@@ -34,7 +34,7 @@ export function seedInitialData(): void {
     // uma vez ao operador que executa a instalação.
     const initialPassword = process.env.PORTUS_INITIAL_ADMIN_PASSWORD || randomBytes(15).toString("base64url");
     const hash = bcrypt.hashSync(initialPassword, 10);
-    run("INSERT INTO users (username, password_hash) VALUES (?, ?)", "admin", hash);
+    run("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", "admin", hash, "master");
     console.log("[db] seeded initial admin user");
     if (!process.env.PORTUS_INITIAL_ADMIN_PASSWORD) {
       dialog.showMessageBoxSync({

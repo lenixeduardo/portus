@@ -21,12 +21,12 @@ export function requireAuth(handler: Handler): Handler {
 
 /**
  * Middleware que requer role de administrador.
- * Se não há usuário ou role é diferente de 'admin', lança erro.
+ * Master e administrador possuem acesso administrativo.
  */
 export function requireAdmin(handler: Handler): Handler {
   return (event, ...args) => {
     const user = getCurrentUser();
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "master")) {
       throw new Error("Acesso negado.");
     }
     touchSession();

@@ -1,12 +1,12 @@
 import bcrypt from "bcryptjs";
 import { all, get, run } from "./query";
-import type { LaboratoryProfile, User, UserSector } from "../../shared/types";
+import type { LaboratoryProfile, User, UserRole, UserSector } from "../../shared/types";
 
 interface UserRow {
   id: number;
   username: string;
   password_hash: string;
-  role: "admin" | "operator";
+  role: UserRole;
   sector_code: UserSector;
   laboratory_profile: LaboratoryProfile | null;
   created_at: string;
@@ -39,7 +39,7 @@ export function getUserByUsername(username: string): UserRow | undefined {
 export function createUser(
   username: string,
   password: string,
-  role: "admin" | "operator" = "operator",
+  role: UserRole = "operator",
   sectorCode: UserSector = "PRODUCTION",
   laboratoryProfile?: LaboratoryProfile
 ): User {

@@ -16,7 +16,7 @@ export function Settings({ currentUser }: Props) {
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: "capture", label: "Captura" },
     { key: "equipments", label: "Equipamentos" },
-    ...(currentUser.role === "admin" ? [{ key: "users" as Tab, label: "Usuários" }] : []),
+    ...(currentUser.role === "admin" || currentUser.role === "master" ? [{ key: "users" as Tab, label: "Usuários" }] : []),
   ];
 
   return (
@@ -36,7 +36,7 @@ export function Settings({ currentUser }: Props) {
       <div className="tab-panel">
         {tab === "capture" && <CaptureSettingsTab />}
         {tab === "equipments" && <EquipmentsTab />}
-        {tab === "users" && currentUser.role === "admin" && <UsersTab currentUserId={currentUser.id} />}
+        {tab === "users" && (currentUser.role === "admin" || currentUser.role === "master") && <UsersTab currentUser={currentUser} />}
       </div>
     </div>
   );

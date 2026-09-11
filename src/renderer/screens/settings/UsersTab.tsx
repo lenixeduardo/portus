@@ -3,7 +3,7 @@ import type { User } from "../../../shared/types";
 import { Modal } from "../../components/Modal";
 
 interface Props {
-  currentUserId: number;
+  currentUser: User;
 }
 
 type ModalState =
@@ -11,7 +11,7 @@ type ModalState =
   | { mode: "password"; user: User }
   | null;
 
-export function UsersTab({ currentUserId }: Props) {
+export function UsersTab({ currentUser }: Props) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalState>(null);
@@ -63,12 +63,12 @@ export function UsersTab({ currentUserId }: Props) {
               <tr key={u.id}>
                 <td>
                   <strong>{u.username}</strong>
-                  {u.id === currentUserId && (
+                  {u.id === currentUser.id && (
                     <span className="chip chip-blue" style={{ marginLeft: 8 }}>VOCÊ</span>
                   )}
                 </td>
                 <td>
-                  <span className={`chip ${u.sectorCode === "LABORATORY" ? "chip-laboratory" : u.role === "admin" ? "chip-blue" : "chip-green"}`}>
+                  <span className={`chip ${u.sectorCode === "LABORATORY" ? "chip-laboratory" : u.role === "admin" || u.role === "master" ? "chip-blue" : "chip-green"}`}>
                     {formatAccessProfile(u)}
                   </span>
                 </td>
@@ -77,7 +77,7 @@ export function UsersTab({ currentUserId }: Props) {
                   <button className="link" onClick={() => setModal({ mode: "password", user: u })}>
                     Alterar senha
                   </button>
-                  {u.id !== currentUserId && (
+                  {u.id !== currentUser.id && (
                     <button className="link danger" onClick={() => handleDelete(u)}>Excluir</button>
                   )}
                 </td>
@@ -95,6 +95,7 @@ export function UsersTab({ currentUserId }: Props) {
             setError(null);
             reload();
           }}
+          canCreateMaster={currentUser.role === "master"}
         />
       )}
 
@@ -112,10 +113,10 @@ export function UsersTab({ currentUserId }: Props) {
   );
 }
 
-function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () => void; onSaved: () => void; canCreateMaster: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "laboratory_capture" | "laboratory_closure">("operator");
+  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "master" | "laboratory_capture" | "laboratory_closure">("operator");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -127,7 +128,7 @@ function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
     const res = await window.api.users.create({
       username,
       password,
-      role: accessProfile === "admin" ? "admin" : "operator",
+      role: accessProfile === "master" ? "master" : accessProfile === "admin" ? "admin" : "operator",
       sectorCode: laboratory ? "LABORATORY" : "PRODUCTION",
       laboratoryProfile: laboratory
         ? accessProfile === "laboratory_capture" ? "capture" : "closure"
@@ -168,6 +169,7 @@ function CreateUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
           <select value={accessProfile} onChange={(e) => setAccessProfile(e.target.value as typeof accessProfile)}>
             <option value="operator">Operador — pode abrir lotes e realizar leituras</option>
             <option value="admin">Admin — acesso completo</option>
+            {canCreateMaster && <option value="master">Master — acesso completo e reabertura de lotes</option>}
             <option value="laboratory_capture">Laboratório · Captura — consulta lotes e realiza leituras</option>
             <option value="laboratory_closure">Laboratório · Fechamento — revisa e confirma o lote</option>
           </select>
@@ -236,6 +238,7 @@ function formatDate(iso: string): string {
 }
 
 function formatAccessProfile(user: User): string {
+  if (user.role === "master") return "Master";
   if (user.sectorCode === "LABORATORY") {
     return user.laboratoryProfile === "closure" ? "Laboratório · Fechamento" : "Laboratório · Captura";
   }

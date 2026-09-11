@@ -1,17 +1,17 @@
 import type { BatchReadingPreview, BatchWithProduct } from "../../shared/ipc";
 import { centralQuery } from "./central-connection";
 
-interface CentralBatchRow {
-  id: number;
-  product_id: number;
+export interface CentralBatchRow {
+  id: number | string;
+  product_id: number | string;
   product_name: string;
   code: string;
   status: "open" | "closed";
   stage: string;
   opened_at: string | Date;
   closed_at: string | Date | null;
-  closed_by: number | null;
-  created_by: number;
+  closed_by: number | string | null;
+  created_by: number | string;
   readings_count: string;
   operator_name: string;
   production_closed: boolean;
@@ -35,16 +35,24 @@ export function toCentralTimestamp(value: string | Date | null | undefined): str
   return typeof value === "string" ? value : "";
 }
 
-function toBatch(row: CentralBatchRow): BatchWithProduct {
+function toCentralId(value: number | string): number {
+  const id = typeof value === "number" ? value : Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("ID inválido retornado pela base central.");
+  }
+  return id;
+}
+
+export function toBatch(row: CentralBatchRow): BatchWithProduct {
   return {
-    id: row.id,
-    productId: row.product_id,
+    id: toCentralId(row.id),
+    productId: toCentralId(row.product_id),
     code: row.code,
     status: row.status,
     openedAt: toCentralTimestamp(row.opened_at),
     closedAt: row.closed_at ? toCentralTimestamp(row.closed_at) : undefined,
-    closedBy: row.closed_by ?? undefined,
-    createdBy: row.created_by,
+    closedBy: row.closed_by == null ? undefined : toCentralId(row.closed_by),
+    createdBy: toCentralId(row.created_by),
     productName: row.product_name,
     operatorName: row.operator_name,
     readingsCount: Number(row.readings_count),
@@ -188,6 +196,30 @@ export async function confirmCentralProductionClose(id: number, username: string
 
 export async function confirmCentralLaboratoryClose(id: number, username: string): Promise<BatchWithProduct> {
   return confirmCentralClose(id, username, "LABORATORY", "confirm_laboratory");
+}
+
+/** Fechamento administrativo, auditado e independente das confirmações setoriais. */
+export async function forceCentralBatchClose(id: number, username: string): Promise<BatchWithProduct> {
+  const context = await resolveContext(username, "PRODUCTION");
+  const result = await centralQuery<{ id: number }>(
+    "SELECT id FROM admin_close_batch($1, $2, $3, $4)",
+    [id, context.user_id, context.application_id, context.sector_id]
+  );
+  const batch = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.id = $1`, [result.rows[0]?.id ?? id]);
+  if (!batch.rows[0]) throw new Error("Lote não encontrado após finalização administrativa.");
+  return toBatch(batch.rows[0]);
+}
+
+/** Reinicia o ciclo setorial de um lote fechado, preservando o histórico. */
+export async function reopenCentralBatch(id: number, username: string): Promise<BatchWithProduct> {
+  const context = await resolveContext(username, "PRODUCTION");
+  const result = await centralQuery<{ id: number }>(
+    "SELECT id FROM master_reopen_batch($1, $2, $3, $4)",
+    [id, context.user_id, context.application_id, context.sector_id]
+  );
+  const batch = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.id = $1`, [result.rows[0]?.id ?? id]);
+  if (!batch.rows[0]) throw new Error("Lote não encontrado após reabertura.");
+  return toBatch(batch.rows[0]);
 }
 
 async function confirmCentralClose(

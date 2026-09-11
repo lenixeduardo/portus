@@ -59,6 +59,8 @@ export const IPC = {
   centralBatchesCreate: "central:batches:create",
   centralBatchesConfirmProduction: "central:batches:confirm-production",
   centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory",
+  centralBatchesForceClose: "central:batches:force-close",
+  centralBatchesReopen: "central:batches:reopen",
   centralHistoryGetBatch: "central:history:get-batch"
 } as const;
 
@@ -201,7 +203,7 @@ export interface SerialPortInfo {
 export interface UserCreateInput {
   username: string;
   password: string;
-  role?: "admin" | "operator";
+  role?: "master" | "admin" | "operator";
   sectorCode?: "PRODUCTION" | "LABORATORY";
   laboratoryProfile?: "capture" | "closure";
 }
@@ -333,6 +335,8 @@ export interface SerialReaderApi {
       create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
       confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      forceClose(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      reopen(id: number): Promise<ServiceResult<BatchWithProduct>>;
     };
     history: {
       getBatch(id: number): Promise<ServiceResult<BatchHistory>>;
