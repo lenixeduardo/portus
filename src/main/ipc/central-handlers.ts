@@ -94,7 +94,7 @@ export function registerCentralHandlers(): void {
         if (!product) return { ok: false, error: "Produto local inválido." };
         try {
           const code = input.code?.trim() || `CENTRAL-${Date.now()}`;
-          return { ok: true, data: await openCentralBatch(product.name, code, user.username) };
+          return { ok: true, data: await openCentralBatch(product.name, product.description, code, user.username) };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao criar lote na base central." };
         }
