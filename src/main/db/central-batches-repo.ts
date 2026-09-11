@@ -154,16 +154,17 @@ export async function assertCentralReadAccess(
 
 export async function openCentralBatch(
   productName: string,
+  productDescription: string | undefined,
   code: string,
   username: string,
   stage = "A"
 ): Promise<BatchWithProduct> {
   const context = await resolveContext(username, "PRODUCTION");
   const product = await centralQuery<{ id: number }>(
-    "SELECT id FROM products WHERE name = $1",
-    [productName]
+    "SELECT ensure_product($1, $2, $3, $4, $5) AS id",
+    [productName, productDescription ?? null, context.user_id, context.application_id, context.sector_id]
   );
-  if (!product.rows[0]) throw new Error(`Produto "${productName}" não encontrado na base central.`);
+  if (!product.rows[0]?.id) throw new Error(`Não foi possível preparar o produto "${productName}" na base central.`);
   const result = await centralQuery<{ id: number }>(
     "SELECT id FROM open_batch($1, $2, $3, $4, $5, $6)",
     [product.rows[0].id, code, context.user_id, context.application_id, context.sector_id, stage]
