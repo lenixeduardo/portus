@@ -48,7 +48,7 @@ function reportDashboardError(source: string, error: unknown): void {
   void api?.log?.error(`renderer:dashboard:${source}`, message, stack).catch(() => {});
 }
 
-export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
+export function Dashboard({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [centralConfigured, setCentralConfigured] = useState(false);
@@ -258,6 +258,15 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     if (batch) setCaptureBatchId(batch.id);
   }
 
+  async function handleStartCapture(batch: BatchWithProduct) {
+    const already = await window.api.capture.isActive();
+    if (already) {
+      setScannerError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
+      return;
+    }
+    setSelectionBatch(batch);
+  }
+
   const visibleBatches = batches.filter((batch) => {
     if (batchFilter === "ALL") return true;
     if (batchFilter === "PRODUCTION") return !batch.productionClosed;
@@ -335,8 +344,10 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
                 : isAdmin || !requiresCentral || !b.productionClosed}
               centralMode={requiresCentral}
               adminOverride={isAdmin}
+              canCapture={canCapture}
               confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
               onClose={() => handleClose(b)}
+              onCapture={() => void handleStartCapture(b)}
               onPrint={() => handlePrintBarcode(b)}
             />
           ))}
@@ -385,16 +396,10 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
             setCaptureEquipmentIds(null);
             await reload();
           }}
-          onEnded={(reason) => {
+          onEnded={() => {
             setCaptureBatchId(null);
             setCaptureEquipmentIds(null);
-            if (reason === "completed") {
-              // Defer logout to the next macrotask so React can unmount CaptureModal
-              // (removing IPC listeners) before the logout IPC call starts.
-              setTimeout(onLogout, 0);
-            } else {
-              reload();
-            }
+            void reload();
           }}
         />
       )}
@@ -481,8 +486,10 @@ function BatchRow({
   canClose,
   centralMode,
   adminOverride,
+  canCapture,
   confirmationSector,
   onClose,
+  onCapture,
   onPrint
 }: {
   batch: BatchWithProduct;
@@ -490,12 +497,18 @@ function BatchRow({
   canClose: boolean;
   centralMode: boolean;
   adminOverride: boolean;
+  canCapture: boolean;
   confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
+  onCapture: () => void;
   onPrint: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copiar código");
+  const sectorReadingsCount = confirmationSector === "LABORATORY"
+    ? batch.laboratoryReadingsCount ?? 0
+    : batch.productionReadingsCount ?? 0;
+  const needsSectorReading = centralMode && !adminOverride && sectorReadingsCount === 0;
 
   async function copyBatchCode() {
     try {
@@ -572,7 +585,19 @@ function BatchRow({
           <Printer size={13} />
           Imprimir
         </button>
-        {canClose && (
+        {needsSectorReading && canCapture ? (
+          <button
+            className="batch-finalize"
+            onClick={onCapture}
+            disabled={isCapturing}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <ScanBarcode className="batch-finalize__icon" size={17} strokeWidth={1.8} aria-hidden="true" />
+            {isCapturing ? "Leitura em andamento" : "Iniciar leitura"}
+          </button>
+        ) : needsSectorReading ? (
+          <span className="batch-action-pending" role="status">Aguardando leitura</span>
+        ) : canClose && (
           <button
             className="batch-finalize"
             onClick={onClose}

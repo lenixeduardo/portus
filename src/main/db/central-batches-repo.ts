@@ -13,6 +13,8 @@ export interface CentralBatchRow {
   closed_by: number | string | null;
   created_by: number | string;
   readings_count: string;
+  production_readings_count: string;
+  laboratory_readings_count: string;
   operator_name: string;
   production_closed: boolean;
   laboratory_closed: boolean;
@@ -56,6 +58,8 @@ export function toBatch(row: CentralBatchRow): BatchWithProduct {
     productName: row.product_name,
     operatorName: row.operator_name,
     readingsCount: Number(row.readings_count),
+    productionReadingsCount: Number(row.production_readings_count),
+    laboratoryReadingsCount: Number(row.laboratory_readings_count),
     readingPreviews: parseReadingPreviews(row.reading_previews),
     stage: row.stage,
     productionClosed: row.production_closed,
@@ -69,6 +73,30 @@ const SELECT_BATCH = `
          b.production_closed, b.laboratory_closed,
          u.username AS operator_name,
          (SELECT COUNT(*) FROM readings r WHERE r.batch_id = b.id) AS readings_count,
+         (SELECT COUNT(*)
+            FROM readings r
+            JOIN capture_sessions cs ON cs.id = r.capture_session_id
+            JOIN sectors s ON s.id = cs.sector_id
+           WHERE r.batch_id = b.id
+             AND s.code = 'PRODUCTION'
+             AND cs.status = 'completed'
+             AND r.captured_at > COALESCE(
+               (SELECT MAX(bh.created_at) FROM batch_history bh
+                 WHERE bh.batch_id = b.id AND bh.action = 'BATCH_REOPENED'),
+               b.opened_at
+             )) AS production_readings_count,
+         (SELECT COUNT(*)
+            FROM readings r
+            JOIN capture_sessions cs ON cs.id = r.capture_session_id
+            JOIN sectors s ON s.id = cs.sector_id
+           WHERE r.batch_id = b.id
+             AND s.code = 'LABORATORY'
+             AND cs.status = 'completed'
+             AND r.captured_at > COALESCE(
+               (SELECT MAX(bh.created_at) FROM batch_history bh
+                 WHERE bh.batch_id = b.id AND bh.action = 'BATCH_REOPENED'),
+               b.opened_at
+             )) AS laboratory_readings_count,
          COALESCE((
            SELECT json_agg(preview ORDER BY preview."capturedAt" DESC)
              FROM (
@@ -229,6 +257,23 @@ async function confirmCentralClose(
   action: "confirm_production" | "confirm_laboratory"
 ): Promise<BatchWithProduct> {
   const context = await resolveContext(username, sectorCode);
+  const reading = await centralQuery<{ count: string }>(
+    `SELECT COUNT(*)::text AS count
+       FROM readings r
+       JOIN capture_sessions cs ON cs.id = r.capture_session_id
+      WHERE r.batch_id = $1
+        AND cs.sector_id = $2
+        AND cs.status = 'completed'
+        AND r.captured_at > COALESCE(
+          (SELECT MAX(bh.created_at) FROM batch_history bh
+            WHERE bh.batch_id = $1 AND bh.action = 'BATCH_REOPENED'),
+          (SELECT b.opened_at FROM batches b WHERE b.id = $1)
+        )`,
+    [id, context.sector_id]
+  );
+  if (Number(reading.rows[0]?.count ?? 0) === 0) {
+    throw new Error(`Registre ao menos uma leitura do setor de ${sectorCode === "LABORATORY" ? "Laboratório" : "Produção"} antes de confirmar.`);
+  }
   const fn = action === "confirm_production"
     ? "confirm_production_close"
     : "confirm_laboratory_close";
