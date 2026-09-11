@@ -14,6 +14,8 @@ import {
   type CaptureTickEvent,
   type EquipmentUpdateInput,
   type HistoryFilterInput,
+  type InitialSetupInput,
+  type InitialSetupStatus,
   type ProductInput,
   type LoginRequest,
   type LoginResult,
@@ -38,6 +40,11 @@ const api: SerialReaderApi = {
     login: (req: LoginRequest): Promise<LoginResult> => ipcRenderer.invoke(IPC.authLogin, req),
     logout: (): Promise<void> => ipcRenderer.invoke(IPC.authLogout),
     currentUser: (): Promise<User | null> => ipcRenderer.invoke(IPC.authCurrentUser)
+  },
+  setup: {
+    status: (): Promise<InitialSetupStatus> => ipcRenderer.invoke(IPC.setupStatus),
+    run: (input: InitialSetupInput): Promise<ServiceResult<InitialSetupStatus>> =>
+      ipcRenderer.invoke(IPC.setupRun, input)
   },
   products: {
     list: (): Promise<Product[]> => ipcRenderer.invoke(IPC.productsList),

@@ -14,6 +14,7 @@ import { registerUsersHandlers } from "./ipc/users-handlers";
 import { registerShellHandlers } from "./ipc/shell-handlers";
 import { registerLogHandlers } from "./ipc/log-handlers";
 import { registerCentralHandlers } from "./ipc/central-handlers";
+import { registerSetupHandlers } from "./ipc/setup-handlers";
 import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from "./db/settings-repo";
 import { runAutoExport } from "./db/history-repo";
 import { runBackup } from "./db/backup";
@@ -168,6 +169,7 @@ app.whenReady().then(async () => {
   registerShellHandlers();
   registerLogHandlers();
   registerCentralHandlers();
+  registerSetupHandlers();
   scheduleNextMidnightExport();
   scheduleNextBackup();
   createWindow();

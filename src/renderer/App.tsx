@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Database, Moon, RefreshCw, ScanLine, Sun } from "lucide-react";
 import "./styles.css";
 import { Login } from "./screens/Login";
+import { InitialSetup } from "./screens/InitialSetup";
 import { Sidebar, type Route } from "./components/Sidebar";
 import { Dashboard } from "./screens/Dashboard";
 import { Products } from "./screens/Products";
@@ -11,6 +12,7 @@ import { Modal } from "./components/Modal";
 import { ReportErrorModal } from "./components/ReportErrorModal";
 import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
+import type { InitialSetupStatus } from "../shared/ipc";
 
 const TITLES: Record<Route, string> = {
   dashboard: "Lotes Ativos",
@@ -31,6 +33,7 @@ export function App() {
   const [route, setRoute] = useState<Route>("dashboard");
   const [bootstrapping, setBootstrapping] = useState(true);
   const [noElectron, setNoElectron] = useState(false);
+  const [initialSetup, setInitialSetup] = useState<InitialSetupStatus | null>(null);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showReportError, setShowReportError] = useState(false);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>("checking");
@@ -51,8 +54,9 @@ export function App() {
     }
     const lastSeenVersion = window.localStorage.getItem(LAST_SEEN_VERSION_KEY);
     setShowReleaseNotes(lastSeenVersion !== APP_VERSION);
-    window.api.auth.currentUser().then((u) => {
+    Promise.all([window.api.auth.currentUser(), window.api.setup.status()]).then(([u, setup]) => {
       setUser(u);
+      if (!u && setup.required && !setup.configured) setInitialSetup(setup);
       setBootstrapping(false);
     }).catch(() => setBootstrapping(false));
   }, []);
@@ -112,6 +116,7 @@ export function App() {
       <code style={{ fontSize: 13 }}>npm run electron</code>
     </div>
   );
+  if (initialSetup) return <InitialSetup initialStatus={initialSetup} onCompleted={() => setInitialSetup(null)} />;
   if (!user) return (
     <>
       <Login onAuthenticated={setUser} />
@@ -140,16 +145,18 @@ export function App() {
                 aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
                 title={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
               >
-                <Sun size={13} aria-hidden="true" />
-                <span className="theme-switch__knob" />
-                <Moon size={13} aria-hidden="true" />
+                <Sun size={14} className="theme-switch__icon theme-switch__icon--sun" aria-hidden="true" />
+                <span className="theme-switch__track" aria-hidden="true">
+                  <span className="theme-switch__knob" />
+                </span>
+                <Moon size={14} className="theme-switch__icon theme-switch__icon--moon" aria-hidden="true" />
               </button>
             </div>
           </div>
           <div className="content">
             <header className="page-heading">
               <h1>{TITLES[route]}</h1>
-              <p>{route === "dashboard" ? "Acompanhe e gerencie os lotes em aberto." : "Consulte e gerencie os registros operacionais."}</p>
+              {route !== "dashboard" && <p>Consulte e gerencie os registros operacionais.</p>}
             </header>
             {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
             {route === "products" && <Products />}

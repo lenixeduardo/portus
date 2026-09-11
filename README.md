@@ -65,7 +65,18 @@ git checkout feat/portus-stage-0-database-baseline
 npm install
 ```
 
-### Configurar o PostgreSQL no Windows
+### Assistente de configuração inicial
+
+Na primeira abertura do executável, quando a base central ainda não estiver
+configurada, o PORTUS mostra um assistente. Ele localiza o PostgreSQL instalado,
+cria ou atualiza o banco, aplica migrations, valida a conexão e grava a
+configuração no perfil do Windows. As senhas são enviadas apenas ao processo de
+instalação, nunca para a interface ou para logs.
+
+O assistente exige que o PostgreSQL já esteja instalado no computador. Para
+instalações técnicas ou recuperação manual, use o procedimento abaixo.
+
+### Configurar o PostgreSQL no Windows manualmente
 
 Depois de instalar PostgreSQL 18, execute no PowerShell, dentro do projeto:
 
