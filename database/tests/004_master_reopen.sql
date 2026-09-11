@@ -85,12 +85,12 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM batch_history
-     WHERE batch_id = v_batch AND action = 'BATCH_REOPENED_BY_MASTER'
+     WHERE batch_id = v_batch AND action = 'BATCH_REOPENED'
   ) THEN
     RAISE EXCEPTION 'Auditoria da reabertura não foi registrada';
   END IF;
 
-  RAISE NOTICE 'Master reopen test OK: batch_id=%', v_batch;
+  RAISE NOTICE 'Administrative reopen test OK: batch_id=%', v_batch;
 END;
 $$;
 
