@@ -17,6 +17,7 @@ import {
 } from "../db/central-batches-repo";
 import { getProduct } from "../db/products-repo";
 import { getCentralBatchHistory } from "../db/central-history-repo";
+import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
 
@@ -42,6 +43,7 @@ export function registerCentralHandlers(): void {
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return [];
+      await ensureCentralUserAccess(user);
       return listCentralOpenBatches(user.username, user.sectorCode ?? "PRODUCTION");
     })
   );
@@ -51,6 +53,7 @@ export function registerCentralHandlers(): void {
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return [];
+      await ensureCentralUserAccess(user);
       return listCentralAllBatches(user.username, user.sectorCode ?? "PRODUCTION");
     })
   );
@@ -61,6 +64,7 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<import("../../shared/ipc").BatchHistory>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        await ensureCentralUserAccess(user);
         try {
           const history = await getCentralBatchHistory(input.id, user.username, user.sectorCode ?? "PRODUCTION");
           return history ? { ok: true, data: history } : { ok: false, error: "Lote não encontrado na base central." };
@@ -76,6 +80,7 @@ export function registerCentralHandlers(): void {
     compose([requireAuth])(async (_e, code: string): Promise<BatchWithProduct | null> => {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return null;
+      await ensureCentralUserAccess(user);
       const { findCentralBatchByCode } = await import("../db/central-batches-repo");
       return findCentralBatchByCode(code, user.username, user.sectorCode ?? "PRODUCTION");
     })
@@ -87,6 +92,7 @@ export function registerCentralHandlers(): void {
       async (_e, input: BatchInput): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        await ensureCentralUserAccess(user);
         if (isLaboratoryUser(user)) {
           return { ok: false, error: "O Laboratório consulta lotes abertos pela Produção; não cria novos lotes." };
         }
@@ -108,6 +114,7 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        await ensureCentralUserAccess(user);
         if (user.sectorCode !== "PRODUCTION") {
           return { ok: false, error: "Somente a visão Produção pode registrar esta confirmação." };
         }
@@ -126,6 +133,7 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        await ensureCentralUserAccess(user);
         if (!canCloseLaboratory(user)) {
           return { ok: false, error: "Seu perfil não possui permissão de fechamento do Laboratório." };
         }
