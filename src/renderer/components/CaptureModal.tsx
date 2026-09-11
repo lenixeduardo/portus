@@ -58,6 +58,9 @@ export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props)
           return;
         }
         const { slots: initSlots, timeoutSeconds } = res.data;
+        if (!Array.isArray(initSlots) || !Number.isFinite(timeoutSeconds)) {
+          throw new Error("A captura retornou uma resposta inválida. Tente iniciar novamente.");
+        }
         setSlots(initSlots.map((s) => ({ ...s })));
         setRemaining(timeoutSeconds);
         setTotal(timeoutSeconds);
@@ -66,11 +69,13 @@ export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props)
       }
 
       const unTick = window.api.capture.onTick((e) => {
+        if (!Number.isFinite(e.remaining) || !Number.isFinite(e.total)) return;
         setRemaining(e.remaining);
         setTotal(e.total);
       });
 
       const unSlot = window.api.capture.onSlotUpdate((e: SlotUpdateEvent) => {
+        if (!Number.isInteger(e.slotIndex) || !e.status) return;
         setSlots((prev) =>
           prev.map((s) =>
             s.slotIndex === e.slotIndex
@@ -87,12 +92,13 @@ export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props)
       });
 
       const unEnded = window.api.capture.onEnded((e) => {
+        if (e.reason !== "completed" && e.reason !== "cancelled") return;
         setEndReason(e.reason);
         setPhase("ended");
         onEnded(e.reason);
       });
 
-      unsubsRef.current = [unTick, unSlot, unEnded];
+      unsubsRef.current = [unTick, unSlot, unEnded].filter((unsubscribe): unsubscribe is () => void => typeof unsubscribe === "function");
     }
 
     init().catch((err) => {

@@ -9,6 +9,11 @@ import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
 import "@fontsource/dm-sans/600.css";
 import { App } from "./App";
+import { RendererErrorBoundary } from "./components/RendererErrorBoundary";
 
 const container = document.getElementById("root")!;
-createRoot(container).render(<App />);
+createRoot(container).render(
+  <RendererErrorBoundary>
+    <App />
+  </RendererErrorBoundary>
+);
