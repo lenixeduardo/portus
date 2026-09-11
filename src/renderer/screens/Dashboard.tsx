@@ -9,13 +9,19 @@ import { BarcodeModal } from "../components/BarcodeModal";
 import { Modal } from "../components/Modal";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import {
+  filterAndSortActiveBatches,
+  getProductFilterOptions,
+  parseBatchDate,
+  type BatchFilter,
+  type BatchSortDirection
+} from "./dashboard-filtering";
+import "../active-batches-responsive.css";
+import {
   CalendarDays,
-  CheckSquare,
   Circle,
   CircleCheck,
   ClipboardList,
   Copy,
-  List,
   MoreVertical,
   Printer,
   ScanBarcode,
@@ -27,8 +33,6 @@ type ScannerState =
   | { phase: "idle" }
   | { phase: "detecting"; code: string }
   | { phase: "error"; message: string };
-
-type BatchFilter = "ALL" | "PRODUCTION" | "LABORATORY";
 
 /**
  * O executável pode ter sido atualizado enquanto o preload ainda é de uma
@@ -65,6 +69,9 @@ export function Dashboard({ user }: { user: User }) {
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
+  const [productFilter, setProductFilter] = useState<"ALL" | string>("ALL");
+  const [openedDateFilter, setOpenedDateFilter] = useState("");
+  const [sortDirection, setSortDirection] = useState<BatchSortDirection>("DESC");
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLaboratory = isLaboratoryUser(user);
   const isAdmin = user.role === "admin" || user.role === "master";
@@ -278,13 +285,26 @@ export function Dashboard({ user }: { user: User }) {
     setSelectionBatch(batch);
   }
 
-  const visibleBatches = batches.filter((batch) => {
-    if (batchFilter === "ALL") return true;
-    if (batchFilter === "PRODUCTION") return !batch.productionClosed;
-    return !batch.laboratoryClosed;
+  const productOptions = getProductFilterOptions(batches);
+  const visibleBatches = filterAndSortActiveBatches(batches, {
+    sector: batchFilter,
+    productId: productFilter,
+    openedOn: openedDateFilter,
+    sortDirection
   });
   const productionPending = batches.filter((batch) => !batch.productionClosed).length;
   const laboratoryPending = batches.filter((batch) => !batch.laboratoryClosed).length;
+  const filtersActive = batchFilter !== "ALL"
+    || productFilter !== "ALL"
+    || openedDateFilter !== ""
+    || sortDirection !== "DESC";
+
+  function clearListFilters() {
+    setBatchFilter("ALL");
+    setProductFilter("ALL");
+    setOpenedDateFilter("");
+    setSortDirection("DESC");
+  }
 
   return (
     <>
@@ -328,9 +348,58 @@ export function Dashboard({ user }: { user: User }) {
             <FilterTab label="Produção" count={productionPending} active={batchFilter === "PRODUCTION"} onClick={() => setBatchFilter("PRODUCTION")} />
             <FilterTab label="Laboratório" count={laboratoryPending} active={batchFilter === "LABORATORY"} onClick={() => setBatchFilter("LABORATORY")} />
           </div>
-          <div className="batch-list-display" aria-label="Visualização em lista">
-            <List size={16} aria-hidden="true" />
-            <span>Mais recentes</span>
+
+          <div className="batch-list-filters">
+            <div className="batch-list-filter batch-list-filter--product">
+              <label htmlFor="batch-product-filter">Produto</label>
+              <select
+                id="batch-product-filter"
+                value={productFilter}
+                onChange={(event) => setProductFilter(event.target.value)}
+                aria-label="Filtrar lotes por produto"
+              >
+                <option value="ALL">Todos os produtos</option>
+                {productOptions.map((product) => (
+                  <option key={product.id} value={product.id}>{product.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="batch-list-filter batch-list-filter--date">
+              <label htmlFor="batch-opened-date-filter">Data de abertura</label>
+              <input
+                id="batch-opened-date-filter"
+                type="date"
+                value={openedDateFilter}
+                onChange={(event) => setOpenedDateFilter(event.target.value)}
+                aria-label="Filtrar lotes por data de abertura"
+              />
+            </div>
+
+            <div className="batch-list-filter batch-list-filter--sort">
+              <label htmlFor="batch-sort-direction">Ordenação</label>
+              <select
+                id="batch-sort-direction"
+                value={sortDirection}
+                onChange={(event) => setSortDirection(event.target.value as BatchSortDirection)}
+                aria-label="Ordenar lotes pela data de abertura"
+              >
+                <option value="DESC">Decrescente · mais recentes</option>
+                <option value="ASC">Crescente · mais antigos</option>
+              </select>
+            </div>
+
+            {filtersActive && (
+              <button type="button" className="secondary batch-filter-clear" onClick={clearListFilters}>
+                Limpar filtros
+              </button>
+            )}
+          </div>
+
+          <div className="batch-list-summary" aria-live="polite">
+            {visibleBatches.length === batches.length
+              ? `${batches.length} ${batches.length === 1 ? "lote ativo" : "lotes ativos"}`
+              : `${visibleBatches.length} de ${batches.length} lotes`}
           </div>
         </div>
       )}
@@ -362,7 +431,7 @@ export function Dashboard({ user }: { user: User }) {
               onPrint={() => handlePrintBarcode(b)}
             />
           ))}
-          {visibleBatches.length === 0 && <div className="placeholder">Nenhum lote corresponde ao filtro selecionado.</div>}
+          {visibleBatches.length === 0 && <div className="placeholder">Nenhum lote corresponde aos filtros selecionados.</div>}
         </div>
       )}
 
@@ -458,7 +527,6 @@ function PrintBarcodeModal({ batch, onClose }: { batch: BatchWithProduct; onClos
     </Modal>
   );
 }
-
 
 function ScannerPanel({ state, message }: { state: ScannerState; message?: string }) {
   const content = state.phase === "error"
@@ -566,19 +634,18 @@ function BatchRow({
           <strong>{getStageLabel(batch)}</strong>
         </div>
 
-      {centralMode && batch.readingPreviews && batch.readingPreviews.length > 0 && (
-        <div className="batch-row-readings" aria-label="Últimas leituras do lote">
-          <span>Últimas leituras</span>
-          <div>
-            {batch.readingPreviews.slice(0, 3).map((reading, index) => (
-              <small key={`${reading.sectorCode}-${reading.equipmentName}-${reading.capturedAt}-${index}`}>
-                {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"} · {reading.equipmentName} <strong>{reading.value}</strong>
-              </small>
-            ))}
+        {centralMode && batch.readingPreviews && batch.readingPreviews.length > 0 && (
+          <div className="batch-row-readings" aria-label="Últimas leituras do lote">
+            <span>Últimas leituras</span>
+            <div>
+              {batch.readingPreviews.slice(0, 3).map((reading, index) => (
+                <small key={`${reading.sectorCode}-${reading.equipmentName}-${reading.capturedAt}-${index}`}>
+                  {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"} · {reading.equipmentName} <strong>{reading.value}</strong>
+                </small>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
+        )}
       </section>
 
       {centralMode && (
@@ -744,10 +811,7 @@ function ConfirmCloseModal({
 }
 
 function formatDate(value: string | Date | null | undefined): string {
-  const iso = value instanceof Date ? value.toISOString() : typeof value === "string" ? value : "";
-  if (!iso) return "—";
-  const normalized = iso.includes("T") || /Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso.replace(" ", "T")}Z`;
-  const d = new Date(normalized);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseBatchDate(value);
+  if (!d) return "—";
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
