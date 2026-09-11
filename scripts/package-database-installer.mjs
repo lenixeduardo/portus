@@ -33,7 +33,8 @@ executado novamente sem reaplicar migrations já registradas.
 
 ## Diagnóstico e atualização
 
-- \`database\\check-portus-database.bat\`: testa a conexão como \`portus_admin\`.
+- \`database\\check-portus-database.bat\`: testa a conexão como \`portus_admin\` e
+  repara a configuração em \`%LOCALAPPDATA%\\PORTUS\\database-config.json\`.
 - \`database\\migrate-portus-database.bat\`: aplica migrations ainda pendentes.
 
 Para configurar manualmente uma sessão de desenvolvimento:

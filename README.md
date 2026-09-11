@@ -92,8 +92,16 @@ na primeira operação administrativa.
 ### Conectar o Electron à base central
 
 O instalador do banco salva `PORTUS_DATABASE_URL` e `PORTUS_DATABASE_MODE=central`
-no perfil do Windows. Para desenvolvimento manual, defina as variáveis no mesmo
-terminal que iniciará o aplicativo:
+no perfil do Windows e também em
+`%LOCALAPPDATA%\PORTUS\database-config.json`. O executável instalado lê esse
+arquivo diretamente, sem depender de reiniciar o Explorer.
+
+Se o banco já existe, mas o aplicativo mostra **Não configurado**, execute
+`database\check-portus-database.bat`, informe a senha de `portus_admin` e reabra
+o PORTUS. Além de validar o schema, esse comando repara a configuração do aplicativo.
+
+Para desenvolvimento manual, defina as variáveis no mesmo terminal que iniciará
+o aplicativo:
 
 ```powershell
 $env:PORTUS_DATABASE_URL="postgresql://portus_admin:SUA_SENHA@127.0.0.1:5432/portus"

@@ -120,7 +120,16 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
       [Environment]::SetEnvironmentVariable("PORTUS_DATABASE_MODE", "central", "User")
       $env:PORTUS_DATABASE_URL = $connectionString
       $env:PORTUS_DATABASE_MODE = "central"
+      $configDirectory = Join-Path $env:LOCALAPPDATA "PORTUS"
+      $configPath = Join-Path $configDirectory "database-config.json"
+      New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+      $configJson = @{
+        PORTUS_DATABASE_URL = $connectionString
+        PORTUS_DATABASE_MODE = "central"
+      } | ConvertTo-Json
+      [IO.File]::WriteAllText($configPath, $configJson, [Text.UTF8Encoding]::new($false))
       Write-Host "Configuração do PORTUS salva para o usuário atual do Windows." -ForegroundColor Green
+      Write-Host "Arquivo de conexão salvo em $configPath." -ForegroundColor Green
       Write-Host "Feche e reabra o PORTUS caso ele já estivesse em execução." -ForegroundColor Yellow
     }
     Write-Host "Banco PORTUS pronto para uso em $DatabaseHost`:$Port/$DatabaseName." -ForegroundColor Green
