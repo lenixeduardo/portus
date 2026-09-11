@@ -29,6 +29,11 @@ function Read-PlainPassword([string]$Prompt) {
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
 }
 
+function Write-Utf8NoBom([string]$Path, [string]$Value) {
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [IO.File]::WriteAllText($Path, $Value, $utf8NoBom)
+}
+
 function Invoke-Psql([string]$User, [string]$Password, [string]$Database, [string[]]$Arguments) {
   $env:PGPASSWORD = $Password
   & $psql -h $DatabaseHost -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 @Arguments
@@ -61,7 +66,7 @@ SELECT format('CREATE DATABASE %I', :'db_name')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
 '@
   $bootstrapFile = Join-Path ([IO.Path]::GetTempPath()) ("portus-bootstrap-" + [guid]::NewGuid() + ".sql")
-  Set-Content -Path $bootstrapFile -Value $bootstrapSql -Encoding utf8NoBOM
+  Write-Utf8NoBom $bootstrapFile $bootstrapSql
   try {
     Invoke-Psql $AdminUser $adminPassword "postgres" @("-v", "app_user=$AppUser", "-v", "app_password=$appPassword", "-v", "db_name=$DatabaseName", "-f", $bootstrapFile)
   } finally { Remove-Item $bootstrapFile -Force -ErrorAction SilentlyContinue }
@@ -95,7 +100,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"app_user";
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
 '@
   $grantFile = Join-Path ([IO.Path]::GetTempPath()) ("portus-grants-" + [guid]::NewGuid() + ".sql")
-  Set-Content -Path $grantFile -Value $grantSql -Encoding utf8NoBOM
+  Write-Utf8NoBom $grantFile $grantSql
   try { Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-v", "app_user=$AppUser", "-f", $grantFile) }
   finally { Remove-Item $grantFile -Force -ErrorAction SilentlyContinue }
   }
@@ -127,7 +132,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
         PORTUS_DATABASE_URL = $connectionString
         PORTUS_DATABASE_MODE = "central"
       } | ConvertTo-Json
-      [IO.File]::WriteAllText($configPath, $configJson, [Text.UTF8Encoding]::new($false))
+      Write-Utf8NoBom $configPath $configJson
       Write-Host "Configuração do PORTUS salva para o usuário atual do Windows." -ForegroundColor Green
       Write-Host "Arquivo de conexão salvo em $configPath." -ForegroundColor Green
       Write-Host "Feche e reabra o PORTUS caso ele já estivesse em execução." -ForegroundColor Yellow

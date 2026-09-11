@@ -19,6 +19,11 @@ function Read-PlainPassword([string]$Prompt) {
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
 }
 
+function Write-Utf8NoBom([string]$Path, [string]$Value) {
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [IO.File]::WriteAllText($Path, $Value, $utf8NoBom)
+}
+
 try {
   if (-not (Test-Path $psql)) { throw "psql.exe não encontrado em '$psql'." }
   $password = Read-PlainPassword "Senha do usuário $AppUser"
@@ -74,7 +79,7 @@ $$;
       PORTUS_DATABASE_URL = $connectionString
       PORTUS_DATABASE_MODE = "central"
     } | ConvertTo-Json
-    [IO.File]::WriteAllText($configPath, $configJson, [Text.UTF8Encoding]::new($false))
+    Write-Utf8NoBom $configPath $configJson
     Write-Host "Conexão do aplicativo salva em $configPath." -ForegroundColor Green
   }
   Write-Host "Banco PORTUS disponível." -ForegroundColor Green
