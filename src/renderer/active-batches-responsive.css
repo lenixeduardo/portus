@@ -76,6 +76,44 @@
   text-align: right;
 }
 
+/* Scanner ready pulse: reveal the barcode from left to right, then restart the loop. */
+.scanner-panel--idle .scanner-panel__barcode {
+  overflow: hidden;
+}
+
+.scanner-panel--idle .scanner-panel__barcode svg {
+  animation: portus-scanner-barcode-pulse 1.8s ease-in-out infinite;
+  clip-path: inset(0 100% 0 0);
+  transform-origin: left center;
+  will-change: clip-path, opacity;
+}
+
+@keyframes portus-scanner-barcode-pulse {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: .22;
+  }
+
+  48%,
+  68% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+
+  100% {
+    clip-path: inset(0 0 0 100%);
+    opacity: .18;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanner-panel--idle .scanner-panel__barcode svg {
+    animation: none;
+    clip-path: none;
+    opacity: .95;
+  }
+}
+
 /* Wide desktop: preserve the four-part operational row, but let each section shrink safely. */
 @media (min-width: 1481px) {
   .batch-row {
