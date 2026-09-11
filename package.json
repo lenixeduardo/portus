@@ -72,6 +72,13 @@
       {
         "from": "build/icon.png",
         "to": "portus-icon.png"
+      },
+      {
+        "from": "database",
+        "to": "database",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "directories": {

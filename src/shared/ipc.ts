@@ -50,6 +50,8 @@ export const IPC = {
   logGetRecent: "log:get-recent",
   logSendReport: "log:send-report",
   captureInjectReading: "capture:inject-reading",
+  setupStatus: "setup:status",
+  setupRun: "setup:run",
   centralStatus: "central:status",
   centralBatchesListOpen: "central:batches:list-open",
   centralBatchesListAll: "central:batches:list-all",
@@ -67,6 +69,22 @@ export interface CentralDatabaseStatus {
   available: boolean;
   required: boolean;
   mode: "central" | "local";
+}
+
+export interface InitialSetupStatus extends CentralDatabaseStatus {
+  supported: boolean;
+  postgresBin: string | null;
+}
+
+export interface InitialSetupInput {
+  postgresBin: string;
+  databaseHost: string;
+  port: number;
+  adminUser: string;
+  adminPassword: string;
+  databaseName: string;
+  appUser: string;
+  appPassword: string;
 }
 
 export interface SlotInitState {
@@ -248,6 +266,10 @@ export interface SerialReaderApi {
     login(req: LoginRequest): Promise<LoginResult>;
     logout(): Promise<void>;
     currentUser(): Promise<User | null>;
+  };
+  setup: {
+    status(): Promise<InitialSetupStatus>;
+    run(input: InitialSetupInput): Promise<ServiceResult<InitialSetupStatus>>;
   };
   products: {
     list(): Promise<Product[]>;

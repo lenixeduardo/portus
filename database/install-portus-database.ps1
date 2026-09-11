@@ -46,13 +46,24 @@ try {
   Assert-Identifier $AppUser "Usuário da aplicação"
 
   Write-Host "Instalação do banco central PORTUS" -ForegroundColor Cyan
-  $adminPassword = Read-PlainPassword "Senha do administrador PostgreSQL ($AdminUser)"
+  $adminPassword = if ($env:PORTUS_SETUP_ADMIN_PASSWORD) {
+    $env:PORTUS_SETUP_ADMIN_PASSWORD
+  } else {
+    Read-PlainPassword "Senha do administrador PostgreSQL ($AdminUser)"
+  }
+  if ([string]::IsNullOrWhiteSpace($adminPassword)) { throw "A senha do administrador PostgreSQL não pode ser vazia." }
   $appPassword = $null
   if (-not $MigrationsOnly) {
-    $appPassword = Read-PlainPassword "Senha para o usuário $AppUser"
+    $appPassword = if ($env:PORTUS_SETUP_APP_PASSWORD) {
+      $env:PORTUS_SETUP_APP_PASSWORD
+    } else {
+      Read-PlainPassword "Senha para o usuário $AppUser"
+    }
     if ([string]::IsNullOrWhiteSpace($appPassword)) { throw "A senha do usuário da aplicação não pode ser vazia." }
-    $confirm = Read-PlainPassword "Confirme a senha para $AppUser"
-    if ($appPassword -cne $confirm) { throw "As senhas do usuário da aplicação não coincidem." }
+    if (-not $env:PORTUS_SETUP_APP_PASSWORD) {
+      $confirm = Read-PlainPassword "Confirme a senha para $AppUser"
+      if ($appPassword -cne $confirm) { throw "As senhas do usuário da aplicação não coincidem." }
+    }
   }
 
   # Cria role e banco somente se ausentes. O comando é seguro contra SQL injection
@@ -141,4 +152,6 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
   }
 } finally {
   Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
+  Remove-Item Env:PORTUS_SETUP_ADMIN_PASSWORD -ErrorAction SilentlyContinue
+  Remove-Item Env:PORTUS_SETUP_APP_PASSWORD -ErrorAction SilentlyContinue
 }
