@@ -2,22 +2,36 @@ import React, { useEffect, useRef, useState } from "react";
 import { ScanBarcode } from "lucide-react";
 import type { BarcodeScanResult, BatchWithProduct } from "../../shared/ipc";
 import { Modal } from "./Modal";
+import type { Product } from "../../shared/types";
+import { scanBarcodeByMode } from "../services/barcode-scan";
 
 interface Props {
   onClose: () => void;
   onBatchReady: (batch: BatchWithProduct) => void;
   initialBarcode?: string;
+  centralMode?: boolean;
 }
 
-export function BarcodeModal({ onClose, onBatchReady, initialBarcode }: Props) {
+export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMode = false }: Props) {
   const [value, setValue] = useState(initialBarcode ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BarcodeScanResult | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productId, setProductId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    if (centralMode) {
+      window.api.products.list().then((items) => {
+        if (!mountedRef.current) return;
+        setProducts(items);
+        setProductId((current) => current ?? items[0]?.id ?? null);
+      }).catch(() => {
+        if (mountedRef.current) setError("Não foi possível carregar os produtos cadastrados.");
+      });
+    }
     if (initialBarcode) {
       scan(initialBarcode);
     } else {
@@ -32,7 +46,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode }: Props) {
   async function scan(barcode: string) {
     setLoading(true);
     setError(null);
-    const res = await window.api.batches.scanBarcode({ barcodeValue: barcode });
+    const res = await scanBarcodeByMode(window.api, barcode, centralMode, productId);
     if (!mountedRef.current) return;
     setLoading(false);
     if (!res.ok) {
@@ -97,6 +111,22 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode }: Props) {
               Posicione o cursor aqui e use o leitor. O código é enviado automaticamente ao pressionar Enter.
             </small>
           </div>
+          {centralMode && (
+            <div className="field">
+              <label>Produto do lote</label>
+              <select
+                value={productId ?? ""}
+                onChange={(event) => setProductId(Number(event.target.value))}
+                disabled={loading || products.length === 0}
+              >
+                {products.length === 0 && <option value="">Nenhum produto cadastrado</option>}
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>{product.name}</option>
+                ))}
+              </select>
+              <small className="muted">Usado somente quando o código ainda não possui um lote aberto.</small>
+            </div>
+          )}
           {error && <div className="error">{error}</div>}
           <button type="submit" style={{ display: "none" }} />
         </form>
