@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { User } from "../../shared/types";
 import { PortusLogo } from "../components/PortusLogo";
+import { APP_VERSION } from "../releaseNotes";
 
 interface Props {
   onAuthenticated: (user: User) => void;
@@ -86,7 +87,7 @@ export function Login({ onAuthenticated }: Props) {
             ))}
           </div>
 
-          <div className="login-version mono">v1.0.0 · Electron · © 2026</div>
+          <div className="login-version mono">v{APP_VERSION} · Electron · © 2026</div>
         </div>
 
         <div className="login-right">
