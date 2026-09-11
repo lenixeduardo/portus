@@ -188,6 +188,8 @@ export interface BatchWithProduct extends Batch {
   productName: string;
   operatorName: string;
   readingsCount: number;
+  productionReadingsCount?: number;
+  laboratoryReadingsCount?: number;
   readingPreviews?: BatchReadingPreview[];
 }
 

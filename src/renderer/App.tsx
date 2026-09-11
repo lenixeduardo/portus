@@ -179,10 +179,10 @@ export function App() {
               <h1>{TITLES[route]}</h1>
               {route !== "dashboard" && <p>Consulte e gerencie os registros operacionais.</p>}
             </header>
-            {route === "dashboard" && <Dashboard user={user} onLogout={handleLogout} />}
+            {route === "dashboard" && <Dashboard user={user} />}
             {route === "products" && <Products />}
             {route === "settings" && <Settings currentUser={user} />}
-            {route === "history" && (user.role === "master" || user.role === "admin" || user.sectorCode === "LABORATORY") && <History user={user} />}
+            {route === "history" && <History user={user} />}
           </div>
         </div>
       </div>
