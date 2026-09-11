@@ -31,12 +31,37 @@ async function resolveContext(username: string, sectorCode = "PRODUCTION"): Prom
   return result.rows[0];
 }
 
-export async function getCentralBatchById(batchId: number): Promise<{ id: number; status: "open" | "closed" } | null> {
-  const result = await centralQuery<{ id: number; status: "open" | "closed" }>(
-    "SELECT id, status FROM batches WHERE id = $1",
+export interface CentralCaptureBatchState {
+  id: number;
+  status: "open" | "closed";
+  productionClosed: boolean;
+  laboratoryClosed: boolean;
+}
+
+export function isSectorCaptureClosed(
+  batch: CentralCaptureBatchState,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): boolean {
+  return sectorCode === "LABORATORY" ? batch.laboratoryClosed : batch.productionClosed;
+}
+
+export async function getCentralBatchById(batchId: number): Promise<CentralCaptureBatchState | null> {
+  const result = await centralQuery<{
+    id: number;
+    status: "open" | "closed";
+    production_closed: boolean;
+    laboratory_closed: boolean;
+  }>(
+    "SELECT id, status, production_closed, laboratory_closed FROM batches WHERE id = $1",
     [batchId]
   );
-  return result.rows[0] ?? null;
+  const row = result.rows[0];
+  return row ? {
+    id: row.id,
+    status: row.status,
+    productionClosed: row.production_closed,
+    laboratoryClosed: row.laboratory_closed
+  } : null;
 }
 
 export async function createCentralCaptureSession(
@@ -54,12 +79,20 @@ export async function createCentralCaptureSession(
     `INSERT INTO capture_sessions (
        batch_id, sector_id, source_application_id, user_id, timeout_seconds
      )
-     VALUES ($1, $2, $3, $4, $5)
+     SELECT b.id, $2, $3, $4, $5
+       FROM batches b
+       JOIN sectors s ON s.id = $2
+      WHERE b.id = $1
+        AND b.status = 'open'
+        AND CASE
+          WHEN s.code = 'LABORATORY' THEN NOT b.laboratory_closed
+          ELSE NOT b.production_closed
+        END
      RETURNING id, batch_id, started_at, ended_at, timeout_seconds, status`,
     [batchId, context.sector_id, context.application_id, context.user_id, timeoutSeconds]
   );
   const row = result.rows[0];
-  if (!row) throw new Error("A base central não retornou a sessão de captura.");
+  if (!row) throw new Error("Este setor já foi confirmado e não aceita novas leituras neste lote.");
   return {
     id: row.id,
     batchId: row.batch_id,

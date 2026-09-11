@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Database, Moon, RefreshCw, ScanLine, Sun } from "lucide-react";
+import { Database, Eye, Moon, RefreshCw, ScanLine, Sun } from "lucide-react";
 import "./styles.css";
 import { Login } from "./screens/Login";
 import { InitialSetup } from "./screens/InitialSetup";
@@ -155,6 +155,8 @@ export function App() {
             <div className="topbar__telemetry">
               <DatabaseStatusBadge status={databaseStatus} />
               <div className="topbar__separator" aria-hidden="true" />
+              <ViewStatus sectorCode={user.sectorCode} />
+              <div className="topbar__separator" aria-hidden="true" />
               <div className="scanner-status" title="Status do leitor de código de barras">
                 <ScanLine size={16} />
                 <span><small>Leitor</small>Pronto para leitura</span>
@@ -212,6 +214,17 @@ function DatabaseStatusBadge({ status }: { status: DatabaseStatus }) {
       {checking ? <RefreshCw size={13} className="database-status__spinner" /> : <Database size={13} />}
       <span className="database-status__dot" aria-hidden="true" />
       <span><small>Banco de dados</small>{DATABASE_STATUS_LABELS[status]}</span>
+    </div>
+  );
+}
+
+function ViewStatus({ sectorCode }: { sectorCode: User["sectorCode"] }) {
+  const label = sectorCode === "LABORATORY" ? "Laboratório" : "Produção";
+
+  return (
+    <div className="view-status" role="status" title={`View ativa: ${label}`}>
+      <Eye size={14} aria-hidden="true" />
+      <span><small>View</small>{label}</span>
     </div>
   );
 }

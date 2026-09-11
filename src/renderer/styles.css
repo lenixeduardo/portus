@@ -1283,14 +1283,15 @@ label.checkbox input { width: auto; }
 .topbar__title h2 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
 .topbar__telemetry { display: flex; align-items: center; gap: 16px; height: 100%; white-space: nowrap; }
 .topbar__separator { width: 1px; height: 28px; background: var(--border-strong); }
-.database-status, .scanner-status { border: 0; padding: 0; min-height: 0; border-radius: 0; background: transparent; color: var(--text-muted); gap: 8px; font-size: 11px; font-weight: 500; }
-.database-status span:last-child, .scanner-status span { display: inline-flex; align-items: center; gap: 7px; color: var(--text); }
-.database-status small, .scanner-status small { color: var(--text-faint); font-size: 10px; font-weight: 500; }
+.database-status, .view-status, .scanner-status { display: inline-flex; align-items: center; border: 0; padding: 0; min-height: 0; border-radius: 0; background: transparent; color: var(--text-muted); gap: 8px; font-size: 11px; font-weight: 500; }
+.database-status span:last-child, .view-status span, .scanner-status span { display: inline-flex; align-items: center; gap: 7px; color: var(--text); }
+.database-status small, .view-status small, .scanner-status small { color: var(--text-faint); font-size: 10px; font-weight: 500; }
 .database-status--connected { color: var(--success); background: transparent; border: 0; }
 .database-status--connected .database-status__dot { background: var(--success); }
 .database-status--disconnected { color: var(--danger); background: transparent; border: 0; }
 .database-status--unconfigured { color: var(--warn); }
 .database-status__dot { width: 6px; height: 6px; }
+.view-status svg { color: var(--portus-aqua-500); stroke-width: 1.5; }
 .scanner-status svg { color: var(--portus-aqua-500); stroke-width: 1.5; }
 .theme-switch { min-height: 34px; width: auto; padding: 0; display: inline-grid; grid-template-columns: 14px 42px 14px; align-items: center; gap: 6px; background: transparent; border: 0; color: var(--text-faint); }
 .theme-switch:hover { opacity: 1; color: var(--text-muted); }
@@ -1460,7 +1461,7 @@ button.secondary:hover { background: var(--surface-raised); }
 .batch-list { display: grid; gap: 16px; }
 .batch-row {
   display: grid;
-  grid-template-columns: 258px minmax(380px, 1fr) minmax(214px, .66fr) 206px;
+  grid-template-columns: 258px minmax(380px, 1fr) minmax(224px, .54fr) 238px;
   min-height: 158px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -1503,15 +1504,22 @@ button.secondary:hover { background: var(--surface-raised); }
 .batch-row-readings small { color: var(--text-muted); font-size: 10px; }
 .batch-row-readings small strong { color: var(--text); font-weight: 500; }
 
-.batch-confirmations { display: grid; align-content: center; gap: 10px; }
+.batch-confirmations { display: grid; align-content: center; gap: 10px; padding-inline: 18px; }
 .confirmation-row { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: 8px; font-size: 12px; }
 .confirmation-row strong { font-weight: 500; }
 .confirmation-row span { color: var(--text-muted); }
 .confirmation-row.is-confirmed { color: var(--portus-aqua-400); }
 .confirmation-row.is-pending { color: var(--text-secondary); }
 
-.batch-row__actions { display: grid; align-content: center; grid-template-columns: 1fr 44px; gap: 10px; }
+.batch-row__actions {
+  display: grid;
+  align-content: center;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 8px;
+  padding-inline: 12px;
+}
 .batch-row__actions button { min-height: 40px; }
+.batch-row__actions > button { width: 100%; min-width: 0; }
 .batch-row__actions .batch-finalize {
   grid-column: 1;
   justify-content: center;
@@ -1539,6 +1547,7 @@ button.secondary:hover { background: var(--surface-raised); }
   grid-row: 1 / span 2;
   position: relative;
   min-width: 0;
+  width: 40px;
 }
 .batch-more {
   width: 100%;
@@ -1577,8 +1586,10 @@ button.secondary:hover { background: var(--surface-raised); }
 .batch-more-menu button:hover { background: var(--accent-dim); color: var(--portus-aqua-400); }
 
 @media (max-width: 1320px) {
-  .batch-row { grid-template-columns: 230px minmax(330px, 1fr) minmax(200px, .65fr) 185px; }
+  .batch-row { grid-template-columns: 230px minmax(330px, 1fr) minmax(190px, .52fr) 218px; }
   .batch-row > * { padding: 18px; }
+  .batch-confirmations { padding-inline: 14px; }
+  .batch-row__actions { padding-inline: 10px; }
 }
 @media (max-width: 1060px) {
   .dashboard-actions { margin-top: 0; }
