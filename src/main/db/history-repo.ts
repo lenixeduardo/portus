@@ -81,7 +81,7 @@ export function buildCsvContent(history: BatchHistory): string {
   const header = [
     "Lote", "Produto", "Operador", "Abertura do Lote",
     "Sessão", "Início Sessão", "Fim Sessão",
-    "Status Sessão", "Setor", "Responsável", "Equipamento", "Slot", "Valor Bruto", "Valor Parseado", "Capturado em"
+    "Status Sessão", "Setor", "Responsável", "Equipamento", "Slot", "Valor Bruto", "Valor Numérico", "Capturado em"
   ];
   lines.push(header.join(";"));
 
@@ -92,8 +92,8 @@ export function buildCsvContent(history: BatchHistory): string {
     sessionNum++;
     if (session.readings.length === 0) {
       lines.push(
-        [batch.code, batch.productName, batch.operatorName, batch.openedAt,
-          sessionNum, session.startedAt, session.endedAt ?? "", session.status,
+        [batch.code, batch.productName, batch.operatorName, formatExcelDate(batch.openedAt),
+          sessionNum, formatExcelDate(session.startedAt), formatExcelDate(session.endedAt), session.status,
           sectorLabel(session.sectorCode), session.operatorName ?? "", "", "", "", "", ""]
           .map(csvCell).join(";")
       );
@@ -101,10 +101,10 @@ export function buildCsvContent(history: BatchHistory): string {
     }
     for (const r of session.readings) {
       lines.push(
-        [batch.code, batch.productName, batch.operatorName, batch.openedAt,
-          sessionNum, session.startedAt, session.endedAt ?? "", session.status,
+        [batch.code, batch.productName, batch.operatorName, formatExcelDate(batch.openedAt),
+          sessionNum, formatExcelDate(session.startedAt), formatExcelDate(session.endedAt), session.status,
           sectorLabel(session.sectorCode), session.operatorName ?? "", r.equipmentName,
-          r.slotIndex >= 0 ? r.slotIndex + 1 : "", r.valueRaw, r.valueParsed ?? "", r.capturedAt]
+          r.slotIndex >= 0 ? r.slotIndex + 1 : "", r.valueRaw, formatExcelDecimal(r.valueParsed), formatExcelDate(r.capturedAt)]
           .map(csvCell).join(";")
       );
     }
@@ -115,6 +115,21 @@ export function buildCsvContent(history: BatchHistory): string {
 
 function sectorLabel(sector?: CaptureSessionRecord["sectorCode"]): string {
   return sector === "LABORATORY" ? "Laboratório" : sector === "PRODUCTION" ? "Produção" : "";
+}
+
+function formatExcelDate(value?: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "medium"
+  }).format(date);
+}
+
+function formatExcelDecimal(value?: string): string {
+  return value && /^[-+]?\d+(?:\.\d+)?$/.test(value) ? value.replace(".", ",") : value ?? "";
 }
 
 export function writeCsvFile(filePath: string, csv: string): void {

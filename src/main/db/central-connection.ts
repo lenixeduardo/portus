@@ -74,8 +74,12 @@ function readWindowsConfigFile(name: keyof CentralDatabaseConfig): string | unde
 }
 
 function getRuntimeSetting(name: string): string | undefined {
-  const inherited = process.env[name]?.trim();
-  if (inherited) return inherited;
+  // Uma variável explicitamente definida tem precedência mesmo quando vazia.
+  // Isso evita que `PORTUS_DATABASE_URL="   "` seja silenciosamente substituída
+  // por uma configuração antiga gravada no arquivo ou no Registro do Windows.
+  if (Object.prototype.hasOwnProperty.call(process.env, name)) {
+    return process.env[name]?.trim() || undefined;
+  }
 
   // O arquivo no perfil é gravado pelo instalador e independe do ambiente que o
   // Explorer herdou. O Registro permanece como fallback para instalações antigas.
