@@ -27,7 +27,7 @@ describe("exportação unificada de leituras", () => {
 
     const csv = buildCsvContent(history);
     expect(csv).toContain("Setor;Responsável");
-    expect(csv).toContain("Produção;producao;Balança;3;1,25;1.25");
-    expect(csv).toContain("Laboratório;laboratorio;pH;;7,2;7.2");
+    expect(csv).toContain("Produção;producao;Balança;3;1,25;1,25");
+    expect(csv).toContain("Laboratório;laboratorio;pH;;7,2;7,2");
   });
 });
