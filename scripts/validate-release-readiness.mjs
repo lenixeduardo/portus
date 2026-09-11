@@ -57,6 +57,12 @@ if (!installer.includes('SetEnvironmentVariable("PORTUS_DATABASE_URL"')) {
 if (!installer.includes('database-config.json')) {
   errors.push("O instalador não cria o arquivo persistente de conexão do aplicativo.");
 }
+if (/Set-Content[^\n]*-Encoding\s+utf8NoBOM/i.test(installer)) {
+  errors.push("O instalador usa utf8NoBOM, que não existe no Windows PowerShell 5.1.");
+}
+if (!installer.includes("New-Object System.Text.UTF8Encoding($false)")) {
+  errors.push("O instalador não possui gravação UTF-8 sem BOM compatível com PowerShell 5.1.");
+}
 
 const verifier = readFileSync(join(root, "database/verify-portus-database.ps1"), "utf8");
 if (!verifier.includes('database-config.json')) {
