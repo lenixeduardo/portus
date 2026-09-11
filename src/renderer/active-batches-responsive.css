@@ -1,0 +1,310 @@
+/* Active batches — desktop responsiveness and filter toolbar.
+   Loaded after styles.css so these rules intentionally refine the operational list. */
+
+.main-area,
+.content {
+  min-width: 0;
+}
+
+.batch-list-controls {
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.batch-filter-tabs {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.batch-list-filters {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.batch-list-filter {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.batch-list-filter label {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: .06em;
+}
+
+.batch-list-filter select,
+.batch-list-filter input {
+  width: auto;
+  min-height: 38px;
+  height: 38px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.batch-list-filter--product select {
+  width: clamp(170px, 15vw, 230px);
+}
+
+.batch-list-filter--date input {
+  width: 150px;
+}
+
+.batch-list-filter--sort select {
+  width: 196px;
+}
+
+.batch-filter-clear {
+  min-height: 38px;
+  height: 38px;
+  padding-inline: 11px;
+  white-space: nowrap;
+}
+
+.batch-list-summary {
+  flex: 0 0 100%;
+  min-height: 18px;
+  color: var(--text-faint);
+  font-size: 10px;
+  text-align: right;
+}
+
+/* Wide desktop: preserve the four-part operational row, but let each section shrink safely. */
+@media (min-width: 1481px) {
+  .batch-row {
+    grid-template-columns:
+      minmax(218px, .88fr)
+      minmax(330px, 1.5fr)
+      minmax(190px, .78fr)
+      minmax(210px, .82fr);
+  }
+
+  .batch-row > * {
+    padding-inline: clamp(14px, 1.2vw, 22px);
+  }
+}
+
+/* Common 1366/1440 desktop widths: use two columns so the sidebar never forces horizontal breakage. */
+@media (max-width: 1480px) {
+  .content {
+    padding-inline: 20px;
+  }
+
+  .dashboard-actions {
+    margin: 0 0 16px;
+    justify-content: flex-start;
+  }
+
+  .dashboard-actions__buttons {
+    flex-wrap: wrap;
+  }
+
+  .batch-row {
+    grid-template-columns: minmax(220px, .78fr) minmax(0, 1.55fr);
+    min-height: 0;
+  }
+
+  .batch-row > * {
+    padding: 18px;
+  }
+
+  .batch-row__identity {
+    border-right: 1px solid var(--border);
+  }
+
+  .batch-row__operation {
+    border-right: 0;
+  }
+
+  .batch-confirmations {
+    align-content: start;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  .batch-row__actions {
+    grid-template-columns: minmax(130px, 170px) minmax(170px, 220px) 40px;
+    justify-content: end;
+    align-content: center;
+    align-items: stretch;
+    border-top: 1px solid var(--border);
+    border-right: 0;
+    padding-inline: 18px;
+  }
+
+  .batch-row__actions > button.secondary {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .batch-row__actions .batch-finalize,
+  .batch-row__actions .batch-action-pending {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .batch-more-wrap {
+    grid-column: 3;
+    grid-row: 1;
+    height: 40px;
+  }
+
+  .batch-list-summary {
+    text-align: left;
+  }
+}
+
+/* Smaller desktop windows: stack each operational section instead of compressing text/actions. */
+@media (max-width: 1180px) {
+  .topbar {
+    padding-inline: 16px;
+  }
+
+  .topbar__telemetry {
+    gap: 10px;
+  }
+
+  .topbar__separator {
+    height: 22px;
+  }
+
+  .content {
+    padding: 18px;
+  }
+
+  .batch-list-controls {
+    align-items: stretch;
+  }
+
+  .batch-filter-tabs {
+    width: 100%;
+  }
+
+  .batch-list-filters {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .batch-list-filter--product {
+    flex: 1 1 210px;
+  }
+
+  .batch-list-filter--product select {
+    width: 100%;
+  }
+
+  .batch-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .batch-row > * {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .batch-row > :last-child {
+    border-bottom: 0;
+  }
+
+  .batch-row__identity,
+  .batch-row__operation,
+  .batch-confirmations,
+  .batch-row__actions {
+    border-right: 0;
+  }
+
+  .batch-row__identity {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .batch-row__title {
+    align-self: start;
+  }
+
+  .batch-row .batch-barcode {
+    justify-self: end;
+  }
+
+  .batch-row__actions {
+    grid-template-columns: minmax(130px, 170px) minmax(170px, 230px) 40px;
+    justify-content: start;
+  }
+
+  .scanner-panel {
+    gap: 16px;
+    padding-inline: 18px;
+  }
+
+  .scanner-panel__barcode {
+    width: 170px;
+    padding-left: 18px;
+  }
+}
+
+/* Minimum supported desktop window: keep controls readable with no horizontal overflow. */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 196px;
+  }
+
+  .sidebar {
+    padding-inline: 8px;
+  }
+
+  .topbar__telemetry {
+    gap: 8px;
+    font-size: 10px;
+  }
+
+  .topbar__separator {
+    display: none;
+  }
+
+  .database-status,
+  .view-status,
+  .scanner-status {
+    font-size: 10px;
+  }
+
+  .scanner-status span,
+  .database-status span:last-child,
+  .view-status span {
+    gap: 4px;
+  }
+
+  .batch-list-filter--date,
+  .batch-list-filter--sort {
+    flex: 1 1 180px;
+  }
+
+  .batch-list-filter--date input,
+  .batch-list-filter--sort select {
+    width: 100%;
+  }
+
+  .scanner-panel__barcode {
+    display: none;
+  }
+
+  .batch-row__operation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .batch-row__operation .batch-stage,
+  .batch-row-readings {
+    grid-column: 1 / -1;
+  }
+
+  .batch-row__actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
+  }
+}
