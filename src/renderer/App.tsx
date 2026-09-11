@@ -28,6 +28,18 @@ type DatabaseStatus = "checking" | "connected" | "disconnected" | "unconfigured"
 type Theme = "dark" | "light";
 const THEME_STORAGE_KEY = "portus:theme";
 
+function hasCentralStatusApi(): boolean {
+  const api = window.api as Partial<typeof window.api> | undefined;
+  return typeof api?.central?.status === "function";
+}
+
+function reportRendererError(source: string, error: unknown): void {
+  const api = window.api as Partial<typeof window.api> | undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  void api?.log?.error(`renderer:app:${source}`, message, stack).catch(() => {});
+}
+
 export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>("dashboard");
@@ -67,8 +79,16 @@ export function App() {
     let active = true;
 
     async function refreshDatabaseStatus() {
+      if (!hasCentralStatusApi()) {
+        if (active) setDatabaseStatus("disconnected");
+        reportRendererError("central-api", new Error("API central ausente ou incompatível no preload instalado."));
+        return;
+      }
       try {
         const status = await window.api.central.status();
+        if (!status || typeof status !== "object") {
+          throw new Error("Status da base central inválido.");
+        }
         if (!active) return;
         setDatabaseStatus(
           !status.configured
@@ -77,8 +97,9 @@ export function App() {
               ? "connected"
               : "disconnected"
         );
-      } catch {
+      } catch (error) {
         if (active) setDatabaseStatus("disconnected");
+        reportRendererError("central-status", error);
       }
     }
 

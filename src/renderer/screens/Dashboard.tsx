@@ -30,6 +30,24 @@ type ScannerState =
 
 type BatchFilter = "ALL" | "PRODUCTION" | "LABORATORY";
 
+/**
+ * O executável pode ter sido atualizado enquanto o preload ainda é de uma
+ * versão anterior. Nunca deixe essa incompatibilidade derrubar o dashboard:
+ * ela deve aparecer como indisponibilidade da base, não como tela branca.
+ */
+function hasCentralBatchApi(): boolean {
+  const api = window.api as Partial<typeof window.api> | undefined;
+  return typeof api?.central?.status === "function"
+    && typeof api.central.batches?.listOpen === "function";
+}
+
+function reportDashboardError(source: string, error: unknown): void {
+  const api = window.api as Partial<typeof window.api> | undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  void api?.log?.error(`renderer:dashboard:${source}`, message, stack).catch(() => {});
+}
+
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,27 +80,51 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
       const list = requiresCentral
         ? await window.api.central.batches.listOpen()
         : await window.api.batches.listOpen();
-      setBatches(list);
-    } catch {
+      // IPC é uma fronteira externa: normalize a resposta antes de renderizar
+      // filtros, contadores e cartões do lote.
+      setBatches(Array.isArray(list) ? list : []);
+      if (!Array.isArray(list)) {
+        setScannerError("A base central retornou uma lista de lotes inválida.");
+      }
+    } catch (error) {
       setBatches([]);
       setScannerError("Não foi possível consultar os lotes na base central.");
+      reportDashboardError("reload", error);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    window.api.central.status().then((status) => {
-      setCentralConfigured(status.configured);
-      setCentralAvailable(status.available);
-      setCentralRequired(status.required);
-      setCentralStatusResolved(true);
-    }).catch(() => {
-      setCentralConfigured(true);
-      setCentralAvailable(false);
-      setCentralRequired(true);
-      setCentralStatusResolved(true);
-    });
+    async function loadCentralStatus() {
+      if (!hasCentralBatchApi()) {
+        setCentralConfigured(true);
+        setCentralAvailable(false);
+        setCentralRequired(true);
+        setCentralStatusResolved(true);
+        reportDashboardError("central-api", new Error("API central ausente ou incompatível no preload instalado."));
+        return;
+      }
+
+      try {
+        const status = await window.api.central.status();
+        if (!status || typeof status !== "object") {
+          throw new Error("Status da base central inválido.");
+        }
+        setCentralConfigured(Boolean(status.configured));
+        setCentralAvailable(Boolean(status.available));
+        setCentralRequired(Boolean(status.required));
+      } catch (error) {
+        setCentralConfigured(true);
+        setCentralAvailable(false);
+        setCentralRequired(true);
+        reportDashboardError("central-status", error);
+      } finally {
+        setCentralStatusResolved(true);
+      }
+    }
+
+    void loadCentralStatus();
   }, []);
 
   useEffect(() => {
