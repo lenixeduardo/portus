@@ -8,8 +8,8 @@ interface CentralBatchRow {
   code: string;
   status: "open" | "closed";
   stage: string;
-  opened_at: string;
-  closed_at: string | null;
+  opened_at: string | Date;
+  closed_at: string | Date | null;
   closed_by: number | null;
   created_by: number;
   readings_count: string;
@@ -29,14 +29,20 @@ function parseReadingPreviews(value: CentralBatchRow["reading_previews"]): Batch
   }
 }
 
+/** O driver pg materializa timestamp/timestamptz como Date; IPC deve expor texto. */
+export function toCentralTimestamp(value: string | Date | null | undefined): string {
+  if (value instanceof Date) return value.toISOString();
+  return typeof value === "string" ? value : "";
+}
+
 function toBatch(row: CentralBatchRow): BatchWithProduct {
   return {
     id: row.id,
     productId: row.product_id,
     code: row.code,
     status: row.status,
-    openedAt: row.opened_at,
-    closedAt: row.closed_at ?? undefined,
+    openedAt: toCentralTimestamp(row.opened_at),
+    closedAt: row.closed_at ? toCentralTimestamp(row.closed_at) : undefined,
     closedBy: row.closed_by ?? undefined,
     createdBy: row.created_by,
     productName: row.product_name,
