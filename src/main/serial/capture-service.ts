@@ -12,7 +12,7 @@ import {
 } from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
 import { isCentralDatabaseConfigured } from "../db/central-connection";
-import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, validateCentralEquipmentMapping } from "../db/central-capture-repo";
+import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, isSectorCaptureClosed, validateCentralEquipmentMapping } from "../db/central-capture-repo";
 import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
@@ -560,6 +560,12 @@ export async function startCapture(
   }
   if (batchStatus !== "open") {
     return { ok: false, error: "O lote já foi finalizado e não aceita novas leituras." };
+  }
+  if (centralBatch && isSectorCaptureClosed(centralBatch, sectorCode)) {
+    return {
+      ok: false,
+      error: `A ${sectorCode === "LABORATORY" ? "etapa do Laboratório" : "Produção"} já foi confirmada e não aceita novas leituras neste lote.`
+    };
   }
 
   const equipments = listEquipments().filter(

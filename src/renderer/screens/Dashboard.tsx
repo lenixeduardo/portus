@@ -236,6 +236,12 @@ export function Dashboard({ user }: { user: User }) {
 
   async function handleBarcodeReady(batch: BatchWithProduct) {
     setShowBarcode(false);
+    const sectorClosed = isLaboratory ? batch.laboratoryClosed : batch.productionClosed;
+    if (sectorClosed) {
+      setScannerError(`A ${isLaboratory ? "etapa do Laboratório" : "Produção"} já foi confirmada e não aceita novas leituras neste lote.`);
+      await reload();
+      return;
+    }
     const already = await window.api.capture.isActive();
     if (already) {
       setScannerError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
@@ -259,6 +265,11 @@ export function Dashboard({ user }: { user: User }) {
   }
 
   async function handleStartCapture(batch: BatchWithProduct) {
+    const sectorClosed = isLaboratory ? batch.laboratoryClosed : batch.productionClosed;
+    if (sectorClosed) {
+      setScannerError(`A ${isLaboratory ? "etapa do Laboratório" : "Produção"} já foi confirmada e não aceita novas leituras neste lote.`);
+      return;
+    }
     const already = await window.api.capture.isActive();
     if (already) {
       setScannerError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
@@ -508,7 +519,10 @@ function BatchRow({
   const sectorReadingsCount = confirmationSector === "LABORATORY"
     ? batch.laboratoryReadingsCount ?? 0
     : batch.productionReadingsCount ?? 0;
-  const needsSectorReading = centralMode && !adminOverride && sectorReadingsCount === 0;
+  const sectorConfirmed = confirmationSector === "LABORATORY"
+    ? Boolean(batch.laboratoryClosed)
+    : Boolean(batch.productionClosed);
+  const needsSectorReading = centralMode && !adminOverride && !sectorConfirmed && sectorReadingsCount === 0;
 
   async function copyBatchCode() {
     try {
