@@ -29,7 +29,8 @@ for (const path of [
   "database/migrations/006_product_catalog_sync.sql",
   "database/migrations/007_admin_force_close.sql",
   "database/migrations/008_master_reopen_batch.sql",
-  "database/migrations/009_default_equipment_catalog.sql"
+  "database/migrations/009_default_equipment_catalog.sql",
+  "database/migrations/010_admin_reopen_batch.sql"
 ]) requireFile(path);
 
 const artifactName = packageJson.build?.win?.artifactName;

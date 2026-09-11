@@ -171,8 +171,8 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
-        if (user.role !== "master") {
-          return { ok: false, error: "Somente o usuário Master pode reabrir um lote encerrado." };
+        if (user.role !== "master" && user.role !== "admin") {
+          return { ok: false, error: "Somente administradores podem reabrir um lote encerrado." };
         }
         await ensureCentralUserAccess(user);
         try {

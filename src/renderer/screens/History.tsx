@@ -86,7 +86,8 @@ export function History({ user }: { user: User }) {
             return false;
           }
 
-          const rDate = new Date(r.capturedAt.replace(" ", "T") + "Z");
+          const rDate = parseHistoryDate(r.capturedAt);
+          if (!rDate) return false;
 
           if (filterStartDate) {
             const start = new Date(filterStartDate + "T00:00:00");
@@ -163,6 +164,7 @@ export function History({ user }: { user: User }) {
   }
 
   const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
+  const canReopenBatch = user.role === "admin" || user.role === "master";
 
   return (
     <>
@@ -191,7 +193,7 @@ export function History({ user }: { user: User }) {
 
         {history && (
           <div className="history-toolbar-actions">
-            {user.role === "master" && centralMode && history.batch.status === "closed" && (
+            {canReopenBatch && centralMode && history.batch.status === "closed" && (
               <button onClick={handleReopen} disabled={reopening} className="secondary history-reopen-btn">
                 <RotateCcw size={15} aria-hidden="true" />
                 {reopening ? "Reabrindo..." : "Reabrir lote"}
@@ -445,11 +447,22 @@ function sessionStatusClass(status: string): string {
   }
 }
 
+function parseHistoryDate(value: string | null | undefined): Date | null {
+  if (!value?.trim()) return null;
+  const trimmed = value.trim();
+  const normalized = trimmed.includes("T") || /Z$|[+-]\d\d:\d\d$/.test(trimmed)
+    ? trimmed
+    : `${trimmed.replace(" ", "T")}Z`;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function calcDuration(startedAt: string, endedAt?: string): string {
   if (!endedAt) return "—";
-  const start = new Date(startedAt.replace(" ", "T") + "Z").getTime();
-  const end = new Date(endedAt.replace(" ", "T") + "Z").getTime();
-  const secs = Math.round((end - start) / 1000);
+  const start = parseHistoryDate(startedAt)?.getTime();
+  const end = parseHistoryDate(endedAt)?.getTime();
+  if (start === undefined || end === undefined) return "—";
+  const secs = Math.max(0, Math.round((end - start) / 1000));
   if (secs < 60) return `${secs}s`;
   const mins = Math.floor(secs / 60);
   const rem = secs % 60;
@@ -457,5 +470,6 @@ function calcDuration(startedAt: string, endedAt?: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso.replace(" ", "T") + "Z").toLocaleString("pt-BR");
+  const date = parseHistoryDate(iso);
+  return date ? date.toLocaleString("pt-BR") : "—";
 }
