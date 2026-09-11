@@ -1,9 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { User } from "../../shared/types";
 import { PortusLogo } from "../components/PortusLogo";
+import { APP_VERSION } from "../releaseNotes";
 
 interface Props {
   onAuthenticated: (user: User) => void;
+}
+
+function isAuthenticatedUser(value: unknown): value is User {
+  if (!value || typeof value !== "object") return false;
+  const user = value as Partial<User>;
+  return Number.isInteger(user.id)
+    && typeof user.username === "string"
+    && (user.role === "admin" || user.role === "operator")
+    && typeof user.createdAt === "string";
+}
+
+function reportLoginError(error: unknown): void {
+  const api = window.api as Partial<typeof window.api> | undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  void api?.log?.error("renderer:login", message, stack).catch(() => {});
 }
 
 export function Login({ onAuthenticated }: Props) {
@@ -32,10 +49,16 @@ export function Login({ onAuthenticated }: Props) {
     try {
       const result = await window.api.auth.login({ username, password });
       if (result.ok) {
+        if (!isAuthenticatedUser(result.user)) {
+          throw new Error("A autenticação retornou um usuário inválido.");
+        }
         onAuthenticated(result.user);
       } else {
         setError(result.error);
       }
+    } catch (err) {
+      reportLoginError(err);
+      setError("Não foi possível concluir o login. Tente novamente ou reporte o erro.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +87,7 @@ export function Login({ onAuthenticated }: Props) {
             ))}
           </div>
 
-          <div className="login-version mono">v1.0.0 · Electron · © 2026</div>
+          <div className="login-version mono">v{APP_VERSION} · Electron · © 2026</div>
         </div>
 
         <div className="login-right">
