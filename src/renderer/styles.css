@@ -1346,8 +1346,8 @@ button.secondary:hover { background: var(--surface-raised); }
 /* ── First run PostgreSQL setup ──────────────────────── */
 .initial-setup-wrap { position: relative; isolation: isolate; min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 32px; overflow: auto; background: var(--bg); }
 .initial-setup-wrap::before { content: ""; position: absolute; z-index: -1; inset: 0; background: url('./assets/portus-technical-background.png') center / cover no-repeat; opacity: .1; filter: grayscale(1) contrast(1.2); }
-.renderer-fallback { min-height: 100%; display: grid; align-content: center; justify-items: start; gap: 14px; padding: clamp(28px, 8vw, 120px); color: var(--text); background: var(--bg) url('./assets/portus-technical-background.png') right top / cover no-repeat; }
-.renderer-fallback__eyebrow { color: var(--portus-aqua-400); font-size: 11px; letter-spacing: .12em; }.renderer-fallback h1 { font-size: 28px; }.renderer-fallback p:not(.renderer-fallback__eyebrow) { max-width: 480px; color: var(--text-muted); }
+.renderer-fallback { min-height: 100%; display: grid; align-content: center; justify-items: start; gap: 14px; padding: clamp(28px, 8vw, 120px); color: #f4f7f7; background: var(--bg) url('./assets/portus-technical-background.png') right top / cover no-repeat; }
+.renderer-fallback__eyebrow { color: var(--portus-aqua-400); font-size: 11px; letter-spacing: .12em; }.renderer-fallback h1 { color: #f4f7f7; font-size: 28px; }.renderer-fallback p:not(.renderer-fallback__eyebrow) { max-width: 480px; color: #c4d0d3; }
 .initial-setup-card { width: min(1040px, 100%); display: grid; grid-template-columns: 340px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; box-shadow: 0 20px 48px rgba(0,0,0,.32); overflow: hidden; }
 .initial-setup-intro { display: flex; flex-direction: column; gap: 26px; padding: 36px 32px; background: rgba(2, 14, 16, .78); border-right: 1px solid var(--border-strong); }
 .setup-eyebrow { color: var(--portus-aqua-400); font-size: 10px; letter-spacing: .14em; font-weight: 600; }
