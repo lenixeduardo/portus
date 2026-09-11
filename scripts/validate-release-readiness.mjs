@@ -25,7 +25,11 @@ for (const path of [
   "database/migrations/002_domain_functions.sql",
   "database/migrations/003_security_permissions.sql",
   "database/migrations/004_laboratory_view.sql",
-  "database/migrations/005_runtime_function_security.sql"
+  "database/migrations/005_runtime_function_security.sql",
+  "database/migrations/006_product_catalog_sync.sql",
+  "database/migrations/007_admin_force_close.sql",
+  "database/migrations/008_master_reopen_batch.sql",
+  "database/migrations/009_default_equipment_catalog.sql"
 ]) requireFile(path);
 
 const artifactName = packageJson.build?.win?.artifactName;
