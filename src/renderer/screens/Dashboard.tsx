@@ -679,7 +679,11 @@ function ConfirmCloseModal({
   );
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso.replace(" ", "T") + "Z");
+function formatDate(value: string | Date | null | undefined): string {
+  const iso = value instanceof Date ? value.toISOString() : typeof value === "string" ? value : "";
+  if (!iso) return "—";
+  const normalized = iso.includes("T") || /Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso.replace(" ", "T")}Z`;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 }

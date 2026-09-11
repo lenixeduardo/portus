@@ -1,17 +1,17 @@
 import type { BatchHistory, BatchWithProduct, CaptureSessionRecord, ReadingRecord } from "../../shared/ipc";
 import { centralQuery } from "./central-connection";
-import { assertCentralReadAccess } from "./central-batches-repo";
+import { assertCentralReadAccess, toCentralTimestamp } from "./central-batches-repo";
 
 interface HistoryRow {
   session_id: number;
-  session_started_at: string;
-  session_ended_at: string | null;
+  session_started_at: string | Date;
+  session_ended_at: string | Date | null;
   session_timeout_seconds: number;
   session_status: "active" | "completed" | "cancelled";
   reading_id: number | null;
   value_raw: string | null;
   value_parsed: string | null;
-  captured_at: string | null;
+  captured_at: string | Date | null;
   equipment_id: number | null;
   equipment_name: string | null;
   operator_name: string | null;
@@ -24,8 +24,8 @@ export async function getCentralBatchHistory(
   sectorCode: "PRODUCTION" | "LABORATORY"
 ): Promise<BatchHistory | null> {
   await assertCentralReadAccess(username, sectorCode);
-  const batchResult = await centralQuery<BatchWithProduct>(
-    `SELECT b.id, b.product_id, p.name AS "productName", b.code, b.status,
+  const batchResult = await centralQuery<BatchWithProduct & { openedAt: string | Date; closedAt?: string | Date | null }>(
+    `SELECT b.id, b.product_id AS "productId", p.name AS "productName", b.code, b.status,
             b.opened_at AS "openedAt", b.closed_at AS "closedAt",
             b.closed_by AS "closedBy", b.created_by AS "createdBy",
             b.stage, b.production_closed AS "productionClosed",
@@ -38,8 +38,14 @@ export async function getCentralBatchHistory(
       WHERE b.id = $1`,
     [batchId]
   );
-  const batch = batchResult.rows[0];
-  if (!batch) return null;
+  const batchRow = batchResult.rows[0];
+  if (!batchRow) return null;
+  const batch: BatchWithProduct = {
+    ...batchRow,
+    openedAt: toCentralTimestamp(batchRow.openedAt),
+    closedAt: batchRow.closedAt ? toCentralTimestamp(batchRow.closedAt) : undefined,
+    readingsCount: Number(batchRow.readingsCount)
+  };
 
   const rows = await centralQuery<HistoryRow>(
     `SELECT cs.id AS session_id, cs.started_at AS session_started_at,
@@ -62,8 +68,8 @@ export async function getCentralBatchHistory(
     if (!sessions.has(row.session_id)) {
       sessions.set(row.session_id, {
         id: row.session_id,
-        startedAt: row.session_started_at,
-        endedAt: row.session_ended_at ?? undefined,
+        startedAt: toCentralTimestamp(row.session_started_at),
+        endedAt: row.session_ended_at ? toCentralTimestamp(row.session_ended_at) : undefined,
         timeoutSeconds: row.session_timeout_seconds,
         status: row.session_status,
         operatorName: row.operator_name ?? undefined,
@@ -81,7 +87,7 @@ export async function getCentralBatchHistory(
         slotIndex: -1,
         valueRaw: row.value_raw ?? "",
         valueParsed: row.value_parsed ?? undefined,
-        capturedAt: row.captured_at ?? ""
+        capturedAt: toCentralTimestamp(row.captured_at)
       };
       sessions.get(row.session_id)!.readings.push(reading);
     }
