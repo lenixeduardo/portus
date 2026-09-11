@@ -7,12 +7,16 @@ const execFileAsync = promisify(execFile);
 const WINDOWS_POSTGRES_VERSIONS = [18, 17, 16, 15, 14];
 
 export function findPostgresBin(
-  programFiles = process.env.ProgramFiles,
+  programFiles?: string,
   pathExists: (path: string) => boolean = existsSync
 ): string | null {
-  if (!programFiles) return null;
+  // Sem argumentos, use ProgramFiles para a descoberta automática do app.
+  // Quando `undefined` é passado explicitamente (caso de teste/validação), não
+  // invente uma instalação a partir do ambiente da máquina que executa o teste.
+  const searchRoot = arguments.length === 0 ? process.env.ProgramFiles : programFiles;
+  if (!searchRoot) return null;
   for (const version of WINDOWS_POSTGRES_VERSIONS) {
-    const candidate = `${programFiles}\\PostgreSQL\\${version}\\bin`;
+    const candidate = `${searchRoot}\\PostgreSQL\\${version}\\bin`;
     if (pathExists(`${candidate}\\psql.exe`)) return candidate;
   }
   return null;
