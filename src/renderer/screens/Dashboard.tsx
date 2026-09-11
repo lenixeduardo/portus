@@ -303,6 +303,7 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
           onClose={() => { setShowBarcode(false); setBarcodeInitial(undefined); }}
           onBatchReady={handleBarcodeReady}
           initialBarcode={barcodeInitial}
+          centralMode={requiresCentral}
         />
       )}
 
