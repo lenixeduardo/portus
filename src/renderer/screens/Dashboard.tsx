@@ -688,12 +688,22 @@ function ConfirmCloseModal({
 }) {
   return (
     <Modal
-      title="Finalizar Lote"
+      title={adminOverride
+        ? "Finalizar lote"
+        : centralMode
+          ? `Confirmar ${confirmationSector === "LABORATORY" ? "Laboratório" : "Produção"}`
+          : "Finalizar lote"}
       onClose={onClose}
       footer={
         <>
           <button className="secondary" onClick={onClose}>Cancelar</button>
-          <button onClick={onConfirm}>Finalizar</button>
+          <button onClick={onConfirm}>
+            {adminOverride
+              ? "Finalizar lote"
+              : centralMode
+                ? `Confirmar ${confirmationSector === "LABORATORY" ? "Laboratório" : "Produção"}`
+                : "Finalizar lote"}
+          </button>
         </>
       }
     >
