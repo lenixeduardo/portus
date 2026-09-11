@@ -77,11 +77,12 @@ export interface InitialSetupStatus extends CentralDatabaseStatus {
 }
 
 export interface InitialSetupInput {
-  postgresBin: string;
+  installationMode: "server" | "client";
+  postgresBin?: string;
   databaseHost: string;
   port: number;
-  adminUser: string;
-  adminPassword: string;
+  adminUser?: string;
+  adminPassword?: string;
   databaseName: string;
   appUser: string;
   appPassword: string;

@@ -1,6 +1,6 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 let pool: Pool | null = null;
@@ -87,6 +87,41 @@ function getRuntimeSetting(name: string): string | undefined {
 
 function getCentralDatabaseUrl(): string | undefined {
   return getRuntimeSetting("PORTUS_DATABASE_URL");
+}
+
+export function buildCentralDatabaseUrl(input: {
+  databaseHost: string;
+  port: number;
+  databaseName: string;
+  appUser: string;
+  appPassword: string;
+}): string {
+  const host = input.databaseHost.trim();
+  const networkHost = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  return `postgresql://${encodeURIComponent(input.appUser)}:${encodeURIComponent(input.appPassword)}@${networkHost}:${input.port}/${encodeURIComponent(input.databaseName)}`;
+}
+
+export async function verifyCentralDatabaseUrl(connectionString: string): Promise<void> {
+  const probe = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 5000 });
+  try {
+    await probe.query("SELECT 1");
+  } finally {
+    await probe.end();
+  }
+}
+
+export async function persistCentralDatabaseUrl(connectionString: string): Promise<void> {
+  const root = process.env.LOCALAPPDATA?.trim() || process.env.APPDATA?.trim();
+  if (!root) throw new Error("Não foi possível localizar o perfil do Windows para salvar a conexão.");
+  const directory = join(root, "PORTUS");
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(join(directory, "database-config.json"), `${JSON.stringify({
+    PORTUS_DATABASE_URL: connectionString,
+    PORTUS_DATABASE_MODE: "central"
+  }, null, 2)}\n`, "utf8");
+  process.env.PORTUS_DATABASE_URL = connectionString;
+  process.env.PORTUS_DATABASE_MODE = "central";
+  await closeCentralDatabase();
 }
 
 /**

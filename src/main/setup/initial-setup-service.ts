@@ -19,7 +19,7 @@ export function findPostgresBin(
 }
 
 export async function runInitialSetup(
-  input: InitialSetupInput,
+  input: InitialSetupInput & { postgresBin: string; adminUser: string; adminPassword: string },
   scriptPath: string
 ): Promise<void> {
   const args = [

@@ -68,10 +68,15 @@ npm install
 ### Assistente de configuração inicial
 
 Na primeira abertura do executável, quando a base central ainda não estiver
-configurada, o PORTUS mostra um assistente. Ele localiza o PostgreSQL instalado,
-cria ou atualiza o banco, aplica migrations, valida a conexão e grava a
-configuração no perfil do Windows. As senhas são enviadas apenas ao processo de
-instalação, nunca para a interface ou para logs.
+configurada, o PORTUS mostra um assistente com duas escolhas explícitas:
+
+- **Servidor central**: localiza o PostgreSQL, cria ou atualiza o banco, aplica
+  migrations e grava a configuração nesta máquina.
+- **Estação cliente**: recebe o IP ou DNS do servidor, testa a conexão e grava
+  somente a credencial local; não cria banco, usuário ou migrations.
+
+As senhas são enviadas apenas ao processo de instalação ou à validação de
+conexão, nunca para logs.
 
 O assistente exige que o PostgreSQL já esteja instalado no computador. Para
 instalações técnicas ou recuperação manual, use o procedimento abaixo.

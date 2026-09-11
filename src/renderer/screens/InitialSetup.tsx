@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Database, LoaderCircle, ServerCog, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Database, LoaderCircle, Network, ServerCog, TriangleAlert } from "lucide-react";
 import type { InitialSetupInput, InitialSetupStatus } from "../../shared/ipc";
 import { PortusLogo } from "../components/PortusLogo";
 
@@ -9,6 +9,7 @@ interface Props {
 }
 
 const DEFAULTS: Omit<InitialSetupInput, "adminPassword" | "appPassword"> = {
+  installationMode: "server",
   postgresBin: "",
   databaseHost: "127.0.0.1",
   port: 5432,
@@ -37,6 +38,11 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function selectMode(installationMode: InitialSetupInput["installationMode"]) {
+    setError(null);
+    setForm((current) => ({ ...current, installationMode }));
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -52,7 +58,9 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
         setError(result.error);
         return;
       }
-      setMessage("Banco configurado e conexão validada. Abrindo o PORTUS…");
+      setMessage(form.installationMode === "server"
+        ? "Banco configurado e conexão validada. Abrindo o PORTUS…"
+        : "Conexão central validada. Abrindo o PORTUS…");
       window.setTimeout(onCompleted, 700);
     } catch {
       setError("Não foi possível executar a configuração. Confira as credenciais e tente novamente.");
@@ -87,23 +95,32 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
             </div>
           </div>
 
-          {!initialStatus.postgresBin && (
+          <div className="setup-mode-choice" role="radiogroup" aria-label="Tipo de instalação">
+            <button type="button" role="radio" aria-checked={form.installationMode === "server"} className={form.installationMode === "server" ? "is-selected" : ""} onClick={() => selectMode("server")}>
+              <ServerCog size={18} /><span><strong>Servidor central</strong><small>Cria ou atualiza o banco nesta máquina.</small></span>
+            </button>
+            <button type="button" role="radio" aria-checked={form.installationMode === "client"} className={form.installationMode === "client" ? "is-selected" : ""} onClick={() => selectMode("client")}>
+              <Network size={18} /><span><strong>Estação cliente</strong><small>Só conecta ao banco já existente.</small></span>
+            </button>
+          </div>
+
+          {form.installationMode === "server" && !initialStatus.postgresBin && (
             <div className="setup-warning"><TriangleAlert size={16} /> PostgreSQL não foi localizado automaticamente. Informe a pasta <code>bin</code>.</div>
           )}
           <form onSubmit={submit}>
-            <div className="field">
+            {form.installationMode === "server" && <div className="field">
               <label htmlFor="setup-postgres-bin">Pasta bin do PostgreSQL</label>
-              <div className="setup-input-icon"><ServerCog size={15} /><input id="setup-postgres-bin" value={form.postgresBin} onChange={(e) => update("postgresBin", e.target.value)} placeholder={'C:\\Program Files\\PostgreSQL\\18\\bin'} /></div>
+              <div className="setup-input-icon"><ServerCog size={15} /><input id="setup-postgres-bin" value={form.postgresBin ?? ""} onChange={(e) => update("postgresBin", e.target.value)} placeholder={'C:\\Program Files\\PostgreSQL\\18\\bin'} /></div>
               <small>Deve conter o arquivo <code>psql.exe</code>.</small>
-            </div>
+            </div>}
             <div className="setup-grid">
               <div className="field"><label htmlFor="setup-host">Servidor</label><input id="setup-host" value={form.databaseHost} onChange={(e) => update("databaseHost", e.target.value)} /></div>
               <div className="field"><label htmlFor="setup-port">Porta</label><input id="setup-port" type="number" min="1" max="65535" value={form.port} onChange={(e) => update("port", Number(e.target.value))} /></div>
             </div>
-            <div className="setup-grid">
+            {form.installationMode === "server" && <div className="setup-grid">
               <div className="field"><label htmlFor="setup-admin">Administrador PostgreSQL</label><input id="setup-admin" value={form.adminUser} onChange={(e) => update("adminUser", e.target.value)} /></div>
-              <div className="field"><label htmlFor="setup-admin-password">Senha do administrador</label><input id="setup-admin-password" type="password" value={form.adminPassword} onChange={(e) => update("adminPassword", e.target.value)} autoComplete="new-password" /></div>
-            </div>
+              <div className="field"><label htmlFor="setup-admin-password">Senha do administrador</label><input id="setup-admin-password" type="password" value={form.adminPassword ?? ""} onChange={(e) => update("adminPassword", e.target.value)} autoComplete="new-password" /></div>
+            </div>}
             <div className="setup-grid">
               <div className="field"><label htmlFor="setup-database">Banco</label><input id="setup-database" value={form.databaseName} onChange={(e) => update("databaseName", e.target.value)} /></div>
               <div className="field"><label htmlFor="setup-user">Usuário do PORTUS</label><input id="setup-user" value={form.appUser} onChange={(e) => update("appUser", e.target.value)} /></div>
@@ -115,7 +132,7 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
             {error && <div className="error">{error}</div>}
             {message && <div className="success"><CheckCircle2 size={16} /> {message}</div>}
             <button className="setup-submit" type="submit" disabled={running}>
-              {running ? <><LoaderCircle size={16} className="database-status__spinner" /> Configurando banco…</> : <><CheckCircle2 size={16} /> Configurar e validar</>}
+              {running ? <><LoaderCircle size={16} className="database-status__spinner" /> {form.installationMode === "server" ? "Configurando banco…" : "Validando conexão…"}</> : <><CheckCircle2 size={16} /> {form.installationMode === "server" ? "Configurar e validar" : "Conectar e validar"}</>}
             </button>
           </form>
         </div>
