@@ -10,7 +10,7 @@ import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { getEquipment, listEquipments, updateEquipment } from "../db/equipments-repo";
 import { updateEquipmentSchema, type UpdateEquipmentInput } from "../validation/schemas";
-import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
+import { compose, requireAuth, validateInput } from "./middleware";
 
 export function registerEquipmentsHandlers(): void {
   ipcMain.handle(
@@ -20,7 +20,7 @@ export function registerEquipmentsHandlers(): void {
 
   ipcMain.handle(
     IPC.equipmentsUpdate,
-    compose([requireAdmin, validateInput(updateEquipmentSchema)])(
+    compose([requireAuth, validateInput(updateEquipmentSchema)])(
       (_e, input: UpdateEquipmentInput): ServiceResult<Equipment> => {
         if (!getEquipment(input.id)) return { ok: false, error: "Equipamento não encontrado." };
         const cleaned: Record<string, any> = { id: input.id };

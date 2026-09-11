@@ -7,7 +7,7 @@ import { runBackup } from "../db/backup";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { updateSettingSchema, type UpdateSettingInput } from "../validation/schemas";
-import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
+import { compose, requireAuth, validateInput } from "./middleware";
 
 const DEFAULT_BACKUP_FOLDER = (): string => join(app.getPath("documents"), "PORTUS", "backups");
 const DEFAULT_BACKUP_RETENTION = 10;
@@ -43,14 +43,14 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle(
     IPC.settingsSelectExportFolder,
-    compose([requireAdmin])(async (): Promise<string | null> => {
+    compose([requireAuth])(async (): Promise<string | null> => {
       return selectExportFolderDialog();
     })
   );
 
   ipcMain.handle(
     IPC.settingsSelectBackupFolder,
-    compose([requireAdmin])(async (): Promise<string | null> => {
+    compose([requireAuth])(async (): Promise<string | null> => {
       return selectBackupFolderDialog();
     })
   );
