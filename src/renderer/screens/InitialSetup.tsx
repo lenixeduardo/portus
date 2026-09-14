@@ -8,6 +8,8 @@ interface Props {
   onCompleted: () => void;
 }
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
 const DEFAULTS: Omit<InitialSetupInput, "adminPassword" | "appPassword"> = {
   installationMode: "server",
   postgresBin: "",
@@ -40,13 +42,25 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
 
   function selectMode(installationMode: InitialSetupInput["installationMode"]) {
     setError(null);
-    setForm((current) => ({ ...current, installationMode }));
+    setForm((current) => ({
+      ...current,
+      installationMode,
+      databaseHost: installationMode === "server"
+        ? "127.0.0.1"
+        : LOOPBACK_HOSTS.has(current.databaseHost.trim().toLowerCase())
+          ? ""
+          : current.databaseHost
+    }));
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setMessage(null);
+    if (form.installationMode === "client" && LOOPBACK_HOSTS.has(form.databaseHost.trim().toLowerCase())) {
+      setError("Na estação cliente, informe o IP da máquina servidor.");
+      return;
+    }
     if (form.appPassword.length < 8 || confirmPassword.length < 8) {
       setError("A senha do PORTUS deve ter ao menos 8 caracteres.");
       return;
@@ -123,7 +137,19 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
               <small>Deve conter o arquivo <code>psql.exe</code>.</small>
             </div>}
             <div className="setup-grid">
-              <div className="field"><label htmlFor="setup-host">Servidor</label><input id="setup-host" value={form.databaseHost} onChange={(e) => update("databaseHost", e.target.value)} /></div>
+              <div className="field">
+                <label htmlFor="setup-host">{form.installationMode === "server" ? "Host local do PostgreSQL" : "IP do servidor central"}</label>
+                <input
+                  id="setup-host"
+                  value={form.databaseHost}
+                  onChange={(e) => update("databaseHost", e.target.value)}
+                  readOnly={form.installationMode === "server"}
+                  placeholder={form.installationMode === "client" ? "Ex.: 192.168.0.42" : undefined}
+                />
+                <small>{form.installationMode === "server"
+                  ? "Na máquina servidor, o bootstrap usa 127.0.0.1. Produção e Laboratório devem usar o IPv4 desta máquina na rede."
+                  : "Informe o IPv4 da máquina servidor. Não use localhost ou 127.0.0.1 nesta estação."}</small>
+              </div>
               <div className="field"><label htmlFor="setup-port">Porta</label><input id="setup-port" type="number" min="1" max="65535" value={form.port} onChange={(e) => update("port", Number(e.target.value))} /></div>
             </div>
             {form.installationMode === "server" && <div className="setup-grid">
