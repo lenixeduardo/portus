@@ -1,9 +1,11 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
-import { IPC, type ServiceResult } from "../../shared/ipc";
-import type { User } from "../../shared/types";
+import { IPC, type BarcodeUserRegistrationInput, type ServiceResult } from "../../shared/ipc";
+import type { LaboratoryProfile, User, UserSector } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
+import { isCentralDatabaseConfigured } from "../db/central-connection";
+import { ensureCentralUserAccess } from "../db/central-users-repo";
 import {
   countUsers,
   createUser,
@@ -14,6 +16,7 @@ import {
   updateUserPassword
 } from "../db/users-repo";
 import { getUserByUsername } from "../db/users-repo";
+import { generateUniqueUsername } from "../users/barcode-user-registration";
 import {
   changePasswordSchema,
   createUserSchema,
@@ -31,8 +34,29 @@ const createUserWithDisplayNameSchema = z.intersection(
 );
 type CreateUserWithDisplayNameInput = z.infer<typeof createUserWithDisplayNameSchema>;
 
+const barcodeUserRegistrationSchema = z.object({
+  barcode: z.string().regex(/^\d{16}$/, "A etiqueta do usuário deve conter exatamente 16 dígitos."),
+  displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo"),
+  profile: z.enum(["production", "laboratory_capture", "laboratory_closure"])
+});
+
+type ValidatedBarcodeUserRegistrationInput = z.infer<typeof barcodeUserRegistrationSchema>;
+
 function usernameExists(username: string): boolean {
   return getUserByUsername(username) != null;
+}
+
+function mapBarcodeProfile(profile: BarcodeUserRegistrationInput["profile"]): {
+  sectorCode: UserSector;
+  laboratoryProfile?: LaboratoryProfile;
+} {
+  if (profile === "laboratory_capture") {
+    return { sectorCode: "LABORATORY", laboratoryProfile: "capture" };
+  }
+  if (profile === "laboratory_closure") {
+    return { sectorCode: "LABORATORY", laboratoryProfile: "closure" };
+  }
+  return { sectorCode: "PRODUCTION" };
 }
 
 export function registerUsersHandlers(): void {
@@ -62,6 +86,63 @@ export function registerUsersHandlers(): void {
           input.displayName
         );
         logAudit({ actorUserId: actor?.id, action: "users.create", resourceType: "user", resourceId: user.id, details: { username: user.username, displayName: user.displayName, role: user.role, sectorCode: user.sectorCode, laboratoryProfile: user.laboratoryProfile } });
+        return { ok: true, data: user };
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.usersRegisterBarcode,
+    compose([requireAdmin, validateInput(barcodeUserRegistrationSchema)])(
+      async (_e, input: ValidatedBarcodeUserRegistrationInput): Promise<ServiceResult<User>> => {
+        const actor = getCurrentUser();
+        if (!actor) return { ok: false, error: "Sessão expirada." };
+
+        let username: string;
+        try {
+          username = generateUniqueUsername(input.displayName, usernameExists);
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Não foi possível gerar o usuário." };
+        }
+
+        const profile = mapBarcodeProfile(input.profile);
+        const user = createUser(
+          username,
+          input.barcode,
+          "operator",
+          profile.sectorCode,
+          profile.laboratoryProfile,
+          input.displayName
+        );
+
+        try {
+          if (isCentralDatabaseConfigured()) {
+            await ensureCentralUserAccess(user);
+          }
+        } catch (error) {
+          deleteUser(user.id);
+          return {
+            ok: false,
+            error: error instanceof Error
+              ? `Não foi possível sincronizar o usuário com a base central: ${error.message}`
+              : "Não foi possível sincronizar o usuário com a base central."
+          };
+        }
+
+        logAudit({
+          actorUserId: actor.id,
+          action: "users.create_barcode",
+          resourceType: "user",
+          resourceId: user.id,
+          details: {
+            username: user.username,
+            displayName: user.displayName,
+            role: user.role,
+            sectorCode: user.sectorCode,
+            laboratoryProfile: user.laboratoryProfile
+          }
+        });
+
         return { ok: true, data: user };
       }
     )
