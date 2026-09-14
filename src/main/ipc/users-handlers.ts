@@ -23,9 +23,12 @@ import {
 } from "../validation/schemas";
 import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
 
-const createUserWithDisplayNameSchema = createUserSchema.extend({
-  displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo").optional()
-});
+const createUserWithDisplayNameSchema = z.intersection(
+  createUserSchema,
+  z.object({
+    displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo").optional()
+  })
+);
 type CreateUserWithDisplayNameInput = z.infer<typeof createUserWithDisplayNameSchema>;
 
 function usernameExists(username: string): boolean {
