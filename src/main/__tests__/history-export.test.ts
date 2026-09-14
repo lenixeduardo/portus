@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildCsvContent, buildXlsxBuffer } from "../db/history-repo";
+import { buildCsvContent } from "../db/history-repo";
+import { buildExcelAutomationScript } from "../db/excel-report";
 import type { BatchHistory } from "../../shared/ipc";
 
 function sampleHistory(): BatchHistory {
@@ -28,22 +29,21 @@ function sampleHistory(): BatchHistory {
 }
 
 describe("exportação unificada de leituras", () => {
-  it("preserva setor, responsável e valor de cada sessão no CSV legado", () => {
+  it("preserva setor, responsável e valor de cada sessão no CSV intermediário", () => {
     const csv = buildCsvContent(sampleHistory());
     expect(csv).toContain("Setor;Responsável");
     expect(csv).toContain("Produção;producao;Balança;3;1,25;1,25");
     expect(csv).toContain("Laboratório;laboratorio;pH;;7,2;7,2");
   });
 
-  it("gera XLSX real com cabeçalho estilizado, larguras, filtro e primeira linha congelada", () => {
-    const xlsx = buildXlsxBuffer(sampleHistory());
-    expect(xlsx.subarray(0, 2).toString("ascii")).toBe("PK");
-    const raw = xlsx.toString("utf8");
-    expect(raw).toContain("<pane ySplit=\"1\" topLeftCell=\"A2\"");
-    expect(raw).toContain("<autoFilter ref=\"A1:O3\"");
-    expect(raw).toContain("width=\"16\"");
-    expect(raw).toContain("rgb=\"FF111215\"");
-    expect(raw).toContain("rgb=\"FFFFFFFF\"");
+  it("gera automação do Excel com cabeçalho, larguras, filtro, congelamento e formato XLSX", () => {
+    const script = buildExcelAutomationScript();
+    expect(script).toContain("FreezePanes = $true");
+    expect(script).toContain("AutoFilter()");
+    expect(script).toContain("SaveAs($destination, 51)");
+    expect(script).toContain("@(16,18,14,20,10,18,18,18,14,16,16,12,16,16,22)");
+    expect(script).toContain("$header.Interior.Color = Rgb 17 18 21");
+    expect(script).toContain("$header.Font.Color = Rgb 255 255 255");
   });
 
   it("usa a cor atual do tema como padrão do código de barras", () => {
