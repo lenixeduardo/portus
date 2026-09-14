@@ -8,16 +8,16 @@ function source(path: string): string {
 
 describe("usuários por etiqueta de 16 dígitos", () => {
   it("persiste nome exibido no usuário local e central", () => {
-    const migrations = source("src/main/db/migrations.ts");
+    const migrate = source("src/main/db/migrate.ts");
     const usersRepo = source("src/main/db/users-repo.ts");
     const centralUsers = source("src/main/db/central-users-repo.ts");
-    const schemas = source("src/main/validation/schemas.ts");
+    const usersHandlers = source("src/main/ipc/users-handlers.ts");
 
-    expect(migrations).toContain('name: "019_user_display_name"');
-    expect(migrations).toContain("ALTER TABLE users ADD COLUMN display_name TEXT");
+    expect(migrate).toContain('USER_DISPLAY_NAME_MIGRATION = "019_user_display_name"');
+    expect(migrate).toContain("ALTER TABLE users ADD COLUMN display_name TEXT");
     expect(usersRepo).toContain("display_name");
     expect(usersRepo).toContain("displayName");
-    expect(schemas).toContain("displayName: z");
+    expect(usersHandlers).toContain("displayName: z.string()");
     expect(centralUsers).toContain("user.displayName ?? user.username");
   });
 
@@ -37,22 +37,29 @@ describe("usuários por etiqueta de 16 dígitos", () => {
     expect(login).toContain("username: code, password: code");
   });
 
-  it("intercepta etiqueta de usuário antes do fluxo de lote no dashboard", () => {
-    const dashboard = source("src/renderer/screens/Dashboard.tsx");
-    expect(dashboard).toContain("isUserBarcode(code)");
-    expect(dashboard).toContain("pendingUserBarcode");
-    expect(dashboard).toContain("Cadastrar usuário por etiqueta");
-    expect(dashboard).toContain("password: pendingUserBarcode");
+  it("intercepta etiquetas de usuário antes de chegarem ao fluxo de lote", () => {
+    const registration = source("src/renderer/components/UserBarcodeRegistration.tsx");
+    const sidebar = source("src/renderer/components/Sidebar.tsx");
+    const hook = source("src/renderer/hooks/useBarcodeScanner.ts");
+
+    expect(sidebar).toContain("<UserBarcodeRegistration user={user} />");
+    expect(registration).toContain("pendingUserBarcode");
+    expect(registration).toContain("shouldIntercept: isUserBarcode");
+    expect(registration).toContain("password: pendingUserBarcode");
+    expect(hook).toContain("e.stopImmediatePropagation()");
   });
 
   it("mantém autorização de cadastro no processo principal", () => {
     const usersHandlers = source("src/main/ipc/users-handlers.ts");
-    expect(usersHandlers).toContain("compose([requireAdmin, validateInput(createUserSchema)])");
+    expect(usersHandlers).toContain("compose([requireAdmin, validateInput(createUserWithDisplayNameSchema)])");
     expect(usersHandlers).toContain('input.role === "master" && actor?.role !== "master"');
   });
 
-  it("mostra reabertura de lote somente ao Master", () => {
-    const history = source("src/renderer/screens/History.tsx");
-    expect(history).toContain('const canReopenBatch = user.role === "master";');
+  it("oculta reabertura de lote para perfis que não são Master", () => {
+    const registration = source("src/renderer/components/UserBarcodeRegistration.tsx");
+    const roleVisibility = source("src/renderer/role-visibility.css");
+    expect(registration).toContain("document.documentElement.dataset.userRole = user.role");
+    expect(roleVisibility).toContain('html[data-user-role="admin"] .history-reopen-btn');
+    expect(roleVisibility).toContain('html[data-user-role="operator"] .history-reopen-btn');
   });
 });
