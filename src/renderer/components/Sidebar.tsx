@@ -2,6 +2,7 @@ import React from "react";
 import { LayoutDashboard, Package, Clock, Settings, ExternalLink, Bug, LogOut } from "lucide-react";
 import type { User } from "../../shared/types";
 import { PortusLogo } from "./PortusLogo";
+import { UserBarcodeRegistration } from "./UserBarcodeRegistration";
 
 const CONNECT_URL = "https://kairos-connect-nine.vercel.app";
 
@@ -28,57 +29,60 @@ export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: 
   );
 
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <PortusLogo variant="sidebar" />
-      </div>
-      <nav>
-        {visibleNav.map((item) => {
-          const Icon = item.icon;
-          return (
-            <a
-              key={item.key}
-              href="#"
-              className={current === item.key ? "active" : ""}
-              onClick={(e) => {
-                e.preventDefault();
-                onNavigate(item.key);
-              }}
-            >
-              <Icon size={15} />
-              {item.label}
-            </a>
-          );
-        })}
-      </nav>
-      <div className="ecosystem">
-        <div className="ecosystem-label">Ecossistema</div>
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            window.api.shell.openExternal(CONNECT_URL).catch(console.error);
-          }}
-        >
-          <ExternalLink size={15} />
-          Kairos Connect
-        </a>
-      </div>
-      <div className="sidebar-actions">
-        <button
-          className="sidebar-action"
-          onClick={onReportError}
-          title="Reportar um erro ao suporte"
-          style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginBottom: 6 }}
-        >
-          <Bug size={15} />
-          Reportar Erro
-        </button>
-        <button className="sidebar-action" onClick={onLogout}>
-          <LogOut size={15} />
-          Sair
-        </button>
-      </div>
-    </aside>
+    <>
+      <aside className="sidebar">
+        <div className="brand">
+          <PortusLogo variant="sidebar" />
+        </div>
+        <nav>
+          {visibleNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.key}
+                href="#"
+                className={current === item.key ? "active" : ""}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate(item.key);
+                }}
+              >
+                <Icon size={15} />
+                {item.label}
+              </a>
+            );
+          })}
+        </nav>
+        <div className="ecosystem">
+          <div className="ecosystem-label">Ecossistema</div>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              window.api.shell.openExternal(CONNECT_URL).catch(console.error);
+            }}
+          >
+            <ExternalLink size={15} />
+            Kairos Connect
+          </a>
+        </div>
+        <div className="sidebar-actions">
+          <button
+            className="sidebar-action"
+            onClick={onReportError}
+            title="Reportar um erro ao suporte"
+            style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginBottom: 6 }}
+          >
+            <Bug size={15} />
+            Reportar Erro
+          </button>
+          <button className="sidebar-action" onClick={onLogout}>
+            <LogOut size={15} />
+            Sair
+          </button>
+        </div>
+      </aside>
+      <UserBarcodeRegistration user={user} />
+    </>
   );
 }

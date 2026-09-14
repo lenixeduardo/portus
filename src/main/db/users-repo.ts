@@ -6,6 +6,7 @@ interface UserRow {
   id: number;
   username: string;
   password_hash: string;
+  display_name: string | null;
   role: UserRole;
   sector_code: UserSector;
   laboratory_profile: LaboratoryProfile | null;
@@ -16,6 +17,7 @@ function rowToUser(row: UserRow): User {
   return {
     id: row.id,
     username: row.username,
+    displayName: row.display_name ?? undefined,
     role: row.role ?? "admin",
     sectorCode: row.sector_code ?? "PRODUCTION",
     laboratoryProfile: row.laboratory_profile ?? undefined,
@@ -24,7 +26,7 @@ function rowToUser(row: UserRow): User {
 }
 
 export function listUsers(): User[] {
-  return all<UserRow>("SELECT * FROM users ORDER BY username COLLATE NOCASE").map(rowToUser);
+  return all<UserRow>("SELECT * FROM users ORDER BY COALESCE(display_name, username) COLLATE NOCASE").map(rowToUser);
 }
 
 export function getUser(id: number): User | null {
@@ -41,12 +43,13 @@ export function createUser(
   password: string,
   role: UserRole = "operator",
   sectorCode: UserSector = "PRODUCTION",
-  laboratoryProfile?: LaboratoryProfile
+  laboratoryProfile?: LaboratoryProfile,
+  displayName?: string
 ): User {
   const hash = bcrypt.hashSync(password, 10);
   const id = run(
-    "INSERT INTO users (username, password_hash, role, sector_code, laboratory_profile) VALUES (?, ?, ?, ?, ?)",
-    username, hash, role, sectorCode, laboratoryProfile ?? null
+    "INSERT INTO users (username, password_hash, display_name, role, sector_code, laboratory_profile) VALUES (?, ?, ?, ?, ?, ?)",
+    username, hash, displayName?.trim() || null, role, sectorCode, laboratoryProfile ?? null
   );
   return getUser(id)!;
 }

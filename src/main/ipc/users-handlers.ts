@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import { IPC, type ServiceResult } from "../../shared/ipc";
 import type { User } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
@@ -18,10 +19,17 @@ import {
   createUserSchema,
   deleteUserSchema,
   type ChangePasswordInput,
-  type CreateUserInput,
   type DeleteUserInput
 } from "../validation/schemas";
 import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
+
+const createUserWithDisplayNameSchema = z.intersection(
+  createUserSchema,
+  z.object({
+    displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo").optional()
+  })
+);
+type CreateUserWithDisplayNameInput = z.infer<typeof createUserWithDisplayNameSchema>;
 
 function usernameExists(username: string): boolean {
   return getUserByUsername(username) != null;
@@ -35,8 +43,8 @@ export function registerUsersHandlers(): void {
 
   ipcMain.handle(
     IPC.usersCreate,
-    compose([requireAdmin, validateInput(createUserSchema)])(
-      (_e, input: CreateUserInput): ServiceResult<User> => {
+    compose([requireAdmin, validateInput(createUserWithDisplayNameSchema)])(
+      (_e, input: CreateUserWithDisplayNameInput): ServiceResult<User> => {
         const actor = getCurrentUser();
         if (input.role === "master" && actor?.role !== "master") {
           return { ok: false, error: "Somente o usuário Master pode criar outro perfil Master." };
@@ -50,9 +58,10 @@ export function registerUsersHandlers(): void {
           input.password,
           input.role ?? "operator",
           input.sectorCode ?? "PRODUCTION",
-          input.laboratoryProfile
+          input.laboratoryProfile,
+          input.displayName
         );
-        logAudit({ actorUserId: actor?.id, action: "users.create", resourceType: "user", resourceId: user.id, details: { username: user.username, role: user.role, sectorCode: user.sectorCode, laboratoryProfile: user.laboratoryProfile } });
+        logAudit({ actorUserId: actor?.id, action: "users.create", resourceType: "user", resourceId: user.id, details: { username: user.username, displayName: user.displayName, role: user.role, sectorCode: user.sectorCode, laboratoryProfile: user.laboratoryProfile } });
         return { ok: true, data: user };
       }
     )

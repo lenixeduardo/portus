@@ -1,6 +1,8 @@
 import { exec, all, run } from "./query";
 import { migrations } from "./migrations";
 
+const USER_DISPLAY_NAME_MIGRATION = "019_user_display_name";
+
 export function runMigrations(): void {
   exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     name TEXT PRIMARY KEY,
@@ -14,5 +16,14 @@ export function runMigrations(): void {
     exec(m.sql);
     run("INSERT INTO schema_migrations (name) VALUES (?)", m.name);
     console.log(`[db] migration applied: ${m.name}`);
+  }
+
+  if (!applied.has(USER_DISPLAY_NAME_MIGRATION)) {
+    const columns = all<{ name: string }>("PRAGMA table_info(users)");
+    if (!columns.some((column) => column.name === "display_name")) {
+      exec("ALTER TABLE users ADD COLUMN display_name TEXT");
+    }
+    run("INSERT INTO schema_migrations (name) VALUES (?)", USER_DISPLAY_NAME_MIGRATION);
+    console.log(`[db] migration applied: ${USER_DISPLAY_NAME_MIGRATION}`);
   }
 }
