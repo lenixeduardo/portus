@@ -6,7 +6,7 @@ const MIN_BARCODE_LENGTH = 4;
 interface BarcodeScannerOptions {
   ignoreFormFields?: boolean;
   capture?: boolean;
-  stopPropagationOnScan?: boolean;
+  shouldIntercept?: (code: string) => boolean;
 }
 
 export function useBarcodeScanner(
@@ -17,12 +17,13 @@ export function useBarcodeScanner(
   const bufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
   const onScanRef = useRef(onScan);
+  const shouldInterceptRef = useRef(options.shouldIntercept);
   onScanRef.current = onScan;
+  shouldInterceptRef.current = options.shouldIntercept;
 
   const {
     ignoreFormFields = true,
-    capture = false,
-    stopPropagationOnScan = false
+    capture = false
   } = options;
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function useBarcodeScanner(
         bufferRef.current = "";
         lastKeyTimeRef.current = 0;
         if (code.length >= MIN_BARCODE_LENGTH) {
-          if (stopPropagationOnScan) {
+          if (shouldInterceptRef.current?.(code)) {
             e.preventDefault();
             e.stopImmediatePropagation();
           }
@@ -68,5 +69,5 @@ export function useBarcodeScanner(
 
     window.addEventListener("keydown", handleKeyDown, capture);
     return () => window.removeEventListener("keydown", handleKeyDown, capture);
-  }, [enabled, ignoreFormFields, capture, stopPropagationOnScan]);
+  }, [enabled, ignoreFormFields, capture]);
 }
