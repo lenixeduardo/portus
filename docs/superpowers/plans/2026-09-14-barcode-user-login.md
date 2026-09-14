@@ -1,102 +1,175 @@
-# Barcode User Login Implementation Plan
+# Barcode User Registration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add 16-digit barcode-based user registration and login while preserving existing manual login and lot scanning.
+**Goal:** Register operational users from exactly 16 numeric barcode digits, generating usernames from the informed name while keeping the scanned value as the permanent bcrypt-hashed password.
 
-**Architecture:** Reuse the existing local user repository and auth IPC as the source of truth. Add display-name support to the local user model, classify 16-digit scans in the dashboard before lot handling, and use the same scanner hook on Login with input interception enabled. Keep all privilege checks in the main process.
+**Architecture:** Keep scanner classification in shared code, but move username generation, collision handling, profile validation, authorization and persistence into the main process. The renderer only confirms the 16-digit user label, collects name/profile, shows the server-generated username after creation, and never creates Admin/Master accounts through this flow.
 
-**Tech Stack:** Electron, React, TypeScript, sql.js/SQLite, bcryptjs, Vitest.
+**Tech Stack:** Electron, React, TypeScript, sql.js/SQLite, PostgreSQL, bcryptjs, Vitest.
 
 **Spec:** `docs/superpowers/specs/2026-09-14-barcode-user-login-design.md`
 
 ## Global Constraints
 
 - User labels are exactly 16 numeric digits.
-- Username and initial password are both the scanned 16-digit code.
-- Passwords remain bcrypt-hashed and are never persisted in plaintext.
-- Only Admin/Master can register users by label; only Master can create another Master.
-- Manual login and non-16-digit lot scanning must continue to work.
-- History reopen UI must be Master-only.
+- The scanned 16 digits are the permanent password, but only a bcrypt hash may be persisted.
+- Username is generated from the informed display name and collisions receive numeric suffixes starting at `2`.
+- Barcode registration profiles are only Production, Laboratory Capture and Laboratory Closure.
+- Admin and Master cannot be created through barcode registration.
+- Registration requires an authenticated Admin/Master and authorization is enforced in the main process.
+- Non-16-digit scans continue through the existing lot flow.
+- Manual login remains unchanged; barcode auto-login is out of scope.
+- Central PostgreSQL identity/permissions are synchronized from the created local user.
 
 ---
 
-### Task 1: User model and persistence
+### Task 1: Regression contract for the approved behavior
 
 **Files:**
-- Modify: `src/shared/types.ts`
-- Modify: `src/shared/ipc.ts`
-- Modify: `src/main/db/migrations.ts`
-- Modify: `src/main/db/users-repo.ts`
-- Modify: `src/main/validation/schemas.ts`
-- Modify: `src/main/db/central-users-repo.ts`
-- Test: `src/main/__tests__/barcode-user-access.test.ts`
-
-**Interfaces:**
-- `User.displayName?: string`
-- `UserCreateInput.displayName: string`
-- `createUser(username, password, role, sectorCode, laboratoryProfile, displayName)`
-
-- [ ] Write failing tests asserting migration `019_user_display_name`, input validation, and central display-name mirroring.
-- [ ] Verify tests fail because display-name support is absent.
-- [ ] Add nullable local `display_name`, shared types, repository mapping/insertion, validation, and central mirroring.
-- [ ] Run targeted tests and verify green.
-
-### Task 2: Barcode classification and scanner behavior
-
-**Files:**
-- Create: `src/shared/user-barcode.ts`
-- Modify: `src/renderer/hooks/useBarcodeScanner.ts`
-- Test: `src/main/__tests__/barcode-user-access.test.ts`
+- Modify: `src/main/__tests__/barcode-user-access.test.ts`
 
 **Interfaces:**
 - `isUserBarcode(code: string): boolean`
-- `useBarcodeScanner(onScan, enabled, options?: { ignoreFormFields?: boolean })`
+- Main-process barcode registration contract accepts `{ barcode, displayName, profile }`.
+- Supported profile values: `production`, `laboratory_capture`, `laboratory_closure`.
 
-- [ ] Write failing tests for exact 16-digit classification and source-level scanner option contract.
-- [ ] Verify red.
-- [ ] Implement classifier and scanner option with default behavior unchanged.
-- [ ] Verify targeted tests green.
+- [ ] **Step 1: Write failing tests**
 
-### Task 3: Admin/Master registration from dashboard
+Assert that the current implementation fails the approved contract by requiring all of the following:
+
+```ts
+expect(usersHandlers).toContain("generateUniqueUsername");
+expect(usersHandlers).toContain("normalizeUsername");
+expect(usersHandlers).toContain("barcodeUserRegistrationSchema");
+expect(usersHandlers).toContain('z.enum(["production", "laboratory_capture", "laboratory_closure"])');
+expect(registration).toContain("profile");
+expect(registration).not.toContain('<option value="admin">');
+expect(registration).not.toContain('<option value="master">');
+expect(login).not.toContain("username: code, password: code");
+```
+
+Also assert deterministic collision suffixing through a focused exported username helper test.
+
+- [ ] **Step 2: Run targeted test and verify RED**
+
+Run:
+
+```bash
+npm test -- src/main/__tests__/barcode-user-access.test.ts
+```
+
+Expected: FAIL because the current flow uses the 16-digit code as username, exposes Admin/Master profile options, and still includes barcode auto-login.
+
+### Task 2: Username generation and dedicated main-process registration
 
 **Files:**
-- Modify: `src/renderer/screens/Dashboard.tsx`
+- Create: `src/main/users/barcode-user-registration.ts`
 - Modify: `src/main/ipc/users-handlers.ts`
+- Modify: `src/shared/ipc.ts`
+- Modify: `src/preload/index.ts`
 - Test: `src/main/__tests__/barcode-user-access.test.ts`
 
 **Interfaces:**
-- Dashboard intercepts `isUserBarcode(code)` before lot handling for Admin/Master.
-- Existing `window.api.users.create` is used with scanned code for username/password.
 
-- [ ] Write failing contract tests for dashboard interception, modal fields, and main-process Admin/Master authorization.
-- [ ] Verify red.
-- [ ] Add registration state/modal, role/sector/profile fields, save flow and user-facing success/error.
-- [ ] Keep existing `requireAdmin` and Master-only Master creation enforcement in main process; persist display name.
-- [ ] Verify targeted tests green.
+```ts
+export type BarcodeUserProfile = "production" | "laboratory_capture" | "laboratory_closure";
 
-### Task 4: Barcode auto-login
+export interface BarcodeUserRegistrationInput {
+  barcode: string;
+  displayName: string;
+  profile: BarcodeUserProfile;
+}
+
+export function normalizeUsername(displayName: string): string;
+export function generateUniqueUsername(displayName: string, exists: (username: string) => boolean): string;
+```
+
+- [ ] **Step 1: Implement minimal username helper**
+
+Normalize with Unicode NFD diacritic removal, lowercase, non-alphanumeric runs to `.`, trim dots, reject empty output, then suffix `2`, `3`, ... while `exists(candidate)` returns true.
+
+- [ ] **Step 2: Add a dedicated IPC channel and schema**
+
+Add `IPC.usersRegisterBarcode` and `BarcodeUserRegistrationInput`. Main-process validation requires `^\d{16}$`, non-empty `displayName`, and the exact three-profile enum.
+
+- [ ] **Step 3: Map profile to the existing user model**
+
+```ts
+production -> role operator, sector PRODUCTION
+laboratory_capture -> role operator, sector LABORATORY, laboratoryProfile capture
+laboratory_closure -> role operator, sector LABORATORY, laboratoryProfile closure
+```
+
+Call `createUser(generatedUsername, barcode, ...)` so bcrypt remains the persistence path. Never include the barcode in audit details.
+
+- [ ] **Step 4: Synchronize central identity**
+
+If the central database is configured, call the existing `ensureCentralUserAccess(user)` after local creation and return an error if synchronization fails.
+
+- [ ] **Step 5: Expose preload API**
+
+Add `window.api.users.registerBarcode(input)` returning `ServiceResult<User>`.
+
+### Task 3: Registration UI and scanner interception
 
 **Files:**
+- Modify: `src/renderer/components/UserBarcodeRegistration.tsx`
 - Modify: `src/renderer/screens/Login.tsx`
 - Test: `src/main/__tests__/barcode-user-access.test.ts`
 
 **Interfaces:**
-- Login scanner calls `auth.login({ username: code, password: code })` only for `isUserBarcode(code)`.
+- Existing scanner interception remains based on `isUserBarcode` and `stopImmediatePropagation()` before lot handlers.
+- Renderer calls only `window.api.users.registerBarcode({ barcode, displayName, profile })`.
 
-- [ ] Write failing contract test for barcode login payload and scanner option.
-- [ ] Verify red.
-- [ ] Add scanner login callback with loading/error handling shared with manual login.
-- [ ] Verify targeted tests green.
+- [ ] **Step 1: Remove barcode auto-login**
 
-### Task 5: Master-only reopen UI and full verification
+Delete the scanner-driven `auth.login({ username: code, password: code })` behavior from `Login.tsx`; manual login remains unchanged.
+
+- [ ] **Step 2: Simplify registration form**
+
+Keep confirmation first. Details phase contains:
+
+```text
+Nome
+Usuário: gerado automaticamente pelo nome
+Senha permanente: [16-digit scanned value]
+Perfil: Produção | Laboratório — Captura | Laboratório — Fechamento
+```
+
+No Admin/Master options are rendered.
+
+- [ ] **Step 3: Save through dedicated API**
+
+Call `users.registerBarcode`; on success show `Usuário <generatedUsername> cadastrado com sucesso.` and close the modal.
+
+### Task 4: Verification and integration
 
 **Files:**
-- Modify: `src/renderer/screens/History.tsx`
 - Test: `src/main/__tests__/barcode-user-access.test.ts`
+- Existing CI: `.github/workflows/build-installer.yml`
 
-- [ ] Write failing test that reopen visibility checks `user.role === "master"`.
-- [ ] Verify red.
-- [ ] Restrict UI visibility to Master.
-- [ ] Run `npm test` and `npm run typecheck`.
-- [ ] Open PR so the Windows packaging workflow validates the branch; merge to `main` only after successful verification.
+- [ ] **Step 1: Run targeted test**
+
+```bash
+npm test -- src/main/__tests__/barcode-user-access.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 2: Run full verification**
+
+```bash
+npm test
+npm run typecheck
+```
+
+Expected: both exit 0.
+
+- [ ] **Step 3: Open PR**
+
+Open a PR from `feat/barcode-user-registration-final` to `main` so the Windows workflow runs tests and packaging.
+
+- [ ] **Step 4: Merge only after CI is green**
+
+If CI passes and the diff matches this spec, fast-forward/merge to `main`.
