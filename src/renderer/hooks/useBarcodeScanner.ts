@@ -1,27 +1,36 @@
 import { useEffect, useRef } from "react";
 
-// HID barcode scanners send keystrokes much faster than a human can type.
-// We treat a sequence as scanner input when every keystroke arrives within
-// SCAN_INTERVAL_MS of the previous one AND the sequence ends with Enter.
 const SCAN_INTERVAL_MS = 50;
 const MIN_BARCODE_LENGTH = 4;
 
+interface BarcodeScannerOptions {
+  ignoreFormFields?: boolean;
+  capture?: boolean;
+  stopPropagationOnScan?: boolean;
+}
+
 export function useBarcodeScanner(
   onScan: (code: string) => void,
-  enabled = true
+  enabled = true,
+  options: BarcodeScannerOptions = {}
 ): void {
   const bufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
 
+  const {
+    ignoreFormFields = true,
+    capture = false,
+    stopPropagationOnScan = false
+  } = options;
+
   useEffect(() => {
     if (!enabled) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      // Ignore events from input/textarea/select — don't intercept manual form input.
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (ignoreFormFields && (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT")) return;
 
       const now = Date.now();
 
@@ -30,16 +39,18 @@ export function useBarcodeScanner(
         bufferRef.current = "";
         lastKeyTimeRef.current = 0;
         if (code.length >= MIN_BARCODE_LENGTH) {
+          if (stopPropagationOnScan) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
           onScanRef.current(code);
         }
         return;
       }
 
-      // Ignore modifier keys to prevent resetting the scanner buffer
       const IGNORED_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
       if (IGNORED_KEYS.has(e.key)) return;
 
-      // Non-printable keys reset the buffer.
       if (e.key.length !== 1) {
         bufferRef.current = "";
         lastKeyTimeRef.current = 0;
@@ -47,8 +58,6 @@ export function useBarcodeScanner(
       }
 
       const elapsed = now - lastKeyTimeRef.current;
-
-      // If this character arrived too slowly after the last one, start fresh.
       if (bufferRef.current.length > 0 && elapsed > SCAN_INTERVAL_MS) {
         bufferRef.current = "";
       }
@@ -57,7 +66,7 @@ export function useBarcodeScanner(
       lastKeyTimeRef.current = now;
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled]);
+    window.addEventListener("keydown", handleKeyDown, capture);
+    return () => window.removeEventListener("keydown", handleKeyDown, capture);
+  }, [enabled, ignoreFormFields, capture, stopPropagationOnScan]);
 }
