@@ -42,4 +42,11 @@ describe("assistente de configuração inicial", () => {
     expect(initialSetupSource).toContain("catch (cause)");
     expect(initialSetupSource).toContain("cause instanceof Error");
   });
+
+  it("distingue o host local do servidor do IP usado nas estações", () => {
+    expect(initialSetupSource).toContain("Host local do PostgreSQL");
+    expect(initialSetupSource).toContain("IP do servidor central");
+    expect(initialSetupSource).toContain('readOnly={form.installationMode === "server"}');
+    expect(initialSetupSource).toContain("Na estação cliente, informe o IP da máquina servidor.");
+  });
 });
