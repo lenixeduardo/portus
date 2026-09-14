@@ -4,6 +4,7 @@ import {
   type AppSettings,
   type BarcodeScanInput,
   type BarcodeScanResponse,
+  type BarcodeUserRegistrationInput,
   type BatchHistory,
   type BatchInput,
   type BatchWithProduct,
@@ -93,6 +94,8 @@ const api: SerialReaderApi = {
     list: (): Promise<User[]> => ipcRenderer.invoke(IPC.usersList),
     create: (input: UserCreateInput): Promise<ServiceResult<User>> =>
       ipcRenderer.invoke(IPC.usersCreate, input),
+    registerBarcode: (input: BarcodeUserRegistrationInput): Promise<ServiceResult<User>> =>
+      ipcRenderer.invoke(IPC.usersRegisterBarcode, input),
     changePassword: (id: number, newPassword: string): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.usersChangePassword, { id, password: newPassword }),
     remove: (id: number): Promise<ServiceResult<true>> =>
