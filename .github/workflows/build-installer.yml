@@ -1,7 +1,7 @@
 name: Build instalável (Windows)
 
-# Gera o instalável NSIS (.exe) a cada PR, garantindo que sempre haja
-# uma versão instalável correta pronta para download nos artifacts.
+# Valida testes e gera o instalável NSIS (.exe) a cada PR, garantindo que
+# a versão empacotada passou pela suíte automatizada antes de ser publicada.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   package:
-    name: npm run package
+    name: testes + npm run package
     runs-on: windows-latest
 
     steps:
@@ -28,6 +28,9 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci
+
+      - name: Rodar testes
+        run: npm test
 
       - name: Gerar instalável
         run: npm run package
