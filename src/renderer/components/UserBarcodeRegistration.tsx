@@ -24,7 +24,7 @@ export function UserBarcodeRegistration({ user }: Props) {
 
   useBarcodeScanner(
     (code) => {
-      if (!allowed || !isUserBarcode(code) || pendingUserBarcode) return;
+      if (!isUserBarcode(code) || pendingUserBarcode) return;
       setPendingUserBarcode(code.trim());
       setPhase("confirm");
       setDisplayName("");
@@ -34,10 +34,10 @@ export function UserBarcodeRegistration({ user }: Props) {
       setError(null);
       setSuccess(null);
     },
-    allowed && !pendingUserBarcode,
+    !pendingUserBarcode,
     {
       capture: true,
-      shouldIntercept: (code) => allowed && isUserBarcode(code)
+      shouldIntercept: isUserBarcode
     }
   );
 
@@ -49,7 +49,7 @@ export function UserBarcodeRegistration({ user }: Props) {
   }
 
   async function saveUser() {
-    if (!pendingUserBarcode) return;
+    if (!pendingUserBarcode || !allowed) return;
     const cleanName = displayName.trim();
     if (!cleanName) {
       setError("Informe o nome do usuário.");
@@ -84,6 +84,20 @@ export function UserBarcodeRegistration({ user }: Props) {
     }
   }
 
+  const footer = !allowed ? (
+    <button onClick={closeModal}>Fechar</button>
+  ) : phase === "confirm" ? (
+    <>
+      <button className="secondary" onClick={closeModal}>Não, cancelar</button>
+      <button onClick={() => setPhase("details")}>Sim, é um usuário</button>
+    </>
+  ) : (
+    <>
+      <button className="secondary" onClick={() => setPhase("confirm")} disabled={saving}>Voltar</button>
+      <button onClick={saveUser} disabled={saving}>{saving ? "Salvando..." : "Cadastrar usuário"}</button>
+    </>
+  );
+
   return (
     <>
       {success && (
@@ -94,22 +108,23 @@ export function UserBarcodeRegistration({ user }: Props) {
 
       {pendingUserBarcode && (
         <Modal
-          title="Cadastrar usuário por etiqueta"
+          title="Etiqueta de usuário"
           onClose={closeModal}
           width={520}
-          footer={phase === "confirm" ? (
-            <>
-              <button className="secondary" onClick={closeModal}>Não, cancelar</button>
-              <button onClick={() => setPhase("details")}>Sim, é um usuário</button>
-            </>
-          ) : (
-            <>
-              <button className="secondary" onClick={() => setPhase("confirm")} disabled={saving}>Voltar</button>
-              <button onClick={saveUser} disabled={saving}>{saving ? "Salvando..." : "Cadastrar usuário"}</button>
-            </>
-          )}
+          footer={footer}
         >
-          {phase === "confirm" ? (
+          {!allowed ? (
+            <div>
+              <p style={{ marginBottom: 12 }}>Este código de 16 dígitos foi identificado como uma etiqueta de usuário.</p>
+              <div className="field">
+                <label>Etiqueta</label>
+                <input className="mono" value={pendingUserBarcode} readOnly />
+              </div>
+              <div className="error" style={{ marginBottom: 0 }}>
+                Somente Admin ou Master podem cadastrar novos usuários por etiqueta.
+              </div>
+            </div>
+          ) : phase === "confirm" ? (
             <div>
               <p style={{ marginBottom: 16 }}>Este código de 16 dígitos é uma etiqueta de usuário?</p>
               <div className="field">
