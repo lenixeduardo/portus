@@ -1,54 +1,96 @@
-# Barcode User Login Design
+# Barcode User Registration Design
 
 ## Goal
 
-Allow PORTUS to use 16-digit barcode labels as user credentials. Admin and Master users can register a new labeled user by scanning the label; registered users can later scan the same label on the login screen to authenticate automatically.
+Allow PORTUS to recognize exactly 16 numeric digits from the physical barcode scanner as a user-registration label, ask for confirmation, collect the operator's name and operational profile, and persist the user safely in the existing `users` domain.
 
-## Functional rules
+## Approved functional rules
 
 - A user label is exactly 16 numeric digits: `^\d{16}$`.
-- For label-created accounts, `username` is the 16-digit code and the initial password is the same 16-digit code.
-- The password must never be stored in plaintext; the existing bcrypt user repository remains the authority for password hashing.
-- The registration flow asks for the user's display name and operational profile.
-- Only authenticated `admin` or `master` users may register a label-created account.
-- An `admin` may create `admin` or `operator` accounts but may not create `master`; only `master` may create another `master`, preserving the existing authorization rule.
-- The creator selects sector (`PRODUCTION` or `LABORATORY`). Laboratory users must also select `capture` or `closure` profile.
-- When an authenticated Admin/Master scans a 16-digit code from the dashboard, PORTUS must not treat it as a lot code. It opens a confirmation/registration modal instead.
-- On the login screen, scanning a registered 16-digit label calls the normal authentication path with username and password both equal to the scanned code. Invalid/unknown labels show the existing login error and do not create accounts.
-- Manual username/password login remains unchanged.
-- In History, only `master` sees the "Reabrir lote" action, matching the PostgreSQL function that already restricts reopening to Master.
+- Any other scanned value continues through the existing lot/barcode flow unchanged.
+- When a 16-digit label is scanned, PORTUS asks whether the code represents a user before creating anything.
+- The operator must inform the user's name.
+- PORTUS generates the login username from that name, normalized to lowercase ASCII words separated by dots. Example: `João da Silva` -> `joao.da.silva`.
+- Username collisions are resolved automatically with a numeric suffix: `joao.da.silva`, `joao.da.silva2`, `joao.da.silva3`, and so on.
+- The permanent password is exactly the scanned 16-digit value.
+- The password is never persisted in plaintext; the existing bcrypt path remains responsible for hashing.
+- The registration flow offers only operational profiles:
+  - Production operator;
+  - Laboratory capture;
+  - Laboratory closure.
+- Admin and Master cannot be created through the 16-digit barcode flow.
+- Registration itself remains restricted to an authenticated Admin or Master, with authorization enforced in the main process.
+- The new account must be persisted in the local `users` table and mirrored to the central PostgreSQL user/permission tables when central mode is configured.
+- This feature does not add barcode auto-login. Manual authentication remains unchanged.
 
-## Data model
+## Data and identity mapping
 
-The local SQLite `users` table gains nullable `display_name TEXT`. Existing rows remain valid. The shared `User` type gains optional `displayName` and user creation input requires `displayName` for new registration UI. The central PostgreSQL `users.display_name` already exists; `ensureCentralUserAccess` must mirror `displayName` when available and fall back to username for legacy users.
+The existing local user model keeps `username`, `password_hash`, `display_name`, `role`, `sector_code` and `laboratory_profile`.
+
+For a barcode registration:
+
+- `display_name` = the name entered by the operator.
+- `username` = generated from `display_name` with collision suffixing.
+- `password_hash` = bcrypt hash of the 16-digit barcode value.
+- Production profile = `role: operator`, `sectorCode: PRODUCTION`, no laboratory profile.
+- Laboratory capture = `role: operator`, `sectorCode: LABORATORY`, `laboratoryProfile: capture`.
+- Laboratory closure = `role: operator`, `sectorCode: LABORATORY`, `laboratoryProfile: closure`.
+
+Central synchronization must mirror the resulting local identity through `ensureCentralUserAccess`, so central permissions remain consistent with the selected profile.
 
 ## UI flow
 
-### Registration
+1. An authenticated Admin/Master is using PORTUS.
+2. The scanner reads a value.
+3. If it is not exactly 16 numeric digits, the existing lot flow continues.
+4. If it is exactly 16 numeric digits, the lot flow is intercepted.
+5. PORTUS opens a confirmation modal: `Este código de 16 dígitos é um usuário?`.
+6. If the operator cancels, nothing is persisted.
+7. If confirmed, PORTUS asks for the user's name and one of the three operational profiles.
+8. The UI shows the generated username and the scanned 16 digits as the permanent password before saving.
+9. Saving calls a dedicated main-process registration path. The renderer does not decide collision suffixes or authorization.
+10. The main process validates the barcode, normalizes/generates a unique username, creates the bcrypt-hashed local user, synchronizes central access when configured, writes audit information, and returns the created user.
+11. The UI shows a short success message with the generated username.
 
-1. Admin/Master is authenticated and on the dashboard.
-2. Scanner reads 16 digits.
-3. PORTUS asks whether this is a user label and shows the 16-digit credential value.
-4. On confirmation, the same modal collects display name, role, sector and laboratory profile when required.
-5. Saving calls the existing `users.create` IPC API with username/password equal to the label.
-6. Successful creation closes the modal and shows a short success message. Duplicate labels return the existing duplicate-user error.
+## Username generation
 
-### Login
+Normalization is deterministic:
 
-1. Login screen listens to fast HID scanner input even while the username field is focused.
-2. Only exactly 16 numeric digits trigger barcode auto-login.
-3. PORTUS authenticates through the existing `auth.login` IPC handler with both fields set to the scanned code.
-4. Successful authentication transitions normally to the app.
+1. Trim surrounding whitespace.
+2. Unicode-normalize and remove diacritics.
+3. Lowercase.
+4. Convert non-alphanumeric runs to dots.
+5. Trim leading/trailing dots.
+6. Reject an empty result.
+7. Check uniqueness in the local user repository.
+8. If occupied, append `2`, `3`, ... until an available username is found.
+
+Examples:
+
+- `João da Silva` -> `joao.da.silva`
+- another `João da Silva` -> `joao.da.silva2`
+- `MARIA   Souza` -> `maria.souza`
 
 ## Security and error handling
 
-- Registration authorization stays in the main process via `requireAdmin`; renderer checks are UX only.
-- Master creation remains enforced in the main process.
-- Password hashing remains in `createUser` with bcrypt.
-- Unknown labels never auto-create accounts at login.
-- Scanner classification is deterministic: only 16 numeric digits are user labels; all other dashboard scans continue through the lot flow.
-- Duplicate scans while the modal is open are ignored because the dashboard scanner is disabled while registration is active.
+- Only `requireAdmin`-authorized sessions can register a barcode user.
+- Input role/sector values are not trusted from the renderer. The barcode registration contract accepts only the three approved operational profiles.
+- The 16-digit value must not be written to logs, audit `details`, or persisted plaintext fields.
+- Duplicate names are allowed because the username suffix is generated automatically.
+- A malformed barcode is rejected by the main process even if renderer interception fails.
+- If central synchronization fails after local creation, registration returns an error and must not silently report success. The implementation should keep behavior consistent with the existing user/central synchronization model and avoid plaintext credential leakage.
 
 ## Testing
 
-Add regression tests for: barcode classification, scanner input handling option, local migration/display name persistence, main-process authorization contract, dashboard interception of 16-digit labels, login auto-auth payload, and master-only history reopen visibility.
+Regression coverage must prove:
+
+- exactly 16 numeric digits are classified as user labels;
+- other values remain lot codes;
+- username normalization and collision suffixing (`joao.da.silva`, `joao.da.silva2`);
+- only the three operational profiles are accepted;
+- Admin/Master roles cannot be created through this flow;
+- bcrypt remains the password persistence path;
+- scanner interception happens before the lot flow;
+- the renderer displays the generated username and permanent password wording;
+- barcode auto-login is not introduced;
+- central synchronization receives the created local user profile.
