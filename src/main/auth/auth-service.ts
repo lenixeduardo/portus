@@ -5,8 +5,6 @@ import type { User } from "../../shared/types";
 let currentUser: User | null = null;
 let lastActivityAt = 0;
 
-// A sessão é mantida somente no processo principal. Este limite impede que uma
-// estação deixada aberta continue operando sem supervisão.
 export const SESSION_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -56,6 +54,7 @@ export function login(username: string, password: string): User | null {
   currentUser = {
     id: row.id,
     username: row.username,
+    displayName: row.display_name ?? undefined,
     role: row.role ?? "admin",
     sectorCode: row.sector_code ?? "PRODUCTION",
     laboratoryProfile: row.laboratory_profile ?? undefined,
