@@ -1,0 +1,4 @@
+html[data-user-role="admin"] .history-reopen-btn,
+html[data-user-role="operator"] .history-reopen-btn {
+  display: none !important;
+}
