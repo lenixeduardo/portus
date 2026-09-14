@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { User } from "../../shared/types";
-import { isUserBarcode } from "../../shared/user-barcode";
 import { PortusLogo } from "../components/PortusLogo";
-import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { APP_VERSION } from "../releaseNotes";
 
 interface Props {
@@ -65,14 +63,6 @@ export function Login({ onAuthenticated }: Props) {
     }
   }
 
-  useBarcodeScanner((code) => {
-    if (!isUserBarcode(code) || loading) return;
-    const normalized = code.trim();
-    setUsername(normalized);
-    setPassword(normalized);
-    void authenticate({ username: code, password: code });
-  }, !loading, { ignoreFormFields: false, shouldIntercept: isUserBarcode });
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     await authenticate({ username, password });
@@ -128,7 +118,6 @@ export function Login({ onAuthenticated }: Props) {
                 autoComplete="current-password"
                 className="mono"
               />
-              <small>Bipe uma etiqueta de usuário de 16 dígitos para entrar automaticamente.</small>
             </div>
             {error && <div className="error">{error}</div>}
             <button type="submit" disabled={loading} style={{ width: "100%", marginTop: 8, padding: "14px" }}>

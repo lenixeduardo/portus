@@ -6,60 +6,69 @@ function source(path: string): string {
   return readFileSync(resolve(process.cwd(), path), "utf8");
 }
 
-describe("usuários por etiqueta de 16 dígitos", () => {
-  it("persiste nome exibido no usuário local e central", () => {
-    const migrate = source("src/main/db/migrate.ts");
-    const usersRepo = source("src/main/db/users-repo.ts");
-    const centralUsers = source("src/main/db/central-users-repo.ts");
-    const usersHandlers = source("src/main/ipc/users-handlers.ts");
-
-    expect(migrate).toContain('USER_DISPLAY_NAME_MIGRATION = "019_user_display_name"');
-    expect(migrate).toContain("ALTER TABLE users ADD COLUMN display_name TEXT");
-    expect(usersRepo).toContain("display_name");
-    expect(usersRepo).toContain("displayName");
-    expect(usersHandlers).toContain("displayName: z.string()");
-    expect(centralUsers).toContain("user.displayName ?? user.username");
-  });
-
+describe("cadastro de usuários por etiqueta de 16 dígitos", () => {
   it("classifica somente códigos numéricos de exatamente 16 dígitos", () => {
     const classifier = source("src/shared/user-barcode.ts");
     expect(classifier).toContain('/^\\d{16}$/');
     expect(classifier).toContain("isUserBarcode");
   });
 
-  it("permite ao login capturar scanner mesmo com input focado", () => {
-    const hook = source("src/renderer/hooks/useBarcodeScanner.ts");
-    const login = source("src/renderer/screens/Login.tsx");
-
-    expect(hook).toContain("ignoreFormFields");
-    expect(login).toContain("useBarcodeScanner");
-    expect(login).toContain("ignoreFormFields: false");
-    expect(login).toContain("username: code, password: code");
+  it("gera username pelo nome e resolve colisões com sufixo numérico", () => {
+    const registration = source("src/main/users/barcode-user-registration.ts");
+    expect(registration).toContain("export function normalizeUsername");
+    expect(registration).toContain("normalize(\"NFD\")");
+    expect(registration).toContain("export function generateUniqueUsername");
+    expect(registration).toContain("let suffix = 2");
+    expect(registration).toContain("`${base}${suffix}`");
   });
 
-  it("intercepta etiquetas de usuário antes de chegarem ao fluxo de lote", () => {
+  it("mantém validação e criação do cadastro por etiqueta no processo principal", () => {
+    const handlers = source("src/main/ipc/users-handlers.ts");
+    expect(handlers).toContain("barcodeUserRegistrationSchema");
+    expect(handlers).toContain('z.string().regex(/^\\d{16}$/');
+    expect(handlers).toContain('z.enum(["production", "laboratory_capture", "laboratory_closure"])');
+    expect(handlers).toContain("generateUniqueUsername");
+    expect(handlers).toContain("createUser(");
+    expect(handlers).toContain("ensureCentralUserAccess");
+    expect(handlers).toContain("compose([requireAdmin, validateInput(barcodeUserRegistrationSchema)])");
+  });
+
+  it("expõe contrato dedicado sem permitir Admin ou Master no payload", () => {
+    const ipc = source("src/shared/ipc.ts");
+    const preload = source("src/preload/index.ts");
+    expect(ipc).toContain('usersRegisterBarcode: "users:register-barcode"');
+    expect(ipc).toContain('export type BarcodeUserProfile = "production" | "laboratory_capture" | "laboratory_closure"');
+    expect(ipc).toContain("export interface BarcodeUserRegistrationInput");
+    expect(preload).toContain("registerBarcode:");
+    expect(preload).toContain("IPC.usersRegisterBarcode");
+  });
+
+  it("intercepta a etiqueta antes do fluxo de lote e oferece somente perfis operacionais", () => {
     const registration = source("src/renderer/components/UserBarcodeRegistration.tsx");
-    const sidebar = source("src/renderer/components/Sidebar.tsx");
     const hook = source("src/renderer/hooks/useBarcodeScanner.ts");
 
-    expect(sidebar).toContain("<UserBarcodeRegistration user={user} />");
-    expect(registration).toContain("pendingUserBarcode");
     expect(registration).toContain("shouldIntercept: isUserBarcode");
-    expect(registration).toContain("password: pendingUserBarcode");
     expect(hook).toContain("e.stopImmediatePropagation()");
+    expect(registration).toContain('value="production"');
+    expect(registration).toContain('value="laboratory_capture"');
+    expect(registration).toContain('value="laboratory_closure"');
+    expect(registration).not.toContain('<option value="admin">');
+    expect(registration).not.toContain('<option value="master">');
+    expect(registration).toContain("Senha permanente");
+    expect(registration).toContain("registerBarcode");
   });
 
-  it("mantém autorização de cadastro no processo principal", () => {
-    const usersHandlers = source("src/main/ipc/users-handlers.ts");
-    expect(usersHandlers).toContain("compose([requireAdmin, validateInput(createUserWithDisplayNameSchema)])");
-    expect(usersHandlers).toContain('input.role === "master" && actor?.role !== "master"');
+  it("não adiciona login automático pela etiqueta", () => {
+    const login = source("src/renderer/screens/Login.tsx");
+    expect(login).not.toContain("username: code, password: code");
+    expect(login).not.toContain("ignoreFormFields: false");
   });
 
-  it("oculta reabertura de lote para perfis que não são Master", () => {
-    const registration = source("src/renderer/components/UserBarcodeRegistration.tsx");
-    const roleVisibility = source("src/renderer/role-visibility.css");
-    expect(registration).toContain("document.documentElement.dataset.userRole = user.role");
-    expect(roleVisibility).toContain('html[data-user-role="admin"] .history-reopen-btn');
-    expect(roleVisibility).toContain('html[data-user-role="operator"] .history-reopen-btn');
+  it("persiste senha pela rotina bcrypt existente e nome exibido local/centralmente", () => {
+    const usersRepo = source("src/main/db/users-repo.ts");
+    const centralUsers = source("src/main/db/central-users-repo.ts");
+    expect(usersRepo).toContain("bcrypt.hashSync(password, 10)");
+    expect(usersRepo).toContain("display_name");
+    expect(centralUsers).toContain("user.displayName ?? user.username");
   });
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import type { LaboratoryProfile, User, UserRole, UserSector } from "../../shared/types";
+import type { BarcodeUserProfile } from "../../shared/ipc";
+import type { User } from "../../shared/types";
 import { isUserBarcode } from "../../shared/user-barcode";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import "../role-visibility.css";
@@ -16,9 +17,7 @@ export function UserBarcodeRegistration({ user }: Props) {
   const [pendingUserBarcode, setPendingUserBarcode] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("confirm");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<UserRole>("operator");
-  const [sectorCode, setSectorCode] = useState<UserSector>("PRODUCTION");
-  const [laboratoryProfile, setLaboratoryProfile] = useState<LaboratoryProfile>("capture");
+  const [profile, setProfile] = useState<BarcodeUserProfile>("production");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -36,9 +35,7 @@ export function UserBarcodeRegistration({ user }: Props) {
       setPendingUserBarcode(code.trim());
       setPhase("confirm");
       setDisplayName("");
-      setRole("operator");
-      setSectorCode("PRODUCTION");
-      setLaboratoryProfile("capture");
+      setProfile("production");
       setError(null);
       setSuccess(null);
     },
@@ -66,22 +63,18 @@ export function UserBarcodeRegistration({ user }: Props) {
 
     setSaving(true);
     setError(null);
-    const input = {
-      username: pendingUserBarcode,
-      password: pendingUserBarcode,
-      displayName: cleanName,
-      role,
-      sectorCode,
-      laboratoryProfile: sectorCode === "LABORATORY" ? laboratoryProfile : undefined
-    };
 
     try {
-      const result = await window.api.users.create(input);
+      const result = await window.api.users.registerBarcode({
+        barcode: pendingUserBarcode,
+        displayName: cleanName,
+        profile
+      });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setSuccess(`${result.data.displayName ?? cleanName} cadastrado com sucesso.`);
+      setSuccess(`Usuário ${result.data.username} cadastrado com sucesso.`);
       setPendingUserBarcode(null);
       setPhase("confirm");
       window.setTimeout(() => setSuccess(null), 4000);
@@ -136,9 +129,9 @@ export function UserBarcodeRegistration({ user }: Props) {
             <div>
               <p style={{ marginBottom: 16 }}>Este código de 16 dígitos é uma etiqueta de usuário?</p>
               <div className="field">
-                <label>Usuário / senha inicial</label>
+                <label>Senha permanente</label>
                 <input className="mono" value={pendingUserBarcode} readOnly />
-                <small>Os 16 dígitos serão usados como usuário e senha inicial.</small>
+                <small>Os 16 dígitos serão usados como senha permanente. O usuário será gerado a partir do nome.</small>
               </div>
             </div>
           ) : (
@@ -150,40 +143,23 @@ export function UserBarcodeRegistration({ user }: Props) {
 
               <div className="field">
                 <label>Usuário</label>
-                <input className="mono" value={pendingUserBarcode} readOnly />
+                <input className="mono" value="Gerado automaticamente a partir do nome" readOnly />
+                <small>Se já existir, o PORTUS adicionará 2, 3 e assim por diante.</small>
               </div>
 
               <div className="field">
-                <label>Senha inicial</label>
+                <label>Senha permanente</label>
                 <input className="mono" value={pendingUserBarcode} readOnly />
               </div>
 
               <div className="field">
                 <label>Perfil</label>
-                <select value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
-                  <option value="operator">Operador</option>
-                  <option value="admin">Admin</option>
-                  {user.role === "master" && <option value="master">Master</option>}
+                <select value={profile} onChange={(event) => setProfile(event.target.value as BarcodeUserProfile)}>
+                  <option value="production">Produção</option>
+                  <option value="laboratory_capture">Laboratório — Captura</option>
+                  <option value="laboratory_closure">Laboratório — Fechamento</option>
                 </select>
               </div>
-
-              <div className="field">
-                <label>Setor</label>
-                <select value={sectorCode} onChange={(event) => setSectorCode(event.target.value as UserSector)}>
-                  <option value="PRODUCTION">Produção</option>
-                  <option value="LABORATORY">Laboratório</option>
-                </select>
-              </div>
-
-              {sectorCode === "LABORATORY" && (
-                <div className="field">
-                  <label>Perfil do Laboratório</label>
-                  <select value={laboratoryProfile} onChange={(event) => setLaboratoryProfile(event.target.value as LaboratoryProfile)}>
-                    <option value="capture">Captura</option>
-                    <option value="closure">Fechamento</option>
-                  </select>
-                </div>
-              )}
 
               {error && <div className="error">{error}</div>}
             </div>
