@@ -4,38 +4,40 @@ Data: 2026-09-14
 
 ## Objetivo
 
-Tornar a instalação final do PORTUS segura e previsível em três tipos de máquina: Servidor, Produção e Laboratório. O instalador deve detectar automaticamente uma instalação existente do PostgreSQL quando a máquina for configurada como Servidor, reutilizar essa instalação sem sobrescrevê-la e impedir qualquer tentativa de instalar/configurar PostgreSQL localmente em estações de Produção ou Laboratório.
+Tornar a instalação final do PORTUS segura e previsível em três tipos de máquina: Servidor, Produção e Laboratório. Quando a máquina for `Servidor`, o instalador deve detectar automaticamente uma instalação existente do PostgreSQL 18, reutilizá-la sem reinstalar ou sobrescrever o cluster e então executar o bootstrap idempotente do banco PORTUS. Quando a máquina for `Produção` ou `Laboratório`, nenhuma detecção ou configuração de PostgreSQL local deve ocorrer.
 
 ## Estado atual
 
-Hoje o `PORTUS-Setup` gerado por Electron Builder/NSIS instala apenas o aplicativo. A customização NSIS em `build/installer.nsh` não possui lógica de detecção de PostgreSQL nem seleção de tipo de máquina.
+O `PORTUS-Setup` gerado por Electron Builder/NSIS instala o aplicativo, mas a customização atual em `build/installer.nsh` não possui seleção de tipo de máquina nem detecção de PostgreSQL.
 
-A configuração do banco fica separada em `database/install-portus-database.ps1`. Esse script assume por padrão `C:\Program Files\PostgreSQL\18\bin`, valida apenas a presença de `psql.exe`, cria/atualiza `portus` e `portus_admin`, executa migrations de forma idempotente e persiste `database-config.json`.
+O banco é configurado separadamente por `database/install-portus-database.ps1`. Esse script usa por padrão `C:\Program Files\PostgreSQL\18\bin`, verifica se `psql.exe` existe, cria/atualiza `portus` e `portus_admin`, aplica migrations de forma idempotente e persiste `%LOCALAPPDATA%\PORTUS\database-config.json`.
 
-Portanto, a detecção atual é parcial e baseada em um caminho esperado, não em uma descoberta real do PostgreSQL instalado no Windows.
+A detecção atual, portanto, é apenas uma validação de caminho conhecido. Ela não descobre instalações pelo Windows.
 
 ## Escopo
 
 ### Incluído
 
 - Seleção explícita do tipo da máquina: `Servidor`, `Produção` ou `Laboratório`.
-- Detecção automática de PostgreSQL apenas quando `Servidor` for selecionado.
-- Reutilização segura de PostgreSQL já instalado.
-- Descoberta por múltiplas fontes do Windows.
-- Validação de versão, `psql.exe`, serviço do Windows, estado do serviço e porta configurada.
-- Continuidade do bootstrap idempotente já existente para banco, role, migrations, seed e configuração do PORTUS.
-- Mensagens de erro claras e bloqueio seguro quando o ambiente não estiver pronto.
-- Nenhuma instalação/configuração de PostgreSQL local para Produção ou Laboratório.
-- Testes unitários da lógica de descoberta e testes de integração dos fluxos do instalador.
+- Detecção automática de PostgreSQL somente no fluxo `Servidor`.
+- Descoberta por Registry, serviços do Windows e filesystem controlado.
+- PostgreSQL 18 como única versão homologada no fluxo normal desta entrega.
+- Validação de `psql.exe`, versão, serviço, estado do serviço e porta.
+- Reutilização do bootstrap idempotente já existente para banco, role, migrations, seed e configuração do PORTUS.
+- Persistência do tipo de máquina junto da configuração local do PORTUS.
+- Erros estruturados e bloqueio seguro quando o ambiente não estiver pronto.
+- Testes unitários e de integração do novo fluxo.
 
 ### Fora de escopo
 
-- Instalação silenciosa automática do PostgreSQL sem consentimento do usuário.
-- Alteração automática de senha do usuário `postgres`.
-- Migração de um cluster PostgreSQL existente entre versões.
+- Instalação silenciosa automática do PostgreSQL.
+- Suporte operacional automático a PostgreSQL 17 ou versões anteriores. Elas podem ser detectadas como candidatas, mas devem aparecer como `unsupported` no instalador normal.
+- Alteração automática da senha do usuário `postgres`.
+- Migração de cluster entre versões.
 - Remoção ou reinstalação de PostgreSQL.
-- Alteração destrutiva de bancos ou roles já existentes.
-- Suporte a sistemas operacionais diferentes de Windows neste ciclo.
+- Alteração destrutiva de bancos, roles ou dados existentes.
+- Edição automática de `postgresql.conf` ou `pg_hba.conf` como efeito da detecção. A liberação de acesso remoto continua sendo uma etapa de implantação separada até existir uma especificação própria para isso.
+- Sistemas operacionais diferentes de Windows neste ciclo.
 
 ## Fluxo principal
 
@@ -48,9 +50,8 @@ Escolher tipo da máquina
      +-- Servidor
      |     |
      |     +-- Detectar PostgreSQL
-     |     +-- Validar instalação encontrada
-     |     +-- Validar serviço
-     |     +-- Validar porta
+     |     +-- Exigir PostgreSQL 18 suportado
+     |     +-- Validar serviço e porta
      |     +-- Reutilizar instalação existente
      |     +-- Executar bootstrap PORTUS
      |     +-- Aplicar migrations pendentes
@@ -58,22 +59,22 @@ Escolher tipo da máquina
      |
      +-- Produção
      |     +-- Não detectar/instalar PostgreSQL local
-     |     +-- Solicitar dados do servidor central
+     |     +-- Configurar conexão com servidor central
      |     +-- Testar conexão remota
      |     +-- Persistir configuração da estação
      |
      +-- Laboratório
            +-- Não detectar/instalar PostgreSQL local
-           +-- Solicitar dados do servidor central
+           +-- Configurar conexão com servidor central
            +-- Testar conexão remota
            +-- Persistir configuração da estação
 ```
 
-## Componente de descoberta do PostgreSQL
+## Componente de descoberta
 
-A lógica de descoberta deve ficar isolada da UI e do bootstrap do banco. O objetivo é retornar uma lista de instalações candidatas normalizadas.
+A lógica de descoberta deve ficar isolada da UI NSIS e do bootstrap do banco. O helper retornará instalações candidatas normalizadas em JSON.
 
-Cada instalação detectada deve produzir um objeto equivalente a:
+Estrutura conceitual:
 
 ```ts
 interface PostgreSqlInstallation {
@@ -85,6 +86,7 @@ interface PostgreSqlInstallation {
   serviceName?: string;
   serviceStatus?: 'running' | 'stopped' | 'unknown';
   port?: number;
+  supported: boolean;
   source: Array<'registry' | 'service' | 'filesystem'>;
 }
 ```
@@ -92,127 +94,126 @@ interface PostgreSqlInstallation {
 ### Ordem de descoberta
 
 1. **Registry do Windows**
-   - Consultar as chaves padrão do instalador oficial do PostgreSQL/EnterpriseDB.
-   - Coletar versão, diretório de instalação, diretório de dados, nome do serviço e porta quando disponíveis.
-   - Considerar visualizações 64-bit e 32-bit do Registry quando necessário.
+   - Consultar chaves padrão criadas pelo instalador oficial PostgreSQL/EnterpriseDB.
+   - Coletar versão, diretório de instalação, diretório de dados, serviço e porta quando disponíveis.
+   - Considerar as visualizações 64-bit e 32-bit do Registry quando necessário.
 
 2. **Serviços do Windows**
-   - Enumerar serviços compatíveis com nomes como `postgresql-x64-*` e equivalentes reconhecidos.
-   - Usar o `PathName`/binário do serviço para inferir a instalação quando possível.
-   - Registrar se o serviço está `Running`, `Stopped` ou em estado desconhecido.
+   - Enumerar serviços compatíveis com `postgresql-x64-*` e equivalentes reconhecidos.
+   - Usar o caminho do binário/serviço para inferir a instalação.
+   - Registrar `running`, `stopped` ou `unknown`.
 
 3. **Filesystem como fallback**
-   - Procurar instalações sob `C:\Program Files\PostgreSQL\*\bin\psql.exe`.
-   - Opcionalmente considerar `ProgramFiles(x86)` apenas como fallback.
-   - Nunca varrer o disco inteiro.
+   - Procurar somente em locais previsíveis, inicialmente `C:\Program Files\PostgreSQL\*\bin\psql.exe` e, como fallback, `ProgramFiles(x86)`.
+   - Não varrer o disco inteiro.
 
 4. **Normalização e deduplicação**
-   - Instalações encontradas por mais de uma fonte devem ser consolidadas pelo caminho canônico do `psql.exe`/raiz de instalação.
+   - Consolidar achados repetidos pelo caminho canônico de `psql.exe` e raiz da instalação.
 
-## Seleção entre múltiplas instalações
+## Regra de compatibilidade e seleção
 
-Quando houver mais de uma instalação válida:
+Nesta entrega, PostgreSQL 18 é a única versão aceita automaticamente no fluxo `Servidor`.
 
-1. Preferir PostgreSQL 18 se presente, pois é a versão atualmente homologada pelo PORTUS.
-2. Se não houver 18, aceitar versões suportadas explicitamente pela matriz de compatibilidade do projeto.
-3. Se houver mais de uma instalação da mesma prioridade, mostrar ao usuário uma seleção explícita em vez de escolher silenciosamente.
-4. Nunca trocar de cluster/instalação automaticamente em uma reinstalação do PORTUS sem confirmação.
+- Se houver exatamente uma instalação PostgreSQL 18 válida, ela é selecionada.
+- Se houver mais de uma instalação PostgreSQL 18 válida, o instalador deve exigir seleção explícita e mostrar caminho, serviço e porta de cada candidata.
+- Se houver PostgreSQL 17/16/etc., ele pode ser exibido como detectado, porém `unsupported` para a implantação normal.
+- Se não houver PostgreSQL 18 suportado, o instalador deve bloquear o bootstrap e orientar a instalação do PostgreSQL 18.
+- Uma reinstalação do PORTUS nunca deve trocar silenciosamente a instalação/cluster já utilizado.
 
-Nesta entrega, a versão preferencial continua sendo PostgreSQL 18. O mecanismo deve, porém, deixar de depender de um caminho fixo.
+Isso remove a dependência do caminho fixo sem ampliar a matriz de compatibilidade sem testes.
 
-## Validação da instalação encontrada
+## Validação da instalação selecionada
 
-Antes do bootstrap do banco, o instalador deve validar:
+Antes do bootstrap:
 
-- `psql.exe` existe e é executável.
-- `psql --version` responde e a versão corresponde à instalação detectada.
-- O serviço associado existe quando a instalação usa serviço do Windows.
-- O serviço está em execução; se estiver parado, oferecer iniciar o serviço com consentimento/elevação quando aplicável.
-- A porta configurada pode ser determinada. O padrão é `5432`, mas a detecção não deve presumir que toda instalação usa essa porta.
-- A porta está vinculada ao processo/serviço PostgreSQL esperado antes do bootstrap.
+- `psql.exe` deve existir e executar `psql --version` com sucesso.
+- A major version obtida deve ser `18`.
+- O serviço associado deve ser identificado quando aplicável.
+- Se o serviço estiver parado, o estado retornado deve ser `stopped`; o instalador não deve fingir que o PostgreSQL está pronto.
+- A porta deve ser obtida da configuração/serviço detectado quando possível. `5432` é o padrão do projeto, não uma suposição cega.
+- Se o serviço estiver rodando, a porta deve pertencer ao PostgreSQL selecionado.
+- Se a porta configurada estiver ocupada por outro processo, o fluxo deve ser bloqueado.
 
-A validação de porta deve distinguir entre:
+Estados relevantes:
 
-- porta livre;
-- porta usada pelo PostgreSQL detectado;
-- porta usada por outro processo.
-
-Se a porta esperada estiver ocupada por outro processo, o instalador deve bloquear a continuidade e explicar o conflito.
+```text
+ready        PostgreSQL 18 válido e serviço pronto
+stopped      PostgreSQL 18 detectado, mas serviço parado
+not_found    nenhuma instalação suportada encontrada
+unsupported  somente versões não homologadas encontradas
+conflict     porta/configuração incompatível com a instalação selecionada
+error        erro técnico inesperado
+```
 
 ## Comportamento por tipo de máquina
 
 ### Servidor
 
-Ao selecionar `Servidor`:
+1. Executar o helper de descoberta.
+2. Exibir versão, caminho, serviço, status e porta.
+3. Se `ready`, reutilizar a instalação existente.
+4. Solicitar somente as credenciais administrativas necessárias ao bootstrap.
+5. Executar a lógica atual de criação/atualização de `portus` e `portus_admin`.
+6. Aplicar apenas migrations ausentes de `portus_schema_migrations`.
+7. Executar seed e testes previstos pela implantação.
+8. Persistir a configuração de runtime e `PORTUS_MACHINE_TYPE=server`.
 
-1. Executar descoberta automática.
-2. Se encontrar uma instalação válida, mostrar resumo:
-   - versão;
-   - caminho;
-   - serviço;
-   - status;
-   - porta.
-3. Reutilizar a instalação selecionada.
-4. Pedir as credenciais administrativas necessárias para o bootstrap.
-5. Executar a lógica atual de criação/atualização idempotente de `portus` e `portus_admin`.
-6. Aplicar apenas migrations ainda não registradas em `portus_schema_migrations`.
-7. Executar seed/testes previstos para instalação.
-8. Persistir a configuração de runtime do PORTUS.
+Se o estado for `stopped`, o instalador deve pedir que o serviço seja iniciado e oferecer `Detectar novamente`. Iniciar o serviço pelo próprio instalador somente será permitido quando houver elevação necessária e consentimento explícito do usuário.
 
-Se nenhuma instalação for encontrada, não tentar instalar PostgreSQL silenciosamente. Mostrar uma etapa bloqueada com instrução para instalar PostgreSQL 18 e uma ação de `Detectar novamente`.
+Se o estado for `not_found` ou `unsupported`, o instalador não deve instalar PostgreSQL silenciosamente. Deve orientar a instalação do PostgreSQL 18 e oferecer `Detectar novamente`.
 
 ### Produção
 
-Ao selecionar `Produção`:
-
-- Não executar descoberta de PostgreSQL local.
-- Não chamar o instalador do banco central.
-- Solicitar/usar host, porta, banco e credenciais da conexão remota.
-- Recusar `localhost` e `127.0.0.1` como endereço do banco central, salvo modo técnico explicitamente habilitado fora do fluxo normal de implantação.
-- Testar conectividade TCP e autenticação antes de concluir.
-- Persistir `PORTUS_DATABASE_URL`, `PORTUS_DATABASE_MODE=central` e o tipo da estação.
+- Não executar o helper de descoberta.
+- Não chamar `install-portus-database.ps1` para bootstrap local.
+- Solicitar host, porta, banco e credenciais do servidor central, ou consumir esses valores do fluxo de implantação definido.
+- No fluxo normal, rejeitar `localhost` e `127.0.0.1` como host do banco central.
+- Testar conexão remota antes de concluir.
+- Persistir `PORTUS_DATABASE_MODE=central` e `PORTUS_MACHINE_TYPE=production`.
 
 ### Laboratório
 
-Mesmo comportamento de Produção para infraestrutura do banco. A diferença é apenas o tipo/perfil da estação e as permissões funcionais do PORTUS.
+Mesmo comportamento de infraestrutura de Produção, persistindo `PORTUS_MACHINE_TYPE=laboratory`. As diferenças funcionais continuam sendo determinadas pelas permissões e perfil do PORTUS, não pela existência de um PostgreSQL local.
 
 ## Integração com o bootstrap existente
 
-`database/install-portus-database.ps1` deve continuar responsável por:
+`database/install-portus-database.ps1` continua responsável por:
 
 - validação de identificadores;
 - criação condicional da role;
 - criação condicional do banco;
-- aplicação idempotente de migrations;
+- migrations idempotentes;
 - grants;
 - seed;
 - testes SQL previstos;
-- criação de `database-config.json`.
+- geração da connection string e de `database-config.json`.
 
-A mudança principal é remover a dependência operacional do valor fixo de `PostgresBin`. O caminho descoberto deve ser passado explicitamente para o script, por exemplo:
+A descoberta passa a fornecer explicitamente `PostgresBin` e `Port`, por exemplo:
 
 ```powershell
-.\database\install-portus-database.ps1 -PostgresBin "C:\Program Files\PostgreSQL\18\bin" -Port 5432
+.\database\install-portus-database.ps1 `
+  -PostgresBin "C:\Program Files\PostgreSQL\18\bin" `
+  -Port 5432
 ```
 
-O script deve manter compatibilidade com execução manual.
+O script deve continuar executável manualmente para diagnóstico/suporte.
 
 ## Integração com o instalador
 
-A implementação deve evitar colocar toda a lógica de descoberta diretamente em `installer.nsh`.
+A lógica de descoberta não deve ser implementada integralmente em NSIS.
 
-Arquitetura recomendada:
+Arquitetura prevista:
 
-- `build/installer.nsh`: orquestração mínima do NSIS e chamada do helper.
-- `scripts/windows/detect-postgresql.ps1`: descoberta e validação do ambiente Windows, emitindo JSON determinístico.
-- `database/install-portus-database.ps1`: bootstrap do banco, sem responsabilidade por descobrir instalações.
-- configuração persistida do tipo de máquina em `%LOCALAPPDATA%\PORTUS\...` ou arquivo equivalente já adotado pelo app.
+- `build/installer.nsh` — orquestração mínima do fluxo e integração com o helper.
+- `scripts/windows/detect-postgresql.ps1` — descoberta/validação do Windows e saída JSON determinística.
+- `database/install-portus-database.ps1` — bootstrap do banco, recebendo caminho e porta já resolvidos.
+- `package.json`/`electron-builder.yml` — empacotamento dos helpers necessários ao instalador final.
 
-O helper deve poder ser executado e testado separadamente do instalador gráfico.
+O helper deve ser utilizável isoladamente em testes e suporte técnico.
 
-## Contrato do helper de detecção
+## Contrato do helper
 
-Exemplo de saída quando PostgreSQL 18 estiver pronto:
+Exemplo `ready`:
 
 ```json
 {
@@ -224,13 +225,14 @@ Exemplo de saída quando PostgreSQL 18 estiver pronto:
     "psqlPath": "C:\\Program Files\\PostgreSQL\\18\\bin\\psql.exe",
     "serviceName": "postgresql-x64-18",
     "serviceStatus": "running",
-    "port": 5432
+    "port": 5432,
+    "supported": true
   },
   "candidates": []
 }
 ```
 
-Exemplo sem instalação:
+Exemplo `not_found`:
 
 ```json
 {
@@ -240,7 +242,23 @@ Exemplo sem instalação:
 }
 ```
 
-Exemplo de conflito:
+Exemplo `unsupported`:
+
+```json
+{
+  "status": "unsupported",
+  "selected": null,
+  "candidates": [
+    {
+      "version": "17.x",
+      "majorVersion": 17,
+      "supported": false
+    }
+  ]
+}
+```
+
+Exemplo `conflict`:
 
 ```json
 {
@@ -252,124 +270,132 @@ Exemplo de conflito:
 }
 ```
 
-O processo deve retornar código de saída diferente de zero apenas para erros técnicos inesperados. Estados esperados como `not_found`, `stopped` ou `conflict` devem ser representados de forma estruturada para a UI poder explicar o problema.
+Estados esperados (`ready`, `stopped`, `not_found`, `unsupported`, `conflict`) devem ser comunicados por JSON válido para a UI. Código de saída diferente de zero fica reservado para falha técnica inesperada do helper.
+
+## Persistência
+
+O arquivo já existente `%LOCALAPPDATA%\PORTUS\database-config.json` será estendido para incluir `PORTUS_MACHINE_TYPE`, evitando um segundo arquivo de configuração apenas para esse dado.
+
+Exemplo Servidor:
+
+```json
+{
+  "PORTUS_DATABASE_URL": "postgresql://...",
+  "PORTUS_DATABASE_MODE": "central",
+  "PORTUS_MACHINE_TYPE": "server"
+}
+```
+
+Valores válidos:
+
+```text
+server
+production
+laboratory
+```
+
+`PORTUS_MACHINE_TYPE` descreve o papel físico da instalação e não substitui autenticação nem autorização de usuário.
 
 ## Segurança e idempotência
 
-- Nunca remover PostgreSQL existente.
-- Nunca sobrescrever `postgresql.conf`, `pg_hba.conf` ou o diretório de dados como efeito colateral da simples detecção.
+- Nunca remover/reinstalar PostgreSQL existente.
+- A simples detecção nunca altera `postgresql.conf`, `pg_hba.conf` ou diretório de dados.
 - Nunca alterar senha administrativa automaticamente.
-- Nunca criar uma segunda instância porque a porta 5432 já está ocupada.
-- Não armazenar a senha administrativa em arquivo de configuração.
-- Manter a senha operacional somente no mecanismo já utilizado pelo PORTUS para a connection string.
-- Reexecuções devem detectar o mesmo ambiente e reaplicar apenas passos pendentes.
-- Banco, role e migrations existentes devem ser preservados.
+- Nunca criar outra instância só porque a porta 5432 está ocupada.
+- Nunca armazenar senha administrativa em arquivo.
+- Preservar banco, role, migrations e dados já existentes.
+- Reexecuções devem reaplicar apenas etapas pendentes.
+- Produção/Laboratório nunca executam bootstrap local.
 
 ## Tratamento de erros
 
-### PostgreSQL não encontrado no Servidor
+### PostgreSQL 18 não encontrado
 
-Mensagem esperada:
+> PostgreSQL 18 não foi encontrado nesta máquina. Instale a versão 18, mantenha o serviço em execução e clique em “Detectar novamente”.
 
-> PostgreSQL não foi encontrado nesta máquina. Instale o PostgreSQL 18 e mantenha o serviço em execução. Depois clique em “Detectar novamente”.
+### Versão não homologada
+
+> Foi encontrada uma instalação do PostgreSQL, mas esta versão não está homologada para esta versão do PORTUS. Instale o PostgreSQL 18 para continuar.
 
 ### Serviço parado
 
-Mostrar a instalação encontrada e informar que o serviço está parado. Permitir nova verificação após o usuário iniciar o serviço; iniciar automaticamente somente se o fluxo final tiver elevação e consentimento explícito.
+Mostrar instalação encontrada, serviço e status. Permitir nova verificação após o serviço ser iniciado.
 
 ### Porta ocupada por outro processo
 
-Bloquear bootstrap. Mostrar porta e motivo do conflito. Não selecionar outra porta silenciosamente.
+Bloquear bootstrap, informar a porta e não alterar automaticamente para outra porta.
 
 ### Credencial administrativa inválida
 
-Não alterar nada além de artefatos temporários. Exibir erro de autenticação e permitir nova tentativa.
+Falhar antes de mudanças persistentes além de artefatos temporários e permitir nova tentativa.
 
 ### Banco já configurado
 
-Reconhecer estado existente, executar apenas migrations pendentes e concluir sem recriar ou apagar dados.
+Executar somente migrations pendentes e validações; não recriar nem apagar dados.
 
-## Persistência do tipo de máquina
+## Alterações previstas
 
-O instalador deve persistir explicitamente um valor equivalente a:
+- `scripts/windows/detect-postgresql.ps1` — novo helper.
+- `database/install-portus-database.ps1` — integração com caminho/porta resolvidos e persistência de `PORTUS_MACHINE_TYPE` quando aplicável.
+- `build/installer.nsh` — seleção/orquestração do tipo da máquina e chamada do helper.
+- `package.json` e/ou `electron-builder.yml` — inclusão dos recursos necessários no instalador.
+- testes do helper e do fluxo de instalação.
+- `database/README.md` e documentação de implantação.
 
-```text
-PORTUS_MACHINE_TYPE=server
-PORTUS_MACHINE_TYPE=production
-PORTUS_MACHINE_TYPE=laboratory
-```
-
-A aplicação poderá usar esse valor para decidir quais etapas de infraestrutura são válidas naquela máquina. Ele não substitui autenticação/permissões de usuário; apenas descreve o papel da estação instalada.
-
-## Alterações previstas em arquivos
-
-Arquivos novos/alterados esperados:
-
-- `scripts/windows/detect-postgresql.ps1` — novo helper de descoberta.
-- `database/install-portus-database.ps1` — aceitar integralmente o resultado da descoberta sem depender de caminho fixo.
-- `build/installer.nsh` — adicionar integração/orquestração do fluxo.
-- `electron-builder.yml` e/ou `package.json` — garantir empacotamento dos helpers necessários.
-- testes PowerShell/Node para o helper e fluxo de instalação.
-- `database/README.md` e documentação de implantação — atualizar o fluxo final.
-
-A implementação deve reutilizar padrões existentes e evitar refatorações não relacionadas.
+Evitar refatorações fora desse fluxo.
 
 ## Estratégia de testes
 
-### Testes unitários da descoberta
+### Unidade — descoberta
 
-Cobrir pelo menos:
+1. PostgreSQL 18 via Registry.
+2. PostgreSQL 18 apenas via serviço.
+3. PostgreSQL 18 apenas via filesystem.
+4. Mesma instalação encontrada por várias fontes e deduplicada.
+5. PostgreSQL 18 + 17 — selecionar 18.
+6. Somente PostgreSQL 17 — retornar `unsupported`.
+7. Duas instalações PostgreSQL 18 válidas — exigir seleção explícita.
+8. Entrada de Registry sem `psql.exe` — candidato inválido.
+9. Serviço parado — `stopped`.
+10. Porta usada pelo PostgreSQL selecionado — válida.
+11. Porta usada por outro processo — `conflict`.
+12. Nenhuma instalação — `not_found`.
 
-1. PostgreSQL 18 encontrado via Registry.
-2. PostgreSQL encontrado apenas via serviço.
-3. PostgreSQL encontrado apenas pelo filesystem.
-4. Mesma instalação encontrada por múltiplas fontes e deduplicada.
-5. PostgreSQL 18 e 17 presentes — 18 é preferido.
-6. Múltiplas instalações equivalentes — exige seleção explícita.
-7. `psql.exe` ausente apesar de entrada no Registry — candidato inválido.
-8. Serviço parado.
-9. Porta 5432 usada pelo PostgreSQL detectado.
-10. Porta 5432 usada por outro processo.
-11. Nenhuma instalação encontrada.
+### Integração
 
-### Testes de integração
-
-- Servidor com PostgreSQL 18 existente e banco inexistente.
+- Servidor com PostgreSQL 18 e banco inexistente.
 - Servidor com PostgreSQL 18 e banco já configurado.
-- Reexecução do instalador após migrations aplicadas.
-- Produção sem PostgreSQL local, conectando a servidor remoto.
-- Laboratório sem PostgreSQL local, conectando a servidor remoto.
-- Garantir que Produção/Laboratório nunca chamem o bootstrap local.
+- Segunda execução com migrations já aplicadas.
+- Produção sem PostgreSQL local conectando ao servidor remoto.
+- Laboratório sem PostgreSQL local conectando ao servidor remoto.
+- Garantir que Produção/Laboratório não chamem o bootstrap local.
 
-### Validação de release
+### Release
 
-Adicionar ao `validate:release` verificações para garantir que:
-
-- helper de detecção está empacotado;
-- script de bootstrap está empacotado;
-- instalador contém a customização esperada;
-- nenhuma dependência crítica do fluxo fica fora de `extraResources`/pacote final.
+`validate:release` deve verificar que o helper, bootstrap e recursos de instalação necessários estão presentes no artefato final.
 
 ## Critérios de aceite
 
-A funcionalidade será considerada pronta quando:
+1. Um Windows com PostgreSQL 18 instalado no caminho padrão é detectado sem informar `PostgresBin`.
+2. PostgreSQL 18 instalado em caminho não padrão, mas registrado/associado a serviço corretamente, também é detectado.
+3. O serviço e seu status são identificados.
+4. O instalador não cria nem instala uma segunda instância PostgreSQL.
+5. Conflito de porta com processo não PostgreSQL bloqueia o bootstrap.
+6. PostgreSQL 17 ou anterior não é escolhido automaticamente nesta entrega.
+7. `Produção` e `Laboratório` nunca executam detecção/bootstrap local.
+8. `Servidor` reutiliza PostgreSQL 18 e executa bootstrap idempotente.
+9. Segunda execução preserva banco, usuários e dados, aplicando apenas migrations pendentes.
+10. `database-config.json` registra corretamente o tipo da máquina.
+11. O instalador final continua sendo gerado pelo pipeline de release atual.
+12. Testes automatizados do novo fluxo passam antes da geração do artefato final.
 
-1. Em um Windows com PostgreSQL 18 instalado em caminho padrão, o PORTUS o detecta sem o usuário informar `PostgresBin`.
-2. Em caminho não padrão registrado corretamente, a instalação também é detectada.
-3. O instalador identifica serviço e status corretamente.
-4. O instalador não cria uma segunda instalação PostgreSQL.
-5. O instalador bloqueia conflito de porta com processo não PostgreSQL.
-6. A escolha `Produção` ou `Laboratório` não dispara nenhuma detecção/configuração local de PostgreSQL.
-7. A escolha `Servidor` reutiliza a instalação existente e executa bootstrap idempotente.
-8. Uma segunda execução preserva banco, usuários e dados e aplica apenas migrations pendentes.
-9. O instalador final continua gerando um executável funcional pelo pipeline de release atual.
-10. Testes automatizados do novo fluxo passam antes da geração do instalador final.
+## Decisões finais
 
-## Decisões adotadas
-
-- PostgreSQL 18 permanece a versão preferencial/homologada.
-- A detecção automática é específica do fluxo `Servidor`.
-- O instalador não fará instalação silenciosa de PostgreSQL nesta fase.
-- A lógica de descoberta ficará em helper separado e testável, não concentrada no NSIS.
-- O bootstrap de banco existente será reaproveitado e continuará idempotente.
-- Produção e Laboratório sempre apontam para o servidor central e não possuem banco PostgreSQL local por desenho de implantação.
+- PostgreSQL 18 é a única versão homologada nesta implementação.
+- A detecção automática existe apenas para máquinas `Servidor`.
+- Não haverá instalação silenciosa do PostgreSQL.
+- Descoberta fica em helper PowerShell independente e testável.
+- NSIS apenas orquestra o fluxo.
+- O bootstrap existente permanece responsável pelo banco e mantém idempotência.
+- Produção e Laboratório sempre usam o servidor central.
+- Configuração automática de acesso remoto do PostgreSQL (`postgresql.conf`/`pg_hba.conf`) não faz parte desta mudança e permanece uma etapa separada de implantação.
