@@ -1,11 +1,12 @@
 import { dialog, ipcMain } from "electron";
 import { z } from "zod";
-import { IPC, type ServiceResult, type HistoryFilterInput } from "../../shared/ipc";
+import { IPC, type ServiceResult } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
 import { isCentralDatabaseConfigured, isCentralDatabaseRequired } from "../db/central-connection";
 import { getCentralBatchHistory } from "../db/central-history-repo";
 import { listAllBatches } from "../db/batches-repo";
-import { buildCsvContent, getBatchHistory, writeCsvFile } from "../db/history-repo";
+import { buildCsvContent, getBatchHistory } from "../db/history-repo";
+import { writeFormattedXlsx } from "../db/excel-report";
 import { compose, requireAuth, validateInput } from "./middleware";
 
 const getBatchHistorySchema = z.object({
@@ -60,7 +61,6 @@ export function registerHistoryHandlers(): void {
         if (!history) return { ok: false, error: "Lote não encontrado." };
         const filters = input.filters;
 
-        // Aplica filtros se fornecidos
         if (filters) {
           history.sessions = history.sessions.map((session) => {
             const filteredReadings = session.readings.filter((r) => {
@@ -78,30 +78,23 @@ export function registerHistoryHandlers(): void {
               return true;
             });
 
-            return {
-              ...session,
-              readings: filteredReadings
-            };
+            return { ...session, readings: filteredReadings };
           }).filter((session) => {
-            // Oculta sessões sem leituras quando houver qualquer filtro ativo
             const hasActiveFilters = !!(filters.equipmentId || filters.startDate || filters.endDate);
-            if (hasActiveFilters) {
-              return session.readings.length > 0;
-            }
-            return true;
+            return !hasActiveFilters || session.readings.length > 0;
           });
         }
 
         const { filePath, canceled } = await dialog.showSaveDialog({
-          title: "Exportar histórico",
-          defaultPath: `lote-${history.batch.code}.csv`,
-          filters: [{ name: "CSV", extensions: ["csv"] }]
+          title: "Exportar histórico em Excel",
+          defaultPath: `lote-${history.batch.code}.xlsx`,
+          filters: [{ name: "Excel", extensions: ["xlsx"] }]
         });
 
         if (canceled || !filePath) return { ok: false, error: "Exportação cancelada." };
 
         try {
-          writeCsvFile(filePath, buildCsvContent(history));
+          writeFormattedXlsx(filePath, buildCsvContent(history));
           return { ok: true, data: true };
         } catch (err) {
           return { ok: false, error: `Erro ao salvar arquivo: ${String(err)}` };
