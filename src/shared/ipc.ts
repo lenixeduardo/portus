@@ -26,6 +26,7 @@ export const IPC = {
   equipmentsUpdate: "equipments:update",
   usersList: "users:list",
   usersCreate: "users:create",
+  usersRegisterBarcode: "users:register-barcode",
   usersChangePassword: "users:change-password",
   usersDelete: "users:delete",
   serialListPorts: "serial:list-ports",
@@ -205,9 +206,18 @@ export interface SerialPortInfo {
 export interface UserCreateInput {
   username: string;
   password: string;
+  displayName?: string;
   role?: "master" | "admin" | "operator";
   sectorCode?: "PRODUCTION" | "LABORATORY";
   laboratoryProfile?: "capture" | "closure";
+}
+
+export type BarcodeUserProfile = "production" | "laboratory_capture" | "laboratory_closure";
+
+export interface BarcodeUserRegistrationInput {
+  barcode: string;
+  displayName: string;
+  profile: BarcodeUserProfile;
 }
 
 export interface EquipmentUpdateInput {
@@ -308,6 +318,7 @@ export interface SerialReaderApi {
   users: {
     list(): Promise<User[]>;
     create(input: UserCreateInput): Promise<ServiceResult<User>>;
+    registerBarcode(input: BarcodeUserRegistrationInput): Promise<ServiceResult<User>>;
     changePassword(id: number, newPassword: string): Promise<ServiceResult<true>>;
     remove(id: number): Promise<ServiceResult<true>>;
   };
