@@ -8,7 +8,7 @@ interface Props {
   lineColor?: string;
 }
 
-export function BarcodeDisplay({ value, height = 44, displayValue = false, lineColor = "#e8e8f0" }: Props) {
+export function BarcodeDisplay({ value, height = 44, displayValue = false, lineColor = "currentColor" }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
