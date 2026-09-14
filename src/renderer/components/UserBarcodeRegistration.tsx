@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { LaboratoryProfile, User, UserRole, UserSector } from "../../shared/types";
 import { isUserBarcode } from "../../shared/user-barcode";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
+import "../role-visibility.css";
 import { Modal } from "./Modal";
 
 interface Props {
@@ -21,6 +22,13 @@ export function UserBarcodeRegistration({ user }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.userRole = user.role;
+    return () => {
+      delete document.documentElement.dataset.userRole;
+    };
+  }, [user.role]);
 
   useBarcodeScanner(
     (code) => {
