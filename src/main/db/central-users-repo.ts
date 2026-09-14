@@ -11,13 +11,14 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
     : user.role === "admin"
       ? "admin"
       : user.sectorCode === "LABORATORY" ? "laboratory" : "operator";
+  const displayName = user.displayName ?? user.username;
   const userResult = await centralQuery<{ id: number }>(
     `INSERT INTO users (username, password_hash, display_name, role, active)
-     VALUES ($1, 'managed-by-portus', $1, $2, TRUE)
+     VALUES ($1, 'managed-by-portus', $2, $3, TRUE)
      ON CONFLICT (username) DO UPDATE
        SET display_name = EXCLUDED.display_name, role = EXCLUDED.role, active = TRUE
      RETURNING id`,
-    [user.username, role]
+    [user.username, displayName, role]
   );
   const userId = userResult.rows[0]?.id;
   if (!userId) throw new Error("Não foi possível sincronizar o usuário com a base central.");
