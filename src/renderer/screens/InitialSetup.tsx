@@ -47,6 +47,10 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
     event.preventDefault();
     setError(null);
     setMessage(null);
+    if (form.appPassword.length < 8 || confirmPassword.length < 8) {
+      setError("A senha do PORTUS deve ter ao menos 8 caracteres.");
+      return;
+    }
     if (form.appPassword !== confirmPassword) {
       setError("As senhas do usuário do PORTUS não coincidem.");
       return;
@@ -62,8 +66,13 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
         ? "Banco configurado e conexão validada. Abrindo o PORTUS…"
         : "Conexão central validada. Abrindo o PORTUS…");
       window.setTimeout(onCompleted, 700);
-    } catch {
-      setError("Não foi possível executar a configuração. Confira as credenciais e tente novamente.");
+    } catch (cause) {
+      const rawMessage = cause instanceof Error ? cause.message : "";
+      const readableMessage = rawMessage
+        .replace(/^Error invoking remote method '[^']+':\s*/i, "")
+        .replace(/^Error:\s*/i, "")
+        .trim();
+      setError(readableMessage || "Não foi possível executar a configuração. Confira os dados informados e tente novamente.");
     } finally {
       setRunning(false);
     }
@@ -107,7 +116,7 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
           {form.installationMode === "server" && !initialStatus.postgresBin && (
             <div className="setup-warning"><TriangleAlert size={16} /> PostgreSQL não foi localizado automaticamente. Informe a pasta <code>bin</code>.</div>
           )}
-          <form onSubmit={submit}>
+          <form onSubmit={submit} noValidate>
             {form.installationMode === "server" && <div className="field">
               <label htmlFor="setup-postgres-bin">Pasta bin do PostgreSQL</label>
               <div className="setup-input-icon"><ServerCog size={15} /><input id="setup-postgres-bin" value={form.postgresBin ?? ""} onChange={(e) => update("postgresBin", e.target.value)} placeholder={'C:\\Program Files\\PostgreSQL\\18\\bin'} /></div>
@@ -126,8 +135,8 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
               <div className="field"><label htmlFor="setup-user">Usuário do PORTUS</label><input id="setup-user" value={form.appUser} onChange={(e) => update("appUser", e.target.value)} /></div>
             </div>
             <div className="setup-grid">
-              <div className="field"><label htmlFor="setup-password">Senha do PORTUS</label><input id="setup-password" type="password" value={form.appPassword} onChange={(e) => update("appPassword", e.target.value)} autoComplete="new-password" /></div>
-              <div className="field"><label htmlFor="setup-confirm">Confirmar senha</label><input id="setup-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" /></div>
+              <div className="field"><label htmlFor="setup-password">Senha do PORTUS</label><input id="setup-password" type="password" minLength={8} value={form.appPassword} onChange={(e) => update("appPassword", e.target.value)} autoComplete="new-password" /><small>Mínimo de 8 caracteres.</small></div>
+              <div className="field"><label htmlFor="setup-confirm">Confirmar senha</label><input id="setup-confirm" type="password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" /><small>Repita a senha com no mínimo 8 caracteres.</small></div>
             </div>
             {error && <div className="error">{error}</div>}
             {message && <div className="success"><CheckCircle2 size={16} /> {message}</div>}
