@@ -71,7 +71,7 @@ export function Login({ onAuthenticated }: Props) {
     setUsername(normalized);
     setPassword(normalized);
     void authenticate({ username: code, password: code });
-  }, !loading, { ignoreFormFields: false });
+  }, !loading, { ignoreFormFields: false, shouldIntercept: isUserBarcode });
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
