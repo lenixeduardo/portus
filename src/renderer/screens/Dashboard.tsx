@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
 import { canCaptureLaboratory, canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
+import { isUserBarcode } from "../../shared/user-barcode";
 import { CaptureModal } from "../components/CaptureModal";
 import { EquipmentSelectionModal } from "../components/EquipmentSelectionModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
@@ -32,6 +33,7 @@ import {
 type ScannerState =
   | { phase: "idle" }
   | { phase: "detecting"; code: string }
+  | { phase: "user"; name: string }
   | { phase: "error"; message: string };
 
 /**
@@ -52,7 +54,13 @@ function reportDashboardError(source: string, error: unknown): void {
   void api?.log?.error(`renderer:dashboard:${source}`, message, stack).catch(() => {});
 }
 
-export function Dashboard({ user }: { user: User }) {
+export function Dashboard({
+  user,
+  onUnknownUserBarcode
+}: {
+  user: User;
+  onUnknownUserBarcode: (barcode: string) => void;
+}) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [centralConfigured, setCentralConfigured] = useState(false);
@@ -158,32 +166,78 @@ export function Dashboard({ user }: { user: User }) {
   const scannerActive = centralStatusResolved && canCapture && (!requiresCentral || centralAvailable) &&
     captureBatchId === null && !showBarcode && confirmBatch === null && selectionBatch === null;
 
-  // Leitura pelo scanner físico é totalmente automática: processa o código,
-  // cria/abre o lote e já inicia a captura, sem abrir modal nem exigir clique.
-  // O modal segue disponível apenas para a entrada manual do código.
+  // O scanner prioriza etiquetas de usuário já cadastradas. Para leituras
+  // desconhecidas, tenta primeiro encontrar um lote existente; somente depois
+  // oferece cadastro de usuário para valores com formato de etiqueta textual.
   async function handleScan(code: string) {
     setScannerState({ phase: "detecting", code });
-    if (requiresCentral) {
-      if (!centralAvailable) {
-        setScannerError("A base central está desconectada. A captura local foi bloqueada para proteger o lote.");
+
+    try {
+      const linkedUser = await window.api.users.findByBarcode(code);
+      if (linkedUser) {
+        setScannerState({
+          phase: "user",
+          name: linkedUser.displayName ?? linkedUser.username
+        });
+        clearScannerError();
         return;
       }
-      const centralBatch = await window.api.central.batches.findByCode(code);
-      if (!centralBatch) {
+
+      if (requiresCentral) {
+        if (!centralAvailable) {
+          setScannerError("A base central está desconectada. A captura local foi bloqueada para proteger o lote.");
+          return;
+        }
+
+        const centralBatch = await window.api.central.batches.findByCode(code);
+        if (centralBatch) {
+          setScannerState({ phase: "idle" });
+          await handleBarcodeReady(centralBatch);
+          return;
+        }
+
+        if (isUserBarcode(code)) {
+          if (isAdmin) {
+            setScannerState({ phase: "idle" });
+            onUnknownUserBarcode(code);
+          } else {
+            setScannerError("Etiqueta de usuário não cadastrada. Solicite o cadastro a um Admin ou Master.");
+          }
+          return;
+        }
+
         setScannerError("Lote não encontrado na base central. Crie o lote pelo fluxo central antes da captura.");
         return;
       }
+
+      const existingBatch = await window.api.batches.findByCode(code);
+      if (existingBatch) {
+        setScannerState({ phase: "idle" });
+        await handleBarcodeReady(existingBatch);
+        return;
+      }
+
+      if (isUserBarcode(code)) {
+        if (isAdmin) {
+          setScannerState({ phase: "idle" });
+          onUnknownUserBarcode(code);
+        } else {
+          setScannerError("Etiqueta de usuário não cadastrada. Solicite o cadastro a um Admin ou Master.");
+        }
+        return;
+      }
+
+      const res = await window.api.batches.scanBarcode({ barcodeValue: code });
+      if (!res.ok) {
+        setScannerError(res.error);
+        return;
+      }
       setScannerState({ phase: "idle" });
-      await handleBarcodeReady(centralBatch);
-      return;
+      await handleBarcodeReady(res.data.batch);
+    } catch (error) {
+      setScannerError("Não foi possível processar a leitura do código de barras.");
+      reportDashboardError("scanner", error);
     }
-    const res = await window.api.batches.scanBarcode({ barcodeValue: code });
-    if (!res.ok) {
-      setScannerError(res.error);
-      return;
-    }
-    setScannerState({ phase: "idle" });
-    await handleBarcodeReady(res.data.batch);
   }
 
   useBarcodeScanner((code) => {
@@ -533,7 +587,9 @@ function ScannerPanel({ state, message }: { state: ScannerState; message?: strin
     ? { title: "Falha na leitura", description: state.message, tone: "error" }
     : state.phase === "detecting"
       ? { title: "Código identificado", description: `${state.code} — validando…`, tone: "detecting" }
-      : { title: "Pronto para leitura", description: message ?? "Aponte o leitor para um código de barras…", tone: "idle" };
+      : state.phase === "user"
+        ? { title: "Etiqueta de usuário", description: state.name, tone: "detecting" }
+        : { title: "Pronto para leitura", description: message ?? "Aponte o leitor para um código de barras…", tone: "idle" };
 
   return (
     <section className={`scanner-panel scanner-panel--${content.tone}`} aria-live="polite">
