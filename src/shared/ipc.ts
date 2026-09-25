@@ -11,6 +11,7 @@ import type {
 
 export const IPC = {
   authLogin: "auth:login",
+  authLoginBarcode: "auth:login-barcode",
   authLogout: "auth:logout",
   authCurrentUser: "auth:current-user",
   productsList: "products:list",
@@ -27,6 +28,7 @@ export const IPC = {
   usersList: "users:list",
   usersCreate: "users:create",
   usersRegisterBarcode: "users:register-barcode",
+  usersFindByBarcode: "users:find-by-barcode",
   usersChangePassword: "users:change-password",
   usersDelete: "users:delete",
   serialListPorts: "serial:list-ports",
@@ -171,6 +173,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface BarcodeLoginRequest {
+  barcodeValue: string;
+}
+
 export type LoginResult =
   | { ok: true; user: User }
   | { ok: false; error: string };
@@ -217,6 +223,7 @@ export type BarcodeUserProfile = "production" | "laboratory_capture" | "laborato
 export interface BarcodeUserRegistrationInput {
   barcode: string;
   displayName: string;
+  password: string;
   profile: BarcodeUserProfile;
 }
 
@@ -279,6 +286,7 @@ export interface CaptureInjectReadingInput {
 export interface SerialReaderApi {
   auth: {
     login(req: LoginRequest): Promise<LoginResult>;
+    loginBarcode(req: BarcodeLoginRequest): Promise<LoginResult>;
     logout(): Promise<void>;
     currentUser(): Promise<User | null>;
   };
@@ -319,6 +327,7 @@ export interface SerialReaderApi {
     list(): Promise<User[]>;
     create(input: UserCreateInput): Promise<ServiceResult<User>>;
     registerBarcode(input: BarcodeUserRegistrationInput): Promise<ServiceResult<User>>;
+    findByBarcode(barcodeValue: string): Promise<User | null>;
     changePassword(id: number, newPassword: string): Promise<ServiceResult<true>>;
     remove(id: number): Promise<ServiceResult<true>>;
   };

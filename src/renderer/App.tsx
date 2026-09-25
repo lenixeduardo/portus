@@ -10,6 +10,7 @@ import { History } from "./screens/History";
 import { Settings } from "./screens/Settings";
 import { Modal } from "./components/Modal";
 import { ReportErrorModal } from "./components/ReportErrorModal";
+import { UserBarcodeRegistration } from "./components/UserBarcodeRegistration";
 import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
 import type { InitialSetupStatus } from "../shared/ipc";
@@ -48,6 +49,7 @@ export function App() {
   const [initialSetup, setInitialSetup] = useState<InitialSetupStatus | null>(null);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showReportError, setShowReportError] = useState(false);
+  const [requestedUserBarcode, setRequestedUserBarcode] = useState<string | null>(null);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>("checking");
   const [theme, setTheme] = useState<Theme>(() =>
     window.localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark"
@@ -181,13 +183,21 @@ export function App() {
               <h1>{TITLES[route]}</h1>
               {route !== "dashboard" && <p>Consulte e gerencie os registros operacionais.</p>}
             </header>
-            {route === "dashboard" && <Dashboard user={user} />}
+            {route === "dashboard" && (
+              <Dashboard user={user} onUnknownUserBarcode={setRequestedUserBarcode} />
+            )}
             {route === "products" && <Products />}
             {route === "settings" && <Settings currentUser={user} />}
             {route === "history" && <History user={user} />}
           </div>
         </div>
       </div>
+      <UserBarcodeRegistration
+        user={user}
+        scannerEnabled={route !== "dashboard"}
+        requestedBarcode={requestedUserBarcode}
+        onRequestedBarcodeHandled={() => setRequestedUserBarcode(null)}
+      />
       {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
       {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>

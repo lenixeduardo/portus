@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   IPC,
   type AppSettings,
+  type BarcodeLoginRequest,
   type BarcodeScanInput,
   type BarcodeScanResponse,
   type BarcodeUserRegistrationInput,
@@ -39,6 +40,7 @@ function subscribe<T>(channel: string, cb: (data: T) => void): Unsubscribe {
 const api: SerialReaderApi = {
   auth: {
     login: (req: LoginRequest): Promise<LoginResult> => ipcRenderer.invoke(IPC.authLogin, req),
+    loginBarcode: (req: BarcodeLoginRequest): Promise<LoginResult> => ipcRenderer.invoke(IPC.authLoginBarcode, req),
     logout: (): Promise<void> => ipcRenderer.invoke(IPC.authLogout),
     currentUser: (): Promise<User | null> => ipcRenderer.invoke(IPC.authCurrentUser)
   },
@@ -96,6 +98,8 @@ const api: SerialReaderApi = {
       ipcRenderer.invoke(IPC.usersCreate, input),
     registerBarcode: (input: BarcodeUserRegistrationInput): Promise<ServiceResult<User>> =>
       ipcRenderer.invoke(IPC.usersRegisterBarcode, input),
+    findByBarcode: (barcodeValue: string): Promise<User | null> =>
+      ipcRenderer.invoke(IPC.usersFindByBarcode, { barcodeValue }),
     changePassword: (id: number, newPassword: string): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.usersChangePassword, { id, password: newPassword }),
     remove: (id: number): Promise<ServiceResult<true>> =>

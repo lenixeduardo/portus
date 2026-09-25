@@ -1,9 +1,9 @@
 import { ipcMain } from "electron";
-import { IPC, type LoginRequest, type LoginResult } from "../../shared/ipc";
-import { getCurrentUser, isLoginBlocked, login, logout, recordFailedLogin } from "../auth/auth-service";
+import { IPC, type BarcodeLoginRequest, type LoginRequest, type LoginResult } from "../../shared/ipc";
+import { getCurrentUser, isLoginBlocked, login, loginByBarcode, logout, recordFailedLogin } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { cancelCapture, isActive } from "../serial/capture-service";
-import { loginSchema } from "../validation/schemas";
+import { barcodeLoginSchema, loginSchema } from "../validation/schemas";
 import { validateInput } from "./middleware";
 
 export function registerAuthHandlers(): void {
@@ -21,6 +21,19 @@ export function registerAuthHandlers(): void {
         return { ok: false, error: "Usuário ou senha inválidos." };
       }
       logAudit({ actorUserId: user.id, action: "auth.login", resourceType: "session" });
+      return { ok: true, user };
+    })
+  );
+
+  ipcMain.handle(
+    IPC.authLoginBarcode,
+    validateInput(barcodeLoginSchema)((_e, req: BarcodeLoginRequest): LoginResult => {
+      const user = loginByBarcode(req.barcodeValue);
+      if (!user) {
+        logAudit({ action: "auth.login_barcode_failed", resourceType: "session" });
+        return { ok: false, error: "Etiqueta não cadastrada." };
+      }
+      logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" });
       return { ok: true, user };
     })
   );

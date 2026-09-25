@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { getUserByUsername } from "../db/users-repo";
+import { getUserByBarcodeValue, getUserByUsername } from "../db/users-repo";
 import type { User } from "../../shared/types";
 
 let currentUser: User | null = null;
@@ -62,6 +62,14 @@ export function login(username: string, password: string): User | null {
   };
   lastActivityAt = Date.now();
   clearFailedLogins(username);
+  return currentUser;
+}
+
+export function loginByBarcode(barcodeValue: string): User | null {
+  const user = getUserByBarcodeValue(barcodeValue);
+  if (!user) return null;
+  currentUser = user;
+  lastActivityAt = Date.now();
   return currentUser;
 }
 
