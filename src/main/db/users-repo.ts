@@ -1,12 +1,14 @@
 import bcrypt from "bcryptjs";
 import { all, get, run } from "./query";
 import type { LaboratoryProfile, User, UserRole, UserSector } from "../../shared/types";
+import { normalizeUserBarcode } from "../../shared/user-barcode";
 
 interface UserRow {
   id: number;
   username: string;
   password_hash: string;
   display_name: string | null;
+  barcode_value: string | null;
   role: UserRole;
   sector_code: UserSector;
   laboratory_profile: LaboratoryProfile | null;
@@ -38,18 +40,29 @@ export function getUserByUsername(username: string): UserRow | undefined {
   return get<UserRow>("SELECT * FROM users WHERE username = ?", username);
 }
 
+export function getUserByBarcodeValue(barcodeValue: string): User | null {
+  const normalized = normalizeUserBarcode(barcodeValue);
+  const row = get<UserRow>(
+    "SELECT * FROM users WHERE barcode_value = ? COLLATE NOCASE",
+    normalized
+  );
+  return row ? rowToUser(row) : null;
+}
+
 export function createUser(
   username: string,
   password: string,
   role: UserRole = "operator",
   sectorCode: UserSector = "PRODUCTION",
   laboratoryProfile?: LaboratoryProfile,
-  displayName?: string
+  displayName?: string,
+  barcodeValue?: string
 ): User {
   const hash = bcrypt.hashSync(password, 10);
+  const normalizedBarcode = barcodeValue ? normalizeUserBarcode(barcodeValue) : null;
   const id = run(
-    "INSERT INTO users (username, password_hash, display_name, role, sector_code, laboratory_profile) VALUES (?, ?, ?, ?, ?, ?)",
-    username, hash, displayName?.trim() || null, role, sectorCode, laboratoryProfile ?? null
+    "INSERT INTO users (username, password_hash, display_name, barcode_value, role, sector_code, laboratory_profile) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    username, hash, displayName?.trim() || null, normalizedBarcode, role, sectorCode, laboratoryProfile ?? null
   );
   return getUser(id)!;
 }
