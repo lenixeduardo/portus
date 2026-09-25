@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import type { User } from "../../shared/types";
 import { PortusLogo } from "../components/PortusLogo";
 import { APP_VERSION } from "../releaseNotes";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 interface Props {
   onAuthenticated: (user: User) => void;
@@ -63,6 +64,41 @@ export function Login({ onAuthenticated }: Props) {
     }
   }
 
+  async function authenticateBarcode(barcodeValue: string) {
+    setError(null);
+    setLoading(true);
+    setUsername("");
+    setPassword("");
+    try {
+      const result = await window.api.auth.loginBarcode({ barcodeValue });
+      if (result.ok) {
+        if (!isAuthenticatedUser(result.user)) {
+          throw new Error("A autenticação por etiqueta retornou um usuário inválido.");
+        }
+        onAuthenticated(result.user);
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      reportLoginError(err);
+      setError("Não foi possível autenticar pela etiqueta. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useBarcodeScanner(
+    (code) => {
+      void authenticateBarcode(code);
+    },
+    !loading,
+    {
+      ignoreFormFields: false,
+      capture: true,
+      shouldIntercept: () => true
+    }
+  );
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     await authenticate({ username, password });
@@ -96,6 +132,9 @@ export function Login({ onAuthenticated }: Props) {
 
         <div className="login-right">
           <h3 className="login-form-title">Login Operador</h3>
+          <p className="muted" style={{ marginTop: -6, marginBottom: 18 }}>
+            Passe a etiqueta no leitor ou entre com usuário e senha.
+          </p>
           <form onSubmit={submit}>
             <div className="field">
               <label>Identificação</label>
