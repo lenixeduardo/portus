@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type BarcodeUserRegistrationInput, type ServiceResult } from "../../shared/ipc";
 import type { LaboratoryProfile, User, UserSector } from "../../shared/types";
+import { isUserBarcode, normalizeUserBarcode } from "../../shared/user-barcode";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { isCentralDatabaseConfigured } from "../db/central-connection";
@@ -11,6 +12,7 @@ import {
   createUser,
   deleteUser,
   getUser,
+  getUserByBarcodeValue,
   listUsers,
   reassignUserReferences,
   updateUserPassword
@@ -35,9 +37,19 @@ const createUserWithDisplayNameSchema = z.intersection(
 type CreateUserWithDisplayNameInput = z.infer<typeof createUserWithDisplayNameSchema>;
 
 const barcodeUserRegistrationSchema = z.object({
-  barcode: z.string().regex(/^\d{16}$/, "A etiqueta do usuário deve conter exatamente 16 dígitos."),
+  barcode: z
+    .string()
+    .trim()
+    .min(3, "Etiqueta inválida.")
+    .max(64, "Etiqueta inválida.")
+    .refine(isUserBarcode, "A etiqueta deve conter um identificador textual válido."),
   displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo"),
+  password: z.string().min(8, "Senha deve ter ao menos 8 caracteres").max(100, "Senha muito longa"),
   profile: z.enum(["production", "laboratory_capture", "laboratory_closure"])
+});
+
+const userBarcodeLookupSchema = z.object({
+  barcodeValue: z.string().trim().min(3).max(64)
 });
 
 type ValidatedBarcodeUserRegistrationInput = z.infer<typeof barcodeUserRegistrationSchema>;
@@ -92,11 +104,24 @@ export function registerUsersHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC.usersFindByBarcode,
+    compose([requireAuth, validateInput(userBarcodeLookupSchema)])(
+      (_e, input: { barcodeValue: string }): User | null =>
+        getUserByBarcodeValue(input.barcodeValue)
+    )
+  );
+
+  ipcMain.handle(
     IPC.usersRegisterBarcode,
     compose([requireAdmin, validateInput(barcodeUserRegistrationSchema)])(
       async (_e, input: ValidatedBarcodeUserRegistrationInput): Promise<ServiceResult<User>> => {
         const actor = getCurrentUser();
         if (!actor) return { ok: false, error: "Sessão expirada." };
+
+        const barcode = normalizeUserBarcode(input.barcode);
+        if (getUserByBarcodeValue(barcode)) {
+          return { ok: false, error: "Esta etiqueta já está vinculada a um usuário." };
+        }
 
         let username: string;
         try {
@@ -106,14 +131,25 @@ export function registerUsersHandlers(): void {
         }
 
         const profile = mapBarcodeProfile(input.profile);
-        const user = createUser(
-          username,
-          input.barcode,
-          "operator",
-          profile.sectorCode,
-          profile.laboratoryProfile,
-          input.displayName
-        );
+        let user: User;
+        try {
+          user = createUser(
+            username,
+            input.password,
+            "operator",
+            profile.sectorCode,
+            profile.laboratoryProfile,
+            input.displayName,
+            barcode
+          );
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error && /unique/i.test(error.message)
+              ? "Esta etiqueta já está vinculada a um usuário."
+              : "Não foi possível cadastrar o usuário."
+          };
+        }
 
         try {
           if (isCentralDatabaseConfigured()) {
