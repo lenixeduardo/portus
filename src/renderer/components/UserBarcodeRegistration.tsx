@@ -1,22 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { BarcodeUserProfile } from "../../shared/ipc";
 import type { User } from "../../shared/types";
-import { isUserBarcode } from "../../shared/user-barcode";
+import { isUserBarcode, normalizeUserBarcode } from "../../shared/user-barcode";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import "../role-visibility.css";
 import { Modal } from "./Modal";
 
 interface Props {
   user: User;
+  scannerEnabled?: boolean;
+  requestedBarcode?: string | null;
+  onRequestedBarcodeHandled?: () => void;
 }
 
-type Phase = "confirm" | "details";
-
-export function UserBarcodeRegistration({ user }: Props) {
+export function UserBarcodeRegistration({
+  user,
+  scannerEnabled = true,
+  requestedBarcode = null,
+  onRequestedBarcodeHandled
+}: Props) {
   const allowed = user.role === "admin" || user.role === "master";
   const [pendingUserBarcode, setPendingUserBarcode] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("confirm");
   const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<BarcodeUserProfile>("production");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,17 +35,48 @@ export function UserBarcodeRegistration({ user }: Props) {
     };
   }, [user.role]);
 
+  const handleBarcode = useCallback(async (code: string, external = false) => {
+    const barcode = normalizeUserBarcode(code);
+    if (!isUserBarcode(barcode) || pendingUserBarcode || saving) {
+      if (external) onRequestedBarcodeHandled?.();
+      return;
+    }
+
+    setError(null);
+
+    try {
+      const existing = await window.api.users.findByBarcode(barcode);
+      if (existing) {
+        setSuccess(`Etiqueta vinculada a ${existing.displayName ?? existing.username}.`);
+        window.setTimeout(() => setSuccess(null), 3500);
+        if (external) onRequestedBarcodeHandled?.();
+        return;
+      }
+
+      setPendingUserBarcode(barcode);
+      setDisplayName("");
+      setPassword("");
+      setProfile("production");
+      if (!allowed) {
+        setError("Usuário não cadastrado. Solicite o cadastro a um Admin ou Master.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível consultar a etiqueta.");
+    } finally {
+      if (external) onRequestedBarcodeHandled?.();
+    }
+  }, [allowed, onRequestedBarcodeHandled, pendingUserBarcode, saving]);
+
+  useEffect(() => {
+    if (!requestedBarcode || pendingUserBarcode) return;
+    void handleBarcode(requestedBarcode, true);
+  }, [handleBarcode, pendingUserBarcode, requestedBarcode]);
+
   useBarcodeScanner(
     (code) => {
-      if (!isUserBarcode(code) || pendingUserBarcode) return;
-      setPendingUserBarcode(code.trim());
-      setPhase("confirm");
-      setDisplayName("");
-      setProfile("production");
-      setError(null);
-      setSuccess(null);
+      void handleBarcode(code);
     },
-    !pendingUserBarcode,
+    scannerEnabled && !pendingUserBarcode,
     {
       capture: true,
       shouldIntercept: isUserBarcode
@@ -49,7 +86,8 @@ export function UserBarcodeRegistration({ user }: Props) {
   function closeModal() {
     if (saving) return;
     setPendingUserBarcode(null);
-    setPhase("confirm");
+    setDisplayName("");
+    setPassword("");
     setError(null);
   }
 
@@ -60,6 +98,10 @@ export function UserBarcodeRegistration({ user }: Props) {
       setError("Informe o nome do usuário.");
       return;
     }
+    if (password.length < 8) {
+      setError("A senha manual deve ter ao menos 8 caracteres.");
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -68,15 +110,17 @@ export function UserBarcodeRegistration({ user }: Props) {
       const result = await window.api.users.registerBarcode({
         barcode: pendingUserBarcode,
         displayName: cleanName,
+        password,
         profile
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setSuccess(`Usuário ${result.data.username} cadastrado com sucesso.`);
+      setSuccess(`Usuário ${result.data.username} cadastrado. A etiqueta já pode ser usada no login.`);
       setPendingUserBarcode(null);
-      setPhase("confirm");
+      setDisplayName("");
+      setPassword("");
       window.setTimeout(() => setSuccess(null), 4000);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível cadastrar o usuário.");
@@ -84,20 +128,6 @@ export function UserBarcodeRegistration({ user }: Props) {
       setSaving(false);
     }
   }
-
-  const footer = !allowed ? (
-    <button onClick={closeModal}>Fechar</button>
-  ) : phase === "confirm" ? (
-    <>
-      <button className="secondary" onClick={closeModal}>Não, cancelar</button>
-      <button onClick={() => setPhase("details")}>Sim, é um usuário</button>
-    </>
-  ) : (
-    <>
-      <button className="secondary" onClick={() => setPhase("confirm")} disabled={saving}>Voltar</button>
-      <button onClick={saveUser} disabled={saving}>{saving ? "Salvando..." : "Cadastrar usuário"}</button>
-    </>
-  );
 
   return (
     <>
@@ -109,36 +139,34 @@ export function UserBarcodeRegistration({ user }: Props) {
 
       {pendingUserBarcode && (
         <Modal
-          title="Etiqueta de usuário"
+          title={allowed ? "Cadastrar usuário por etiqueta" : "Etiqueta não cadastrada"}
           onClose={closeModal}
           width={520}
-          footer={footer}
-        >
-          {!allowed ? (
-            <div>
-              <p style={{ marginBottom: 12 }}>Este código de 16 dígitos foi identificado como uma etiqueta de usuário.</p>
-              <div className="field">
-                <label>Etiqueta</label>
-                <input className="mono" value={pendingUserBarcode} readOnly />
-              </div>
-              <div className="error" style={{ marginBottom: 0 }}>
-                Somente Admin ou Master podem cadastrar novos usuários por etiqueta.
-              </div>
-            </div>
-          ) : phase === "confirm" ? (
-            <div>
-              <p style={{ marginBottom: 16 }}>Este código de 16 dígitos é uma etiqueta de usuário?</p>
-              <div className="field">
-                <label>Senha permanente</label>
-                <input className="mono" value={pendingUserBarcode} readOnly />
-                <small>Os 16 dígitos serão usados como senha permanente. O usuário será gerado a partir do nome.</small>
-              </div>
-            </div>
+          footer={allowed ? (
+            <>
+              <button className="secondary" onClick={closeModal} disabled={saving}>Cancelar</button>
+              <button onClick={saveUser} disabled={saving}>{saving ? "Salvando..." : "Cadastrar usuário"}</button>
+            </>
           ) : (
-            <div>
+            <button onClick={closeModal}>Fechar</button>
+          )}
+        >
+          <div className="field">
+            <label>Etiqueta</label>
+            <input className="mono" value={pendingUserBarcode} readOnly />
+            <small>Valor capturado automaticamente pelo leitor.</small>
+          </div>
+
+          {allowed ? (
+            <>
               <div className="field">
                 <label>Nome</label>
-                <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoFocus placeholder="Nome do usuário" />
+                <input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  autoFocus
+                  placeholder="Nome do usuário"
+                />
               </div>
 
               <div className="field">
@@ -148,8 +176,15 @@ export function UserBarcodeRegistration({ user }: Props) {
               </div>
 
               <div className="field">
-                <label>Senha permanente</label>
-                <input className="mono" value={pendingUserBarcode} readOnly />
+                <label>Senha para login manual</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Mínimo de 8 caracteres"
+                />
+                <small>O código de barras é uma credencial separada e não será usado como senha.</small>
               </div>
 
               <div className="field">
@@ -160,10 +195,14 @@ export function UserBarcodeRegistration({ user }: Props) {
                   <option value="laboratory_closure">Laboratório — Fechamento</option>
                 </select>
               </div>
-
-              {error && <div className="error">{error}</div>}
-            </div>
+            </>
+          ) : (
+            <p className="muted">
+              Esta etiqueta ainda não está vinculada a um usuário. Somente Admin ou Master podem concluir o cadastro.
+            </p>
           )}
+
+          {error && <div className="error">{error}</div>}
         </Modal>
       )}
     </>
