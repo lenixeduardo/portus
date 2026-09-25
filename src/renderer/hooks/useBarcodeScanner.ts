@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 const SCAN_INTERVAL_MS = 50;
-const MIN_BARCODE_LENGTH = 4;
+const MIN_BARCODE_LENGTH = 3;
 
 interface BarcodeScannerOptions {
   ignoreFormFields?: boolean;
