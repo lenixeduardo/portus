@@ -36,6 +36,16 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const barcodeLoginSchema = z.object({
+  barcodeValue: z
+    .string()
+    .trim()
+    .min(3, "Etiqueta inválida")
+    .max(64, "Etiqueta inválida")
+});
+
+export type BarcodeLoginInput = z.infer<typeof barcodeLoginSchema>;
+
 /**
  * Validação para fechar lote
  */
