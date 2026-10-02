@@ -64,7 +64,7 @@ describe("criação dos três usuários operacionais pelas etiquetas reais", () 
       "TesteAnalista02#2026",
       "operator",
       "LABORATORY",
-      "closure",
+      "capture",
       "Analista 02",
       "ANALISTA 02"
     );
@@ -92,7 +92,7 @@ describe("criação dos três usuários operacionais pelas etiquetas reais", () 
       displayName: "Analista 02",
       role: "operator",
       sectorCode: "LABORATORY",
-      laboratoryProfile: "closure"
+      laboratoryProfile: "capture"
     });
     expect(production01).toMatchObject({
       username: "producao.01",
