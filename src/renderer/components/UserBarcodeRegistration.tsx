@@ -99,7 +99,12 @@ export function UserBarcodeRegistration({
       return;
     }
     if (password.length < 8) {
-      setError("A senha manual deve ter ao menos 8 caracteres.");
+      const missing = 8 - password.length;
+      setError(
+        password.length === 0
+          ? "Informe uma senha para login manual com pelo menos 8 caracteres."
+          : `A senha precisa ter pelo menos 8 caracteres. Faltam ${missing} ${missing === 1 ? "caractere" : "caracteres"}.`
+      );
       return;
     }
 
@@ -183,8 +188,19 @@ export function UserBarcodeRegistration({
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
                   placeholder="Mínimo de 8 caracteres"
+                  minLength={8}
+                  required
+                  aria-invalid={password.length > 0 && password.length < 8}
+                  aria-describedby="barcode-user-password-help"
                 />
-                <small>O código de barras é uma credencial separada e não será usado como senha.</small>
+                <small
+                  id="barcode-user-password-help"
+                  className={password.length > 0 && password.length < 8 ? "error" : "muted"}
+                >
+                  {password.length > 0 && password.length < 8
+                    ? `A senha precisa ter pelo menos 8 caracteres. Faltam ${8 - password.length} ${8 - password.length === 1 ? "caractere" : "caracteres"}.`
+                    : "Use pelo menos 8 caracteres. O código de barras é uma credencial separada."}
+                </small>
               </div>
 
               <div className="field">
