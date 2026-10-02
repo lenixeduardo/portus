@@ -208,7 +208,6 @@ export function UserBarcodeRegistration({
                 <select value={profile} onChange={(event) => setProfile(event.target.value as BarcodeUserProfile)}>
                   <option value="production">Produção</option>
                   <option value="laboratory_capture">Laboratório — Captura</option>
-                  <option value="laboratory_closure">Laboratório — Fechamento</option>
                 </select>
               </div>
             </>
