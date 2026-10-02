@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import { createUserSchema, isSafeOperationalRegex, updateEquipmentSchema } from "../validation/schemas";
 
 describe("hardening de entrada operacional", () => {
-  it("exige senha de pelo menos oito caracteres para novos usuários", () => {
-    expect(createUserSchema.safeParse({ username: "operador", password: "1234567" }).success).toBe(false);
+  it("exige senha de pelo menos oito caracteres para novos usuários com mensagem clara", () => {
+    const invalid = createUserSchema.safeParse({ username: "operador", password: "1234567" });
+    expect(invalid.success).toBe(false);
+    if (!invalid.success) {
+      expect(invalid.error.issues.find((issue) => issue.path[0] === "password")?.message)
+        .toBe("A senha precisa ter pelo menos 8 caracteres.");
+    }
+
     expect(createUserSchema.safeParse({ username: "operador", password: "12345678" }).success).toBe(true);
   });
 
