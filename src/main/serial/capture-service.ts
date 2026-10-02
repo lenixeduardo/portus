@@ -867,6 +867,12 @@ export function skipFirstReading(): ServiceResult<true> {
   return { ok: true, data: true };
 }
 
+export async function completeCapture(): Promise<ServiceResult<true>> {
+  if (!isActive()) return { ok: false, error: "Nenhuma captura ativa." };
+  await cleanup("completed");
+  return { ok: true, data: true };
+}
+
 export async function cancelCapture(): Promise<ServiceResult<true>> {
   if (!isActive()) {
     return { ok: false, error: "Nenhuma captura ativa." };
