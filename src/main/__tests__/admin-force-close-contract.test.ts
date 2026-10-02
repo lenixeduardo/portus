@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("finalização administrativa de lote", () => {
   const migration = readFileSync(
-    resolve(process.cwd(), "database/migrations/007_admin_force_close.sql"),
+    resolve(process.cwd(), "database/migrations/011_operational_closure_rules.sql"),
     "utf8"
   );
   const dashboard = readFileSync(
@@ -12,8 +12,8 @@ describe("finalização administrativa de lote", () => {
     "utf8"
   );
 
-  it("permite a exceção somente para Admin e Master", () => {
-    expect(migration).toContain("v_role NOT IN ('admin', 'master')");
+  it("permite a exceção somente para Master", () => {
+    expect(migration).toContain("v_role <> 'master'");
     expect(migration).toContain("ERRCODE = '42501'");
   });
 
