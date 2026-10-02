@@ -122,6 +122,12 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const passwordError = getPasswordLengthError(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     const laboratory = accessProfile.startsWith("laboratory_");
@@ -162,7 +168,24 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
         </div>
         <div className="field">
           <label>Senha</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+            autoComplete="new-password"
+            aria-invalid={password.length > 0 && password.length < 8}
+            aria-describedby="create-user-password-help"
+          />
+          <small
+            id="create-user-password-help"
+            className={password.length > 0 && password.length < 8 ? "error" : "muted"}
+          >
+            {password.length > 0 && password.length < 8
+              ? getPasswordLengthError(password)
+              : "Use pelo menos 8 caracteres."}
+          </small>
         </div>
         <div className="field">
           <label>Perfil</label>
@@ -196,6 +219,12 @@ function ChangePasswordModal({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const passwordError = getPasswordLengthError(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     const res = await window.api.users.changePassword(user.id, password);
@@ -223,13 +252,39 @@ function ChangePasswordModal({
       <form onSubmit={submit}>
         <div className="field">
           <label>Nova senha</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+            minLength={8}
+            required
+            autoComplete="new-password"
+            aria-invalid={password.length > 0 && password.length < 8}
+            aria-describedby="change-password-help"
+          />
+          <small
+            id="change-password-help"
+            className={password.length > 0 && password.length < 8 ? "error" : "muted"}
+          >
+            {password.length > 0 && password.length < 8
+              ? getPasswordLengthError(password)
+              : "Use pelo menos 8 caracteres."}
+          </small>
         </div>
         {error && <div className="error">{error}</div>}
         <button type="submit" style={{ display: "none" }} />
       </form>
     </Modal>
   );
+}
+
+function getPasswordLengthError(password: string): string | null {
+  if (password.length >= 8) return null;
+  if (password.length === 0) return "Informe uma senha com pelo menos 8 caracteres.";
+
+  const missing = 8 - password.length;
+  return `A senha precisa ter pelo menos 8 caracteres. Faltam ${missing} ${missing === 1 ? "caractere" : "caracteres"}.`;
 }
 
 function formatDate(iso: string): string {
