@@ -122,6 +122,12 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const usernameError = getUsernameValidationError(username);
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
+
     const passwordError = getPasswordLengthError(password);
     if (passwordError) {
       setError(passwordError);
@@ -164,7 +170,26 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
       <form onSubmit={submit}>
         <div className="field">
           <label>Usuário</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+          <input
+            value={username}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setError(null);
+            }}
+            autoFocus
+            required
+            autoComplete="username"
+            aria-invalid={username.length > 0 && Boolean(getUsernameValidationError(username))}
+            aria-describedby="create-user-username-help"
+          />
+          <small
+            id="create-user-username-help"
+            className={username.length > 0 && getUsernameValidationError(username) ? "error" : "muted"}
+          >
+            {username.length > 0 && getUsernameValidationError(username)
+              ? getUsernameValidationError(username)
+              : "Use de 3 a 40 caracteres: letras sem acento, números, ponto (.), _ ou -. Não use espaços."}
+          </small>
         </div>
         <div className="field">
           <label>Senha</label>
@@ -277,6 +302,29 @@ function ChangePasswordModal({
       </form>
     </Modal>
   );
+}
+
+function getUsernameValidationError(username: string): string | null {
+  if (username.length === 0) return "Informe um nome de usuário.";
+
+  if (/\s/.test(username)) {
+    return "O usuário não pode conter espaços. Use apenas letras sem acento, números, ponto (.), _ ou -.";
+  }
+
+  if (username.length < 3) {
+    const missing = 3 - username.length;
+    return `O usuário precisa ter pelo menos 3 caracteres. Faltam ${missing} ${missing === 1 ? "caractere" : "caracteres"}.`;
+  }
+
+  if (username.length > 40) {
+    return `O usuário deve ter no máximo 40 caracteres. Remova ${username.length - 40} ${username.length - 40 === 1 ? "caractere" : "caracteres"}.`;
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+    return "Formato de usuário inválido. Use apenas letras sem acento, números, ponto (.), _ ou -.";
+  }
+
+  return null;
 }
 
 function getPasswordLengthError(password: string): string | null {
