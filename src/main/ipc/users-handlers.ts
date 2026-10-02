@@ -44,7 +44,7 @@ const barcodeUserRegistrationSchema = z.object({
     .max(64, "Etiqueta inválida.")
     .refine(isUserBarcode, "A etiqueta deve conter um identificador textual válido."),
   displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo"),
-  password: z.string().min(8, "Senha deve ter ao menos 8 caracteres").max(100, "Senha muito longa"),
+  password: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres.").max(100, "A senha deve ter no máximo 100 caracteres."),
   profile: z.enum(["production", "laboratory_capture", "laboratory_closure"])
 });
 
