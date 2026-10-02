@@ -9,7 +9,8 @@ import { compose, requireAuth, validateInput } from "./middleware";
 
 const startCaptureSchema = z.object({
   batchId: z.number().positive("ID do lote deve ser um número positivo"),
-  equipmentIds: z.array(z.number().positive()).optional()
+  equipmentIds: z.array(z.number().positive()).optional(),
+  simulated: z.boolean().optional()
 });
 
 const injectReadingSchema = z.object({
@@ -33,7 +34,7 @@ export function registerCaptureHandlers(): void {
         if (isLaboratoryUser(user) && !canCaptureLaboratory(user)) {
           return { ok: false, error: "Seu perfil permite revisar e fechar lotes, mas não iniciar capturas." };
         }
-        return startCapture(input.batchId, input.equipmentIds, user.username, user.sectorCode ?? "PRODUCTION");
+        return startCapture(input.batchId, input.equipmentIds, user.username, user.sectorCode ?? "PRODUCTION", input.simulated ?? false);
       }
     )
   );
