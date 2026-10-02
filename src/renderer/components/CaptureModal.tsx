@@ -96,6 +96,9 @@ export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props)
         setEndReason(e.reason);
         setPhase("ended");
         onEnded(e.reason);
+        if (e.reason === "completed") {
+          void window.api.auth.logout().finally(() => window.location.reload());
+        }
       });
 
       unsubsRef.current = [unTick, unSlot, unEnded].filter((unsubscribe): unsubscribe is () => void => typeof unsubscribe === "function");
