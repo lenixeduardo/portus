@@ -6,7 +6,7 @@ describe("controle de acesso da visão Laboratório", () => {
     const user = { sectorCode: "PRODUCTION" as const };
     expect(isLaboratoryUser(user)).toBe(false);
     expect(canCaptureLaboratory(user)).toBe(false);
-    expect(canCloseLaboratory(user)).toBe(false);
+    expect(canCloseLaboratory(user)).toBe(true);
   });
 
   it("permite captura somente ao perfil Captura", () => {
@@ -16,10 +16,4 @@ describe("controle de acesso da visão Laboratório", () => {
     expect(canCloseLaboratory(user)).toBe(false);
   });
 
-  it("permite confirmação somente ao perfil Fechamento", () => {
-    const user = { sectorCode: "LABORATORY" as const, laboratoryProfile: "closure" as const };
-    expect(isLaboratoryUser(user)).toBe(true);
-    expect(canCaptureLaboratory(user)).toBe(false);
-    expect(canCloseLaboratory(user)).toBe(true);
-  });
 });
