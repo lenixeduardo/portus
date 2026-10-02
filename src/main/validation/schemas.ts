@@ -82,11 +82,42 @@ export const barcodeSchema = z.object({
  * Validação para criar usuário
  */
 export const createUserSchema = z.object({
-  username: z
-    .string()
-    .min(3, "Usuário deve ter ao menos 3 caracteres")
-    .max(40, "Usuário muito longo (máx. 40)")
-    .regex(/^[a-zA-Z0-9._-]+$/, "Usuário aceita apenas letras, números, '.', '_' e '-'"),
+  username: z.string().superRefine((value, context) => {
+    if (value.length === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Informe um nome de usuário."
+      });
+      return;
+    }
+    if (/\s/.test(value)) {
+      context.addIssue({
+        code: "custom",
+        message: "O usuário não pode conter espaços. Use apenas letras sem acento, números, ponto (.), _ ou -."
+      });
+      return;
+    }
+    if (value.length < 3) {
+      context.addIssue({
+        code: "custom",
+        message: "O usuário precisa ter pelo menos 3 caracteres."
+      });
+      return;
+    }
+    if (value.length > 40) {
+      context.addIssue({
+        code: "custom",
+        message: "O usuário deve ter no máximo 40 caracteres."
+      });
+      return;
+    }
+    if (!/^[a-zA-Z0-9._-]+$/.test(value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Formato de usuário inválido. Use apenas letras sem acento, números, ponto (.), _ ou -."
+      });
+    }
+  }),
   password: z
     .string()
     .min(8, "A senha precisa ter pelo menos 8 caracteres.")
