@@ -124,13 +124,13 @@ export const createUserSchema = z.object({
     .max(100, "A senha deve ter no máximo 100 caracteres."),
   role: z.enum(["master", "admin", "operator"]).optional(),
   sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
-  laboratoryProfile: z.enum(["capture", "closure"]).optional()
+  laboratoryProfile: z.enum(["capture"]).optional()
 }).superRefine((value, context) => {
   if (value.sectorCode === "LABORATORY" && !value.laboratoryProfile) {
     context.addIssue({
       code: "custom",
       path: ["laboratoryProfile"],
-      message: "Selecione o perfil de Captura ou Fechamento do Laboratório"
+      message: "O perfil do Laboratório deve ser Captura."
     });
   }
 });
