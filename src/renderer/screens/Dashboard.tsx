@@ -73,6 +73,7 @@ export function Dashboard({
   const [printBatch, setPrintBatch] = useState<BatchWithProduct | null>(null);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [captureEquipmentIds, setCaptureEquipmentIds] = useState<number[] | null>(null);
+  const [simulatedCapture, setSimulatedCapture] = useState(false);
   const [selectionBatch, setSelectionBatch] = useState<BatchWithProduct | null>(null);
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
@@ -264,7 +265,15 @@ export function Dashboard({
         setScannerError(res.error);
         return;
       }
-      await handleBarcodeReady(res.data);
+      const equipments = (await window.api.equipments.list()).filter((equipment) => equipment.enabled);
+      if (equipments.length === 0) {
+        setScannerError("Nenhum equipamento habilitado para executar a simulação.");
+        return;
+      }
+      await reload();
+      setCaptureEquipmentIds(equipments.map((equipment) => equipment.id));
+      setSimulatedCapture(true);
+      setCaptureBatchId(res.data.id);
     } finally {
       setSimulatingLot(false);
     }
@@ -526,14 +535,17 @@ export function Dashboard({
         <CaptureModal
           batchId={captureBatchId}
           equipmentIds={captureEquipmentIds ?? undefined}
+          simulated={simulatedCapture}
           onClose={async () => {
             setCaptureBatchId(null);
             setCaptureEquipmentIds(null);
+            setSimulatedCapture(false);
             await reload();
           }}
           onEnded={() => {
             setCaptureBatchId(null);
             setCaptureEquipmentIds(null);
+            setSimulatedCapture(false);
             void reload();
           }}
         />
