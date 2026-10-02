@@ -10,12 +10,12 @@ import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { getEquipment, listEquipments, updateEquipment } from "../db/equipments-repo";
 import { updateEquipmentSchema, type UpdateEquipmentInput } from "../validation/schemas";
-import { compose, requireAdmin, validateInput } from "./middleware";
+import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
 
 export function registerEquipmentsHandlers(): void {
   ipcMain.handle(
     IPC.equipmentsList,
-    compose([requireAdmin])((): Equipment[] => listEquipments())
+    compose([requireAuth])((): Equipment[] => listEquipments())
   );
 
   ipcMain.handle(
