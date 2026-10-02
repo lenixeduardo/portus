@@ -248,5 +248,14 @@ ALTER TABLE users_with_master_role RENAME TO users;
 COMMIT;
 PRAGMA foreign_keys = ON;
 `
+  },
+  {
+    name: "019_unify_laboratory_profile",
+    sql: `
+UPDATE users
+   SET laboratory_profile = 'capture'
+ WHERE sector_code = 'LABORATORY'
+   AND (laboratory_profile IS NULL OR laboratory_profile = 'closure');
+`
   }
 ];
