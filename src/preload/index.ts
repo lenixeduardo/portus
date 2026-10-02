@@ -112,6 +112,7 @@ const api: SerialReaderApi = {
     start: (batchId: number, equipmentIds?: number[]): Promise<ServiceResult<CaptureStartResult>> =>
       ipcRenderer.invoke(IPC.captureStart, { batchId, equipmentIds }),
     cancel: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureCancel),
+    complete: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureComplete),
     skipFirstReading: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.captureSkipFirstReading),
     injectReading: (input: CaptureInjectReadingInput): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.captureInjectReading, input),
