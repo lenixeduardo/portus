@@ -169,6 +169,22 @@ export async function insertCentralReading(input: {
   } : null;
 }
 
+export async function ensureDefaultCentralEquipmentCatalog(): Promise<void> {
+  await centralQuery(
+    `INSERT INTO equipments (code, name, enabled)
+     VALUES
+       ('ESPECTROFOTOMETRO', 'Espectrofotômetro', TRUE),
+       ('BALANCA', 'Balança', TRUE),
+       ('VISCOSIMETRO', 'Viscosímetro', TRUE),
+       ('PH_METRO', 'pH-metro', TRUE),
+       ('REFRATOMETRO', 'Refratômetro', TRUE),
+       ('RESERVA', 'RESERVA', TRUE)
+     ON CONFLICT (code) DO UPDATE
+       SET name = EXCLUDED.name,
+           enabled = TRUE`
+  );
+}
+
 export async function validateCentralEquipmentMapping(equipmentNames: string[]): Promise<string[]> {
   if (equipmentNames.length === 0) return [];
   const result = await centralQuery<{ name: string; code: string | null }>(
