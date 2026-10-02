@@ -4,7 +4,7 @@ import { IPC } from "../../shared/ipc";
 import { canCaptureLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { getCurrentUser } from "../auth/auth-service";
 import { isCentralDatabaseConfigured, isCentralDatabaseRequired } from "../db/central-connection";
-import { cancelCapture, getState, injectManualReading, isActive, skipFirstReading, startCapture } from "../serial/capture-service";
+import { cancelCapture, completeCapture, getState, injectManualReading, isActive, skipFirstReading, startCapture } from "../serial/capture-service";
 import { compose, requireAuth, validateInput } from "./middleware";
 
 const startCaptureSchema = z.object({
@@ -36,6 +36,11 @@ export function registerCaptureHandlers(): void {
         return startCapture(input.batchId, input.equipmentIds, user.username, user.sectorCode ?? "PRODUCTION");
       }
     )
+  );
+
+  ipcMain.handle(
+    IPC.captureComplete,
+    compose([requireAuth])(async () => completeCapture())
   );
 
   ipcMain.handle(
