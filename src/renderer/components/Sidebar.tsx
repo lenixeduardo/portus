@@ -20,7 +20,7 @@ const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly
   { key: "dashboard", label: "Lotes Ativos", icon: LayoutDashboard },
   { key: "products", label: "Produtos", icon: Package, adminOnly: true },
   { key: "history", label: "Histórico", icon: Clock },
-  { key: "settings", label: "Configurações", icon: Settings },
+  { key: "settings", label: "Configurações", icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: Props) {
