@@ -115,6 +115,10 @@ export function App() {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (user?.role === "operator" && route === "settings") setRoute("dashboard");
+  }, [user, route]);
+
   async function handleLogout() {
     await window.api.auth.logout();
     setUser(null);
@@ -187,7 +191,7 @@ export function App() {
               <Dashboard user={user} onUnknownUserBarcode={setRequestedUserBarcode} />
             )}
             {route === "products" && <Products />}
-            {route === "settings" && <Settings currentUser={user} />}
+            {route === "settings" && (user.role === "admin" || user.role === "master") && <Settings currentUser={user} />}
             {route === "history" && <History user={user} />}
           </div>
         </div>
