@@ -89,8 +89,8 @@ export const createUserSchema = z.object({
     .regex(/^[a-zA-Z0-9._-]+$/, "Usuário aceita apenas letras, números, '.', '_' e '-'"),
   password: z
     .string()
-    .min(8, "Senha deve ter ao menos 8 caracteres")
-    .max(100, "Senha muito longa"),
+    .min(8, "A senha precisa ter pelo menos 8 caracteres.")
+    .max(100, "A senha deve ter no máximo 100 caracteres."),
   role: z.enum(["master", "admin", "operator"]).optional(),
   sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
   laboratoryProfile: z.enum(["capture", "closure"]).optional()
@@ -113,8 +113,8 @@ export const changePasswordSchema = z.object({
   id: z.number().positive("ID do usuário deve ser um número positivo"),
   password: z
     .string()
-    .min(8, "Senha deve ter ao menos 8 caracteres")
-    .max(100, "Senha muito longa")
+    .min(8, "A senha precisa ter pelo menos 8 caracteres.")
+    .max(100, "A senha deve ter no máximo 100 caracteres.")
 });
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
