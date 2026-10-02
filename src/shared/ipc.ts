@@ -34,6 +34,7 @@ export const IPC = {
   serialListPorts: "serial:list-ports",
   captureStart: "capture:start",
   captureCancel: "capture:cancel",
+  captureComplete: "capture:complete",
   captureSkipFirstReading: "capture:skip-first-reading",
   captureIsActive: "capture:is-active",
   captureGetState: "capture:get-state",
@@ -337,6 +338,7 @@ export interface SerialReaderApi {
   capture: {
     start(batchId: number, equipmentIds?: number[]): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
+    complete(): Promise<ServiceResult<true>>;
     skipFirstReading(): Promise<ServiceResult<true>>;
     injectReading(input: CaptureInjectReadingInput): Promise<ServiceResult<true>>;
     isActive(): Promise<boolean>;
