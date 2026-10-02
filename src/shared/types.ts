@@ -1,5 +1,5 @@
 export type UserSector = "PRODUCTION" | "LABORATORY";
-export type LaboratoryProfile = "capture" | "closure";
+export type LaboratoryProfile = "capture";
 export type UserRole = "master" | "admin" | "operator";
 
 export interface User {
