@@ -51,7 +51,7 @@ export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose
         setSkipFirstReading(st.skipFirstReading);
         setPhase("active");
       } else {
-        const res = await window.api.capture.start(batchId, equipmentIds);
+        const res = await window.api.capture.start(batchId, equipmentIds, simulated);
         if (cancelled) return;
         if (!res.ok) {
           setError(res.error);
@@ -106,7 +106,7 @@ export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose
 
       if (simulated && !alreadyActive) {
         const state = await window.api.capture.getState();
-        const simulatedSlots = state.slots.filter((slot) => slot.status !== "completed");
+        const simulatedSlots = state.slots;
         if (simulatedSlots.length === 0) {
           throw new Error("Nenhum equipamento disponível para a leitura simulada.");
         }
