@@ -45,7 +45,7 @@ const barcodeUserRegistrationSchema = z.object({
     .refine(isUserBarcode, "A etiqueta deve conter um identificador textual válido."),
   displayName: z.string().trim().min(1, "Informe o nome do usuário").max(120, "Nome muito longo"),
   password: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres.").max(100, "A senha deve ter no máximo 100 caracteres."),
-  profile: z.enum(["production", "laboratory_capture", "laboratory_closure"])
+  profile: z.enum(["production", "laboratory_capture"])
 });
 
 const userBarcodeLookupSchema = z.object({
@@ -64,9 +64,6 @@ function mapBarcodeProfile(profile: BarcodeUserRegistrationInput["profile"]): {
 } {
   if (profile === "laboratory_capture") {
     return { sectorCode: "LABORATORY", laboratoryProfile: "capture" };
-  }
-  if (profile === "laboratory_closure") {
-    return { sectorCode: "LABORATORY", laboratoryProfile: "closure" };
   }
   return { sectorCode: "PRODUCTION" };
 }
