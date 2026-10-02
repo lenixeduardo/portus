@@ -215,10 +215,10 @@ export interface UserCreateInput {
   displayName?: string;
   role?: "master" | "admin" | "operator";
   sectorCode?: "PRODUCTION" | "LABORATORY";
-  laboratoryProfile?: "capture" | "closure";
+  laboratoryProfile?: "capture";
 }
 
-export type BarcodeUserProfile = "production" | "laboratory_capture" | "laboratory_closure";
+export type BarcodeUserProfile = "production" | "laboratory_capture";
 
 export interface BarcodeUserRegistrationInput {
   barcode: string;
