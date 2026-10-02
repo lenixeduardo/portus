@@ -12,7 +12,7 @@ import {
 } from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
 import { isCentralDatabaseConfigured } from "../db/central-connection";
-import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, isSectorCaptureClosed, validateCentralEquipmentMapping } from "../db/central-capture-repo";
+import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, isSectorCaptureClosed, ensureDefaultCentralEquipmentCatalog, validateCentralEquipmentMapping } from "../db/central-capture-repo";
 import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
@@ -577,6 +577,7 @@ export async function startCapture(
 
   if (centralCapture) {
     try {
+      await ensureDefaultCentralEquipmentCatalog();
       const missingEquipment = await validateCentralEquipmentMapping(equipments.map((equipment) => equipment.name));
       if (missingEquipment.length > 0) {
         return {
