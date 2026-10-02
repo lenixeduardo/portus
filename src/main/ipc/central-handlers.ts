@@ -155,7 +155,7 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         await ensureCentralUserAccess(user);
-        if (user.role !== "admin" && user.role !== "master") return { ok: false, error: "Somente administradores podem finalizar um lote sem confirmações setoriais." };
+        if (user.role !== "master") return { ok: false, error: "Somente o Master pode finalizar um lote sem atividade ou confirmações setoriais." };
         try {
           return { ok: true, data: await forceCentralBatchClose(input.id, user.username) };
         } catch (error) {
