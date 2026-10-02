@@ -10,6 +10,7 @@ interface SlotState extends SlotInitState {
 interface Props {
   batchId: number;
   equipmentIds?: number[];
+  simulated?: boolean;
   onClose: () => void;
   onEnded: (reason: "completed" | "cancelled") => void;
 }
@@ -17,7 +18,7 @@ interface Props {
 const RING_RADIUS = 54;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props) {
+export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose, onEnded }: Props) {
   const [phase, setPhase] = useState<"starting" | "active" | "ended">("starting");
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
@@ -102,6 +103,24 @@ export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props)
       });
 
       unsubsRef.current = [unTick, unSlot, unEnded].filter((unsubscribe): unsubscribe is () => void => typeof unsubscribe === "function");
+
+      if (simulated && !alreadyActive) {
+        const state = await window.api.capture.getState();
+        const simulatedSlots = state.slots.filter((slot) => slot.status !== "completed");
+        if (simulatedSlots.length === 0) {
+          throw new Error("Nenhum equipamento disponível para a leitura simulada.");
+        }
+        for (const [index, slot] of simulatedSlots.entries()) {
+          if (cancelled) return;
+          await new Promise((resolve) => window.setTimeout(resolve, 350));
+          const value = (10 + index * 1.25).toFixed(2);
+          const injected = await window.api.capture.injectReading({ slotIndex: slot.slotIndex, rawValue: value });
+          if (!injected.ok) throw new Error(injected.error);
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        const completed = await window.api.capture.complete();
+        if (!completed.ok) throw new Error(completed.error);
+      }
     }
 
     init().catch((err) => {
@@ -117,7 +136,7 @@ export function CaptureModal({ batchId, equipmentIds, onClose, onEnded }: Props)
       unsubsRef.current.forEach((fn) => fn());
       unsubsRef.current = [];
     };
-  }, [batchId]);
+  }, [batchId, simulated]);
 
 
   async function handleCancel() {
