@@ -10,17 +10,17 @@ import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { getEquipment, listEquipments, updateEquipment } from "../db/equipments-repo";
 import { updateEquipmentSchema, type UpdateEquipmentInput } from "../validation/schemas";
-import { compose, requireAuth, validateInput } from "./middleware";
+import { compose, requireAdmin, validateInput } from "./middleware";
 
 export function registerEquipmentsHandlers(): void {
   ipcMain.handle(
     IPC.equipmentsList,
-    compose([requireAuth])((): Equipment[] => listEquipments())
+    compose([requireAdmin])((): Equipment[] => listEquipments())
   );
 
   ipcMain.handle(
     IPC.equipmentsUpdate,
-    compose([requireAuth, validateInput(updateEquipmentSchema)])(
+    compose([requireAdmin, validateInput(updateEquipmentSchema)])(
       (_e, input: UpdateEquipmentInput): ServiceResult<Equipment> => {
         if (!getEquipment(input.id)) return { ok: false, error: "Equipamento não encontrado." };
         const cleaned: Record<string, any> = { id: input.id };
@@ -59,7 +59,7 @@ export function registerEquipmentsHandlers(): void {
 
   ipcMain.handle(
     IPC.serialListPorts,
-    compose([requireAuth])(async (): Promise<SerialPortInfo[]> => {
+    compose([requireAdmin])(async (): Promise<SerialPortInfo[]> => {
       try {
         const ports = await SerialPort.list();
         return ports.map((p) => ({
