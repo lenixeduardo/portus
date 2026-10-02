@@ -26,7 +26,7 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
   const isAdmin = user.role === "admin" || user.role === "master";
   const production = user.sectorCode !== "LABORATORY";
   const laboratoryCapture = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
-  const laboratoryClose = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "closure";
+  const laboratoryClose = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
 
   await centralQuery(
     `INSERT INTO user_sector_permissions (
