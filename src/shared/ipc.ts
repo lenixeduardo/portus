@@ -336,7 +336,7 @@ export interface SerialReaderApi {
     listPorts(): Promise<SerialPortInfo[]>;
   };
   capture: {
-    start(batchId: number, equipmentIds?: number[]): Promise<ServiceResult<CaptureStartResult>>;
+    start(batchId: number, equipmentIds?: number[], simulated?: boolean): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
     complete(): Promise<ServiceResult<true>>;
     skipFirstReading(): Promise<ServiceResult<true>>;
