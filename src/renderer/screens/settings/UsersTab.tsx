@@ -116,7 +116,7 @@ export function UsersTab({ currentUser }: Props) {
 function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () => void; onSaved: () => void; canCreateMaster: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "master" | "laboratory_capture" | "laboratory_closure">("operator");
+  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "master" | "laboratory_capture">("operator");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -142,9 +142,7 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
       password,
       role: accessProfile === "master" ? "master" : accessProfile === "admin" ? "admin" : "operator",
       sectorCode: laboratory ? "LABORATORY" : "PRODUCTION",
-      laboratoryProfile: laboratory
-        ? accessProfile === "laboratory_capture" ? "capture" : "closure"
-        : undefined
+      laboratoryProfile: laboratory ? "capture" : undefined
     });
     setSaving(false);
     if (!res.ok) {
@@ -218,8 +216,7 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
             <option value="operator">Operador — pode abrir lotes e realizar leituras</option>
             <option value="admin">Admin — acesso completo</option>
             {canCreateMaster && <option value="master">Master — acesso completo e reabertura de lotes</option>}
-            <option value="laboratory_capture">Laboratório · Captura — consulta lotes e realiza leituras</option>
-            <option value="laboratory_closure">Laboratório · Fechamento — revisa e confirma o lote</option>
+            <option value="laboratory_capture">Laboratório — captura e fechamento da etapa</option>
           </select>
         </div>
         {error && <div className="error">{error}</div>}
@@ -343,7 +340,7 @@ function formatDate(iso: string): string {
 function formatAccessProfile(user: User): string {
   if (user.role === "master") return "Master";
   if (user.sectorCode === "LABORATORY") {
-    return user.laboratoryProfile === "closure" ? "Laboratório · Fechamento" : "Laboratório · Captura";
+    return "Laboratório · Captura";
   }
   return user.role === "admin" ? "Admin" : "Produção · Operador";
 }
