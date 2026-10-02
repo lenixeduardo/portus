@@ -7,7 +7,7 @@ import { runBackup } from "../db/backup";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { updateSettingSchema, type UpdateSettingInput } from "../validation/schemas";
-import { compose, requireAuth, validateInput } from "./middleware";
+import { compose, requireAdmin, validateInput } from "./middleware";
 
 const DEFAULT_BACKUP_FOLDER = (): string => join(app.getPath("documents"), "PORTUS", "backups");
 const DEFAULT_BACKUP_RETENTION = 10;
@@ -33,7 +33,7 @@ async function selectBackupFolderDialog(): Promise<string | null> {
 export function registerSettingsHandlers(): void {
   ipcMain.handle(
     IPC.settingsGetAll,
-    compose([requireAuth])((): AppSettings => {
+    compose([requireAdmin])((): AppSettings => {
       const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
       const out: AppSettings = {};
       rows.forEach((r) => (out[r.key] = r.value));
@@ -43,21 +43,21 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle(
     IPC.settingsSelectExportFolder,
-    compose([requireAuth])(async (): Promise<string | null> => {
+    compose([requireAdmin])(async (): Promise<string | null> => {
       return selectExportFolderDialog();
     })
   );
 
   ipcMain.handle(
     IPC.settingsSelectBackupFolder,
-    compose([requireAuth])(async (): Promise<string | null> => {
+    compose([requireAdmin])(async (): Promise<string | null> => {
       return selectBackupFolderDialog();
     })
   );
 
   ipcMain.handle(
     IPC.settingsBackupNow,
-    compose([requireAuth])((): ServiceResult<{ path: string }> => {
+    compose([requireAdmin])((): ServiceResult<{ path: string }> => {
       const folder = getAutoBackupFolder(DEFAULT_BACKUP_FOLDER());
       const retention = getAutoBackupRetention(DEFAULT_BACKUP_RETENTION);
       const result = runBackup(folder, retention);
@@ -70,7 +70,7 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle(
     IPC.settingsSet,
-    compose([requireAuth, validateInput(updateSettingSchema)])(
+    compose([requireAdmin, validateInput(updateSettingSchema)])(
       (_e, input: UpdateSettingInput): ServiceResult<true> => {
         setSetting(input.key, input.value);
         logAudit({ actorUserId: getCurrentUser()?.id, action: "settings.update", resourceType: "setting", resourceId: input.key });
