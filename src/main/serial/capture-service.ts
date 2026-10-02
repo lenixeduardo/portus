@@ -535,7 +535,8 @@ export async function startCapture(
   targetBatchId: number,
   equipmentIds?: number[],
   username?: string,
-  sectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION"
+  sectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION",
+  simulated = false
 ): Promise<ServiceResult<CaptureStartResult>> {
   if (isActive()) {
     return { ok: false, error: "Já existe uma captura em andamento." };
@@ -609,7 +610,46 @@ export async function startCapture(
   const initSlots: SlotInitState[] = [];
   const openPromises: Promise<void>[] = [];
 
-  for (const eq of equipments) {
+  // A simulação valida lote, usuário, permissões, catálogo central e cria uma
+  // sessão real, mas não depende de portas COM físicas. Os slots virtuais são
+  // mantidos no mesmo mapa usado por injectManualReading(), de modo que as
+  // leituras simuladas percorrem parsing, persistência, UI e encerramento reais.
+  if (simulated) {
+    for (const eq of equipments) {
+      let regex: RegExp | null = null;
+      let regexInvalid = false;
+      if (eq.parseRegex) {
+        try {
+          if (!isSafeOperationalRegex(eq.parseRegex)) throw new Error("unsafe regex");
+          regex = new RegExp(eq.parseRegex);
+        } catch {
+          regexInvalid = true;
+        }
+      }
+      const virtualPort = {
+        isOpen: false,
+        close: (callback?: (error?: Error | null) => void) => callback?.(null)
+      } as unknown as SerialPort;
+      slots.set(eq.slotIndex, {
+        equipment: eq,
+        port: virtualPort,
+        status: "open",
+        delimiter: delimiterChars(eq.lineDelimiter),
+        regex,
+        regexInvalid,
+        buffer: "",
+        openAttempts: 0,
+        usedFallback: false,
+        linesReceived: 0
+      });
+      initSlots.push({
+        slotIndex: eq.slotIndex,
+        equipmentId: eq.id,
+        name: eq.name,
+        status: "open"
+      });
+    }
+  } else for (const eq of equipments) {
     let port: SerialPort;
     try {
       port = new SerialPort({
