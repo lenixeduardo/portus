@@ -83,6 +83,7 @@ export function Dashboard({
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLaboratory = isLaboratoryUser(user);
   const isAdmin = user.role === "admin" || user.role === "master";
+  const isMaster = user.role === "master";
   const canCapture = !isLaboratory || canCaptureLaboratory(user);
   const requiresCentral = centralRequired || centralConfigured || isLaboratory;
 
@@ -278,7 +279,7 @@ export function Dashboard({
     const b = confirmBatch;
     setConfirmBatch(null);
     const res = requiresCentral
-      ? isAdmin
+      ? isMaster
         ? await window.api.central.batches.forceClose(b.id)
         : isLaboratory
         ? await window.api.central.batches.confirmLaboratory(b.id)
@@ -475,9 +476,9 @@ export function Dashboard({
               isCapturing={captureBatchId === b.id}
               canClose={isLaboratory
                 ? canCloseLaboratory(user) && !b.laboratoryClosed
-                : isAdmin || !requiresCentral || !b.productionClosed}
+                : isMaster || !requiresCentral || !b.productionClosed}
               centralMode={requiresCentral}
-              adminOverride={isAdmin}
+              adminOverride={isMaster}
               canCapture={canCapture}
               confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
               onClose={() => handleClose(b)}
@@ -506,7 +507,7 @@ export function Dashboard({
         <ConfirmCloseModal
           batch={confirmBatch}
           centralMode={requiresCentral}
-          adminOverride={isAdmin}
+          adminOverride={isMaster}
           confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
           onClose={() => setConfirmBatch(null)}
           onConfirm={handleConfirmClose}
