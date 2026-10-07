@@ -126,7 +126,7 @@ export function History({ user }: { user: User }) {
 
   async function handleReopen() {
     if (!selectedId || !history || history.batch.status !== "closed") return;
-    if (!confirm(`Reabrir o lote "${history.batch.code}"? As confirmações da Produção e do Laboratório serão reiniciadas.`)) return;
+    if (!confirm(`Reabrir o lote "${history.batch.code}"? O lote voltará para Em andamento e novas análises poderão ser registradas.`)) return;
 
     setReopening(true);
     setError(null);
@@ -137,9 +137,10 @@ export function History({ user }: { user: User }) {
       return;
     }
 
-    setHistory((current) => current ? { ...current, batch: res.data } : current);
+    const refreshed = await window.api.central.history.getBatch(Number(selectedId));
+    setHistory(refreshed.ok ? refreshed.data : (current) => current ? { ...current, batch: res.data } : current);
     setBatches((current) => current.map((batch) => batch.id === res.data.id ? res.data : batch));
-    setExportMsg("Lote reaberto. Produção e Laboratório devem realizar um novo ciclo de leitura e fechamento.");
+    setExportMsg("Lote reaberto. Novas análises podem ser registradas antes de uma nova conclusão e finalização.");
     setTimeout(() => setExportMsg(null), 5000);
   }
 
@@ -172,8 +173,8 @@ export function History({ user }: { user: User }) {
               >
                 <span className="batch-picker-code">#{b.code}</span>
                 <span className="batch-picker-name">{b.productName}</span>
-                <span className={`chip ${b.status === "closed" ? "chip-gray" : "chip-green"}`}>
-                  {b.status === "closed" ? "ENCERRADO" : "ABERTO"}
+                <span className={`chip ${b.status === "closed" ? "chip-gray" : b.completed ? "chip-blue" : "chip-green"}`}>
+                  {b.status === "closed" ? "FINALIZADO" : b.completed ? "CONCLUÍDO" : "ABERTO"}
                 </span>
               </button>
             ))
