@@ -280,7 +280,7 @@ export function History({ user }: { user: User }) {
             <div className="history-unified-table-wrap">
               <table className="data-table history-unified-table">
                 <thead><tr>
-                  <th>Setor</th><th>Sessão</th><th>Responsável</th><th>Computador</th><th>Equipamento</th>
+                  <th>Setor</th><th>Sessão</th><th>Responsável</th><th>Login</th><th>Computador</th><th>Equipamento</th>
                   <th>Canal</th><th>Valor capturado</th><th>Valor bruto</th><th>Data e hora</th>
                 </tr></thead>
                 <tbody>
@@ -289,6 +289,7 @@ export function History({ user }: { user: User }) {
                       <td><SectorChip sectorCode={session.sectorCode} /></td>
                       <td className="mono">#{sessionNumber}</td>
                       <td>{session.operatorName ?? session.operatorLogin ?? "—"}</td>
+                      <td className="mono">{session.operatorLogin ?? "—"}</td>
                       <td className="mono">{session.stationCode ?? "—"}</td>
                       <td>{reading.equipmentName}</td>
                       <td>{reading.slotIndex >= 0 ? `Slot ${reading.slotIndex + 1}` : "—"}</td>
