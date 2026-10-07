@@ -1,6 +1,6 @@
 export type UserSector = "PRODUCTION" | "LABORATORY";
 export type LaboratoryProfile = "capture";
-export type UserRole = "master" | "admin" | "operator";
+export type UserRole = "master" | "supervisor" | "admin" | "operator";
 
 export interface User {
   id: number;
@@ -32,6 +32,9 @@ export interface Batch {
   stage?: string;
   productionClosed?: boolean;
   laboratoryClosed?: boolean;
+  completed?: boolean;
+  completedAt?: string;
+  completedBy?: number;
 }
 
 export type LineDelimiter = "crlf" | "lf" | "cr";
