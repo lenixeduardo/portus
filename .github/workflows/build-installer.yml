@@ -29,6 +29,9 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Validar TypeScript
+        run: npm run typecheck
+
       - name: Rodar testes
         run: npm test
 
