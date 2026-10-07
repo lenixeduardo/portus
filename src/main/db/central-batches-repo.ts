@@ -18,9 +18,9 @@ export interface CentralBatchRow {
   operator_name: string;
   production_closed: boolean;
   laboratory_closed: boolean;
-  completed: boolean;
-  completed_at: string | Date | null;
-  completed_by: number | string | null;
+  completed?: boolean;
+  completed_at?: string | Date | null;
+  completed_by?: number | string | null;
   reading_previews: BatchReadingPreview[] | string | null;
 }
 
@@ -67,7 +67,7 @@ export function toBatch(row: CentralBatchRow): BatchWithProduct {
     stage: row.stage,
     productionClosed: row.production_closed,
     laboratoryClosed: row.laboratory_closed,
-    completed: row.completed,
+    completed: Boolean(row.completed),
     completedAt: row.completed_at ? toCentralTimestamp(row.completed_at) : undefined,
     completedBy: row.completed_by == null ? undefined : toCentralId(row.completed_by)
   };
