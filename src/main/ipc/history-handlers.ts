@@ -1,4 +1,4 @@
-import { dialog, ipcMain } from "electron";
+import { BrowserWindow, dialog, ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type ServiceResult } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
@@ -7,6 +7,7 @@ import { getCentralBatchHistory } from "../db/central-history-repo";
 import { listAllBatches } from "../db/batches-repo";
 import { buildCsvContent, getBatchHistory } from "../db/history-repo";
 import { writeFormattedXlsx } from "../db/excel-report";
+import { buildBatchPrintHtml } from "../db/traceability-report";
 import { compose, requireAuth, validateInput } from "./middleware";
 
 const getBatchHistorySchema = z.object({
@@ -21,6 +22,34 @@ const exportCsvSchema = z.object({
     endDate: z.string().optional()
   }).optional()
 });
+
+async function loadHistoryForCurrentUser(batchId: number) {
+  const user = getCurrentUser();
+  if (!user) throw new Error("Sessão expirada.");
+  return isCentralDatabaseConfigured()
+    ? getCentralBatchHistory(batchId, user.username, user.sectorCode ?? "PRODUCTION")
+    : isCentralDatabaseRequired()
+      ? null
+      : getBatchHistory(batchId);
+}
+
+async function printTraceabilityHtml(html: string): Promise<void> {
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true, contextIsolation: true }
+  });
+  try {
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    await new Promise<void>((resolve, reject) => {
+      win.webContents.print({ printBackground: true }, (success, failureReason) => {
+        if (success) resolve();
+        else reject(new Error(failureReason || "Falha ao imprimir."));
+      });
+    });
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
 
 export function registerHistoryHandlers(): void {
   ipcMain.handle(
@@ -38,6 +67,22 @@ export function registerHistoryHandlers(): void {
         const history = getBatchHistory(input.batchId);
         if (!history) return { ok: false, error: "Lote não encontrado." };
         return { ok: true, data: history };
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.historyPrintBatch,
+    compose([requireAuth, validateInput(getBatchHistorySchema)])(
+      async (_e, input: z.infer<typeof getBatchHistorySchema>): Promise<ServiceResult<true>> => {
+        try {
+          const history = await loadHistoryForCurrentUser(input.batchId);
+          if (!history) return { ok: false, error: "Lote não encontrado." };
+          await printTraceabilityHtml(buildBatchPrintHtml(history));
+          return { ok: true, data: true };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Não foi possível imprimir a folha do lote." };
+        }
       }
     )
   );
