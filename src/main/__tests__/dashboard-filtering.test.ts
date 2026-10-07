@@ -18,8 +18,7 @@ const batches: BatchWithProduct[] = [
     productName: "Produto Beta",
     operatorName: "Operador B",
     readingsCount: 2,
-    productionClosed: false,
-    laboratoryClosed: true
+    completed: true
   },
   {
     id: 2,
@@ -31,8 +30,7 @@ const batches: BatchWithProduct[] = [
     productName: "Produto Alfa",
     operatorName: "Operador A",
     readingsCount: 1,
-    productionClosed: true,
-    laboratoryClosed: false
+    completed: false
   },
   {
     id: 3,
@@ -44,8 +42,7 @@ const batches: BatchWithProduct[] = [
     productName: "Produto Beta",
     operatorName: "Operador C",
     readingsCount: 0,
-    productionClosed: false,
-    laboratoryClosed: false
+    completed: false
   }
 ];
 
@@ -55,15 +52,15 @@ describe("dashboard active batch filtering", () => {
     expect(parseBatchDate("invalid")).toBeNull();
   });
 
-  it("filtra por setor, produto e data de abertura", () => {
+  it("filtra por conclusão, produto e data de abertura", () => {
     const result = filterAndSortActiveBatches(batches, {
-      sector: "PRODUCTION",
+      sector: "IN_PROGRESS",
       productId: "10",
       openedOn: "2026-09-11",
       sortDirection: "DESC"
     });
 
-    expect(result.map((batch) => batch.code)).toEqual(["LOT-002", "LOT-003"]);
+    expect(result.map((batch) => batch.code)).toEqual(["LOT-003"]);
   });
 
   it("ordena por abertura crescente e decrescente", () => {
