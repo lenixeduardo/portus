@@ -2,30 +2,35 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("finalização administrativa de lote", () => {
+describe("finalização supervisionada de lote", () => {
   const migration = readFileSync(
-    resolve(process.cwd(), "database/migrations/011_operational_closure_rules.sql"),
+    resolve(process.cwd(), "database/migrations/012_unified_batch_traceability.sql"),
     "utf8"
   );
   const dashboard = readFileSync(
     resolve(process.cwd(), "src/renderer/screens/Dashboard.tsx"),
     "utf8"
   );
+  const handlers = readFileSync(
+    resolve(process.cwd(), "src/main/ipc/central-handlers.ts"),
+    "utf8"
+  );
 
-  it("permite a exceção somente para Master", () => {
-    expect(migration).toContain("v_role <> 'master'");
-    expect(migration).toContain("ERRCODE = '42501'");
+  it("restringe finalização a Supervisor ou Master", () => {
+    expect(migration).toContain("v_role NOT IN ('supervisor', 'master')");
+    expect(migration).toContain("Somente Supervisor ou Master podem finalizar o lote");
+    expect(handlers).toContain('user.role !== "supervisor" && user.role !== "master"');
   });
 
-  it("encerra ambos os setores sem consultar leituras", () => {
-    expect(migration).toContain("production_closed = TRUE");
-    expect(migration).toContain("laboratory_closed = TRUE");
-    expect(migration).toContain("status = 'closed'");
-    expect(migration).not.toMatch(/FROM\s+(readings|capture_sessions)/i);
+  it("exige o checkbox de lote concluído antes da finalização", () => {
+    expect(migration).toContain("IF NOT v_before.completed THEN");
+    expect(migration).toContain("Marque Lote concluído");
+    expect(migration).toContain("'BATCH_FINALIZED'");
   });
 
-  it("usa o encerramento forçado e identifica a ação como Finalizar lote", () => {
-    expect(dashboard).toContain("window.api.central.batches.forceClose(b.id)");
-    expect(dashboard).toContain('? "Finalizar lote"');
+  it("usa a finalização supervisionada no dashboard", () => {
+    expect(dashboard).toContain("window.api.central.batches.finalize(b.id)");
+    expect(dashboard).toContain("Lote concluído");
+    expect(dashboard).not.toContain("window.api.central.batches.forceClose(b.id)");
   });
 });
