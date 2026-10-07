@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { RotateCcw } from "lucide-react";
+import { Printer, RotateCcw } from "lucide-react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 import type { User } from "../../shared/types";
 
@@ -10,6 +10,7 @@ export function History({ user }: { user: User }) {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [centralMode, setCentralMode] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
@@ -142,8 +143,17 @@ export function History({ user }: { user: User }) {
     setTimeout(() => setExportMsg(null), 5000);
   }
 
+  async function handlePrint() {
+    if (!selectedId) return;
+    setPrinting(true);
+    setError(null);
+    const res = await window.api.history.printBatch(Number(selectedId));
+    setPrinting(false);
+    if (!res.ok) setError(res.error);
+  }
+
   const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
-  const canReopenBatch = user.role === "admin" || user.role === "master";
+  const canReopenBatch = user.role === "supervisor" || user.role === "master";
 
   return (
     <>
@@ -178,6 +188,10 @@ export function History({ user }: { user: User }) {
                 {reopening ? "Reabrindo..." : "Reabrir lote"}
               </button>
             )}
+            <button onClick={handlePrint} disabled={printing} className="secondary">
+              <Printer size={15} aria-hidden="true" />
+              {printing ? "Imprimindo..." : "Imprimir folha"}
+            </button>
             <button onClick={handleExport} disabled={exporting} className="export-btn">
               {exporting ? "Exportando..." : "⬇ Exportar Excel"}
             </button>
@@ -205,11 +219,28 @@ export function History({ user }: { user: User }) {
             <div className="history-summary-item">
               <span>Status</span>
               <strong><span className={`chip ${history.batch.status === "open" ? "chip-green" : "chip-gray"}`}>
-                {history.batch.status === "open" ? "ABERTO" : "ENCERRADO"}
+                {history.batch.status === "closed" ? "FINALIZADO" : history.batch.completed ? "CONCLUÍDO" : "ABERTO"}
               </span></strong>
             </div>
             <div className="history-summary-item"><span>Total leituras</span><strong>{totalReadings}</strong></div>
           </div>
+
+          {history.auditEvents && history.auditEvents.length > 0 && (
+            <div className="card" style={{ marginTop: 16, padding: 16 }}>
+              <strong>Linha do tempo do lote</strong>
+              <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                {history.auditEvents
+                  .filter((event) => auditLabel(event.action))
+                  .map((event) => (
+                    <div key={event.id} style={{ display: "grid", gridTemplateColumns: "170px 1fr 220px", gap: 12, alignItems: "center" }}>
+                      <span className="mono muted">{formatDate(event.timestamp)}</span>
+                      <strong>{auditLabel(event.action)}</strong>
+                      <span>{event.actorName ?? event.actorLogin ?? "—"}{event.actorLogin && event.actorName !== event.actorLogin ? ` · ${event.actorLogin}` : ""}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           <div className="history-filters">
             <div className="field">
@@ -244,7 +275,7 @@ export function History({ user }: { user: User }) {
             <div className="history-unified-table-wrap">
               <table className="data-table history-unified-table">
                 <thead><tr>
-                  <th>Setor</th><th>Sessão</th><th>Responsável</th><th>Equipamento</th>
+                  <th>Setor</th><th>Sessão</th><th>Responsável</th><th>Computador</th><th>Equipamento</th>
                   <th>Canal</th><th>Valor capturado</th><th>Valor bruto</th><th>Data e hora</th>
                 </tr></thead>
                 <tbody>
@@ -252,7 +283,8 @@ export function History({ user }: { user: User }) {
                     <tr key={reading.id}>
                       <td><SectorChip sectorCode={session.sectorCode} /></td>
                       <td className="mono">#{sessionNumber}</td>
-                      <td>{session.operatorName ?? "—"}</td>
+                      <td>{session.operatorName ?? session.operatorLogin ?? "—"}</td>
+                      <td className="mono">{session.stationCode ?? "—"}</td>
                       <td>{reading.equipmentName}</td>
                       <td>{reading.slotIndex >= 0 ? `Slot ${reading.slotIndex + 1}` : "—"}</td>
                       <td><span className="mono reading-parsed">{reading.valueParsed ?? reading.valueRaw}</span></td>
@@ -268,6 +300,19 @@ export function History({ user }: { user: User }) {
       )}
     </>
   );
+}
+
+function auditLabel(action: string): string | null {
+  switch (action) {
+    case "BATCH_OPENED": return "Lote aberto";
+    case "BATCH_COMPLETED": return "Lote concluído";
+    case "BATCH_COMPLETION_REVOKED": return "Conclusão removida";
+    case "BATCH_FINALIZED":
+    case "BATCH_CLOSED":
+    case "MASTER_BATCH_CLOSED": return "Lote finalizado";
+    case "BATCH_REOPENED": return "Lote reaberto";
+    default: return null;
+  }
 }
 
 function SectorChip({ sectorCode }: { sectorCode?: CaptureSessionRecord["sectorCode"] }) {
