@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
-import { canCaptureLaboratory, canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
+import { canCaptureLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { isUserBarcode } from "../../shared/user-barcode";
 import { CaptureModal } from "../components/CaptureModal";
 import { EquipmentSelectionModal } from "../components/EquipmentSelectionModal";
@@ -354,8 +354,8 @@ export function Dashboard({
     openedOn: openedDateFilter,
     sortDirection
   });
-  const productionPending = batches.filter((batch) => !batch.productionClosed).length;
-  const laboratoryPending = batches.filter((batch) => !batch.laboratoryClosed).length;
+  const inProgressCount = batches.filter((batch) => !batch.completed).length;
+  const completedCount = batches.filter((batch) => batch.completed).length;
   const filtersActive = batchFilter !== "ALL"
     || productFilter !== "ALL"
     || openedDateFilter !== ""
@@ -407,8 +407,8 @@ export function Dashboard({
         <div className="batch-list-controls" aria-label="Filtros de lote">
           <div className="batch-filter-tabs" role="tablist" aria-label="Filtrar lotes por setor">
             <FilterTab label="Todos" count={batches.length} active={batchFilter === "ALL"} onClick={() => setBatchFilter("ALL")} />
-            <FilterTab label="Produção" count={productionPending} active={batchFilter === "PRODUCTION"} onClick={() => setBatchFilter("PRODUCTION")} />
-            <FilterTab label="Laboratório" count={laboratoryPending} active={batchFilter === "LABORATORY"} onClick={() => setBatchFilter("LABORATORY")} />
+            <FilterTab label="Em andamento" count={inProgressCount} active={batchFilter === "IN_PROGRESS"} onClick={() => setBatchFilter("IN_PROGRESS")} />
+            <FilterTab label="Concluídos" count={completedCount} active={batchFilter === "COMPLETED"} onClick={() => setBatchFilter("COMPLETED")} />
           </div>
 
           <div className="batch-list-filters">
