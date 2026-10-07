@@ -16,5 +16,5 @@
 - [x] Atualizar folha de rastreabilidade/Excel com estação e linha cronológica.
 - [x] Adicionar impressão da folha do lote.
 - [x] Adicionar testes de contrato, permissões, histórico e relatório.
-- [ ] Rodar suíte automatizada no GitHub Actions.
-- [ ] Corrigir regressões encontradas pelo CI.
+- [x] Rodar suíte automatizada no GitHub Actions — 21 arquivos / 140 testes aprovados.
+- [x] Corrigir regressões encontradas pelo CI — typecheck e pacote Windows aprovados.
