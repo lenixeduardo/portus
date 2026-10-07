@@ -39,10 +39,12 @@ export interface CentralCaptureBatchState {
 }
 
 export function isSectorCaptureClosed(
-  batch: CentralCaptureBatchState,
-  sectorCode: "PRODUCTION" | "LABORATORY"
+  _batch: CentralCaptureBatchState,
+  _sectorCode: "PRODUCTION" | "LABORATORY"
 ): boolean {
-  return sectorCode === "LABORATORY" ? batch.laboratoryClosed : batch.productionClosed;
+  // Regra legada: confirmações setoriais não bloqueiam mais leituras.
+  // O lote único aceita capturas enquanto status=open.
+  return false;
 }
 
 export async function getCentralBatchById(batchId: number): Promise<CentralCaptureBatchState | null> {
@@ -64,35 +66,59 @@ export async function getCentralBatchById(batchId: number): Promise<CentralCaptu
   } : null;
 }
 
+export interface CentralStationIdentity {
+  code: string;
+  name: string;
+  sectorCode: "PRODUCTION" | "LABORATORY";
+}
+
+async function ensureCentralStation(station: CentralStationIdentity): Promise<number> {
+  const sector = await centralQuery<{ id: number }>(
+    "SELECT id FROM sectors WHERE code = $1 AND active",
+    [station.sectorCode]
+  );
+  const sectorId = sector.rows[0]?.id;
+  if (!sectorId) throw new Error("Setor físico da estação não encontrado na base central.");
+
+  const result = await centralQuery<{ id: number }>(
+    `INSERT INTO stations (sector_id, code, name, active)
+     VALUES ($1, $2, $3, TRUE)
+     ON CONFLICT (sector_id, code) DO UPDATE
+       SET name = EXCLUDED.name, active = TRUE
+     RETURNING id`,
+    [sectorId, station.code, station.name]
+  );
+  const stationId = result.rows[0]?.id;
+  if (!stationId) throw new Error("Não foi possível identificar a estação na base central.");
+  return stationId;
+}
+
 export async function createCentralCaptureSession(
   batchId: number,
   timeoutSeconds: number,
   username: string,
-  sectorCode: "PRODUCTION" | "LABORATORY"
+  sectorCode: "PRODUCTION" | "LABORATORY",
+  station: CentralStationIdentity
 ): Promise<CaptureSession> {
   const context = await resolveContext(username, sectorCode);
+  const stationId = await ensureCentralStation(station);
   await centralQuery(
     "SELECT portus_assert_permission($1, $2, $3, 'capture')",
     [context.user_id, context.application_id, context.sector_id]
   );
   const result = await centralQuery<SessionRow>(
     `INSERT INTO capture_sessions (
-       batch_id, sector_id, source_application_id, user_id, timeout_seconds
+       batch_id, sector_id, station_id, source_application_id, user_id, timeout_seconds
      )
-     SELECT b.id, $2, $3, $4, $5
+     SELECT b.id, $2, $3, $4, $5, $6
        FROM batches b
-       JOIN sectors s ON s.id = $2
       WHERE b.id = $1
         AND b.status = 'open'
-        AND CASE
-          WHEN s.code = 'LABORATORY' THEN NOT b.laboratory_closed
-          ELSE NOT b.production_closed
-        END
      RETURNING id, batch_id, started_at, ended_at, timeout_seconds, status`,
-    [batchId, context.sector_id, context.application_id, context.user_id, timeoutSeconds]
+    [batchId, context.sector_id, stationId, context.application_id, context.user_id, timeoutSeconds]
   );
   const row = result.rows[0];
-  if (!row) throw new Error("Este setor já foi confirmado e não aceita novas leituras neste lote.");
+  if (!row) throw new Error("O lote não está aberto para novas leituras.");
   return {
     id: row.id,
     batchId: row.batch_id,
