@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
-import { isLaboratoryUser } from "../../shared/laboratory-access";
 import { getCurrentUser } from "../auth/auth-service";
 import {
   checkCentralDatabase,
@@ -24,6 +24,11 @@ import { getCentralBatchHistory } from "../db/central-history-repo";
 import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
+
+const setCompletedSchema = z.object({
+  id: z.number().positive("ID do lote deve ser um número positivo"),
+  completed: z.boolean()
+});
 
 function unavailable<T>(): ServiceResult<T> {
   return { ok: false, error: "Base central indisponível ou não configurada." };
@@ -114,7 +119,7 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesSetCompleted,
-    compose([requireAuth])(
+    compose([requireAuth, validateInput(setCompletedSchema)])(
       async (_e, input: { id: number; completed: boolean }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
@@ -136,7 +141,7 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesFinalize,
-    compose([requireAuth])(
+    compose([requireAuth, validateInput(closeBatchSchema)])(
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
