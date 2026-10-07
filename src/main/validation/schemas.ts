@@ -122,7 +122,7 @@ export const createUserSchema = z.object({
     .string()
     .min(8, "A senha precisa ter pelo menos 8 caracteres.")
     .max(100, "A senha deve ter no máximo 100 caracteres."),
-  role: z.enum(["master", "admin", "operator"]).optional(),
+  role: z.enum(["master", "supervisor", "admin", "operator"]).optional(),
   sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
   laboratoryProfile: z.enum(["capture"]).optional()
 }).superRefine((value, context) => {
@@ -220,7 +220,9 @@ export const updateSettingSchema = z.object({
     "auto_export_folder",
     "auto_backup_folder",
     "auto_backup_retention",
-    "error_report_webhook"
+    "error_report_webhook",
+    "station_code",
+    "station_sector_code"
   ]),
   value: z.string().min(0)
 });
