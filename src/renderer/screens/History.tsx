@@ -138,7 +138,11 @@ export function History({ user }: { user: User }) {
     }
 
     const refreshed = await window.api.central.history.getBatch(Number(selectedId));
-    setHistory(refreshed.ok ? refreshed.data : (current) => current ? { ...current, batch: res.data } : current);
+    if (refreshed.ok) {
+      setHistory(refreshed.data);
+    } else {
+      setHistory((current) => current ? { ...current, batch: res.data } : current);
+    }
     setBatches((current) => current.map((batch) => batch.id === res.data.id ? res.data : batch));
     setExportMsg("Lote reaberto. Novas análises podem ser registradas antes de uma nova conclusão e finalização.");
     setTimeout(() => setExportMsg(null), 5000);
