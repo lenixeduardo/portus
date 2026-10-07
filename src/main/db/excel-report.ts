@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const COLUMN_WIDTHS = [16, 18, 14, 20, 10, 18, 18, 18, 14, 16, 16, 12, 16, 16, 22] as const;
+const COLUMN_WIDTHS = [16, 18, 14, 20, 10, 18, 18, 18, 14, 16, 16, 16, 12, 16, 16, 22] as const;
 
 export function buildExcelAutomationScript(): string {
   return String.raw`
@@ -15,7 +15,7 @@ if (-not $source -or -not $destination) { throw "Caminhos de exportação não i
 function Rgb([int]$r, [int]$g, [int]$b) { return $r + (256 * $g) + (65536 * $b) }
 
 $data = Import-Csv -Path $source -Delimiter ';' -Encoding UTF8
-$headers = @("Lote","Produto","Operador","Abertura do Lote","Sessão","Início Sessão","Fim Sessão","Status Sessão","Setor","Responsável","Equipamento","Slot","Valor Bruto","Valor Numérico","Capturado em")
+$headers = @("Lote","Produto","Operador","Abertura do Lote","Sessão","Início Sessão","Fim Sessão","Status Sessão","Setor","Responsável","Computador","Equipamento","Slot","Valor Bruto","Valor Numérico","Capturado em")
 $widths = @(${COLUMN_WIDTHS.join(",")})
 
 $excel = $null
@@ -42,7 +42,7 @@ try {
   }
 
   $lastRow = [Math]::Max(1, $row - 1)
-  $header = $sheet.Range("A1:O1")
+  $header = $sheet.Range("A1:P1")
   $header.Font.Bold = $true
   $header.Font.Color = Rgb 255 255 255
   $header.Interior.Color = Rgb 17 18 21
@@ -50,7 +50,7 @@ try {
   $header.VerticalAlignment = -4108
   $sheet.Rows.Item(1).RowHeight = 22
 
-  $used = $sheet.Range("A1:O$lastRow")
+  $used = $sheet.Range("A1:P$lastRow")
   $used.VerticalAlignment = -4108
   $used.AutoFilter()
 
