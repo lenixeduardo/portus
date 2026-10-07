@@ -36,9 +36,9 @@ function sampleHistory(): BatchHistory {
 describe("exportação unificada de leituras", () => {
   it("preserva setor, responsável e valor de cada sessão no CSV intermediário", () => {
     const csv = buildCsvContent(sampleHistory());
-    expect(csv).toContain("Setor;Responsável;Computador");
-    expect(csv).toContain("Produção;João Operador;PRODUCAO-01;Balança;3;1,25;1,25");
-    expect(csv).toContain("Laboratório;Maria Analista;LABORATORIO-01;pH;;7,2;7,2");
+    expect(csv).toContain("Setor;Responsável;Login;Computador");
+    expect(csv).toContain("Produção;João Operador;producao;PRODUCAO-01;Balança;3;1,25;1,25");
+    expect(csv).toContain("Laboratório;Maria Analista;laboratorio;LABORATORIO-01;pH;;7,2;7,2");
   });
 
   it("gera automação do Excel com cabeçalho, larguras, filtro, congelamento e formato XLSX", () => {
@@ -46,8 +46,8 @@ describe("exportação unificada de leituras", () => {
     expect(script).toContain("FreezePanes = $true");
     expect(script).toContain("AutoFilter()");
     expect(script).toContain("SaveAs($destination, 51)");
-    expect(script).toContain("@(16,18,14,20,10,18,18,18,14,16,16,16,12,16,16,22)");
-    expect(script).toContain('$header = $sheet.Range("A1:P1")');
+    expect(script).toContain("@(16,18,14,20,10,18,18,18,14,16,14,16,16,12,16,16,22)");
+    expect(script).toContain('$header = $sheet.Range("A1:Q1")');
     expect(script).toContain("$header.Interior.Color = Rgb 17 18 21");
     expect(script).toContain("$header.Font.Color = Rgb 255 255 255");
   });
