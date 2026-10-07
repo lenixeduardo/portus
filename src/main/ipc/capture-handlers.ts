@@ -25,6 +25,9 @@ export function registerCaptureHandlers(): void {
       async (_e, input: z.infer<typeof startCaptureSchema>) => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
+        if (user.role === "supervisor") {
+          return { ok: false, error: "Supervisor não realiza análises ou leituras." };
+        }
         if (isCentralDatabaseRequired() && !isCentralDatabaseConfigured()) {
           return { ok: false, error: "A captura exige conexão com o PostgreSQL central." };
         }
