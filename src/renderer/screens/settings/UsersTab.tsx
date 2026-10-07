@@ -214,7 +214,8 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
           <label>Perfil</label>
           <select value={accessProfile} onChange={(e) => setAccessProfile(e.target.value as typeof accessProfile)}>
             <option value="operator">Operador — pode abrir lotes e realizar leituras</option>
-            <option value="admin">Admin — configurações e administração</option>\n            <option value="supervisor">Supervisor — finaliza e reabre lotes; não realiza análises</option>
+            <option value="admin">Admin — configurações e administração</option>
+            <option value="supervisor">Supervisor — finaliza e reabre lotes; não realiza análises</option>
             {canCreateMaster && <option value="master">Master — acesso completo e reabertura de lotes</option>}
             <option value="laboratory_capture">Laboratório — captura e fechamento da etapa</option>
           </select>
@@ -338,7 +339,8 @@ function formatDate(iso: string): string {
 }
 
 function formatAccessProfile(user: User): string {
-  if (user.role === "master") return "Master";\n  if (user.role === "supervisor") return "Supervisor";
+  if (user.role === "master") return "Master";
+  if (user.role === "supervisor") return "Supervisor";
   if (user.sectorCode === "LABORATORY") {
     return "Laboratório · Captura";
   }
