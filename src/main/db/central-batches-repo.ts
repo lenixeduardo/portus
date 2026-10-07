@@ -18,6 +18,9 @@ export interface CentralBatchRow {
   operator_name: string;
   production_closed: boolean;
   laboratory_closed: boolean;
+  completed: boolean;
+  completed_at: string | Date | null;
+  completed_by: number | string | null;
   reading_previews: BatchReadingPreview[] | string | null;
 }
 
@@ -63,14 +66,17 @@ export function toBatch(row: CentralBatchRow): BatchWithProduct {
     readingPreviews: parseReadingPreviews(row.reading_previews),
     stage: row.stage,
     productionClosed: row.production_closed,
-    laboratoryClosed: row.laboratory_closed
+    laboratoryClosed: row.laboratory_closed,
+    completed: row.completed,
+    completedAt: row.completed_at ? toCentralTimestamp(row.completed_at) : undefined,
+    completedBy: row.completed_by == null ? undefined : toCentralId(row.completed_by)
   };
 }
 
 const SELECT_BATCH = `
   SELECT b.id, b.product_id, p.name AS product_name, b.code, b.status,
          b.stage, b.opened_at, b.closed_at, b.closed_by, b.created_by,
-         b.production_closed, b.laboratory_closed,
+         b.production_closed, b.laboratory_closed, b.completed, b.completed_at, b.completed_by,
          u.username AS operator_name,
          (SELECT COUNT(*) FROM readings r WHERE r.batch_id = b.id) AS readings_count,
          (SELECT COUNT(*)
@@ -199,9 +205,10 @@ export async function openCentralBatch(
   productDescription: string | undefined,
   code: string,
   username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY",
   stage = "A"
 ): Promise<BatchWithProduct> {
-  const context = await resolveContext(username, "PRODUCTION");
+  const context = await resolveContext(username, sectorCode);
   const product = await centralQuery<{ id: number }>(
     "SELECT ensure_product($1, $2, $3, $4, $5) AS id",
     [productName, productDescription ?? null, context.user_id, context.application_id, context.sector_id]
@@ -226,28 +233,56 @@ export async function confirmCentralLaboratoryClose(id: number, username: string
   return confirmCentralClose(id, username, "LABORATORY", "confirm_laboratory");
 }
 
-/** Fechamento administrativo, auditado e independente das confirmações setoriais. */
-export async function forceCentralBatchClose(id: number, username: string): Promise<BatchWithProduct> {
-  const context = await resolveContext(username, "PRODUCTION");
-  const result = await centralQuery<{ id: number }>(
-    "SELECT id FROM admin_close_batch($1, $2, $3, $4)",
-    [id, context.user_id, context.application_id, context.sector_id]
-  );
-  const batch = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.id = $1`, [result.rows[0]?.id ?? id]);
-  if (!batch.rows[0]) throw new Error("Lote não encontrado após finalização administrativa.");
+async function reloadCentralBatch(id: number): Promise<BatchWithProduct> {
+  const batch = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.id = $1`, [id]);
+  if (!batch.rows[0]) throw new Error("Lote não encontrado após atualização.");
   return toBatch(batch.rows[0]);
 }
 
-/** Reinicia o ciclo setorial de um lote fechado, preservando o histórico. */
-export async function reopenCentralBatch(id: number, username: string): Promise<BatchWithProduct> {
-  const context = await resolveContext(username, "PRODUCTION");
+export async function setCentralBatchCompleted(
+  id: number,
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY",
+  completed: boolean
+): Promise<BatchWithProduct> {
+  const context = await resolveContext(username, sectorCode);
+  const result = await centralQuery<{ id: number }>(
+    "SELECT id FROM set_batch_completed($1, $2, $3, $4, $5)",
+    [id, context.user_id, context.application_id, context.sector_id, completed]
+  );
+  return reloadCentralBatch(result.rows[0]?.id ?? id);
+}
+
+export async function finalizeCentralBatch(
+  id: number,
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchWithProduct> {
+  const context = await resolveContext(username, sectorCode);
+  const result = await centralQuery<{ id: number }>(
+    "SELECT id FROM supervisor_finalize_batch($1, $2, $3, $4)",
+    [id, context.user_id, context.application_id, context.sector_id]
+  );
+  return reloadCentralBatch(result.rows[0]?.id ?? id);
+}
+
+/** Alias legado mantido para clientes antigos; aplica a nova regra Supervisor/Master. */
+export async function forceCentralBatchClose(id: number, username: string): Promise<BatchWithProduct> {
+  return finalizeCentralBatch(id, username, "PRODUCTION");
+}
+
+/** Reabre um lote finalizado sem excluir leituras nem auditoria. */
+export async function reopenCentralBatch(
+  id: number,
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchWithProduct> {
+  const context = await resolveContext(username, sectorCode);
   const result = await centralQuery<{ id: number }>(
     "SELECT id FROM master_reopen_batch($1, $2, $3, $4)",
     [id, context.user_id, context.application_id, context.sector_id]
   );
-  const batch = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.id = $1`, [result.rows[0]?.id ?? id]);
-  if (!batch.rows[0]) throw new Error("Lote não encontrado após reabertura.");
-  return toBatch(batch.rows[0]);
+  return reloadCentralBatch(result.rows[0]?.id ?? id);
 }
 
 async function confirmCentralClose(
