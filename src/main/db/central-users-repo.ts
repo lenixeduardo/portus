@@ -8,9 +8,11 @@ import { centralQuery } from "./central-connection";
 export async function ensureCentralUserAccess(user: User): Promise<void> {
   const role = user.role === "master"
     ? "master"
-    : user.role === "admin"
-      ? "admin"
-      : user.sectorCode === "LABORATORY" ? "laboratory" : "operator";
+    : user.role === "supervisor"
+      ? "supervisor"
+      : user.role === "admin"
+        ? "admin"
+        : user.sectorCode === "LABORATORY" ? "laboratory" : "operator";
   const displayName = user.displayName ?? user.username;
   const userResult = await centralQuery<{ id: number }>(
     `INSERT INTO users (username, password_hash, display_name, role, active)
@@ -23,10 +25,11 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
   const userId = userResult.rows[0]?.id;
   if (!userId) throw new Error("Não foi possível sincronizar o usuário com a base central.");
 
-  const isAdmin = user.role === "admin" || user.role === "master";
+  const isMaster = user.role === "master";
+  const isAdmin = user.role === "admin";
+  const isSupervisor = user.role === "supervisor";
   const production = user.sectorCode !== "LABORATORY";
   const laboratoryCapture = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
-  const laboratoryClose = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
 
   await centralQuery(
     `INSERT INTO user_sector_permissions (
@@ -34,12 +37,12 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
        can_confirm_production, can_confirm_laboratory
      )
      SELECT $1, s.id,
-       CASE WHEN $2 OR ($3 AND s.code = 'PRODUCTION') OR (NOT $3 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END,
-       CASE WHEN $2 OR ($3 AND s.code = 'PRODUCTION') THEN TRUE ELSE FALSE END,
-       CASE WHEN $2 OR ($3 AND s.code = 'PRODUCTION') OR ($4 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END,
-       CASE WHEN $2 OR ($3 AND s.code = 'PRODUCTION') THEN TRUE ELSE FALSE END,
-       CASE WHEN $2 OR ($3 AND s.code = 'PRODUCTION') THEN TRUE ELSE FALSE END,
-       CASE WHEN $2 OR ($5 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END
+       CASE WHEN $2 OR $3 OR $4 OR ($5 AND s.code = 'PRODUCTION') OR (NOT $5 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END,
+       CASE WHEN $2 OR $3 OR ($5 AND s.code = 'PRODUCTION') OR ($6 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END,
+       CASE WHEN $2 OR $3 OR ($5 AND s.code = 'PRODUCTION') OR ($6 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END,
+       CASE WHEN $2 OR $3 OR ($5 AND s.code = 'PRODUCTION') THEN TRUE ELSE FALSE END,
+       FALSE,
+       FALSE
      FROM sectors s
      WHERE s.code IN ('PRODUCTION', 'LABORATORY')
      ON CONFLICT (user_id, sector_id) DO UPDATE SET
@@ -49,7 +52,7 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
        can_move = EXCLUDED.can_move,
        can_confirm_production = EXCLUDED.can_confirm_production,
        can_confirm_laboratory = EXCLUDED.can_confirm_laboratory`,
-    [userId, isAdmin, production, laboratoryCapture, laboratoryClose]
+    [userId, isMaster, isAdmin, isSupervisor, production, laboratoryCapture]
   );
 
   await centralQuery(
@@ -59,11 +62,11 @@ export async function ensureCentralUserAccess(user: User): Promise<void> {
      )
      SELECT a.id, s.id,
        TRUE,
-       a.code = 'PORTUS' AND s.code = 'PRODUCTION',
+       (a.code = 'PORTUS' AND s.code = 'PRODUCTION') OR (a.code = 'PORTUS_LABORATORY' AND s.code = 'LABORATORY'),
        (a.code = 'PORTUS' AND s.code = 'PRODUCTION') OR (a.code = 'PORTUS_LABORATORY' AND s.code = 'LABORATORY'),
        a.code = 'PORTUS' AND s.code = 'PRODUCTION',
-       a.code = 'PORTUS' AND s.code = 'PRODUCTION',
-       a.code = 'PORTUS_LABORATORY' AND s.code = 'LABORATORY'
+       FALSE,
+       FALSE
      FROM applications a CROSS JOIN sectors s
      WHERE a.code IN ('PORTUS', 'PORTUS_LABORATORY')
        AND s.code IN ('PRODUCTION', 'LABORATORY')
