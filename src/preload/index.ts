@@ -74,7 +74,9 @@ const api: SerialReaderApi = {
     getBatch: (batchId: number): Promise<ServiceResult<BatchHistory>> =>
       ipcRenderer.invoke(IPC.historyGetBatch, { batchId }),
     exportCsv: (batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.historyExportCsv, { batchId, filters })
+      ipcRenderer.invoke(IPC.historyExportCsv, { batchId, filters }),
+    printBatch: (batchId: number): Promise<ServiceResult<true>> =>
+      ipcRenderer.invoke(IPC.historyPrintBatch, { batchId })
   },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGetAll),
@@ -137,6 +139,10 @@ const api: SerialReaderApi = {
         ipcRenderer.invoke(IPC.centralBatchesConfirmProduction, { id }),
       confirmLaboratory: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
         ipcRenderer.invoke(IPC.centralBatchesConfirmLaboratory, { id }),
+      setCompleted: (id: number, completed: boolean): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesSetCompleted, { id, completed }),
+      finalize: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesFinalize, { id }),
       forceClose: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
         ipcRenderer.invoke(IPC.centralBatchesForceClose, { id }),
       reopen: (id: number): Promise<ServiceResult<BatchWithProduct>> =>

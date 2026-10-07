@@ -46,6 +46,7 @@ export const IPC = {
   batchesScanBarcode: "batches:scan-barcode",
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv",
+  historyPrintBatch: "history:print-batch",
   settingsSelectExportFolder: "settings:select-export-folder",
   settingsSelectBackupFolder: "settings:select-backup-folder",
   settingsBackupNow: "settings:backup-now",
@@ -63,6 +64,8 @@ export const IPC = {
   centralBatchesCreate: "central:batches:create",
   centralBatchesConfirmProduction: "central:batches:confirm-production",
   centralBatchesConfirmLaboratory: "central:batches:confirm-laboratory",
+  centralBatchesSetCompleted: "central:batches:set-completed",
+  centralBatchesFinalize: "central:batches:finalize",
   centralBatchesForceClose: "central:batches:force-close",
   centralBatchesReopen: "central:batches:reopen",
   centralHistoryGetBatch: "central:history:get-batch"
@@ -146,6 +149,15 @@ export interface ReadingRecord {
   capturedAt: string;
 }
 
+export interface BatchAuditEvent {
+  id: number;
+  action: string;
+  timestamp: string;
+  actorName?: string;
+  actorLogin?: string;
+  sectorCode?: "PRODUCTION" | "LABORATORY";
+}
+
 export interface CaptureSessionRecord {
   id: number;
   startedAt: string;
@@ -153,7 +165,10 @@ export interface CaptureSessionRecord {
   timeoutSeconds: number;
   status: "active" | "completed" | "cancelled";
   operatorName?: string;
+  operatorLogin?: string;
   sectorCode?: "PRODUCTION" | "LABORATORY";
+  stationCode?: string;
+  stationName?: string;
   readings: ReadingRecord[];
 }
 
@@ -167,6 +182,7 @@ export interface BatchReadingPreview {
 export interface BatchHistory {
   batch: BatchWithProduct;
   sessions: CaptureSessionRecord[];
+  auditEvents?: BatchAuditEvent[];
 }
 
 export interface LoginRequest {
@@ -214,7 +230,7 @@ export interface UserCreateInput {
   username: string;
   password: string;
   displayName?: string;
-  role?: "master" | "admin" | "operator";
+  role?: "master" | "supervisor" | "admin" | "operator";
   sectorCode?: "PRODUCTION" | "LABORATORY";
   laboratoryProfile?: "capture";
 }
@@ -312,6 +328,7 @@ export interface SerialReaderApi {
   history: {
     getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;
     exportCsv(batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>>;
+    printBatch(batchId: number): Promise<ServiceResult<true>>;
   };
   settings: {
     getAll(): Promise<AppSettings>;
@@ -359,6 +376,8 @@ export interface SerialReaderApi {
       create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
       confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      setCompleted(id: number, completed: boolean): Promise<ServiceResult<BatchWithProduct>>;
+      finalize(id: number): Promise<ServiceResult<BatchWithProduct>>;
       forceClose(id: number): Promise<ServiceResult<BatchWithProduct>>;
       reopen(id: number): Promise<ServiceResult<BatchWithProduct>>;
     };

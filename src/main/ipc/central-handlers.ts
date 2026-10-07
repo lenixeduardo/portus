@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
-import { canCloseLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
 import { getCurrentUser } from "../auth/auth-service";
 import {
   checkCentralDatabase,
@@ -11,17 +11,24 @@ import {
 import {
   confirmCentralLaboratoryClose,
   confirmCentralProductionClose,
+  finalizeCentralBatch,
   forceCentralBatchClose,
   listCentralOpenBatches,
   listCentralAllBatches,
   openCentralBatch,
-  reopenCentralBatch
+  reopenCentralBatch,
+  setCentralBatchCompleted
 } from "../db/central-batches-repo";
 import { getProduct } from "../db/products-repo";
 import { getCentralBatchHistory } from "../db/central-history-repo";
 import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
+
+const setCompletedSchema = z.object({
+  id: z.number().positive("ID do lote deve ser um número positivo"),
+  completed: z.boolean()
+});
 
 function unavailable<T>(): ServiceResult<T> {
   return { ok: false, error: "Base central indisponível ou não configurada." };
@@ -95,16 +102,60 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         await ensureCentralUserAccess(user);
-        if (isLaboratoryUser(user)) {
-          return { ok: false, error: "O Laboratório consulta lotes abertos pela Produção; não cria novos lotes." };
+        if (user.role === "supervisor") {
+          return { ok: false, error: "Supervisor não abre lotes operacionais." };
         }
         const product = getProduct(input.productId);
         if (!product) return { ok: false, error: "Produto local inválido." };
         try {
           const code = input.code?.trim() || `CENTRAL-${Date.now()}`;
-          return { ok: true, data: await openCentralBatch(product.name, product.description, code, user.username) };
+          return { ok: true, data: await openCentralBatch(product.name, product.description, code, user.username, user.sectorCode ?? "PRODUCTION") };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao criar lote na base central." };
+        }
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.centralBatchesSetCompleted,
+    compose([requireAuth, validateInput(setCompletedSchema)])(
+      async (_e, input: { id: number; completed: boolean }): Promise<ServiceResult<BatchWithProduct>> => {
+        const user = getCurrentUser();
+        if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        if (user.role === "supervisor") {
+          return { ok: false, error: "Supervisor não altera a conclusão operacional do lote." };
+        }
+        await ensureCentralUserAccess(user);
+        try {
+          return {
+            ok: true,
+            data: await setCentralBatchCompleted(input.id, user.username, user.sectorCode ?? "PRODUCTION", input.completed)
+          };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Erro ao atualizar conclusão do lote." };
+        }
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.centralBatchesFinalize,
+    compose([requireAuth, validateInput(closeBatchSchema)])(
+      async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
+        const user = getCurrentUser();
+        if (!user || !isCentralDatabaseConfigured()) return unavailable();
+        if (user.role !== "supervisor" && user.role !== "master") {
+          return { ok: false, error: "Somente Supervisor ou Master podem finalizar o lote." };
+        }
+        await ensureCentralUserAccess(user);
+        try {
+          return {
+            ok: true,
+            data: await finalizeCentralBatch(input.id, user.username, user.sectorCode ?? "PRODUCTION")
+          };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
         }
       }
     )
@@ -136,9 +187,6 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         await ensureCentralUserAccess(user);
-        if (!canCloseLaboratory(user)) {
-          return { ok: false, error: "Seu perfil não possui permissão de fechamento do Laboratório." };
-        }
         try {
           return { ok: true, data: await confirmCentralLaboratoryClose(input.id, user.username) };
         } catch (error) {
@@ -155,7 +203,7 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         await ensureCentralUserAccess(user);
-        if (user.role !== "master") return { ok: false, error: "Somente o Master pode finalizar um lote sem atividade ou confirmações setoriais." };
+        if (user.role !== "supervisor" && user.role !== "master") return { ok: false, error: "Somente Supervisor ou Master podem finalizar o lote." };
         try {
           return { ok: true, data: await forceCentralBatchClose(input.id, user.username) };
         } catch (error) {
@@ -171,12 +219,12 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
-        if (user.role !== "master" && user.role !== "admin") {
-          return { ok: false, error: "Somente administradores podem reabrir um lote encerrado." };
+        if (user.role !== "supervisor" && user.role !== "master") {
+          return { ok: false, error: "Somente Supervisor ou Master podem reabrir um lote finalizado." };
         }
         await ensureCentralUserAccess(user);
         try {
-          return { ok: true, data: await reopenCentralBatch(input.id, user.username) };
+          return { ok: true, data: await reopenCentralBatch(input.id, user.username, user.sectorCode ?? "PRODUCTION") };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao reabrir lote." };
         }
