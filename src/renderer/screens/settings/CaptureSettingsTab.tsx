@@ -7,6 +7,8 @@ export function CaptureSettingsTab() {
   const [backupFolder, setBackupFolder] = useState<string>("");
   const [backupRetention, setBackupRetention] = useState<string>("10");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [stationCode, setStationCode] = useState<string>("");
+  const [stationSectorCode, setStationSectorCode] = useState<"PRODUCTION" | "LABORATORY">("PRODUCTION");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,8 @@ export function CaptureSettingsTab() {
       setBackupFolder(s.auto_backup_folder ?? "");
       setBackupRetention(s.auto_backup_retention ?? "10");
       setWebhookUrl(s.error_report_webhook ?? "");
+      setStationCode(s.station_code ?? "");
+      setStationSectorCode(s.station_sector_code === "LABORATORY" ? "LABORATORY" : "PRODUCTION");
       setLoading(false);
     });
   }, []);
@@ -46,6 +50,10 @@ export function CaptureSettingsTab() {
       setError("Retenção de backups deve ser um inteiro entre 1 e 100.");
       return;
     }
+    if (!stationCode.trim()) {
+      setError("Informe a identificação deste computador, por exemplo PRODUCAO-01 ou LABORATORIO-01.");
+      return;
+    }
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -61,6 +69,10 @@ export function CaptureSettingsTab() {
     if (!r5.ok) { setSaving(false); setError(r5.error); return; }
     const r6 = await window.api.settings.set("error_report_webhook", webhookUrl.trim());
     if (!r6.ok) { setSaving(false); setError(r6.error); return; }
+    const r7 = await window.api.settings.set("station_code", stationCode.trim().toUpperCase());
+    if (!r7.ok) { setSaving(false); setError(r7.error); return; }
+    const r8 = await window.api.settings.set("station_sector_code", stationSectorCode);
+    if (!r8.ok) { setSaving(false); setError(r8.error); return; }
     setSaving(false);
     setSaved(true);
   }
