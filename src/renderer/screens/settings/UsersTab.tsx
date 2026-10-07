@@ -68,7 +68,7 @@ export function UsersTab({ currentUser }: Props) {
                   )}
                 </td>
                 <td>
-                  <span className={`chip ${u.sectorCode === "LABORATORY" ? "chip-laboratory" : u.role === "admin" || u.role === "master" ? "chip-blue" : "chip-green"}`}>
+                  <span className={`chip ${u.sectorCode === "LABORATORY" ? "chip-laboratory" : u.role === "admin" || u.role === "supervisor" || u.role === "master" ? "chip-blue" : "chip-green"}`}>
                     {formatAccessProfile(u)}
                   </span>
                 </td>
@@ -116,7 +116,7 @@ export function UsersTab({ currentUser }: Props) {
 function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () => void; onSaved: () => void; canCreateMaster: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "master" | "laboratory_capture">("operator");
+  const [accessProfile, setAccessProfile] = useState<"operator" | "admin" | "supervisor" | "master" | "laboratory_capture">("operator");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -140,7 +140,7 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
     const res = await window.api.users.create({
       username,
       password,
-      role: accessProfile === "master" ? "master" : accessProfile === "admin" ? "admin" : "operator",
+      role: accessProfile === "master" ? "master" : accessProfile === "supervisor" ? "supervisor" : accessProfile === "admin" ? "admin" : "operator",
       sectorCode: laboratory ? "LABORATORY" : "PRODUCTION",
       laboratoryProfile: laboratory ? "capture" : undefined
     });
@@ -214,7 +214,7 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
           <label>Perfil</label>
           <select value={accessProfile} onChange={(e) => setAccessProfile(e.target.value as typeof accessProfile)}>
             <option value="operator">Operador — pode abrir lotes e realizar leituras</option>
-            <option value="admin">Admin — acesso completo</option>
+            <option value="admin">Admin — configurações e administração</option>\n            <option value="supervisor">Supervisor — finaliza e reabre lotes; não realiza análises</option>
             {canCreateMaster && <option value="master">Master — acesso completo e reabertura de lotes</option>}
             <option value="laboratory_capture">Laboratório — captura e fechamento da etapa</option>
           </select>
@@ -338,7 +338,7 @@ function formatDate(iso: string): string {
 }
 
 function formatAccessProfile(user: User): string {
-  if (user.role === "master") return "Master";
+  if (user.role === "master") return "Master";\n  if (user.role === "supervisor") return "Supervisor";
   if (user.sectorCode === "LABORATORY") {
     return "Laboratório · Captura";
   }
