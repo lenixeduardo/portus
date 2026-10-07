@@ -1,6 +1,6 @@
 import type { BatchWithProduct } from "../../shared/ipc";
 
-export type BatchFilter = "ALL" | "PRODUCTION" | "LABORATORY";
+export type BatchFilter = "ALL" | "IN_PROGRESS" | "COMPLETED";
 export type BatchSortDirection = "ASC" | "DESC";
 
 export interface ActiveBatchListFilters {
@@ -54,8 +54,8 @@ export function filterAndSortActiveBatches(
   filters: ActiveBatchListFilters
 ): BatchWithProduct[] {
   const filtered = batches.filter((batch) => {
-    if (filters.sector === "PRODUCTION" && batch.productionClosed) return false;
-    if (filters.sector === "LABORATORY" && batch.laboratoryClosed) return false;
+    if (filters.sector === "IN_PROGRESS" && batch.completed) return false;
+    if (filters.sector === "COMPLETED" && !batch.completed) return false;
     if (filters.productId !== "ALL" && String(batch.productId) !== filters.productId) return false;
     return batchMatchesOpenedDate(batch.openedAt, filters.openedOn);
   });
