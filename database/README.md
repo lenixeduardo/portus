@@ -56,6 +56,13 @@ psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_domain
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/003_security_permissions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/004_laboratory_view.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/005_runtime_function_security.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/006_product_catalog_sync.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/007_admin_force_close.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/008_master_reopen_batch.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/009_default_equipment_catalog.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/010_admin_reopen_batch.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/011_operational_closure_rules.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/012_unified_batch_traceability.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/002_security_permissions.sql
@@ -69,7 +76,10 @@ Cada migration é transacional e falha ao primeiro erro.
 - O banco central compartilha o estado dos lotes entre setores.
 - O estado global é `open` ou `closed`.
 - `stage` representa a etapa/setor atual.
-- O lote só fecha quando Produção e Laboratório confirmam.
+- Produção e Laboratório trabalham no mesmo lote enquanto ele estiver aberto.
+- O checkbox `Lote concluído` sinaliza o fim operacional do ciclo, sem fechar administrativamente o lote.
+- Somente Supervisor ou Master finalizam e reabrem lotes.
+- Cada sessão central registra o usuário responsável e a estação física onde a leitura foi executada.
 - A captura USB/serial continua no PORTUS.
 - Não existe limite global de seis lotes nesta especificação.
 - Kafka, RabbitMQ, CQRS, CDC e Event Sourcing não fazem parte do Passo 1.
@@ -82,8 +92,12 @@ nas tabelas críticas:
 - `open_batch`
 - `register_reading`
 - `move_batch_to_stage`
-- `confirm_production_close`
-- `confirm_laboratory_close`
+- `set_batch_completed`
+- `supervisor_finalize_batch`
+- `master_reopen_batch`
+- `ensure_station`
+
+As funções `confirm_production_close` e `confirm_laboratory_close` permanecem apenas para compatibilidade com versões anteriores e não fazem parte do fluxo operacional novo.
 
 A migration `004_laboratory_view.sql` registra a aplicação
 `PORTUS_LABORATORY`, concede as capacidades da aplicação no setor Laboratório e
