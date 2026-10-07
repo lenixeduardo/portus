@@ -92,6 +92,48 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION ensure_station(
+  p_code TEXT,
+  p_name TEXT,
+  p_sector_code TEXT
+)
+RETURNS BIGINT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $
+DECLARE
+  v_sector_id BIGINT;
+  v_station_id BIGINT;
+  v_code TEXT := trim(p_code);
+  v_name TEXT := trim(p_name);
+BEGIN
+  IF v_code IS NULL OR length(v_code) = 0 THEN
+    RAISE EXCEPTION 'Código da estação é obrigatório'
+      USING ERRCODE = '22023';
+  END IF;
+
+  SELECT id INTO v_sector_id
+    FROM sectors
+   WHERE code = upper(trim(p_sector_code))
+     AND active;
+
+  IF v_sector_id IS NULL THEN
+    RAISE EXCEPTION 'Setor físico da estação inválido'
+      USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO stations (sector_id, code, name, active)
+  VALUES (v_sector_id, v_code, COALESCE(NULLIF(v_name, ''), v_code), TRUE)
+  ON CONFLICT (sector_id, code) DO UPDATE
+    SET name = EXCLUDED.name,
+        active = TRUE
+  RETURNING id INTO v_station_id;
+
+  RETURN v_station_id;
+END;
+$;
+
 CREATE OR REPLACE FUNCTION supervisor_finalize_batch(
   p_batch_id BIGINT,
   p_user_id BIGINT,
@@ -239,5 +281,39 @@ BEGIN
   RETURN v_after;
 END;
 $$;
+
+-- Herda os privilégios de execução das roles operacionais que já podem abrir lote.
+-- Isso mantém upgrades "MigrationsOnly" funcionais sem conhecer o nome da role de runtime.
+DO $
+DECLARE
+  v_grantee TEXT;
+BEGIN
+  FOR v_grantee IN
+    SELECT DISTINCT grantee
+      FROM information_schema.routine_privileges
+     WHERE specific_schema = 'public'
+       AND routine_name = 'open_batch'
+       AND privilege_type = 'EXECUTE'
+       AND grantee <> 'PUBLIC'
+  LOOP
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION set_batch_completed(BIGINT,BIGINT,BIGINT,BIGINT,BOOLEAN) TO %I',
+      v_grantee
+    );
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION supervisor_finalize_batch(BIGINT,BIGINT,BIGINT,BIGINT) TO %I',
+      v_grantee
+    );
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION master_reopen_batch(BIGINT,BIGINT,BIGINT,BIGINT) TO %I',
+      v_grantee
+    );
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION ensure_station(TEXT,TEXT,TEXT) TO %I',
+      v_grantee
+    );
+  END LOOP;
+END;
+$;
 
 COMMIT;
