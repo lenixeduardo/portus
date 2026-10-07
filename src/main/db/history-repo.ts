@@ -94,7 +94,7 @@ export function buildCsvContent(history: BatchHistory): string {
       lines.push(
         [batch.code, batch.productName, batch.operatorName, formatExcelDate(batch.openedAt),
           sessionNum, formatExcelDate(session.startedAt), formatExcelDate(session.endedAt), session.status,
-          sectorLabel(session.sectorCode), session.operatorName ?? "", session.stationCode ?? "", "", "", "", "", "", ""]
+          sectorLabel(session.sectorCode), session.operatorName ?? "", session.stationCode ?? "", "", "", "", "", ""]
           .map(csvCell).join(";")
       );
       continue;
