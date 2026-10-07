@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 import { SerialPort } from "serialport";
 import { listEquipments, updateEquipment } from "../db/equipments-repo";
-import { getCaptureTimeoutSeconds } from "../db/settings-repo";
+import { getCaptureTimeoutSeconds, getStationIdentity, type StationIdentity } from "../db/settings-repo";
 import { getBatchWithProduct } from "../db/batches-repo";
 import { insertCaptureErrorLog } from "../db/capture-error-logs-repo";
 import {
@@ -569,6 +569,8 @@ export async function startCapture(
     };
   }
 
+  let stationIdentity: StationIdentity | null = null;
+
   const equipments = listEquipments().filter(
     (e) => e.enabled && (equipmentIds == null || equipmentIds.includes(e.id))
   );
@@ -578,6 +580,7 @@ export async function startCapture(
 
   if (centralCapture) {
     try {
+      stationIdentity = getStationIdentity();
       await ensureDefaultCentralEquipmentCatalog();
       const missingEquipment = await validateCentralEquipmentMapping(equipments.map((equipment) => equipment.name));
       if (missingEquipment.length > 0) {
@@ -599,7 +602,7 @@ export async function startCapture(
 
   const timeoutSeconds = getCaptureTimeoutSeconds();
   const session = centralCapture
-    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!, centralSectorCode)
+    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!, centralSectorCode, stationIdentity!)
     : createCaptureSession(targetBatchId, timeoutSeconds);
   sessionId = session.id;
   batchId = targetBatchId;
