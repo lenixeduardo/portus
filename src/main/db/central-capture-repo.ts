@@ -73,20 +73,9 @@ export interface CentralStationIdentity {
 }
 
 async function ensureCentralStation(station: CentralStationIdentity): Promise<number> {
-  const sector = await centralQuery<{ id: number }>(
-    "SELECT id FROM sectors WHERE code = $1 AND active",
-    [station.sectorCode]
-  );
-  const sectorId = sector.rows[0]?.id;
-  if (!sectorId) throw new Error("Setor físico da estação não encontrado na base central.");
-
   const result = await centralQuery<{ id: number }>(
-    `INSERT INTO stations (sector_id, code, name, active)
-     VALUES ($1, $2, $3, TRUE)
-     ON CONFLICT (sector_id, code) DO UPDATE
-       SET name = EXCLUDED.name, active = TRUE
-     RETURNING id`,
-    [sectorId, station.code, station.name]
+    "SELECT ensure_station($1, $2, $3) AS id",
+    [station.code, station.name, station.sectorCode]
   );
   const stationId = result.rows[0]?.id;
   if (!stationId) throw new Error("Não foi possível identificar a estação na base central.");
