@@ -211,6 +211,7 @@ export async function checkCentralDatabase(): Promise<boolean> {
     "AND to_regclass('public.portus_station_settings') IS NOT NULL " +
     "AND to_regclass('public.portus_station_equipment_profiles') IS NOT NULL " +
     "AND to_regclass('public.portus_audit_log') IS NOT NULL " +
+    "AND to_regclass('public.portus_auto_exports') IS NOT NULL " +
     "AND to_regclass('public.portus_legacy_import_ledger') IS NOT NULL " +
     "AS ready"
   );
