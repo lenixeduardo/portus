@@ -61,6 +61,48 @@ os usuários, produtos, lotes, sessões e leituras existentes.
 
 ## Ordem de aplicação
 
+## Login Master no PostgreSQL local para desenvolvimento
+
+O login do PORTUS pertence à tabela `public.users` no PostgreSQL,
+não é a conta/role `postgres` do servidor. Para preparar um banco local
+isolado **com usuário `admin` e senha `admin`**, execute no PowerShell,
+a partir da raiz do projeto:
+
+~~~powershell
+.\database\install-portus-database.ps1 -MigrationsOnly -SeedDevAdmin
+~~~
+
+Este comando instala migrations pendentes, inicializa os setores e cria o
+usuário `admin`, com perfil `master` e permissões iniciais de Produção e
+Laboratório. A senha fica armazenada como hash bcrypt; o script é idempotente
+e **não substitui** credenciais de um usuário `admin` já existente.
+
+Se uma instalação local **já possui `admin` Master e você deseja
+explicitamente redefinir sua senha** para `admin`, use:
+
+~~~powershell
+.\database\install-portus-database.ps1 -MigrationsOnly -SeedDevAdmin -ResetDevAdminPassword
+~~~
+
+As opções de teste aceitam somente `localhost`, `127.0.0.1` ou `::1` como
+host do banco. Isso não é uma garantia de que o banco não esteja exposto:
+**jamais execute esses comandos contra um banco de produção ou acessível
+por operadores/clientes**. A instalação normal e o assistente gráfico
+continuam usando senha Master inicial aleatória/forte; nunca habilitam
+`admin/admin` automaticamente.
+
+Depois do seed, verifique sem revelar o hash:
+
+~~~sql
+SELECT username, role, sector_code, active
+FROM public.users
+WHERE lower(username) = 'admin';
+~~~
+
+A conexão `PORTUS_DATABASE_URL` do aplicativo deve apontar para o mesmo
+banco. Se `admin` já existir com um perfil diferente de Master, o reset
+será recusado para evitar mudança silenciosa de permissões.
+
 ## Instalação no Windows (máquina nova)
 
 O instalador do aplicativo não instala o PostgreSQL. Após instalar o PostgreSQL
