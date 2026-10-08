@@ -116,6 +116,7 @@ $logoPicture.Location = New-Object System.Drawing.Point(42,28)
 $logoPicture.Size = New-Object System.Drawing.Size(100,112)
 $logoPicture.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
 $logoCandidates = @(
+  (Join-Path $PSScriptRoot "assets\\portus-blue-logo.png"),
   (Join-Path $PSScriptRoot "portus-logo.png"),
   (Join-Path (Split-Path -Parent $PSScriptRoot) "build\icon.png"),
   (Join-Path (Split-Path -Parent $PSScriptRoot) "portus-icon.png")
@@ -136,6 +137,17 @@ foreach ($logoPath in $logoCandidates) {
   }
 }
 $canvas.Controls.Add($logoPicture)
+if ($logoPicture.Image) {
+  # Ícone nativo da barra de título criado a partir do emblema aprovado.
+  Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class PortusNativeIcon { [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr handle); }
+'@
+  $hIcon = $logoPicture.Image.GetHicon()
+  try { $form.Icon = [System.Drawing.Icon]::FromHandle($hIcon).Clone() }
+  finally { [void][PortusNativeIcon]::DestroyIcon($hIcon) }
+}
 $title = Add-Label "PORTUS" 155 36 490 63
 $title.Font = UiFont "Sora" 36 "700"
 $title.ForeColor = Color "#081D3F"
