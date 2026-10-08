@@ -85,7 +85,7 @@ describe("pré-validação do login PostgreSQL (migration 013)", () => {
       resolve(process.cwd(), "src/main/auth/auth-service.ts"), "utf8"
     );
     expect(connection).toContain('options: "-c search_path=public"');
-    expect((auth.match(/FROM public\\.users WHERE/g) ?? []).length).toBe(2);
+    expect((auth.match(/FROM public\.users WHERE/g) ?? []).length).toBe(2);
   });
 
   it("verifica a estrutura antes do login por senha e etiqueta", () => {
