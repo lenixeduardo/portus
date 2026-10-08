@@ -1,7 +1,7 @@
 import { getSetting, setSetting } from "./settings-repo";
 import { getUser, getUserByUsername, listUsers } from "./users-repo";
 import { listProducts } from "./products-repo";
-import { createCentralProduct, listCentralProducts } from "./central-products-repo";
+import { createCentralProduct, getCentralProduct, listCentralProducts, updateCentralProduct } from "./central-products-repo";
 import { ensureCentralUserAccess } from "./central-users-repo";
 
 const LEGACY_IMPORT_MARKER = "central_catalog_import_013";
@@ -25,16 +25,31 @@ export async function importLegacyCatalogToCentral(): Promise<void> {
   }
 
   const existing = await listCentralProducts(true);
-  const knownNames = new Set(existing.map(p => p.name.trim().toLocaleLowerCase("pt-BR")));
+  const knownProducts = new Map(existing.map(p => [p.name.trim().toLocaleLowerCase("pt-BR"), p]));
   for (const product of listProducts()) {
     const name = product.name.trim();
-    if (knownNames.has(name.toLocaleLowerCase("pt-BR"))) continue;
+    const key = name.toLocaleLowerCase("pt-BR");
+    const central = knownProducts.get(key);
     const creator = getUser(product.createdBy) ?? users[0];
     if (!creator) {
       throw new Error("Não existe usuário local para importar o catálogo de produtos.");
     }
-    await createCentralProduct(name, product.description, creator.username);
-    knownNames.add(name.toLocaleLowerCase("pt-BR"));
+    if (central) {
+      const centralValue = central.description?.trim() ?? "";
+      const localValue = product.description?.trim() ?? "";
+      if (centralValue && localValue && centralValue !== localValue) {
+        throw new Error(
+          "Conflito de catálogo entre estações: produto " + name +
+          " possui identificadores diferentes. Resolva antes de concluir a migração."
+        );
+      }
+      if (!centralValue && localValue && await getCentralProduct(central.id)) {
+        await updateCentralProduct(central.id, name, localValue, creator.username);
+      }
+      continue;
+    }
+    const inserted = await createCentralProduct(name, product.description, creator.username);
+    knownProducts.set(key, inserted);
   }
 
   setSetting(LEGACY_IMPORT_MARKER, "done");
