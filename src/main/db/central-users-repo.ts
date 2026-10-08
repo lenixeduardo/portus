@@ -1,5 +1,5 @@
 import type { User } from "../../shared/types";
-import { centralQuery } from "./central-connection";
+import { centralQuery, withCentralTransaction } from "./central-connection";
 
 export interface LegacyUserCredentials {
   passwordHash?: string;
@@ -49,7 +49,8 @@ export async function ensureCentralUserAccess(
         ? "admin"
         : user.sectorCode === "LABORATORY" ? "laboratory" : "operator";
   const displayName = user.displayName ?? user.username;
-  const userResult = await centralQuery<{ id: number }>(
+  await withCentralTransaction(async (client) => {
+  const userResult = await client.query<{ id: number }>(
     "INSERT INTO users (username, password_hash, display_name, role, active, sector_code, laboratory_profile, barcode_value) " +
     "VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7) " +
     "ON CONFLICT (username) DO UPDATE SET " +
@@ -80,7 +81,7 @@ export async function ensureCentralUserAccess(
   const production = user.sectorCode !== "LABORATORY";
   const laboratoryCapture = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
 
-  await centralQuery(
+  await client.query(
     "INSERT INTO user_sector_permissions (user_id, sector_id, can_read, can_open, can_capture, can_move, " +
     "can_confirm_production, can_confirm_laboratory) " +
     "SELECT $1, s.id, " +
@@ -97,7 +98,7 @@ export async function ensureCentralUserAccess(
     [userId, isMaster, isAdmin, isSupervisor, production, laboratoryCapture]
   );
 
-  await centralQuery(
+  await client.query(
     "INSERT INTO application_sector_permissions (application_id, sector_id, can_read, can_open, can_capture, can_move, " +
     "can_confirm_production, can_confirm_laboratory) " +
     "SELECT a.id, s.id, TRUE, " +
@@ -112,6 +113,7 @@ export async function ensureCentralUserAccess(
     "can_confirm_production = EXCLUDED.can_confirm_production, " +
     "can_confirm_laboratory = EXCLUDED.can_confirm_laboratory"
   );
+  });
 }
 
 export async function updateCentralUserPassword(username: string, passwordHash: string): Promise<void> {
