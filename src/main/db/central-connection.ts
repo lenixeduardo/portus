@@ -1,6 +1,7 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { join } from "node:path";
 
 let pool: Pool | null = null;
@@ -123,6 +124,28 @@ export async function persistCentralDatabaseUrl(connectionString: string): Promi
     PORTUS_DATABASE_URL: connectionString,
     PORTUS_DATABASE_MODE: "central"
   }, null, 2)}\n`, "utf8");
+  // Captura o IPv4 do servidor na primeira configuracao de cada estacao.
+  // Arquivo sem credenciais e com escrita exclusiva; reconfigurar a URL
+  // nao pode substituir silenciosamente o endereco inicial.
+  try {
+    const endpoint = new URL(connectionString);
+    if (isIP(endpoint.hostname) === 4) {
+      const serverEndpointPath = join(directory, "server-endpoint.json");
+      writeFileSync(serverEndpointPath, JSON.stringify({
+        serverIp: endpoint.hostname,
+        port: endpoint.port ? Number(endpoint.port) : 5432,
+        databaseName: decodeURIComponent(endpoint.pathname.replace(/^\//, "")),
+        registeredAt: new Date().toISOString(),
+        source: "portus-first-setup"
+      }, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
+    }
+  } catch (error) {
+    // EEXIST significa que a referencia foi salva anteriormente.
+    // Falhas nao impedem a conexao, mas ficarao visiveis na verificacao de rede.
+    if ((error as NodeJS.ErrnoException)?.code !== "EEXIST") {
+      console.warn("[central-db] Nao foi possivel registrar o IP inicial do servidor:", error);
+    }
+  }
   process.env.PORTUS_DATABASE_URL = connectionString;
   process.env.PORTUS_DATABASE_MODE = "central";
   await closeCentralDatabase();

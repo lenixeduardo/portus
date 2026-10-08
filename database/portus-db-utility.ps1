@@ -8,7 +8,7 @@ Add-Type -AssemblyName System.Drawing
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "PORTUS | Utilitario PostgreSQL"
 $form.StartPosition = "CenterScreen"
-$form.ClientSize = New-Object System.Drawing.Size(720,620)
+$form.ClientSize = New-Object System.Drawing.Size(720,726)
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
 $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
@@ -56,32 +56,86 @@ $fields = @($hostField,$portField,$dbField,$userField,$binField,$passField)
 $checkButton = New-Object System.Windows.Forms.Button
 $checkButton.Text = "Validar banco de dados"
 $checkButton.Location = New-Object System.Drawing.Point(24,346)
-$checkButton.Size = New-Object System.Drawing.Size(320,45)
+$checkButton.Size = New-Object System.Drawing.Size(214,45)
 $checkButton.FlatStyle = "Flat"
 $checkButton.BackColor = [System.Drawing.Color]::White
 $form.Controls.Add($checkButton)
 
 $migrateButton = New-Object System.Windows.Forms.Button
 $migrateButton.Text = "Aplicar migrations"
-$migrateButton.Location = New-Object System.Drawing.Point(360,346)
-$migrateButton.Size = New-Object System.Drawing.Size(335,45)
+$migrateButton.Location = New-Object System.Drawing.Point(249,346)
+$migrateButton.Size = New-Object System.Drawing.Size(214,45)
 $migrateButton.FlatStyle = "Flat"
 $migrateButton.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
 $migrateButton.ForeColor = [System.Drawing.Color]::White
 $migrateButton.FlatAppearance.BorderSize = 0
 $form.Controls.Add($migrateButton)
 
-$status = Add-Label "Pronto para conectar." 24 410 670
+$networkButton = New-Object System.Windows.Forms.Button
+$networkButton.Text = "Verificar IP / rede"
+$networkButton.Location = New-Object System.Drawing.Point(478,346)
+$networkButton.Size = New-Object System.Drawing.Size(217,45)
+$networkButton.FlatStyle = "Flat"
+$networkButton.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0F172A")
+$networkButton.ForeColor = [System.Drawing.Color]::White
+$form.Controls.Add($networkButton)
+
+$registerButton = New-Object System.Windows.Forms.Button
+$registerButton.Text = "Registrar IP inicial"
+$registerButton.Location = New-Object System.Drawing.Point(24,402)
+$registerButton.Size = New-Object System.Drawing.Size(180,30)
+$registerButton.FlatStyle = "Flat"
+$form.Controls.Add($registerButton)
+
+$referenceLabel = Add-Label "IP do servidor cadastrado: nao encontrado" 214 405 480
+$referenceLabel.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#475569")
+function Refresh-Reference {
+  $referencePath = Join-Path (Join-Path $env:LOCALAPPDATA "PORTUS") "server-endpoint.json"
+  if (Test-Path -LiteralPath $referencePath) {
+    try {
+      $record = Get-Content -LiteralPath $referencePath -Raw -Encoding UTF8 | ConvertFrom-Json
+      $referenceLabel.Text = "Servidor cadastrado: $($record.serverIp):$($record.port)"
+      return [string]$record.serverIp
+    } catch { $referenceLabel.Text = "Referencia do servidor invalida. Verifique o arquivo."; return "" }
+  }
+  return ""
+}
+$initialIp = Refresh-Reference
+if ($initialIp) {
+  $hostField.Text = $initialIp
+  try {
+    $saved = Get-Content -LiteralPath (Join-Path (Join-Path $env:LOCALAPPDATA "PORTUS") "server-endpoint.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    $portField.Text = [string]$saved.port
+    $dbField.Text = [string]$saved.databaseName
+  } catch { }
+} else {
+  # Migracao gradual: usar a conexao ja configurada como sugestao,
+  # sem registra-la como IP confiavel ate confirmacao do usuario.
+  $config = Join-Path (Join-Path $env:LOCALAPPDATA "PORTUS") "database-config.json"
+  if (Test-Path -LiteralPath $config) {
+    try {
+      $current = Get-Content -LiteralPath $config -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($current.PORTUS_DATABASE_URL) {
+        $uri = [Uri]::new([string]$current.PORTUS_DATABASE_URL)
+        $hostField.Text = $uri.DnsSafeHost
+        $portField.Text = [string]$(if ($uri.IsDefaultPort) { 5432 } else { $uri.Port })
+        $dbField.Text = [Uri]::UnescapeDataString($uri.AbsolutePath.TrimStart('/'))
+      }
+    } catch { }
+  }
+}
+
+$status = Add-Label "Pronto para conectar." 24 450 670
 $status.Font = New-Object System.Drawing.Font("Segoe UI Semibold",10)
 $log = New-Object System.Windows.Forms.TextBox
 $log.Multiline = $true
 $log.ReadOnly = $true
 $log.ScrollBars = "Vertical"
-$log.Location = New-Object System.Drawing.Point(24,443)
-$log.Size = New-Object System.Drawing.Size(671,133)
+$log.Location = New-Object System.Drawing.Point(24,484)
+$log.Size = New-Object System.Drawing.Size(671,179)
 $log.Font = New-Object System.Drawing.Font("Consolas",9)
 $form.Controls.Add($log)
-$foot = Add-Label "A validacao nao altera dados. Migrations pedem confirmacao." 24 590 670
+$foot = Add-Label "Validacao IP/rede nao altera configuracoes. O registro inicial pede confirmacao." 24 682 670
 $foot.Font = New-Object System.Drawing.Font("Segoe UI",8)
 
 $script:child = $null
@@ -100,6 +154,8 @@ function Set-Busy([bool]$busy) {
   foreach ($field in $fields) { $field.Enabled = -not $busy }
   $checkButton.Enabled = -not $busy
   $migrateButton.Enabled = -not $busy
+  $networkButton.Enabled = -not $busy
+  $registerButton.Enabled = -not $busy
 }
 function Quoted([string]$value) {
   if ($value.Contains('"')) { throw "Aspas nao permitidas em parametros." }
@@ -140,13 +196,17 @@ $timer.Add_Tick({
     $script:errFile = $null
     Set-Busy $false
     if ($code -eq 0) {
-      $status.Text = if ($script:action -eq "validate") { "Banco validado com sucesso." } else { "Migrations concluidas. Valide o banco." }
+      $status.Text = if ($script:action -eq "validate") { "Banco validado com sucesso." }
+        elseif ($script:action -eq "migrate") { "Migrations concluidas. Valide o banco." }
+        elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
+        else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
     } else {
       $status.Text = "Falha (codigo $code). Confira o log."
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
     }
     Show-Log $status.Text
+    [void](Refresh-Reference)
   }
 })
 
@@ -166,16 +226,18 @@ function Start-Action([string]$operation) {
     [void][System.Windows.Forms.MessageBox]::Show("Verifique os dados de conexao.","PORTUS")
     return
   }
-  if ([string]::IsNullOrWhiteSpace($passField.Text)) {
+  if ($operation -in @("validate","migrate") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
     [void][System.Windows.Forms.MessageBox]::Show("Informe a senha administrativa do PostgreSQL.","PORTUS")
     return
   }
-  if (-not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
+  if ($operation -in @("validate","migrate") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
     [void][System.Windows.Forms.MessageBox]::Show("psql.exe nao encontrado na pasta bin.","PORTUS")
     return
   }
 
-  $filename = if ($operation -eq "validate") { "validate-portus-schema.ps1" } else { "install-portus-database.ps1" }
+  $filename = if ($operation -eq "validate") { "validate-portus-schema.ps1" }
+    elseif ($operation -eq "migrate") { "install-portus-database.ps1" }
+    else { "check-portus-server-network.ps1" }
   $scriptPath = Join-Path $PSScriptRoot $filename
   if (-not (Test-Path -LiteralPath $scriptPath)) {
     [void][System.Windows.Forms.MessageBox]::Show("Script ausente: $filename. Atualize a pasta database.","PORTUS")
@@ -190,16 +252,29 @@ function Start-Action([string]$operation) {
     )
     if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
   }
-  $arguments = @(
-    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-    "-File", (Quoted $scriptPath),
-    "-PostgresBin", (Quoted $bin),
-    "-DatabaseHost", (Quoted $hostName),
-    "-Port", "$port",
-    "-AdminUser", (Quoted $username),
-    "-DatabaseName", (Quoted $database)
-  )
-  if ($operation -eq "migrate") { $arguments += @("-MigrationsOnly","-SkipAppConfiguration") }
+  if ($operation -eq "register") {
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+      "Registrar $($hostName):$port/$database como IP de referencia desta estacao? O cadastro so funciona se estiver ausente e o PostgreSQL estiver acessivel.",
+      "Registrar servidor da primeira instalacao",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+  }
+  $arguments = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", (Quoted $scriptPath))
+  if ($operation -in @("network","register")) {
+    $arguments += @("-ServerIp", (Quoted $hostName), "-Port", "$port", "-DatabaseName", (Quoted $database))
+    if ($operation -eq "register") { $arguments += "-RegisterFirstInstallation" }
+  } else {
+    $arguments += @(
+      "-PostgresBin", (Quoted $bin),
+      "-DatabaseHost", (Quoted $hostName),
+      "-Port", "$port",
+      "-AdminUser", (Quoted $username),
+      "-DatabaseName", (Quoted $database)
+    )
+    if ($operation -eq "migrate") { $arguments += @("-MigrationsOnly","-SkipAppConfiguration") }
+  }
 
   $script:outFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".out")
   $script:errFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".err")
@@ -208,7 +283,7 @@ function Start-Action([string]$operation) {
   $script:action = $operation
   $previous = [Environment]::GetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD","Process")
   try {
-    [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process")
+    if ($operation -in @("validate","migrate")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
     $options = @{
       FilePath = (Join-Path $PSHOME "powershell.exe")
       ArgumentList = ($arguments -join " ")
@@ -223,7 +298,7 @@ function Start-Action([string]$operation) {
     return
   } finally {
     [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")
-    $passField.Clear()
+    if ($operation -in @("validate","migrate")) { $passField.Clear() }
   }
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
   $status.Text = "Executando operacao..."
@@ -234,6 +309,8 @@ function Start-Action([string]$operation) {
 
 $checkButton.Add_Click({ Start-Action "validate" })
 $migrateButton.Add_Click({ Start-Action "migrate" })
+$networkButton.Add_Click({ Start-Action "network" })
+$registerButton.Add_Click({ Start-Action "register" })
 $form.Add_FormClosing({
   param($sender,$args)
   if ($script:child -and -not $script:child.HasExited) {

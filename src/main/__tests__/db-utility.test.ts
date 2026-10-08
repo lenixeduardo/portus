@@ -1,4 +1,7 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { createServer } from "node:net";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,10 +10,14 @@ const db = join(process.cwd(), "database");
 const read = (name: string) => readFileSync(join(db, name), "utf8");
 
 describe("utilitario de banco PORTUS", () => {
-  it("expoe exatamente as duas operacoes principais solicitadas", () => {
+  it("expoe migrations, validacao do banco e verificacao do IP do servidor", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('Validar banco de dados');
     expect(gui).toContain('Aplicar migrations');
+    expect(gui).toContain('Verificar IP / rede');
+    expect(gui).toContain('Registrar IP inicial');
+    expect(gui).toContain('Start-Action "network"');
+    expect(gui).toContain('Start-Action "register"');
     expect(gui).toContain('Start-Action "validate"');
     expect(gui).toContain('Start-Action "migrate"');
     expect(gui).toContain('Confirmar alteracoes no schema');
@@ -24,6 +31,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain("if ($script:child) { return }");
     expect(gui).toContain('Set-Busy $true');
     expect(gui).toContain('Set-Busy $false');
+    expect(gui).toContain('$networkButton.Enabled = -not $busy');
     expect(gui).toContain("$script:child.ExitCode");
   });
 
@@ -52,13 +60,81 @@ describe("utilitario de banco PORTUS", () => {
     const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
     expect(launcher).toContain("-STA");
     expect(launcher).toContain('portus-db-utility.ps1');
-    for (const asset of ["portus-db-utility.bat", "portus-db-utility.ps1", "validate-portus-schema.ps1"]) {
+    for (const asset of ["portus-db-utility.bat", "portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       expect(packager).toContain(asset);
     }
   });
 
+  it("nao sobrescreve o IP inicial e compara rede, URL e porta PostgreSQL", () => {
+    const check = read("check-portus-server-network.ps1");
+    const connection = readFileSync(join(process.cwd(), "src/main/db/central-connection.ts"), "utf8");
+    const installer = read("install-portus-database.ps1");
+    expect(check).toContain("server-endpoint.json");
+    expect(check).toContain("database-config.json");
+    expect(check).toContain("PORTUS_DATABASE_URL");
+    expect(check).toContain("Read-ConfiguredConnection");
+    expect(check).toContain("Get-NetIPConfiguration");
+    expect(check).toContain("Test-Tcp");
+    expect(check).toContain("RegisterFirstInstallation");
+    expect(check).toContain("FileMode]::CreateNew");
+    expect(check).toContain("DIFERENTE do cadastrado");
+    expect(check).toContain("nenhuma alteracao automatica");
+    expect(connection).toContain('flag: "wx"');
+    expect(connection).toContain('"server-endpoint.json"');
+    expect(installer).toContain("check-portus-server-network.ps1");
+  });
+
+  it.skipIf(process.platform !== "win32")("valida em rede real TCP e detecta IP configurado divergente", async () => {
+    const temp = mkdtempSync(join(tmpdir(), "portus-network-test-"));
+    const server = createServer(socket => socket.end());
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Porta TCP nao encontrada");
+    const port = address.port;
+    const script = join(db, "check-portus-server-network.ps1");
+
+    const execute = (args: string[], databaseUrl: string) => new Promise<{code:number,output:string}>(resolve => {
+      const child = spawn("powershell.exe", [
+        "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script,
+        "-ServerIp", "127.0.0.1", "-Port", String(port),
+        "-DatabaseName", "portus", "-ConfigurationRoot", temp,
+        ...args
+      ], {
+        env: {...process.env, PORTUS_DATABASE_URL: databaseUrl},
+        windowsHide: true
+      });
+      let output = "";
+      child.stdout.on("data", chunk => {output += chunk.toString();});
+      child.stderr.on("data", chunk => {output += chunk.toString();});
+      child.on("error", error => resolve({code:-1,output:String(error)}));
+      child.on("close", code => resolve({code:code ?? -1,output}));
+    });
+    const goodUrl = "postgresql://portus_admin:secret@127.0.0.1:" + port + "/portus";
+    try {
+      const initial = await execute(["-RegisterFirstInstallation"], goodUrl);
+      expect(initial.code, initial.output).toBe(0);
+      expect(initial.output).toContain("VALIDACAO DE IP E REDE: OK");
+      expect(existsSync(join(temp, "server-endpoint.json"))).toBe(true);
+
+      const checked = await execute([], goodUrl);
+      expect(checked.code, checked.output).toBe(0);
+      expect(checked.output).toContain("IP cadastrado na primeira instalacao");
+
+      const duplicate = await execute(["-RegisterFirstInstallation"], goodUrl);
+      expect(duplicate.code).not.toBe(0);
+      expect(duplicate.output).toContain("nao pode sobrescrever");
+
+      const changed = await execute([], "postgresql://portus_admin:secret@127.0.0.2:" + port + "/portus");
+      expect(changed.code).not.toBe(0);
+      expect(changed.output).toMatch(/divergente/i);
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+      rmSync(temp, {recursive:true,force:true});
+    }
+  }, 60_000);
+
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
-    for (const path of ["portus-db-utility.ps1", "validate-portus-schema.ps1"]) {
+    for (const path of ["portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
       const escaped = full.replace(/'/g, "''");
       const command = [
