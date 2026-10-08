@@ -50,6 +50,11 @@ describe("utilitario de banco PORTUS", () => {
     expect(ui).toContain("Refresh-Reference");
     expect(packager).toContain('join(root, "build", "icon.png")');
     expect(packager).toContain('join(packageRoot, "portus-logo.png")');
+    expect(ui).toContain('assets\\portus-blue-logo.png');
+    expect(ui).toContain('PortusNativeIcon');
+    const logo = readFileSync(join(db, "assets", "portus-blue-logo.png"));
+    expect(logo.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex"))).toBe(true);
+
   });
 
   it("centraliza os tokens de cor e a tipografia obrigatoria Sora / Inter", () => {
@@ -66,7 +71,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('UiFont "Sora" 18 "600"');
     expect(gui).toContain('UiFont "Inter" 14');
     expect(gui).toContain('UiFont "Inter" 12');
-    expect(gui).toContain('-StrictFonts');
+    expect(gui).toContain('[switch]$StrictFonts');
     expect(gui).toContain("Tipografia incompleta");
     const installer = read("install-portus-ui-fonts.ps1");
     expect(installer).toContain("raw.githubusercontent.com/google/fonts");
