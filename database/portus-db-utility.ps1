@@ -371,9 +371,11 @@ if ($SmokeTest) {
   $message = "Nao foi possivel abrir o utilitario PORTUS: " + $_.Exception.Message
   [Console]::Error.WriteLine($message)
   try {
+    if (-not $SmokeTest) {
     [void][System.Windows.Forms.MessageBox]::Show($message,"Falha ao iniciar PORTUS",
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Error)
+    }
   } catch { }
   exit 1
 }
