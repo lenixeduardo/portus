@@ -116,6 +116,16 @@ BEGIN
      OR to_regprocedure('public.ensure_station(text,text,text)') IS NULL THEN
     RAISE EXCEPTION 'PORTUS: funcoes da migration 012 ausentes na base central.';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'active'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'barcode_value'
+  ) OR to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'PORTUS: cadastro central incompleto; aplique a migration 013.';
+  END IF;
 END;
 $$;
 '@

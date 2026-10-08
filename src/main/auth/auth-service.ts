@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
-import { getUserByBarcodeValue, getUserByUsername } from "../db/users-repo";
+import { centralQuery } from "../db/central-connection";
+import { normalizeUserBarcode } from "../../shared/user-barcode";
 import type { User } from "../../shared/types";
 
 let currentUser: User | null = null;
@@ -47,30 +48,56 @@ export function clearFailedLogins(username: string): void {
   loginAttempts.delete(loginKey(username));
 }
 
-export function login(username: string, password: string): User | null {
-  const row = getUserByUsername(username);
-  if (!row) return null;
-  if (!bcrypt.compareSync(password, row.password_hash)) return null;
-  currentUser = {
-    id: row.id,
+interface CentralCredentialRow {
+  id: number | string;
+  username: string;
+  password_hash: string;
+  display_name: string | null;
+  role: string;
+  sector_code: "PRODUCTION" | "LABORATORY";
+  laboratory_profile: "capture" | null;
+  created_at: Date | string;
+}
+const CREDENTIAL_COLUMNS = "id, username, password_hash, display_name, role, " +
+  "sector_code, laboratory_profile, created_at";
+
+function establishSession(row: CentralCredentialRow): User {
+  const user: User = {
+    id: Number(row.id),
     username: row.username,
     displayName: row.display_name ?? undefined,
-    role: row.role ?? "admin",
-    sectorCode: row.sector_code ?? "PRODUCTION",
+    role: row.role === "laboratory" ? "operator" : row.role as User["role"],
+    sectorCode: row.sector_code,
     laboratoryProfile: row.laboratory_profile ?? undefined,
-    createdAt: row.created_at
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at
   };
-  lastActivityAt = Date.now();
-  clearFailedLogins(username);
-  return currentUser;
-}
-
-export function loginByBarcode(barcodeValue: string): User | null {
-  const user = getUserByBarcodeValue(barcodeValue);
-  if (!user) return null;
   currentUser = user;
   lastActivityAt = Date.now();
-  return currentUser;
+  clearFailedLogins(user.username);
+  return user;
+}
+
+export async function login(username: string, password: string): Promise<User | null> {
+  // A verificação de credenciais é exclusivamente no PostgreSQL. Falhas
+  // de conexão são propagadas e nunca caem no SQLite.
+  const result = await centralQuery<CentralCredentialRow>(
+    "SELECT " + CREDENTIAL_COLUMNS +
+    " FROM users WHERE lower(username) = lower($1) AND active LIMIT 1",
+    [username.trim()]
+  );
+  const row = result.rows[0];
+  if (!row || row.password_hash === "managed-by-portus" ||
+      !await bcrypt.compare(password, row.password_hash)) return null;
+  return establishSession(row);
+}
+
+export async function loginByBarcode(barcodeValue: string): Promise<User | null> {
+  const result = await centralQuery<CentralCredentialRow>(
+    "SELECT " + CREDENTIAL_COLUMNS +
+    " FROM users WHERE lower(barcode_value) = lower($1) AND active LIMIT 1",
+    [normalizeUserBarcode(barcodeValue)]
+  );
+  return result.rows[0] ? establishSession(result.rows[0]) : null;
 }
 
 export function logout(): void {

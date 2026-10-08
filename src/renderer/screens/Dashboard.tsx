@@ -65,6 +65,7 @@ export function Dashboard({
   const [loading, setLoading] = useState(true);
   const [centralConfigured, setCentralConfigured] = useState(false);
   const [centralAvailable, setCentralAvailable] = useState(false);
+  const [centralError, setCentralError] = useState<string | null>(null);
   const [centralRequired, setCentralRequired] = useState(true);
   const [centralStatusResolved, setCentralStatusResolved] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
@@ -134,10 +135,12 @@ export function Dashboard({
         }
         setCentralConfigured(Boolean(status.configured));
         setCentralAvailable(Boolean(status.available));
+        setCentralError(status.error ?? null);
         setCentralRequired(Boolean(status.required));
       } catch (error) {
         setCentralConfigured(true);
         setCentralAvailable(false);
+        setCentralError(error instanceof Error ? error.message : "PostgreSQL central indisponível.");
         setCentralRequired(true);
         reportDashboardError("central-status", error);
       } finally {
@@ -396,7 +399,7 @@ export function Dashboard({
       </div>
 
       {requiresCentral && !centralAvailable ? (
-        <ScannerPanel state={{ phase: "error", message: "Base central indisponível — operações locais bloqueadas" }} />
+        <ScannerPanel state={{ phase: "error", message: centralError ?? "Base central indisponível — operações locais bloqueadas" }} />
       ) : canCapture ? (
         <ScannerPanel state={scannerState} />
       ) : (

@@ -83,6 +83,34 @@ SELECT column_name
 Depois de aplicar com sucesso, reinicie o PORTUS nas estações. Não conceda
 credenciais administrativas PostgreSQL aos operadores/clientes.
 
+## Sincronização das estações — migration 013
+
+**Aplicação obrigatória no servidor, antes das estações:** atualize o
+PostgreSQL executando `database/install-portus-database.ps1 -MigrationsOnly`
+com a versão que contém a migration 013.
+
+Nesta etapa, **Produtos** usa exclusivamente o catálogo PostgreSQL para
+listar, criar, alterar e excluir produtos; o ID do produto usado para abrir lote
+também é obtido do PostgreSQL. A listagem de **Usuários** reúne os cadastrados
+no banco central, incluindo aqueles provenientes de Produção e Laboratório.
+
+Na primeira abertura de cada estação após a atualização, o PORTUS importa
+os usuários e produtos antigos do seu SQLite local antes de exibir a interface
+central. O procedimento é idempotente por estação e **não apaga** o banco antigo.
+Repita o procedimento em **todas as máquinas** para migrar registros que
+existam apenas nelas. Um conflito de login, perfil, setor ou etiqueta interrompe
+a importação, sem substituir a identidade central existente.
+
+**Importante:** esta é a primeira etapa de desligamento do SQLite. O login,
+configurações locais da estação, equipamentos e algumas rotinas legadas de
+captura/exportação ainda dependem do SQLite. Não exclua seus arquivos
+`portus.db` e não desinstale o módulo SQLite até terminar a migração desses
+módulos, executar a conciliação de dados e aprovar os testes integrados. Os
+usuários de outras estações aparecem na administração, porém ficam
+temporariamente em modo de consulta, sem alteração de senha ou exclusão
+remota. O plano do desligamento completo está em
+`docs/superpowers/plans/2026-10-08-postgresql-only-cutover.md`.
+
 ## Ordem de aplicação manual
 
 Execute as migrations em ordem:
@@ -100,6 +128,7 @@ psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/009_defaul
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/010_admin_reopen_batch.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/011_operational_closure_rules.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/012_unified_batch_traceability.sql
+psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/013_central_catalog_user_metadata.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/001_domain_functions.sql
 psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/002_security_permissions.sql

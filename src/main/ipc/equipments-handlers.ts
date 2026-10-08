@@ -8,21 +8,21 @@ import {
 import type { Equipment } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
-import { getEquipment, listEquipments, updateEquipment } from "../db/equipments-repo";
+import { getCentralEquipment, listCentralEquipments, updateCentralEquipment } from "../db/central-equipments-repo";
 import { updateEquipmentSchema, type UpdateEquipmentInput } from "../validation/schemas";
 import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
 
 export function registerEquipmentsHandlers(): void {
   ipcMain.handle(
     IPC.equipmentsList,
-    compose([requireAuth])((): Equipment[] => listEquipments())
+    compose([requireAuth])(async (): Promise<Equipment[]> => listCentralEquipments())
   );
 
   ipcMain.handle(
     IPC.equipmentsUpdate,
     compose([requireAdmin, validateInput(updateEquipmentSchema)])(
-      (_e, input: UpdateEquipmentInput): ServiceResult<Equipment> => {
-        if (!getEquipment(input.id)) return { ok: false, error: "Equipamento não encontrado." };
+      async (_e, input: UpdateEquipmentInput): Promise<ServiceResult<Equipment>> => {
+        if (!await getCentralEquipment(input.id)) return { ok: false, error: "Equipamento não encontrado." };
         const cleaned: Record<string, any> = { id: input.id };
         if (input.name !== undefined) cleaned.name = input.name.trim();
         if (input.portPath !== undefined) cleaned.portPath = input.portPath.trim();
@@ -48,9 +48,9 @@ export function registerEquipmentsHandlers(): void {
         if (input.scaleRawMax !== undefined) cleaned.scaleRawMax = input.scaleRawMax;
         if (input.scaleOutMin !== undefined) cleaned.scaleOutMin = input.scaleOutMin;
         if (input.scaleOutMax !== undefined) cleaned.scaleOutMax = input.scaleOutMax;
-        const updated = updateEquipment(input.id, cleaned);
+        const updated = await updateCentralEquipment(input.id, cleaned);
         if (updated) {
-          logAudit({ actorUserId: getCurrentUser()?.id, action: "equipments.update", resourceType: "equipment", resourceId: input.id, details: { fields: Object.keys(cleaned).filter((key) => key !== "id") } });
+          await logAudit({ actorUserId: getCurrentUser()?.id, action: "equipments.update", resourceType: "equipment", resourceId: input.id, details: { fields: Object.keys(cleaned).filter((key) => key !== "id") } });
         }
         return updated ? { ok: true, data: updated } : { ok: false, error: "Falha ao atualizar." };
       }

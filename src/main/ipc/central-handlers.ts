@@ -19,7 +19,7 @@ import {
   reopenCentralBatch,
   setCentralBatchCompleted
 } from "../db/central-batches-repo";
-import { getProduct } from "../db/products-repo";
+import { getCentralProduct } from "../db/central-products-repo";
 import { getCentralBatchHistory } from "../db/central-history-repo";
 import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
@@ -42,8 +42,11 @@ export function registerCentralHandlers(): void {
     try {
       await checkCentralDatabase();
       return { configured: true, available: true, required, mode };
-    } catch {
-      return { configured: true, available: false, required, mode };
+    } catch (error) {
+      return {
+        configured: true, available: false, required, mode,
+        error: error instanceof Error ? error.message : "Falha ao validar PostgreSQL central."
+      };
     }
   });
 
@@ -105,7 +108,7 @@ export function registerCentralHandlers(): void {
         if (user.role === "supervisor") {
           return { ok: false, error: "Supervisor não abre lotes operacionais." };
         }
-        const product = getProduct(input.productId);
+        const product = await getCentralProduct(input.productId);
         if (!product) return { ok: false, error: "Produto local inválido." };
         try {
           const code = input.code?.trim() || `CENTRAL-${Date.now()}`;

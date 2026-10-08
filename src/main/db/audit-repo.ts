@@ -1,4 +1,5 @@
-import { run } from "./query";
+import { centralQuery } from "./central-connection";
+import { getRuntimeStationCode } from "./central-station-settings-repo";
 
 export interface AuditEntry {
   actorUserId?: number;
@@ -8,15 +9,19 @@ export interface AuditEntry {
   details?: Record<string, unknown>;
 }
 
-/** Registro local, append-only, para rastreabilidade operacional. */
-export function logAudit(entry: AuditEntry): void {
-  run(
-    `INSERT INTO audit_log (actor_user_id, action, resource_type, resource_id, details_json)
-     VALUES (?, ?, ?, ?, ?)`,
-    entry.actorUserId ?? null,
-    entry.action,
-    entry.resourceType,
-    entry.resourceId == null ? null : String(entry.resourceId),
-    entry.details ? JSON.stringify(entry.details) : null
+/** O PostgreSQL é a única trilha de auditoria operacional do aplicativo. */
+export async function logAudit(entry: AuditEntry): Promise<void> {
+  await centralQuery(
+    "INSERT INTO portus_audit_log " +
+    "(actor_user_id, station_code, action, resource_type, resource_id, details) " +
+    "VALUES ($1,$2,$3,$4,$5,$6::jsonb)",
+    [
+      entry.actorUserId ?? null,
+      getRuntimeStationCode(),
+      entry.action,
+      entry.resourceType,
+      entry.resourceId == null ? null : String(entry.resourceId),
+      JSON.stringify(entry.details ?? {})
+    ]
   );
 }
