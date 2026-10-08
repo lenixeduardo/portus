@@ -126,6 +126,9 @@ let centralCapture = false;
 let centralUsername: string | null = null;
 let centralSectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION";
 const pendingCentralWrites = new Set<Promise<void>>();
+let centralReadErrors: string[] = [];
+interface CaptureCleanupResult { failedReads: number; sessionCloseError: string | null }
+let cleanupInFlight: Promise<CaptureCleanupResult> | null = null;
 
 // Timers de debounce de UI por slotIndex
 const uiDebounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -151,10 +154,14 @@ function persistReading(input: {
     const username = centralUsername;
     const sectorCode = centralSectorCode;
     const write = insertCentralReading({ ...input, username, sectorCode })
-      .then(() => undefined)
+      .then((reading) => {
+        if (!reading) throw new Error("O PostgreSQL não confirmou a gravação da leitura.");
+      })
       .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        centralReadErrors.push(message);
         console.error("[central-db] Falha ao registrar leitura:", error);
-        logCaptureError({ code: "central_reading_failed", message: String(error), rawValue: input.valueRaw });
+        logCaptureError({ code: "central_reading_failed", message, rawValue: input.valueRaw });
         throw error;
       });
     pendingCentralWrites.add(write);
@@ -296,7 +303,13 @@ function drainBuffer(slot: ActiveSlot): void {
   }
 }
 
-async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
+function cleanup(reason: "completed" | "cancelled"): Promise<CaptureCleanupResult> {
+  if (cleanupInFlight) return cleanupInFlight;
+  cleanupInFlight = performCleanup(reason).finally(() => { cleanupInFlight = null; });
+  return cleanupInFlight;
+}
+
+async function performCleanup(reason: "completed" | "cancelled"): Promise<CaptureCleanupResult> {
   if (timer) {
     clearInterval(timer);
     timer = null;
@@ -346,13 +359,15 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
 
   // Uma leitura central é assíncrona. Aguarde todas as gravações iniciadas
   // antes de encerrar a sessão para não produzir relatórios incompletos.
-  const centralWriteResults = await Promise.allSettled([...pendingCentralWrites]);
-  const failedCentralWrites = centralWriteResults.filter((result) => result.status === "rejected").length;
+  await Promise.allSettled([...pendingCentralWrites]);
+  // Inclui falhas de escritas que já finalizaram e saíram de pendingCentralWrites.
+  const failedCentralWrites = centralReadErrors.length;
   if (failedCentralWrites > 0) {
     console.error(`[central-db] ${failedCentralWrites} leitura(s) não puderam ser persistidas antes do encerramento.`);
   }
   pendingCentralWrites.clear();
 
+  let sessionCloseError: string | null = null;
   if (sessionId !== null) {
     if (centralCapture && centralUsername) {
       try {
@@ -363,6 +378,7 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
           failedCentralWrites > 0 ? "cancelled" : reason === "completed" ? "completed" : "cancelled"
         );
       } catch (error) {
+        sessionCloseError = error instanceof Error ? error.message : String(error);
         console.error("[central-db] Falha ao encerrar sessão:", error);
       }
     }
@@ -377,9 +393,13 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
   centralUsername = null;
   centralSectorCode = "PRODUCTION";
   pendingCentralWrites.clear();
+  centralReadErrors = [];
 
-  const event: CaptureEndedEvent = { reason };
+  // Não reportar conclusão quando alguma leitura ou o encerramento falhou.
+  const finalReason = failedCentralWrites > 0 || sessionCloseError ? "cancelled" : reason;
+  const event: CaptureEndedEvent = { reason: finalReason };
   broadcast(IPC.captureEnded, event);
+  return { failedReads: failedCentralWrites, sessionCloseError };
 }
 
 // Tenta reabrir uma porta que fechou inesperadamente durante a sessão.
@@ -566,9 +586,9 @@ export async function startCapture(
     if (equipments.length === 0) {
       return { ok: false, error: "Nenhum equipamento habilitado configurado no PostgreSQL." };
     }
-    const missing = await validateCentralEquipmentMapping(equipments.map(e => e.name));
+    const missing = await validateCentralEquipmentMapping(equipments.map(e => e.id));
     if (missing.length) {
-      return { ok: false, error: "Equipamentos não mapeados no PostgreSQL: " + missing.join(", ") };
+      return { ok: false, error: "IDs de equipamentos não mapeados no PostgreSQL: " + missing.join(", ") };
     }
     timeoutSeconds = await getCentralCaptureTimeoutSeconds();
   } catch (error) {
@@ -578,6 +598,7 @@ export async function startCapture(
   const session = await createCentralCaptureSession(
     targetBatchId, timeoutSeconds, username, sectorCode, stationIdentity
   );
+  centralReadErrors = [];
   sessionId = session.id;
   batchId = targetBatchId;
   remaining = timeoutSeconds;
@@ -847,7 +868,9 @@ export async function startCapture(
     broadcast(IPC.captureTick, tick);
 
     if (remaining <= 0) {
-      void cleanup("completed");
+      void cleanup("completed").catch(error => {
+        console.error("[central-db] Falha ao concluir captura automática:", error);
+      });
     }
   }, 1000);
 
@@ -887,7 +910,13 @@ export function skipFirstReading(): ServiceResult<true> {
 
 export async function completeCapture(): Promise<ServiceResult<true>> {
   if (!isActive()) return { ok: false, error: "Nenhuma captura ativa." };
-  await cleanup("completed");
+  const result = await cleanup("completed");
+  if (result.failedReads || result.sessionCloseError) {
+    const detail = result.sessionCloseError
+      ? "Encerramento no PostgreSQL falhou: " + result.sessionCloseError
+      : result.failedReads + " leitura(s) não foram gravadas no PostgreSQL.";
+    return { ok: false, error: detail + " A sessão não foi marcada como concluída." };
+  }
   return { ok: true, data: true };
 }
 
@@ -895,6 +924,9 @@ export async function cancelCapture(): Promise<ServiceResult<true>> {
   if (!isActive()) {
     return { ok: false, error: "Nenhuma captura ativa." };
   }
-  await cleanup("cancelled");
+  const result = await cleanup("cancelled");
+  if (result.sessionCloseError) {
+    return { ok: false, error: "Cancelamento não confirmado no PostgreSQL: " + result.sessionCloseError };
+  }
   return { ok: true, data: true };
 }

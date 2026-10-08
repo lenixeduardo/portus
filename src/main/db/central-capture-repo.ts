@@ -139,6 +139,7 @@ export async function finishCentralCaptureSession(
 
 export async function insertCentralReading(input: {
   batchId: number;
+  equipmentId: number;
   equipmentName: string;
   valueRaw: string;
   valueParsed: string | null;
@@ -150,11 +151,11 @@ export async function insertCentralReading(input: {
 }): Promise<Reading | null> {
   const context = await resolveContext(input.username, input.sectorCode);
   const equipment = await centralQuery<{ id: number }>(
-    "SELECT id FROM equipments WHERE name = $1 OR code = $1 ORDER BY id LIMIT 1",
-    [input.equipmentName]
+    "SELECT id FROM equipments WHERE id = $1 AND enabled",
+    [input.equipmentId]
   );
   if (!equipment.rows[0]) {
-    throw new Error(`Equipamento "${input.equipmentName}" não encontrado na base central.`);
+    throw new Error(`Equipamento ID ${input.equipmentId} não encontrado ou desabilitado na base central.`);
   }
   const result = await centralQuery<{ id: number; batch_id: number; equipment_id: number; value_raw: string; value_parsed: string | null; captured_at: string; capture_session_id: number }>(
     `SELECT id, batch_id, equipment_id, value_raw, value_parsed, captured_at, capture_session_id
@@ -200,12 +201,12 @@ export async function ensureDefaultCentralEquipmentCatalog(): Promise<void> {
   );
 }
 
-export async function validateCentralEquipmentMapping(equipmentNames: string[]): Promise<string[]> {
-  if (equipmentNames.length === 0) return [];
-  const result = await centralQuery<{ name: string; code: string | null }>(
-    `SELECT name, code FROM equipments WHERE name = ANY($1::text[]) OR code = ANY($1::text[])`,
-    [equipmentNames]
+export async function validateCentralEquipmentMapping(equipmentIds: number[]): Promise<number[]> {
+  if (equipmentIds.length === 0) return [];
+  const result = await centralQuery<{ id: number | string }>(
+    "SELECT id FROM equipments WHERE id = ANY($1::bigint[]) AND enabled",
+    [equipmentIds]
   );
-  const mapped = new Set(result.rows.flatMap((row) => [row.name, row.code].filter(Boolean) as string[]));
-  return equipmentNames.filter((name) => !mapped.has(name));
+  const mapped = new Set(result.rows.map(row => Number(row.id)));
+  return equipmentIds.filter(id => !mapped.has(id));
 }
