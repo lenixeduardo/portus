@@ -75,6 +75,19 @@ function New-PortusGlyph([string]$kind,[int]$size=24,[string]$tone="primary") {
         $g.DrawLine($pen,(pt 8),(pt 13),(pt 16),(pt 13))
         $g.DrawLine($pen,(pt 8),(pt 17),(pt 14),(pt 17))
       }
+      "error" {
+        $g.FillEllipse($brush,(pt 1),(pt 1),(pt 22),(pt 22))
+        $whitePen = [System.Drawing.Pen]::new([System.Drawing.Color]::White,[float](3*$scale))
+        try {
+          $g.DrawLine($whitePen,(pt 7),(pt 7),(pt 17),(pt 17))
+          $g.DrawLine($whitePen,(pt 17),(pt 7),(pt 7),(pt 17))
+        } finally { $whitePen.Dispose() }
+      }
+      "pending" {
+        $g.DrawEllipse($pen,(pt 2),(pt 2),(pt 20),(pt 20))
+        $g.DrawLine($pen,(pt 12),(pt 6),(pt 12),(pt 13))
+        $g.DrawLine($pen,(pt 12),(pt 13),(pt 17),(pt 17))
+      }
       "check" {
         $g.FillEllipse($brush,(pt 1),(pt 1),(pt 22),(pt 22))
         $whitePen = New-Object System.Drawing.Pen([System.Drawing.Color]::White,(3*$scale))
