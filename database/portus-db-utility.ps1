@@ -517,7 +517,14 @@ if ($SmokeTest) {
     $smokeTimer.Stop()
     if (-not $form.Visible -or -not $form.IsHandleCreated -or
         -not $checkButton.Visible -or -not $migrateButton.Visible -or
-        -not $networkButton.Visible -or -not $registerButton.Visible) {
+        -not $networkButton.Visible -or -not $registerButton.Visible -or
+        -not $title.Visible -or -not $log.Visible -or
+        -not $canvas.Visible) {
+      $script:smokeFailed = $true
+    }
+    # O teste usa o asset real do projeto e nao aceita uma marca ausente.
+    $officialLogo = Join-Path (Split-Path -Parent $PSScriptRoot) "build\icon.png"
+    if ((Test-Path -LiteralPath $officialLogo) -and $null -eq $logoPicture.Image) {
       $script:smokeFailed = $true
     }
     $form.Close()
@@ -528,7 +535,7 @@ if ($SmokeTest) {
 Write-Host "PORTUS: iniciando interface. Se necessario, use Alt+Tab."
 [void]$form.ShowDialog()
 if ($SmokeTest) {
-  if ($script:smokeFailed) { throw "Smoke test: janela ou botoes nao ficaram visiveis." }
+  if ($script:smokeFailed) { throw "Smoke test: janela, controles ou logotipo PORTUS nao carregaram." }
   Write-Host "PORTUS_DB_UTILITY_SMOKE_OK"
 }
 } catch {
