@@ -282,6 +282,12 @@ BEGIN
 END;
 $$;
 
+-- Novas funções SECURITY DEFINER não podem manter o EXECUTE padrão de PUBLIC.
+REVOKE ALL ON FUNCTION set_batch_completed(BIGINT,BIGINT,BIGINT,BIGINT,BOOLEAN) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ensure_station(TEXT,TEXT,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION supervisor_finalize_batch(BIGINT,BIGINT,BIGINT,BIGINT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION master_reopen_batch(BIGINT,BIGINT,BIGINT,BIGINT) FROM PUBLIC;
+
 -- Herda os privilégios de execução das roles operacionais que já podem abrir lote.
 -- Isso mantém upgrades "MigrationsOnly" funcionais sem conhecer o nome da role de runtime.
 DO $$
