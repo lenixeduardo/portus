@@ -23,7 +23,6 @@ function toEquipment(row: EquipmentProfileRow): Equipment {
     stopBits: 1,
     parity: "none",
     enabled: idx < 5,
-    slotIndex: idx < 0 ? 64 : idx + 1,
     parseRegex: NUMBER_REGEX,
     lineDelimiter: "lf",
     skipFirstReading: false,
