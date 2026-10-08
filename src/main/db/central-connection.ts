@@ -169,7 +169,7 @@ export async function centralQuery<T extends QueryResultRow = QueryResultRow>(
     return await getCentralPool().query<T>(text, values);
   } catch (error) {
     const postgresError = error as { code?: string; message?: string } | null;
-    if (postgresError?.code === "42703" && /\\bb\\.completed\\b/i.test(postgresError.message ?? "")) {
+    if (postgresError?.code === "42703" && /\bb\.completed\b/i.test(postgresError.message ?? "")) {
       throw new Error(
         "Banco central PORTUS desatualizado (coluna batches.completed ausente). " +
         "No servidor PostgreSQL, execute a migration 012 com install-portus-database.ps1 -MigrationsOnly."
