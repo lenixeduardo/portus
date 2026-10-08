@@ -1,0 +1,37 @@
+name: Captura real do PORTUS Database Utility
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "database/portus-db-utility.ps1"
+      - ".github/workflows/portus-utility-capture.yml"
+
+jobs:
+  capture-winforms:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Renderizar a janela real e capturar PNG
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $captureFile = Join-Path $env:GITHUB_WORKSPACE "release\portus-db-utility-real-winforms.png"
+          & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File ".\database\portus-db-utility.ps1" -CapturePath $captureFile
+          if ($LASTEXITCODE -ne 0) { throw "Captura WinForms falhou ($LASTEXITCODE)." }
+          if (-not (Test-Path -LiteralPath $captureFile)) { throw "Screenshot inexistente." }
+          $info = Get-Item -LiteralPath $captureFile
+          if ($info.Length -lt 10000) { throw "Captura invalida ou vazia ($($info.Length) bytes)." }
+          Write-Host "Screenshot real gerado: $($info.FullName) ($($info.Length) bytes)"
+
+      - name: Publicar captura original em PNG
+        uses: actions/upload-artifact@v4
+        with:
+          name: portus-utility-real-windows-capture
+          path: release/portus-db-utility-real-winforms.png
+          if-no-files-found: error
+          retention-days: 7
