@@ -11,7 +11,38 @@ Para abrir sem digitar comandos, execute com duplo clique:
 database\portus-db-utility.bat
 ~~~
 
-O aplicativo independente abre uma janela com dois botoes:
+O aplicativo independente inclui **Validar banco de dados**,
+**Aplicar migrations**, **Verificar IP / rede** e o registro explicito
+**Registrar IP inicial**.
+
+Na **primeira instalacao**, quando o PORTUS grava a conexao PostgreSQL com
+um endereco IPv4, o IP do servidor, porta e nome do banco sao registrados
+em `%LOCALAPPDATA%\\PORTUS\\server-endpoint.json` (sem senha).
+A referencia inicial nao e sobrescrita automaticamente quando a URL muda.
+O instalador PostgreSQL tambem registra a referencia apos configuracao
+bem-sucedida.
+
+Para estacoes antigas sem esse registro, confirme que o campo **Servidor**
+corresponde ao IP da maquina servidor configurado originalmente e clique
+em **Registrar IP inicial**. O registro exige confirmacao, URL de conexao
+coincidente e porta TCP acessivel; nao substitui referencia preexistente.
+
+Ao clicar em **Verificar IP / rede**, o utilitario:
+- verifica o IP IPv4 do servidor esperado e compara com a referencia da
+  primeira instalacao;
+- consulta o destino configurado no PORTUS (`PORTUS_DATABASE_URL`,
+  arquivo `database-config.json` ou Registro Windows);
+- mostra os IPv4 e gateway ativos da estacao e testa conexao TCP na
+  porta configurada, normalmente 5432;
+- diferencia endereco divergente, ausencia de cadastro e falha de rede,
+  sem alterar IP estatico, DHCP, DNS, firewall ou arquivo de configuracao.
+
+**O IP da estacao nao precisa estar na mesma sub-rede do servidor**, desde
+que exista rota valida ate ele. O teste TCP e mais confiavel do que
+depender apenas de ping. A verificacao funciona tambem na maquina servidor,
+onde o IP esperado pode ser o proprio IPv4 local.
+
+O aplicativo independente tem ainda os dois botoes originais:
 
 - **Validar banco de dados:** acao somente leitura. Testa a conexao ao
   PostgreSQL indicado, compara `portus_schema_migrations` com os arquivos SQL
@@ -21,7 +52,7 @@ O aplicativo independente abre uma janela com dois botoes:
   `install-portus-database.ps1 -MigrationsOnly -SkipAppConfiguration` e exibe
   progresso e eventuais falhas sem recriar o banco.
 
-O formulario solicita host, porta, banco, administrador do PostgreSQL,
+O formulario solicita host/IP do servidor, porta, banco, administrador do PostgreSQL,
 caminho da pasta `bin` e senha. A senha nao e salva em arquivo nem aparece
 nos parametros da linha de comando. A conexao configurada no PORTUS nao e
 alterada por esse utilitario. Os scripts precisam estar na mesma pasta
