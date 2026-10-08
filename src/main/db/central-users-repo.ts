@@ -1,4 +1,6 @@
+import bcrypt from "bcryptjs";
 import type { User } from "../../shared/types";
+import type { UserCreateInput } from "../../shared/ipc";
 import { centralQuery, withCentralTransaction } from "./central-connection";
 
 export interface LegacyUserCredentials {
@@ -116,18 +118,60 @@ export async function ensureCentralUserAccess(
   });
 }
 
-export async function updateCentralUserPassword(username: string, passwordHash: string): Promise<void> {
+export async function getCentralUserById(id: number): Promise<User | null> {
+  return (await listCentralUsers()).find(user => user.id === id) ?? null;
+}
+
+export async function getCentralUserByBarcode(value: string): Promise<User | null> {
+  const { normalizeUserBarcode } = await import("../../shared/user-barcode");
+  const result = await centralQuery<{ id: number | string }>(
+    "SELECT id FROM users WHERE lower(barcode_value) = lower($1) AND active LIMIT 1",
+    [normalizeUserBarcode(value)]
+  );
+  const id = Number(result.rows[0]?.id);
+  return id ? getCentralUserById(id) : null;
+}
+
+export async function createCentralUser(
+  input: UserCreateInput,
+  barcode?: string
+): Promise<User> {
+  const sectorCode = input.sectorCode ?? "PRODUCTION";
+  const role = input.role === "operator" && sectorCode === "LABORATORY"
+    ? "laboratory" : (input.role ?? "operator");
+  const hash = await bcrypt.hash(input.password, 10);
+  const existing = await centralQuery(
+    "SELECT 1 FROM users WHERE lower(username) = lower($1) LIMIT 1",
+    [input.username.trim()]
+  );
+  if (existing.rowCount) throw new Error("Já existe um usuário com esse nome.");
+  const inserted = await centralQuery<{ id: number | string }>(
+    "INSERT INTO users (username, password_hash, display_name, role, active, " +
+    "sector_code, laboratory_profile, barcode_value) " +
+    "VALUES ($1,$2,$3,$4,TRUE,$5,$6,$7) RETURNING id",
+    [input.username.trim(), hash, input.displayName?.trim() ?? null,
+      role, sectorCode, input.laboratoryProfile ?? null, barcode ?? null]
+  );
+  const id = Number(inserted.rows[0]?.id);
+  const user = await getCentralUserById(id);
+  if (!user) throw new Error("Usuário criado, mas não foi possível recuperá-lo.");
+  await ensureCentralUserAccess(user, { passwordHash: hash, barcodeValue: barcode });
+  return user;
+}
+
+export async function updateCentralUserPassword(id: number, password: string): Promise<void> {
+  const passwordHash = await bcrypt.hash(password, 10);
   const result = await centralQuery(
-    "UPDATE users SET password_hash = $1 WHERE username = $2 AND active RETURNING id",
-    [passwordHash, username]
+    "UPDATE users SET password_hash = $1 WHERE id = $2 AND active RETURNING id",
+    [passwordHash, id]
   );
   if (!result.rowCount) throw new Error("Usuário não encontrado no PostgreSQL central.");
 }
 
-export async function deactivateCentralUser(username: string): Promise<void> {
+export async function deactivateCentralUser(id: number): Promise<void> {
   const result = await centralQuery(
-    "UPDATE users SET active = FALSE WHERE username = $1 AND active RETURNING id",
-    [username]
+    "UPDATE users SET active = FALSE WHERE id = $1 AND active RETURNING id",
+    [id]
   );
   if (!result.rowCount) throw new Error("Usuário não encontrado no PostgreSQL central.");
 }
