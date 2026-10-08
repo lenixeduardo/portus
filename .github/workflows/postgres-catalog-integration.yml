@@ -58,6 +58,18 @@ jobs:
       - name: Inicializar setores e aplicações
         run: psql -v ON_ERROR_STOP=1 -f database/seed/reference.sql
 
+      - name: Validar seed opt-in admin/admin em PostgreSQL real
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/seed/development_admin.sql
+          node database/tests/006_dev_admin_seed.mjs
+          # Uma instalação repetida não pode substituir metadados existentes.
+          psql -v ON_ERROR_STOP=1 -c "UPDATE public.users SET display_name = 'Admin preservado' WHERE username = 'admin';"
+          psql -v ON_ERROR_STOP=1 -f database/seed/development_admin.sql
+          node database/tests/006_dev_admin_seed.mjs
+          psql -tA -v ON_ERROR_STOP=1 -c "SELECT display_name FROM public.users WHERE username = 'admin';" | grep -x "Admin preservado"
+
       - name: Gerar SQLite legados de Produção e Laboratório
         run: |
           node database/tests/build_legacy_fixture.mjs /tmp/portus-producao.sqlite PRODUCTION
