@@ -7,6 +7,7 @@ import { z } from "zod";
 import { IPC, type InitialSetupInput, type InitialSetupStatus, type ServiceResult } from "../../shared/ipc";
 import { buildCentralDatabaseUrl, checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired, persistCentralDatabaseUrl, verifyCentralDatabaseUrl, centralQuery } from "../db/central-connection";
 import { ensureCentralUserAccess } from "../db/central-users-repo";
+import { setCentralStationSetting } from "../db/central-station-settings-repo";
 import { findPostgresBin, runInitialSetup } from "../setup/initial-setup-service";
 import { validateInput } from "./middleware";
 
@@ -68,6 +69,7 @@ export function registerSetupHandlers(): void {
           const connectionString = buildCentralDatabaseUrl(serverInput);
           await verifyCentralDatabaseUrl(connectionString);
           await persistCentralDatabaseUrl(connectionString);
+          await setCentralStationSetting("installation_mode", "server");
 
           // Bootstrap controlado somente no servidor, nunca por estação cliente.
           const rows = await centralQuery<{ count: string }>("SELECT COUNT(*)::text AS count FROM users");
@@ -102,6 +104,7 @@ export function registerSetupHandlers(): void {
           const connectionString = buildCentralDatabaseUrl(input);
           await verifyCentralDatabaseUrl(connectionString);
           await persistCentralDatabaseUrl(connectionString);
+          await setCentralStationSetting("installation_mode", "client");
         }
         const status = await getStatus();
         return status.available
