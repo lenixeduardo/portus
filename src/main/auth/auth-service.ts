@@ -82,7 +82,7 @@ export async function login(username: string, password: string): Promise<User | 
   // de conexão são propagadas e nunca caem no SQLite.
   const result = await centralQuery<CentralCredentialRow>(
     "SELECT " + CREDENTIAL_COLUMNS +
-    " FROM users WHERE lower(username) = lower($1) AND active LIMIT 1",
+    " FROM public.users WHERE lower(username) = lower($1) AND active LIMIT 1",
     [username.trim()]
   );
   const row = result.rows[0];
@@ -94,7 +94,7 @@ export async function login(username: string, password: string): Promise<User | 
 export async function loginByBarcode(barcodeValue: string): Promise<User | null> {
   const result = await centralQuery<CentralCredentialRow>(
     "SELECT " + CREDENTIAL_COLUMNS +
-    " FROM users WHERE lower(barcode_value) = lower($1) AND active LIMIT 1",
+    " FROM public.users WHERE lower(barcode_value) = lower($1) AND active LIMIT 1",
     [normalizeUserBarcode(barcodeValue)]
   );
   return result.rows[0] ? establishSession(result.rows[0]) : null;
