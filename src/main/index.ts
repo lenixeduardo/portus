@@ -1,9 +1,5 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
-import { closeDb, openDb, persistDb } from "./db/connection";
-import { runMigrations } from "./db/migrate";
-import { importLegacyCatalogToCentral } from "./db/import-legacy-catalog";
-import { seedInitialData } from "./db/seed";
 import { registerAuthHandlers } from "./ipc/auth-handlers";
 import { registerBatchesHandlers } from "./ipc/batches-handlers";
 import { registerCaptureHandlers } from "./ipc/capture-handlers";
@@ -17,11 +13,10 @@ import { registerLogHandlers } from "./ipc/log-handlers";
 import { registerCentralHandlers } from "./ipc/central-handlers";
 import { registerSetupHandlers } from "./ipc/setup-handlers";
 import { registerUpdateHandlers } from "./ipc/update-handlers";
-import { getAutoBackupFolder, getAutoBackupRetention, getAutoExportFolder } from "./db/settings-repo";
-import { runAutoExport } from "./db/history-repo";
 import { runBackup } from "./db/backup";
+import { getCentralStationSetting } from "./db/central-station-settings-repo";
 import { initLogger, logError } from "./logger";
-import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired } from "./db/central-connection";
+import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured } from "./db/central-connection";
 
 const DEFAULT_BACKUP_RETENTION = 10;
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -30,9 +25,11 @@ function defaultBackupFolder(): string {
   return join(app.getPath("documents"), "PORTUS", "backups");
 }
 
-function performBackup(): void {
-  const folder = getAutoBackupFolder(defaultBackupFolder());
-  const retention = getAutoBackupRetention(DEFAULT_BACKUP_RETENTION);
+async function performBackup(): Promise<void> {
+  const folder = (await getCentralStationSetting("auto_backup_folder")) || defaultBackupFolder();
+  const requested = Number((await getCentralStationSetting("auto_backup_retention")) || DEFAULT_BACKUP_RETENTION);
+  const retention = Number.isInteger(requested) && requested >= 1 && requested <= 100
+    ? requested : DEFAULT_BACKUP_RETENTION;
   const result = runBackup(folder, retention);
   if (result.backedUp) {
     console.log(`[auto-backup] backup gerado em "${result.path}" (retenção: ${retention}).`);
@@ -44,7 +41,7 @@ function performBackup(): void {
 
 function scheduleNextBackup(): void {
   setTimeout(() => {
-    performBackup();
+    void performBackup().catch(err => console.error("[auto-backup] PostgreSQL:", err));
     scheduleNextBackup();
   }, BACKUP_INTERVAL_MS);
 }
@@ -68,27 +65,6 @@ console.log("[main] startup:", {
   isPackaged: app.isPackaged,
   isDev
 });
-
-function scheduleNextMidnightExport(): void {
-  const now = new Date();
-  const nextMidnight = new Date(now);
-  nextMidnight.setDate(nextMidnight.getDate() + 1);
-  nextMidnight.setHours(0, 0, 0, 0);
-  const msUntilMidnight = nextMidnight.getTime() - now.getTime();
-
-  setTimeout(() => {
-    const defaultFolder = join(app.getPath("documents"), "PORTUS", "exportacoes");
-    const folder = getAutoExportFolder(defaultFolder);
-    const result = runAutoExport(folder);
-    if (result.exported > 0 || result.errors.length > 0) {
-      console.log(`[auto-export] ${result.exported} lote(s) exportado(s) para "${folder}".`);
-      if (result.errors.length > 0) {
-        console.error("[auto-export] Erros:", result.errors.join("; "));
-      }
-    }
-    scheduleNextMidnightExport();
-  }, msUntilMidnight);
-}
 
 function createWindow() {
   const preloadPath = join(app.getAppPath(), "dist/preload/index.js");
@@ -141,35 +117,18 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  await openDb();
+  // SQLite desativado no runtime. A importação dos bancos locais deve ser
+  // executada ANTES do corte com scripts/import-legacy-to-postgres.mjs.
   if (isCentralDatabaseConfigured()) {
     try {
       await checkCentralDatabase();
-      console.log("[central-db] conexão PostgreSQL central disponível.");
+      console.log("[central-db] PostgreSQL central pronto.");
     } catch (error) {
-      console.error(isCentralDatabaseRequired()
-        ? "[central-db] falha ao conectar; operações de lote permanecerão bloqueadas:"
-        : "[central-db] falha ao conectar; modo local de desenvolvimento ativo:", error);
+      console.error("[central-db] configuração/migrations pendentes:", error);
     }
   } else {
-    console.log(isCentralDatabaseRequired()
-      ? "[central-db] PORTUS_DATABASE_URL não configurada; operações de lote permanecerão bloqueadas."
-      : "[central-db] PORTUS_DATABASE_URL não configurada; modo local de desenvolvimento ativo.");
+    console.error("[central-db] configure PORTUS_DATABASE_URL antes de operar.");
   }
-  runMigrations();
-  seedInitialData();
-  persistDb();
-  // Importa cadastros anteriores antes que a UI use o catálogo central.
-  // A falha não apaga o SQLite legado: o erro é registrado para reparo do banco.
-  if (isCentralDatabaseConfigured()) {
-    try {
-      await importLegacyCatalogToCentral();
-      console.log("[central-db] catálogo legado importado ou já sincronizado.");
-    } catch (error) {
-      console.error("[central-db] falha ao migrar usuários/produtos legados:", error);
-    }
-  }
-  performBackup();
   registerAuthHandlers();
   registerProductsHandlers();
   registerBatchesHandlers();
@@ -183,14 +142,15 @@ app.whenReady().then(async () => {
   registerCentralHandlers();
   registerSetupHandlers();
   registerUpdateHandlers();
-  scheduleNextMidnightExport();
-  scheduleNextBackup();
+  if (process.env.PORTUS_SERVER_BACKUP === "1" && isCentralDatabaseConfigured()) {
+    void performBackup().catch(err => console.error("[auto-backup] Falha PostgreSQL:", err));
+    scheduleNextBackup();
+  }
   createWindow();
 });
 
 app.on("window-all-closed", () => {
   void closeCentralDatabase();
-  closeDb();
   if (process.platform !== "darwin") app.quit();
 });
 
