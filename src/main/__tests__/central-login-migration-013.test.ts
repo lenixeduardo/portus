@@ -77,6 +77,17 @@ describe("pré-validação do login PostgreSQL (migration 013)", () => {
     expect(script).toContain("column_name = 'laboratory_profile'");
   });
 
+  it("nunca autentica em tabela users de outro schema", () => {
+    const connection = readFileSync(
+      resolve(process.cwd(), "src/main/db/central-connection.ts"), "utf8"
+    );
+    const auth = readFileSync(
+      resolve(process.cwd(), "src/main/auth/auth-service.ts"), "utf8"
+    );
+    expect(connection).toContain('options: "-c search_path=public"');
+    expect((auth.match(/FROM public\\.users WHERE/g) ?? []).length).toBe(2);
+  });
+
   it("verifica a estrutura antes do login por senha e etiqueta", () => {
     const script = readFileSync(
       resolve(process.cwd(), "src/main/ipc/auth-handlers.ts"), "utf8"
