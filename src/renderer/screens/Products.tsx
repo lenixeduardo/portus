@@ -15,9 +15,16 @@ export function Products() {
 
   async function reload() {
     setLoading(true);
-    const list = await window.api.products.list();
-    setProducts(list);
-    setLoading(false);
+    try {
+      const list = await window.api.products.list();
+      setProducts(list);
+      setError(null);
+    } catch (error) {
+      setProducts([]);
+      setError(error instanceof Error ? error.message : "Falha ao consultar PostgreSQL central.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
