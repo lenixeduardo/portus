@@ -1,93 +1,75 @@
+import { randomUUID } from "node:crypto";
 import { ipcMain } from "electron";
 import {
-  IPC,
-  type BarcodeScanInput,
-  type BarcodeScanResult,
-  type BatchInput,
-  type BatchWithProduct,
-  type ServiceResult
+  IPC, type BarcodeScanInput, type BarcodeScanResult,
+  type BatchWithProduct, type ServiceResult
 } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
-import { processBarcodeValue } from "../barcode-logic";
 import {
-  closeBatch,
-  codeExists,
-  countOpenBatches,
-  createBatch,
-  findBatchByCode,
-  generateBatchCode,
-  getBatchByCode,
-  getBatchWithProduct,
-  listOpenBatches
-} from "../db/batches-repo";
-import { createProduct, getProduct, getProductByValue } from "../db/products-repo";
-import { getSetting } from "../db/settings-repo";
-import { isCentralDatabaseRequired } from "../db/central-connection";
+  finalizeCentralBatch, findCentralBatchByCode,
+  listCentralOpenBatches, openCentralBatch
+} from "../db/central-batches-repo";
+import { createCentralProduct, getCentralProduct, listCentralProducts } from "../db/central-products-repo";
+import { getCentralStationSetting } from "../db/central-station-settings-repo";
 import {
-  barcodeSchema,
-  closeBatchSchema,
-  createBatchSchema,
-  findBatchByCodeSchema,
-  type CloseBatchInput,
-  type CreateBatchInput
+  barcodeSchema, closeBatchSchema, createBatchSchema,
+  findBatchByCodeSchema, type CloseBatchInput, type CreateBatchInput
 } from "../validation/schemas";
-import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
+import { compose, requireAuth, validateInput } from "./middleware";
 
-const OPEN_BATCHES_SOFT_LIMIT = 6;
-
-function centralRequired<T>(): ServiceResult<T> | null {
-  return isCentralDatabaseRequired()
-    ? { ok: false, error: "O PostgreSQL central é obrigatório. Configure PORTUS_DATABASE_URL ou use PORTUS_DATABASE_MODE=local somente para desenvolvimento." }
-    : null;
+function current() {
+  const user = getCurrentUser();
+  if (!user) throw new Error("Sessão expirada.");
+  return user;
+}
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : "Falha no PostgreSQL central.";
 }
 
 export function registerBatchesHandlers(): void {
   ipcMain.handle(
     IPC.batchesListOpen,
-    compose([requireAuth])((): BatchWithProduct[] => isCentralDatabaseRequired() ? [] : listOpenBatches())
-  );
-
-  ipcMain.handle(
-    IPC.batchesCreate,
-    compose([requireAuth, validateInput(createBatchSchema)])(
-      (_e, input: CreateBatchInput): ServiceResult<BatchWithProduct> => {
-        const blocked = centralRequired<BatchWithProduct>();
-        if (blocked) return blocked;
-        const user = getCurrentUser();
-        if (!user) return { ok: false, error: "Sessão expirada." };
-        if (user.sectorCode === "LABORATORY") {
-          return { ok: false, error: "O Laboratório consulta lotes existentes na base central." };
-        }
-        if (!getProduct(input.productId)) {
-          return { ok: false, error: "Produto inválido." };
-        }
-        if (countOpenBatches() >= OPEN_BATCHES_SOFT_LIMIT) {
-          return {
-            ok: false,
-            error: `Já existem ${OPEN_BATCHES_SOFT_LIMIT} lotes abertos. Finalize um antes de criar outro.`
-          };
-        }
-        let code = (input.code ?? "").trim();
-        if (!code) code = generateBatchCode();
-        if (codeExists(code)) return { ok: false, error: "Já existe um lote com esse código." };
-
-        try {
-          const batch = createBatch(input.productId, code, user.id);
-          logAudit({ actorUserId: user.id, action: "batches.create", resourceType: "batch", resourceId: batch.id, details: { code: batch.code, productId: input.productId } });
-          return { ok: true, data: batch };
-        } catch {
-          return { ok: false, error: "Erro ao criar lote." };
-        }
-      }
-    )
+    compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
+      const user = current();
+      return listCentralOpenBatches(user.username, user.sectorCode ?? "PRODUCTION");
+    })
   );
 
   ipcMain.handle(
     IPC.batchesFindByCode,
     compose([requireAuth, validateInput(findBatchByCodeSchema)])(
-      (_e, code: string): BatchWithProduct | null => {
-        return isCentralDatabaseRequired() ? null : findBatchByCode(code);
+      async (_e, code: string): Promise<BatchWithProduct | null> => {
+        const user = current();
+        return findCentralBatchByCode(code, user.username, user.sectorCode ?? "PRODUCTION");
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.batchesCreate,
+    compose([requireAuth, validateInput(createBatchSchema)])(
+      async (_e, input: CreateBatchInput): Promise<ServiceResult<BatchWithProduct>> => {
+        const user = current();
+        if (user.role === "supervisor") {
+          return { ok: false, error: "Supervisor não abre lotes operacionais." };
+        }
+        try {
+          const product = await getCentralProduct(input.productId);
+          if (!product) return { ok: false, error: "Produto não encontrado no PostgreSQL." };
+          const code = input.code?.trim() || "CENTRAL-" + randomUUID().slice(0, 12);
+          const batch = await openCentralBatch(
+            product.name, product.description, code,
+            user.username, user.sectorCode ?? "PRODUCTION"
+          );
+          await logAudit({
+            actorUserId: user.id, action: "batches.create",
+            resourceType: "batch", resourceId: batch.id
+          });
+          return { ok: true, data: batch };
+        } catch (error) {
+          return { ok: false, error: errorText(error) };
+        }
       }
     )
   );
@@ -95,20 +77,21 @@ export function registerBatchesHandlers(): void {
   ipcMain.handle(
     IPC.batchesClose,
     compose([requireAuth, validateInput(closeBatchSchema)])(
-      (_e, input: CloseBatchInput): ServiceResult<true> => {
-        const blocked = centralRequired<true>();
-        if (blocked) return blocked;
-        const user = getCurrentUser();
-        if (!user) return { ok: false, error: "Sessão expirada." };
-        if (user.sectorCode === "LABORATORY") {
-          return { ok: false, error: "O Laboratório não pode finalizar lotes no banco local." };
+      async (_e, input: CloseBatchInput): Promise<ServiceResult<true>> => {
+        const user = current();
+        if (user.role !== "master" && user.role !== "supervisor") {
+          return { ok: false, error: "Somente Supervisor ou Master podem finalizar lotes." };
         }
-        const batch = getBatchWithProduct(input.id);
-        if (!batch) return { ok: false, error: "Lote não encontrado." };
-        if (batch.status === "closed") return { ok: false, error: "Lote já está fechado." };
-        closeBatch(input.id, user.id);
-        logAudit({ actorUserId: user.id, action: "batches.close", resourceType: "batch", resourceId: input.id });
-        return { ok: true, data: true };
+        try {
+          await finalizeCentralBatch(input.id, user.username, user.sectorCode ?? "PRODUCTION");
+          await logAudit({
+            actorUserId: user.id, action: "batches.close",
+            resourceType: "batch", resourceId: input.id
+          });
+          return { ok: true, data: true };
+        } catch (error) {
+          return { ok: false, error: errorText(error) };
+        }
       }
     )
   );
@@ -116,29 +99,41 @@ export function registerBatchesHandlers(): void {
   ipcMain.handle(
     IPC.batchesScanBarcode,
     compose([requireAuth, validateInput(barcodeSchema)])(
-      (_e, input: BarcodeScanInput): ServiceResult<BarcodeScanResult> => {
-        const blocked = centralRequired<BarcodeScanResult>();
-        if (blocked) return blocked;
-        const user = getCurrentUser();
-        if (!user) return { ok: false, error: "Sessão expirada." };
-        if (user.sectorCode === "LABORATORY") {
-          return { ok: false, error: "O Laboratório consulta lotes existentes na base central." };
+      async (_e, input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>> => {
+        const user = current();
+        if (user.role === "supervisor") {
+          return { ok: false, error: "Supervisor não inicia lotes." };
         }
-
-        const result = processBarcodeValue(input.barcodeValue, user.id, {
-          barcode_regex: getSetting("barcode_regex"),
-          openBatchesLimit: OPEN_BATCHES_SOFT_LIMIT,
-          getBatchByCode,
-          getProductByValue,
-          countOpenBatches,
-          codeExists,
-          createBatch,
-          createProduct
-        }, input.productName);
-        if (result.ok && result.data.created) {
-          logAudit({ actorUserId: user.id, action: "batches.create_barcode", resourceType: "batch", resourceId: result.data.batch.id, details: { code: result.data.batch.code } });
+        try {
+          const already = await findCentralBatchByCode(
+            input.barcodeValue.trim(), user.username, user.sectorCode ?? "PRODUCTION"
+          );
+          if (already) return { ok: true, data: { batch: already, created: false } };
+          const pattern = await getCentralStationSetting("barcode_regex");
+          const regex = new RegExp(pattern || "^(?<product>.+)-(?<batch_code>[^-]+)$");
+          const match = input.barcodeValue.trim().match(regex);
+          if (!match) return { ok: false, error: "Etiqueta não corresponde ao formato definido no PostgreSQL." };
+          const value = match.groups?.product?.trim() ?? "";
+          const code = match.groups?.batch_code?.trim() ?? "";
+          if (!value || !code) return { ok: false, error: "Etiqueta sem produto ou lote." };
+          const products = await listCentralProducts();
+          let product = products.find(p => p.description === value || p.name === value);
+          if (!product && input.productName?.trim()) {
+            product = await createCentralProduct(input.productName, value, user.username);
+          }
+          if (!product) return { ok: false, error: "Produto não cadastrado no catálogo central." };
+          const batch = await openCentralBatch(
+            product.name, product.description, code,
+            user.username, user.sectorCode ?? "PRODUCTION"
+          );
+          await logAudit({
+            actorUserId: user.id, action: "batches.create_barcode",
+            resourceType: "batch", resourceId: batch.id
+          });
+          return { ok: true, data: { batch, created: true } };
+        } catch (error) {
+          return { ok: false, error: errorText(error) };
         }
-        return result;
       }
     )
   );
