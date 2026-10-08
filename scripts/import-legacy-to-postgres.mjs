@@ -6,7 +6,7 @@
  *   --sqlite=/path/to/serial-reader.sqlite --station=PRODUCAO-01 --sector=PRODUCTION
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import initSqlJs from "sql.js";
@@ -382,6 +382,22 @@ try {
     }
   }
   await pgClient.query("COMMIT");
+  if (args["write-identity"] === "true") {
+    // Os IDs do ledger e do aplicativo devem referir-se à mesma estação.
+    const root = process.env.LOCALAPPDATA || process.env.APPDATA;
+    if (!root) throw new Error("LOCALAPPDATA/APPDATA ausente para salvar identificação da estação.");
+    const folder = join(root, "PORTUS");
+    mkdirSync(folder, { recursive: true });
+    const identityFile = join(folder,"station-identity.json");
+    if (existsSync(identityFile)) {
+      const current = JSON.parse(readFileSync(identityFile,"utf8"));
+      if (current.code !== station) {
+        throw new Error("Identificação da estação não coincide com o ledger: " + identityFile);
+      }
+    } else {
+      writeFileSync(identityFile, JSON.stringify({ code: station },null,2)+"\\n",{ flag:"wx" });
+    }
+  }
   console.log("IMPORTAÇÃO CONCILIADA:",JSON.stringify({
     station, sector, total:originalCounts,
     newlyInserted:Object.fromEntries(importedCounts)
