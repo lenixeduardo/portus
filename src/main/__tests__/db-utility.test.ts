@@ -55,6 +55,25 @@ describe("utilitario de banco PORTUS", () => {
     expect(validator).not.toMatch(/\b(INSERT INTO|ALTER TABLE|DROP TABLE|DELETE FROM|UPDATE public\.)\b/i);
   });
 
+  it("aplica o mockup usando o logotipo original PORTUS sem recriar assets", () => {
+    const theme = read("portus-db-utility-theme.ps1");
+    const gui = read("portus-db-utility.ps1");
+    const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
+    expect(gui).toContain(". $themeScript");
+    expect(gui).toContain("portus-db-utility-theme.ps1");
+    expect(theme).toContain("PORTUS");
+    expect(theme).toContain("D A T A B A S E   U T I L I T Y");
+    expect(theme).toContain("Configuracoes de Conexao");
+    expect(theme).toContain("Log de operacoes");
+    expect(theme).toContain("Theme-Action $migrateButton $actionsCard 288 $true");
+    expect(theme).toContain("Theme-Action $networkButton");
+    expect(theme).toContain("Theme-Action $registerButton");
+    expect(theme).toContain("portus-utility-logo.png");
+    expect(theme).toContain("build\\icon.png");
+    expect(packager).toContain('join(root, "build", "icon.png")');
+    expect(packager).toContain("portus-utility-logo.png");
+  });
+
   it("inclui launcher e dependencias no pacote de banco", () => {
     const launcher = read("portus-db-utility.bat");
     const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
@@ -160,7 +179,7 @@ describe("utilitario de banco PORTUS", () => {
   });
 
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
-    for (const path of ["portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+    for (const path of ["portus-db-utility.ps1", "portus-db-utility-theme.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
       const escaped = full.replace(/'/g, "''");
       const command = [
