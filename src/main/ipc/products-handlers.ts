@@ -44,7 +44,7 @@ export function registerProductsHandlers(): void {
         try {
           await ensureCentralUserAccess(user);
           const product = await createCentralProduct(input.name, input.description, user.username);
-          logAudit({ actorUserId: user.id, action: "products.create", resourceType: "product", resourceId: product.id, details: { name: product.name } });
+          await logAudit({ actorUserId: user.id, action: "products.create", resourceType: "product", resourceId: product.id, details: { name: product.name } });
           return { ok: true, data: product };
         } catch (error) {
           return { ok: false, error: errorMessage(error) };
@@ -62,7 +62,7 @@ export function registerProductsHandlers(): void {
         try {
           await ensureCentralUserAccess(user);
           const product = await updateCentralProduct(input.id, input.name ?? "", input.description, user.username);
-          logAudit({ actorUserId: user.id, action: "products.update", resourceType: "product", resourceId: product.id });
+          await logAudit({ actorUserId: user.id, action: "products.update", resourceType: "product", resourceId: product.id });
           return { ok: true, data: product };
         } catch (error) {
           return { ok: false, error: errorMessage(error) };
@@ -80,7 +80,7 @@ export function registerProductsHandlers(): void {
         try {
           await ensureCentralUserAccess(user);
           await deleteCentralProduct(input.id, user.username);
-          logAudit({ actorUserId: user.id, action: "products.delete", resourceType: "product", resourceId: input.id });
+          await logAudit({ actorUserId: user.id, action: "products.delete", resourceType: "product", resourceId: input.id });
           return { ok: true, data: true };
         } catch (error) {
           return { ok: false, error: errorMessage(error) };
