@@ -41,7 +41,8 @@ describe("utilitario de banco PORTUS", () => {
     expect(ui).toContain('Limpar log');
     expect(ui).toContain('$showPasswordButton.Add_Click');
     expect(ui).toContain('$browseButton.Add_Click');
-    expect(ui).toContain('Color "#1479E5"');
+    expect(ui).toContain('UiColor "primary"');
+    expect(ui).toContain('. (Join-Path $PSScriptRoot "portus-ui-design-tokens.ps1")');
     expect(ui).toContain('$logoPicture.Image');
     expect(ui).toContain('logotipo PORTUS nao carregaram');
     expect(ui).toContain('-not $canvas.Visible');
@@ -49,9 +50,57 @@ describe("utilitario de banco PORTUS", () => {
     expect(ui).toContain("Refresh-Reference");
     expect(packager).toContain('join(root, "build", "icon.png")');
     expect(packager).toContain('join(packageRoot, "portus-logo.png")');
+    expect(ui).toContain("portus-blue-logo.png");
+    expect(ui).toContain('PortusNativeIcon');
+    const logo = readFileSync(join(db, "assets", "portus-blue-logo.png"));
+    expect(logo.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex"))).toBe(true);
+
   });
 
-  it("mostra status/erros e nao executa duas operacoes simultaneas", () => {
+  it("centraliza os tokens de cor e a tipografia obrigatoria Sora / Inter", () => {
+    const tokens = read("portus-ui-design-tokens.ps1");
+    const gui = read("portus-db-utility.ps1");
+    expect(tokens).toContain('primary="#1479E5"');
+    expect(tokens).toContain('navy="#081D3F"');
+    expect(tokens).toContain('background="#F3F6FA"');
+    expect(tokens).toContain('Sora');
+    expect(tokens).toContain('Inter');
+    expect(tokens).toContain('GraphicsUnit]::Pixel');
+    expect(tokens).toContain('UiMissingFonts');
+    expect(gui).toContain('UiFont "Sora" 36 "700"');
+    expect(gui).toContain('UiFont "Sora" 18 "600"');
+    expect(gui).toContain('UiFont "Inter" 14');
+    expect(gui).toContain('UiFont "Inter" 12');
+    expect(gui).toContain('[switch]$StrictFonts');
+    expect(gui).toContain("Tipografia incompleta");
+    const installer = read("install-portus-ui-fonts.ps1");
+    expect(installer).toContain("raw.githubusercontent.com/google/fonts");
+  });
+
+  it("inclui somente quatro icones avulsos PNG 24px e SVG", () => {
+    const gui = read("portus-db-utility.ps1");
+    const packageScript = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
+    const actions = [
+      ["validar-banco","checkButton"],
+      ["aplicar-migrations","migrateButton"],
+      ["verificar-rede","networkButton"],
+      ["registrar-ip","registerButton"]
+    ];
+    for (const [name,button] of actions) {
+      const png = readFileSync(join(db, "assets", "actions", name + ".png"));
+      const svg = readFileSync(join(db, "assets", "actions", name + ".svg"), "utf8");
+      expect(png.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex"))).toBe(true);
+      expect(png.readUInt32BE(16)).toBe(24);
+      expect(png.readUInt32BE(20)).toBe(24);
+      expect(svg).toContain("viewBox=");
+      expect(gui).toContain("Set-ActionIcon $" + button + " \"" + name + "\"");
+    }
+    expect(packageScript).toContain('"assets"');
+    expect(packageScript).toContain("install-portus-ui-fonts.ps1");
+    expect(packageScript).toContain("portus-ui-design-tokens.ps1");
+  });
+
+  it("mostra status/erros e impede operacoes simultaneas", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('$timer.Add_Tick({');
     expect(gui).toContain("Poll-Log");
@@ -171,6 +220,30 @@ describe("utilitario de banco PORTUS", () => {
     });
     expect(result).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
   }, 35_000);
+
+  it.skipIf(process.platform !== "win32")("preserva rolagem em viewport 900x620 sem conectar ao banco", () => {
+    const ps = join(db, "portus-db-utility.ps1");
+    const result = execFileSync("powershell.exe", [
+      "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", ps,
+      "-SmokeTest", "-ViewportWidth", "900", "-ViewportHeight", "620"
+    ], { encoding:"utf8", timeout:25_000, windowsHide:true });
+    expect(result).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
+  }, 35_000);
+
+  it("usa cartões de 6px, foco visível, feedback e rolagem DPI", () => {
+    const gui = read("portus-db-utility.ps1");
+    expect(gui).toContain("Rounded-Path");
+    expect(gui).toContain('UiColor "border"');
+    expect(gui).toContain('UiColor "primaryHover"');
+    expect(gui).toContain('UiColor "primaryPressed"');
+    expect(gui).toContain('UiColor "disabledBackground"');
+    expect(gui).toContain('Add_Enter');
+    expect(gui).toContain('Add_Leave');
+    expect(gui).toContain('$page.AutoScroll = $true');
+    expect(gui).toContain('AutoScaleMode]::Dpi');
+    expect(gui).toContain("ViewportWidth");
+    expect(gui).toContain("ViewportHeight");
+  });
 
   it("prioriza janela visivel e imprime erros de inicializacao no terminal", () => {
     const gui = read("portus-db-utility.ps1");
