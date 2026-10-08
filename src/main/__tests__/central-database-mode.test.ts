@@ -24,10 +24,10 @@ describe("modo do banco central", () => {
     expect(isCentralDatabaseRequired()).toBe(true);
   });
 
-  it("permite SQLite somente quando o modo local é explícito", () => {
+  it("ignora o parâmetro legado local e mantém PostgreSQL obrigatório", () => {
     process.env.PORTUS_DATABASE_MODE = "local";
-    expect(getCentralDatabaseMode()).toBe("local");
-    expect(isCentralDatabaseRequired()).toBe(false);
+    expect(getCentralDatabaseMode()).toBe("central");
+    expect(isCentralDatabaseRequired()).toBe(true);
   });
 
   it("não considera uma URL vazia como configuração válida", () => {
