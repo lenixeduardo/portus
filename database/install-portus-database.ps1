@@ -8,6 +8,7 @@ param(
   [string]$DatabaseName = "portus",
   [string]$AppUser = "portus_admin",
   [switch]$MigrationsOnly,
+  [switch]$SeedDevAdmin,
   [switch]$SkipTests,
   [switch]$SkipAppConfiguration
 )
@@ -44,6 +45,10 @@ try {
   if (-not (Test-Path $psql)) { throw "psql.exe não encontrado em '$psql'. Informe -PostgresBin com a pasta bin correta." }
   Assert-Identifier $DatabaseName "Nome do banco"
   Assert-Identifier $AppUser "Usuário da aplicação"
+
+  if ($SeedDevAdmin -and $DatabaseHost -notin @("127.0.0.1", "localhost", "::1", "[::1]")) {
+    throw "-SeedDevAdmin está restrito ao PostgreSQL local. Não habilite a senha admin/admin em servidor remoto."
+  }
 
   Write-Host "Instalação do banco central PORTUS" -ForegroundColor Cyan
   $adminPassword = if ($env:PORTUS_SETUP_ADMIN_PASSWORD) {
@@ -146,8 +151,16 @@ $$;
 '@
   Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", $schemaCheck)
 
-  if (-not $MigrationsOnly) {
+  # Os setores e aplicações também precisam ser semeados quando o operador
+  # pede explicitamente um usuário de desenvolvimento ao atualizar migrations.
+  if (-not $MigrationsOnly -or $SeedDevAdmin) {
     Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", (Join-Path $PSScriptRoot "seed\reference.sql"))
+  }
+
+  if ($SeedDevAdmin) {
+    Write-Warning "DESENVOLVIMENTO SOMENTE: senha admin/admin. Não utilize este usuário em produção ou PostgreSQL exposto à rede."
+    Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", (Join-Path $PSScriptRoot "seed\development_admin.sql"))
+    Write-Host "Usuário de desenvolvimento admin criado se estava ausente; credenciais preexistentes não foram alteradas." -ForegroundColor Yellow
   }
 
   # Credencial de runtime: leitura e captura técnica estritamente necessárias;
