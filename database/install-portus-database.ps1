@@ -130,6 +130,7 @@ BEGIN
   IF to_regclass('public.portus_station_settings') IS NULL
      OR to_regclass('public.portus_station_equipment_profiles') IS NULL
      OR to_regclass('public.portus_audit_log') IS NULL
+     OR to_regclass('public.portus_auto_exports') IS NULL
      OR to_regclass('public.portus_legacy_import_ledger') IS NULL THEN
     RAISE EXCEPTION 'PORTUS: esquema de estacoes/auditoria incompleto; aplique a migration 014.';
   END IF;
