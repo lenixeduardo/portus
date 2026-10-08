@@ -9,6 +9,7 @@ param(
   [string]$AppUser = "portus_admin",
   [switch]$MigrationsOnly,
   [switch]$SeedDevAdmin,
+  [switch]$ResetDevAdminPassword,
   [switch]$SkipTests,
   [switch]$SkipAppConfiguration
 )
@@ -48,6 +49,9 @@ try {
 
   if ($SeedDevAdmin -and $DatabaseHost -notin @("127.0.0.1", "localhost", "::1", "[::1]")) {
     throw "-SeedDevAdmin está restrito ao PostgreSQL local. Não habilite a senha admin/admin em servidor remoto."
+  }
+  if ($ResetDevAdminPassword -and -not $SeedDevAdmin) {
+    throw "-ResetDevAdminPassword exige -SeedDevAdmin. Isso evita alterações acidentais na conta Master."
   }
 
   Write-Host "Instalação do banco central PORTUS" -ForegroundColor Cyan
@@ -161,6 +165,10 @@ $$;
     Write-Warning "DESENVOLVIMENTO SOMENTE: senha admin/admin. Não utilize este usuário em produção ou PostgreSQL exposto à rede."
     Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", (Join-Path $PSScriptRoot "seed\development_admin.sql"))
     Write-Host "Usuário de desenvolvimento admin criado se estava ausente; credenciais preexistentes não foram alteradas." -ForegroundColor Yellow
+    if ($ResetDevAdminPassword) {
+      Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", (Join-Path $PSScriptRoot "seed\development_admin_reset.sql"))
+      Write-Warning "Senha do Master local admin redefinida explicitamente para admin. Troque-a antes de qualquer implantação real."
+    }
   }
 
   # Credencial de runtime: leitura e captura técnica estritamente necessárias;
