@@ -56,6 +56,7 @@ function Add-Label([string]$value,[int]$x,[int]$y,[int]$width,[int]$height=26) {
   $canvas.Controls.Add($item)
   return $item
 }
+$script:UiCards = @()
 function Make-Card([int]$x,[int]$y,[int]$w,[int]$h) {
   $panel = New-Object System.Windows.Forms.Panel
   $panel.Location = New-Object System.Drawing.Point($x,$y)
@@ -63,6 +64,7 @@ function Make-Card([int]$x,[int]$y,[int]$w,[int]$h) {
   $panel.BackColor = UiColor "surface"
   $panel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
   $canvas.Controls.Add($panel)
+  $script:UiCards += $panel
   return $panel
 }
 function Add-Field([string]$label,[int]$x,[int]$y,[int]$width,[string]$initial,[bool]$secret=$false) {
@@ -336,6 +338,25 @@ $clearLogButton.Font = UiFont "Inter" 12 "500"
 $foot = Add-Label "Validar e verificar IP sao operacoes de leitura. Aplicar migrations exige confirmacao." 47 896 1030 22
 $foot.Font = UiFont "Inter" 12
 $foot.ForeColor = UiColor "textSecondary"
+
+# Labels/inputs pertencem ao card fisico, nao ao canvas cinza.
+# Sem isso, WinForms desenha retangulos cinza atras dos textos brancos.
+foreach ($control in @($canvas.Controls)) {
+  if ($script:UiCards -contains $control) { continue }
+  foreach ($card in $script:UiCards) {
+    $bounds = $card.Bounds
+    if ($control.Left -ge $bounds.Left -and $control.Top -ge $bounds.Top -and
+        $control.Right -le $bounds.Right -and $control.Bottom -le $bounds.Bottom) {
+      $pos = $control.Location
+      $card.Controls.Add($control)
+      $control.Location = New-Object System.Drawing.Point(($pos.X - $bounds.Left),($pos.Y - $bounds.Top))
+      if ($control -is [System.Windows.Forms.Label] -and $control -ne $helpText) {
+        $control.BackColor = [System.Drawing.Color]::Transparent
+      }
+      break
+    }
+  }
+}
 
 $script:child = $null
 $script:outFile = $null
