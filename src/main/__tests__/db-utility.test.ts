@@ -133,6 +133,32 @@ describe("utilitario de banco PORTUS", () => {
     }
   }, 60_000);
 
+  it.skipIf(process.platform !== "win32")("abre e fecha a interface WinForms real sem acesso ao banco", () => {
+    const ps = join(db, "portus-db-utility.ps1");
+    const result = execFileSync("powershell.exe", [
+      "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", ps, "-SmokeTest"
+    ], {
+      encoding: "utf8",
+      timeout: 25_000,
+      windowsHide: true
+    });
+    expect(result).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
+  }, 35_000);
+
+  it("prioriza janela visivel e imprime erros de inicializacao no terminal", () => {
+    const gui = read("portus-db-utility.ps1");
+    const launcher = read("portus-db-utility.bat");
+    expect(gui).toContain("$form.ShowInTaskbar = $true");
+    expect(gui).toContain("$form.Add_Shown({");
+    expect(gui).toContain("$form.TopMost = $true");
+    expect(gui).toContain("$form.BringToFront()");
+    expect(gui).toContain("$form.Activate()");
+    expect(gui).toContain("$form.TopMost = $false");
+    expect(gui).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
+    expect(gui).toContain("[Console]::Error.WriteLine($message)");
+    expect(launcher).toContain("Se a janela nao aparecer, tente Alt+Tab");
+  });
+
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
     for (const path of ["portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
