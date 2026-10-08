@@ -74,7 +74,7 @@ export function registerSettingsHandlers(): void {
         }
         try {
           await setCentralStationSetting(input.key, input.value);
-          logAudit({ actorUserId: getCurrentUser()?.id, action: "settings.update", resourceType: "setting", resourceId: input.key });
+          await logAudit({ actorUserId: getCurrentUser()?.id, action: "settings.update", resourceType: "setting", resourceId: input.key });
           return { ok: true, data: true };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Falha ao salvar configuração central." };
