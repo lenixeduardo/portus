@@ -16,7 +16,7 @@ for (const file of ["install-portus-database.ps1", "install-portus-database.bat"
 }
 // Use the exact production PORTUS icon in the standalone WinForms utility.
 cpSync(join(root, "build", "icon.png"), join(packageRoot, "portus-logo.png"));
-cpSync(join(root, "database", "assets", "actions"), join(packageRoot, "assets", "actions"), { recursive: true });
+cpSync(join(root, "database", "assets"), join(packageRoot, "assets"), { recursive: true });
 cpSync(join(root, "database", "migrations"), join(packageRoot, "migrations"), { recursive: true });
 cpSync(join(root, "database", "seed"), join(packageRoot, "seed"), { recursive: true });
 cpSync(join(root, "database", "tests"), join(packageRoot, "tests"), { recursive: true });
