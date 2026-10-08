@@ -96,6 +96,31 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
     Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", "INSERT INTO portus_schema_migrations (name) VALUES ('$name');")
     Write-Host "Migration aplicada: $name" -ForegroundColor Green
   }
+
+  # Falha explicitamente se o registro de migrations divergir do schema físico.
+  # Não exige credenciais administrativas no aplicativo cliente.
+  $schemaCheck = @'
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'batches'
+       AND column_name = 'completed'
+  ) THEN
+    RAISE EXCEPTION 'PORTUS: batches.completed ausente. Atualize a migration 012 no servidor.';
+  END IF;
+
+  IF to_regprocedure('public.set_batch_completed(bigint,bigint,bigint,bigint,boolean)') IS NULL
+     OR to_regprocedure('public.supervisor_finalize_batch(bigint,bigint,bigint,bigint)') IS NULL
+     OR to_regprocedure('public.ensure_station(text,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'PORTUS: funcoes da migration 012 ausentes na base central.';
+  END IF;
+END;
+$$;
+'@
+  Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", $schemaCheck)
+
   if (-not $MigrationsOnly) {
     Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", (Join-Path $PSScriptRoot "seed\reference.sql"))
   }
