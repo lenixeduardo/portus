@@ -135,6 +135,9 @@ export function registerUsersHandlers(): void {
       async (_e, input: ValidatedBarcodeUserRegistrationInput): Promise<ServiceResult<User>> => {
         const actor = getCurrentUser();
         if (!actor) return { ok: false, error: "Sessão expirada." };
+        if (!isCentralDatabaseConfigured()) {
+          return { ok: false, error: "PostgreSQL central obrigatório para cadastrar usuários." };
+        }
 
         const barcode = normalizeUserBarcode(input.barcode);
         if (getUserByBarcodeValue(barcode)) {
@@ -174,13 +177,11 @@ export function registerUsersHandlers(): void {
         }
 
         try {
-          if (isCentralDatabaseConfigured()) {
-            const localRow = getUserByUsername(user.username);
-            await ensureCentralUserAccess(user, {
-              passwordHash: localRow?.password_hash,
-              barcodeValue: localRow?.barcode_value
-            });
-          }
+          const localRow = getUserByUsername(user.username);
+          await ensureCentralUserAccess(user, {
+            passwordHash: localRow?.password_hash,
+            barcodeValue: localRow?.barcode_value
+          });
         } catch (error) {
           deleteUser(user.id);
           return {
