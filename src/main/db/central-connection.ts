@@ -207,10 +207,14 @@ export async function checkCentralDatabase(): Promise<boolean> {
     "AND EXISTS (SELECT 1 FROM information_schema.columns " +
     "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'barcode_value') " +
     "AND to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NOT NULL " +
+    "AND to_regclass('public.portus_station_settings') IS NOT NULL " +
+    "AND to_regclass('public.portus_station_equipment_profiles') IS NOT NULL " +
+    "AND to_regclass('public.portus_audit_log') IS NOT NULL " +
+    "AND to_regclass('public.portus_legacy_import_ledger') IS NOT NULL " +
     "AS ready"
   );
   if (!schema.rows[0]?.ready) {
-    throw new Error("Servidor PostgreSQL precisa das migrations 012 e 013. " +
+    throw new Error("Servidor PostgreSQL precisa das migrations 012, 013 e 014. " +
       "Execute install-portus-database.ps1 -MigrationsOnly na máquina servidor.");
   }
   return true;
