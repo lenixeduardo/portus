@@ -695,9 +695,7 @@ if ($SmokeTest -or $CapturePath) {
         if ($component.Font.FontFamily.Name -ne "Inter") { $script:smokeFailed = $true }
       }
     }
-    if ($false) {
-      $script:smokeFailed = $true
-    }
+
     # O teste usa o asset real do projeto e nao aceita uma marca ausente.
     $officialLogo = Join-Path (Split-Path -Parent $PSScriptRoot) "build\icon.png"
     if ((Test-Path -LiteralPath $officialLogo) -and $null -eq $logoPicture.Image) {
