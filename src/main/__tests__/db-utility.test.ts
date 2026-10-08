@@ -221,6 +221,30 @@ describe("utilitario de banco PORTUS", () => {
     expect(result).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
   }, 35_000);
 
+  it.skipIf(process.platform !== "win32")("preserva rolagem em viewport 900x620 sem conectar ao banco", () => {
+    const ps = join(db, "portus-db-utility.ps1");
+    const result = execFileSync("powershell.exe", [
+      "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", ps,
+      "-SmokeTest", "-ViewportWidth", "900", "-ViewportHeight", "620"
+    ], { encoding:"utf8", timeout:25_000, windowsHide:true });
+    expect(result).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
+  }, 35_000);
+
+  it("usa cartões de 6px, foco visível, feedback e rolagem DPI", () => {
+    const gui = read("portus-db-utility.ps1");
+    expect(gui).toContain("Rounded-Path");
+    expect(gui).toContain('UiColor "border"');
+    expect(gui).toContain('UiColor "primaryHover"');
+    expect(gui).toContain('UiColor "primaryPressed"');
+    expect(gui).toContain('UiColor "disabledBackground"');
+    expect(gui).toContain('Add_Enter');
+    expect(gui).toContain('Add_Leave');
+    expect(gui).toContain('$page.AutoScroll = $true');
+    expect(gui).toContain('AutoScaleMode]::Dpi');
+    expect(gui).toContain("ViewportWidth");
+    expect(gui).toContain("ViewportHeight");
+  });
+
   it("prioriza janela visivel e imprime erros de inicializacao no terminal", () => {
     const gui = read("portus-db-utility.ps1");
     const launcher = read("portus-db-utility.bat");
