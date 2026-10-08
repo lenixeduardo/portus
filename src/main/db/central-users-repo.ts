@@ -53,7 +53,7 @@ export async function ensureCentralUserAccess(
     "INSERT INTO users (username, password_hash, display_name, role, active, sector_code, laboratory_profile, barcode_value) " +
     "VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7) " +
     "ON CONFLICT (username) DO UPDATE SET " +
-    "display_name = EXCLUDED.display_name, role = EXCLUDED.role, active = TRUE, " +
+    "display_name = EXCLUDED.display_name, role = EXCLUDED.role, active = users.active, " +
     "sector_code = EXCLUDED.sector_code, laboratory_profile = EXCLUDED.laboratory_profile, " +
     "barcode_value = COALESCE(users.barcode_value, EXCLUDED.barcode_value), " +
     "password_hash = CASE WHEN users.password_hash = 'managed-by-portus' " +
@@ -110,4 +110,20 @@ export async function ensureCentralUserAccess(
     "can_confirm_production = EXCLUDED.can_confirm_production, " +
     "can_confirm_laboratory = EXCLUDED.can_confirm_laboratory"
   );
+}
+
+export async function updateCentralUserPassword(username: string, passwordHash: string): Promise<void> {
+  const result = await centralQuery(
+    "UPDATE users SET password_hash = $1 WHERE username = $2 AND active RETURNING id",
+    [passwordHash, username]
+  );
+  if (!result.rowCount) throw new Error("Usuário não encontrado no PostgreSQL central.");
+}
+
+export async function deactivateCentralUser(username: string): Promise<void> {
+  const result = await centralQuery(
+    "UPDATE users SET active = FALSE WHERE username = $1 AND active RETURNING id",
+    [username]
+  );
+  if (!result.rowCount) throw new Error("Usuário não encontrado no PostgreSQL central.");
 }
