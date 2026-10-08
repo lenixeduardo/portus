@@ -492,7 +492,10 @@ function Show-Log([string]$value) {
   $log.ScrollToCaret()
 }
 function Set-Busy([bool]$busy) {
-  if ($busy) { $statusDescription.Text = "Operação em andamento. Aguarde a confirmação." }
+  if ($busy) {
+    $statusDescription.Text = "Operação em andamento. Aguarde a confirmação."
+    $statusGlyph.Image = New-PortusGlyph "pending" 30 "warning"
+  }
   foreach ($field in $fields) {
     $field.Enabled = -not $busy
     $field.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
@@ -562,6 +565,11 @@ $timer.Add_Tick({
       $status.Text = "Falha (codigo $code). Confira o log."
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
       $statusDot.ForeColor = UiColor "error"
+    }
+    $statusGlyph.Image = if ($code -eq 0) {
+      New-PortusGlyph "check" 30 "success"
+    } else {
+      New-PortusGlyph "error" 30 "error"
     }
     Show-Log $status.Text
     $statusDescription.Text = if ($code -eq 0) { "Confira o log para os detalhes da operação." } else { "Revise o erro apresentado no log antes de tentar novamente." }
