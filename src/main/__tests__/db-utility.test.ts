@@ -29,10 +29,10 @@ describe("utilitario de banco PORTUS", () => {
     const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
     expect(ui).toContain('$form.Text = "PORTUS Database Utility"');
     expect(ui).toContain('"DATABASE UTILITY"');
-    expect(ui).toContain('"CONFIGURACOES DE CONEXAO"');
-    expect(ui).toContain('"ACOES"');
-    expect(ui).toContain('"STATUS"');
-    expect(ui).toContain('"LOG DA OPERACAO"');
+    expect(ui).toContain('"Configurações de Conexão"');
+    expect(ui).toContain('"Ações"');
+    expect(ui).toContain('"Status"');
+    expect(ui).toContain('"Log"');
     expect(ui).toContain('Join-Path $PSScriptRoot "portus-logo.png"');
     expect(ui).toContain('"build\\icon.png"');
     expect(ui).toContain('PictureBoxSizeMode]::Zoom');
@@ -57,6 +57,32 @@ describe("utilitario de banco PORTUS", () => {
 
   });
 
+  it("alinha a tela ao mockup sem simular conexoes, dados ou logs", () => {
+    const gui = read("portus-db-utility.ps1");
+    const glyphs = read("portus-db-utility-glyphs.ps1");
+    const pack = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
+    expect(gui).toContain('portus-db-utility-glyphs.ps1');
+    expect(gui).toContain('UiFont "Sora" 52 "700"');
+    for(const label of ["Configurações de Conexão", "Ações", "Status", "Log"]) {
+      expect(gui).toContain(label);
+    }
+    for(const kind of ["server", "network", "database", "user", "folder", "lock"]) {
+      expect(gui).toContain('icon="' + kind + '"');
+      expect(glyphs).toContain('"' + kind + '"');
+    }
+    expect(gui).toContain('Add-PortusGlyph "settings"');
+    expect(gui).toContain('Add-PortusGlyph "document"');
+    expect(gui).toContain('Add-PortusGlyph "check"');
+    expect(gui).toContain('$statusDescription.Text');
+    expect(gui).toContain('New-PortusGlyph "error"');
+    expect(gui).toContain('New-PortusGlyph "pending"');
+    expect(gui).toContain('Nenhuma operação executada. As mensagens reais aparecerão aqui.');
+    expect(gui).toContain('$logPlaceholder.Visible = $false');
+    expect(gui).toContain('$logPlaceholder.Visible = $true');
+    expect(gui).not.toContain('Conexão estabelecida com sucesso.');
+    expect(pack).toContain('portus-db-utility-glyphs.ps1');
+  });
+
   it("centraliza os tokens de cor e a tipografia obrigatoria Sora / Inter", () => {
     const tokens = read("portus-ui-design-tokens.ps1");
     const gui = read("portus-db-utility.ps1");
@@ -67,7 +93,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(tokens).toContain('Inter');
     expect(tokens).toContain('GraphicsUnit]::Pixel');
     expect(tokens).toContain('UiMissingFonts');
-    expect(gui).toContain('UiFont "Sora" 36 "700"');
+    expect(gui).toContain('UiFont "Sora" 52 "700"');
     expect(gui).toContain('UiFont "Sora" 18 "600"');
     expect(gui).toContain('UiFont "Inter" 14');
     expect(gui).toContain('UiFont "Inter" 12');
@@ -136,7 +162,7 @@ describe("utilitario de banco PORTUS", () => {
     const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
     expect(launcher).toContain("-STA");
     expect(launcher).toContain('portus-db-utility.ps1');
-    for (const asset of ["portus-db-utility.bat", "portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+    for (const asset of ["portus-db-utility.bat", "portus-db-utility.ps1", "portus-db-utility-glyphs.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       expect(packager).toContain(asset);
     }
   });
@@ -260,7 +286,7 @@ describe("utilitario de banco PORTUS", () => {
   });
 
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
-    for (const path of ["portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+    for (const path of ["portus-db-utility.ps1", "portus-db-utility-glyphs.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
       const escaped = full.replace(/'/g, "''");
       const command = [
