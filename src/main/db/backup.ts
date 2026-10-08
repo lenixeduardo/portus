@@ -1,11 +1,13 @@
-import { mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { findPostgresBin } from "../setup/initial-setup-service";
+import { getCentralDatabaseUrl } from "./central-connection";
 import { join } from "node:path";
-import { backupDbTo } from "./connection";
 
-const BACKUP_PREFIX = "serial-reader-backup-";
-const BACKUP_SUFFIX = ".sqlite";
+const BACKUP_PREFIX = "portus-postgres-backup-";
+const BACKUP_SUFFIX = ".dump";
 // serial-reader-backup-YYYYMMDD-HHMMSS.sqlite
-const BACKUP_PATTERN = /^serial-reader-backup-\d{8}-\d{6}\.sqlite$/;
+const BACKUP_PATTERN = /^portus-postgres-backup-\d{8}-\d{6}\.dump$/;
 
 function localTimestamp(date = new Date()): string {
   const p = (n: number, len = 2) => String(n).padStart(len, "0");
@@ -28,8 +30,24 @@ export function runBackup(
 
   let backupPath: string;
   try {
+    const connection = getCentralDatabaseUrl();
+    if (!connection) throw new Error("PostgreSQL central não configurado.");
+    const database = new URL(connection);
+    const bin = findPostgresBin();
+    const executable = bin ? join(bin, process.platform === "win32" ? "pg_dump.exe" : "pg_dump") : "pg_dump";
+    if (bin && !existsSync(executable)) throw new Error("pg_dump não encontrado no servidor.");
     backupPath = join(backupFolder, `${BACKUP_PREFIX}${localTimestamp()}${BACKUP_SUFFIX}`);
-    backupDbTo(backupPath);
+    execFileSync(executable, ["--format=custom", "--no-owner", "--no-acl", "--file", backupPath], {
+      env: {
+        ...process.env,
+        PGHOST: database.hostname,
+        PGPORT: database.port || "5432",
+        PGUSER: decodeURIComponent(database.username),
+        PGPASSWORD: decodeURIComponent(database.password),
+        PGDATABASE: decodeURIComponent(database.pathname.slice(1))
+      },
+      timeout: 120000
+    });
   } catch (err) {
     return { backedUp: false, errors: [`Falha ao gerar backup do banco: ${String(err)}`] };
   }
