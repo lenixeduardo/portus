@@ -103,6 +103,11 @@ function Refresh-Reference {
 $initialIp = Refresh-Reference
 if ($initialIp) {
   $hostField.Text = $initialIp
+  try {
+    $saved = Get-Content -LiteralPath (Join-Path (Join-Path $env:LOCALAPPDATA "PORTUS") "server-endpoint.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    $portField.Text = [string]$saved.port
+    $dbField.Text = [string]$saved.databaseName
+  } catch { }
 } else {
   # Migracao gradual: usar a conexao ja configurada como sugestao,
   # sem registra-la como IP confiavel ate confirmacao do usuario.
