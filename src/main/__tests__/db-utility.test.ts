@@ -42,6 +42,10 @@ describe("utilitario de banco PORTUS", () => {
     expect(ui).toContain('$showPasswordButton.Add_Click');
     expect(ui).toContain('$browseButton.Add_Click');
     expect(ui).toContain('Color "#1479E5"');
+    expect(ui).toContain('$logoPicture.Image');
+    expect(ui).toContain('logotipo PORTUS nao carregaram');
+    expect(ui).toContain('-not $canvas.Visible');
+
     expect(ui).toContain("Refresh-Reference");
     expect(packager).toContain('join(root, "build", "icon.png")');
     expect(packager).toContain('join(packageRoot, "portus-logo.png")');
