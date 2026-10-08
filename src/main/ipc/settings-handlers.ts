@@ -1,8 +1,7 @@
 import { app, dialog, ipcMain } from "electron";
 import { join } from "node:path";
 import { IPC, type AppSettings, type ServiceResult } from "../../shared/ipc";
-import { all } from "../db/query";
-import { getAutoBackupFolder, getAutoBackupRetention, setSetting } from "../db/settings-repo";
+import { listCentralStationSettings, setCentralStationSetting, getRuntimeStationCode } from "../db/central-station-settings-repo";
 import { runBackup } from "../db/backup";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
@@ -33,11 +32,9 @@ async function selectBackupFolderDialog(): Promise<string | null> {
 export function registerSettingsHandlers(): void {
   ipcMain.handle(
     IPC.settingsGetAll,
-    compose([requireAdmin])((): AppSettings => {
-      const rows = all<{ key: string; value: string }>("SELECT key, value FROM settings");
-      const out: AppSettings = {};
-      rows.forEach((r) => (out[r.key] = r.value));
-      return out;
+    compose([requireAdmin])(async (): Promise<AppSettings> => {
+      const settings = await listCentralStationSettings();
+      return { ...settings, station_code: getRuntimeStationCode() };
     })
   );
 
@@ -58,8 +55,8 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     IPC.settingsBackupNow,
     compose([requireAdmin])((): ServiceResult<{ path: string }> => {
-      const folder = getAutoBackupFolder(DEFAULT_BACKUP_FOLDER());
-      const retention = getAutoBackupRetention(DEFAULT_BACKUP_RETENTION);
+      const folder = DEFAULT_BACKUP_FOLDER();
+      const retention = DEFAULT_BACKUP_RETENTION;
       const result = runBackup(folder, retention);
       if (!result.backedUp || !result.path) {
         return { ok: false, error: result.errors.join("; ") || "Falha desconhecida ao gerar o backup." };
@@ -71,10 +68,17 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     IPC.settingsSet,
     compose([requireAdmin, validateInput(updateSettingSchema)])(
-      (_e, input: UpdateSettingInput): ServiceResult<true> => {
-        setSetting(input.key, input.value);
-        logAudit({ actorUserId: getCurrentUser()?.id, action: "settings.update", resourceType: "setting", resourceId: input.key });
-        return { ok: true, data: true };
+      async (_e, input: UpdateSettingInput): Promise<ServiceResult<true>> => {
+        if (input.key === "station_code" && input.value.trim().toUpperCase() !== getRuntimeStationCode()) {
+          return { ok: false, error: "A identidade física da máquina deve ser definida por PORTUS_STATION_CODE na instalação." };
+        }
+        try {
+          await setCentralStationSetting(input.key, input.value);
+          logAudit({ actorUserId: getCurrentUser()?.id, action: "settings.update", resourceType: "setting", resourceId: input.key });
+          return { ok: true, data: true };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao salvar configuração central." };
+        }
       }
     )
   );
