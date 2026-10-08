@@ -89,7 +89,7 @@ function getRuntimeSetting(name: string): string | undefined {
   return persisted;
 }
 
-function getCentralDatabaseUrl(): string | undefined {
+export function getCentralDatabaseUrl(): string | undefined {
   return getRuntimeSetting("PORTUS_DATABASE_URL");
 }
 
