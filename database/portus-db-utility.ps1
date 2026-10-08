@@ -1,7 +1,7 @@
 # PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
 # Apenas o botao Aplicar migrations altera o banco, mediante confirmacao.
 [CmdletBinding()]
-param([switch]$SmokeTest)
+param([switch]$SmokeTest, [string]$CapturePath = '')
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
@@ -509,8 +509,8 @@ $form.Add_Shown({
   $focusTimer.Start()
 })
 
-if ($SmokeTest) {
-  # Testa a abertura REAL do formulario sem conectar ou alterar o PostgreSQL.
+if ($SmokeTest -or $CapturePath) {
+  # Abre a janela real sem conectar ou alterar o PostgreSQL.
   $smokeTimer = New-Object System.Windows.Forms.Timer
   $smokeTimer.Interval = 600
   $smokeTimer.Add_Tick({
@@ -527,6 +527,26 @@ if ($SmokeTest) {
     if ((Test-Path -LiteralPath $officialLogo) -and $null -eq $logoPicture.Image) {
       $script:smokeFailed = $true
     }
+    if ($CapturePath -and -not $script:smokeFailed) {
+      # Captura os pixels realmente renderizados pela interface WinForms no runner Windows.
+      # Em vez de fotografar uma tela remota, desenha os controles reais em bitmap.
+      $bitmap = New-Object System.Drawing.Bitmap($canvas.Width,$canvas.Height)
+      try {
+        $rectangle = New-Object System.Drawing.Rectangle(0,0,$canvas.Width,$canvas.Height)
+        $canvas.DrawToBitmap($bitmap,$rectangle)
+        $folder = Split-Path -Parent $CapturePath
+        if ($folder -and -not (Test-Path -LiteralPath $folder)) {
+          New-Item -ItemType Directory -Path $folder -Force | Out-Null
+        }
+        $bitmap.Save($CapturePath,[System.Drawing.Imaging.ImageFormat]::Png)
+        Write-Host ("PORTUS_REAL_UI_CAPTURE_SAVED: " + $CapturePath)
+      } catch {
+        $script:smokeFailed = $true
+        [Console]::Error.WriteLine("Falha ao capturar WinForms: " + $_.Exception.Message)
+      } finally {
+        $bitmap.Dispose()
+      }
+    }
     $form.Close()
   })
   $form.Add_Shown({ $smokeTimer.Start() })
@@ -534,15 +554,18 @@ if ($SmokeTest) {
 
 Write-Host "PORTUS: iniciando interface. Se necessario, use Alt+Tab."
 [void]$form.ShowDialog()
-if ($SmokeTest) {
+if ($SmokeTest -or $CapturePath) {
   if ($script:smokeFailed) { throw "Smoke test: janela, controles ou logotipo PORTUS nao carregaram." }
+  if ($CapturePath -and -not (Test-Path -LiteralPath $CapturePath)) {
+    throw "O arquivo da captura nao foi gerado."
+  }
   Write-Host "PORTUS_DB_UTILITY_SMOKE_OK"
 }
 } catch {
   $message = "Nao foi possivel abrir o utilitario PORTUS: " + $_.Exception.Message
   [Console]::Error.WriteLine($message)
   try {
-    if (-not $SmokeTest) {
+    if (-not $SmokeTest -and -not $CapturePath) {
     [void][System.Windows.Forms.MessageBox]::Show($message,"Falha ao iniciar PORTUS",
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Error)
