@@ -48,6 +48,8 @@ BEGIN
     RAISE EXCEPTION 'Nome do produto obrigatório'
       USING ERRCODE = '22023';
   END IF;
+  -- Serializa nomes iguais independentemente de maiúsculas/minúsculas.
+  PERFORM pg_advisory_xact_lock(hashtextextended(lower(v_name), 0));
   IF EXISTS (
     SELECT 1 FROM products
      WHERE lower(name) = lower(v_name) AND (p_id IS NULL OR id <> p_id)
