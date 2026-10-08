@@ -6,6 +6,8 @@ $script:UiColors = @{
   background="#F3F6FA"; surface="#FFFFFF"; surfaceMuted="#FAFCFF"; border="#D8E2EE"
   borderStrong="#C8D5E5"; success="#16803B"; warning="#D97706"; error="#B42318"
   disabled="#94A3B8"; disabledBackground="#F1F5F9"
+  brandMuted="#355B87"; divider="#CBD5E1"; intro="#52647C"
+  infoText="#215C9B"; iconButtonSurface="#E8EFF8"; reference="#475569"
 }
 $script:UiTypeSizes = @{
   brand=36; subtitle=18; section=18; cardTitle=16; action=14; label=13
