@@ -10,6 +10,8 @@ import type {
 } from "./types";
 
 export const IPC = {
+  updatesCheck: "updates:check",
+  updatesDownload: "updates:download",
   authLogin: "auth:login",
   authLoginBarcode: "auth:login-barcode",
   authLogout: "auth:logout",
@@ -70,6 +72,12 @@ export const IPC = {
   centralBatchesReopen: "central:batches:reopen",
   centralHistoryGetBatch: "central:history:get-batch"
 } as const;
+
+export interface AvailableUpdate {
+  currentVersion: string;
+  version: string;
+  downloadUrl: string;
+}
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
 
@@ -301,6 +309,10 @@ export interface CaptureInjectReadingInput {
 }
 
 export interface SerialReaderApi {
+  updates: {
+    check(): Promise<AvailableUpdate | null>;
+    download(): Promise<ServiceResult<true>>;
+  };
   auth: {
     login(req: LoginRequest): Promise<LoginResult>;
     loginBarcode(req: BarcodeLoginRequest): Promise<LoginResult>;

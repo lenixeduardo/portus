@@ -13,7 +13,8 @@ import { ReportErrorModal } from "./components/ReportErrorModal";
 import { UserBarcodeRegistration } from "./components/UserBarcodeRegistration";
 import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
-import type { InitialSetupStatus } from "../shared/ipc";
+import type { AvailableUpdate, InitialSetupStatus } from "../shared/ipc";
+import { UpdateAvailableModal } from "./components/UpdateAvailableModal";
 
 const TITLES: Record<Route, string> = {
   dashboard: "Lotes Ativos",
@@ -48,6 +49,7 @@ export function App() {
   const [noElectron, setNoElectron] = useState(false);
   const [initialSetup, setInitialSetup] = useState<InitialSetupStatus | null>(null);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<AvailableUpdate | null>(null);
   const [showReportError, setShowReportError] = useState(false);
   const [requestedUserBarcode, setRequestedUserBarcode] = useState<string | null>(null);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>("checking");
@@ -68,11 +70,16 @@ export function App() {
     }
     const lastSeenVersion = window.localStorage.getItem(LAST_SEEN_VERSION_KEY);
     setShowReleaseNotes(lastSeenVersion !== APP_VERSION);
+    let active = true;
+    void window.api.updates?.check().then((update) => {
+      if (active) setAvailableUpdate(update);
+    }).catch(() => {});
     Promise.all([window.api.auth.currentUser(), window.api.setup.status()]).then(([u, setup]) => {
       setUser(u);
       if (!u && setup.required && !setup.configured) setInitialSetup(setup);
       setBootstrapping(false);
     }).catch(() => setBootstrapping(false));
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -143,11 +150,13 @@ export function App() {
       <code style={{ fontSize: 13 }}>npm run electron</code>
     </div>
   );
-  if (initialSetup) return <InitialSetup initialStatus={initialSetup} onCompleted={() => setInitialSetup(null)} />;
+  const updateModal = availableUpdate && <UpdateAvailableModal update={availableUpdate} onClose={() => setAvailableUpdate(null)} />;
+  if (initialSetup) return <><InitialSetup initialStatus={initialSetup} onCompleted={() => setInitialSetup(null)} />{updateModal}</>;
   if (!user) return (
     <>
       <Login onAuthenticated={setUser} />
-      {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+      {updateModal}
+      {!availableUpdate && showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
     </>
   );
 
@@ -202,7 +211,8 @@ export function App() {
         requestedBarcode={requestedUserBarcode}
         onRequestedBarcodeHandled={() => setRequestedUserBarcode(null)}
       />
-      {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+      {updateModal}
+      {!availableUpdate && showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
       {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>
   );
