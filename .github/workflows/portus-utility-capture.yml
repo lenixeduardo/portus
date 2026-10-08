@@ -16,12 +16,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Preparar Sora e Inter (OFL) para o teste Windows
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\\database\\install-portus-ui-fonts.ps1"
+          if ($LASTEXITCODE -ne 0) { throw "Fontes Sora/Inter nao instaladas." }
+
       - name: Renderizar a janela real e capturar PNG
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $captureFile = Join-Path $env:GITHUB_WORKSPACE "release\portus-db-utility-real-winforms.png"
-          & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File ".\database\portus-db-utility.ps1" -CapturePath $captureFile
+          & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File ".\database\portus-db-utility.ps1" -CapturePath $captureFile -StrictFonts
           if ($LASTEXITCODE -ne 0) { throw "Captura WinForms falhou ($LASTEXITCODE)." }
           if (-not (Test-Path -LiteralPath $captureFile)) { throw "Screenshot inexistente." }
           $info = Get-Item -LiteralPath $captureFile
