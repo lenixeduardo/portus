@@ -50,7 +50,7 @@ export function registerEquipmentsHandlers(): void {
         if (input.scaleOutMax !== undefined) cleaned.scaleOutMax = input.scaleOutMax;
         const updated = await updateCentralEquipment(input.id, cleaned);
         if (updated) {
-          logAudit({ actorUserId: getCurrentUser()?.id, action: "equipments.update", resourceType: "equipment", resourceId: input.id, details: { fields: Object.keys(cleaned).filter((key) => key !== "id") } });
+          await logAudit({ actorUserId: getCurrentUser()?.id, action: "equipments.update", resourceType: "equipment", resourceId: input.id, details: { fields: Object.keys(cleaned).filter((key) => key !== "id") } });
         }
         return updated ? { ok: true, data: updated } : { ok: false, error: "Falha ao atualizar." };
       }
