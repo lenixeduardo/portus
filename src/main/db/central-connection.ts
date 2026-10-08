@@ -156,7 +156,10 @@ export function getCentralPool(): Pool {
       max: Number(process.env.PORTUS_DATABASE_POOL_MAX ?? 5),
       connectionTimeoutMillis: Number(process.env.PORTUS_DATABASE_CONNECT_TIMEOUT_MS ?? 5000),
       idleTimeoutMillis: 30000,
-      application_name: "portus-electron"
+      application_name: "portus-electron",
+      // Toda a estrutura instalada pelas migrations pertence ao schema public.
+      // Não permitir que search_path do usuário resolva outra tabela users.
+      options: "-c search_path=public"
     });
   }
   return pool;
