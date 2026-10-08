@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS portus_station_equipment_profiles (
   PRIMARY KEY (station_code, slot_index)
 );
 
+ALTER TABLE capture_error_logs ADD COLUMN IF NOT EXISTS slot_index INTEGER;
+
 CREATE TABLE IF NOT EXISTS portus_audit_log (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   actor_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
@@ -66,6 +68,7 @@ BEGIN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE ON portus_station_settings TO %I', v_grantee);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE ON portus_station_equipment_profiles TO %I', v_grantee);
     EXECUTE format('GRANT SELECT, INSERT ON portus_audit_log TO %I', v_grantee);
+    EXECUTE format('GRANT INSERT ON capture_error_logs TO %I', v_grantee);
     EXECUTE format('GRANT SELECT, INSERT ON portus_legacy_import_ledger TO %I', v_grantee);
     EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE portus_audit_log_id_seq TO %I', v_grantee);
   END LOOP;
