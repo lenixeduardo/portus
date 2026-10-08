@@ -24,9 +24,10 @@
     "sim:test": "npm run sim:build && node dist/tools/sim-test.js",
     "test:postgres:concurrency": "node database/tests/003_concurrent_closure.mjs",
     "package:database-installer": "node scripts/package-database-installer.mjs",
-    "validate:release": "node scripts/validate-release-readiness.mjs",
+    "validate:release": "node scripts/validate-release-readiness.mjs && node scripts/check-postgres-only-runtime.mjs",
     "test": "vitest run --config vitest.config.ts --configLoader runner",
-    "migrate:legacy": "node scripts/import-legacy-to-postgres.mjs"
+    "migrate:legacy": "node scripts/import-legacy-to-postgres.mjs",
+    "check:postgres-only": "node scripts/check-postgres-only-runtime.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
