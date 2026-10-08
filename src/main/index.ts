@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
 import { closeDb, openDb, persistDb } from "./db/connection";
 import { runMigrations } from "./db/migrate";
+import { importLegacyCatalogToCentral } from "./db/import-legacy-catalog";
 import { seedInitialData } from "./db/seed";
 import { registerAuthHandlers } from "./ipc/auth-handlers";
 import { registerBatchesHandlers } from "./ipc/batches-handlers";
@@ -158,6 +159,16 @@ app.whenReady().then(async () => {
   runMigrations();
   seedInitialData();
   persistDb();
+  // Importa cadastros anteriores antes que a UI use o catálogo central.
+  // A falha não apaga o SQLite legado: o erro é registrado para reparo do banco.
+  if (isCentralDatabaseConfigured()) {
+    try {
+      await importLegacyCatalogToCentral();
+      console.log("[central-db] catálogo legado importado ou já sincronizado.");
+    } catch (error) {
+      console.error("[central-db] falha ao migrar usuários/produtos legados:", error);
+    }
+  }
   performBackup();
   registerAuthHandlers();
   registerProductsHandlers();
