@@ -42,8 +42,11 @@ export function registerCentralHandlers(): void {
     try {
       await checkCentralDatabase();
       return { configured: true, available: true, required, mode };
-    } catch {
-      return { configured: true, available: false, required, mode };
+    } catch (error) {
+      return {
+        configured: true, available: false, required, mode,
+        error: error instanceof Error ? error.message : "Falha ao validar PostgreSQL central."
+      };
     }
   });
 
