@@ -3,6 +3,22 @@
 Esta pasta contém a fundação do banco central definida no
 `PORTUS_SPEC_TECNICO(1).md`.
 
+## Interface visual PORTUS
+
+A interface do Database Utility segue o mockup oficial em light mode:
+cabeçalho com o logotipo original de `build/icon.png`, cartões para a
+conexão PostgreSQL, quatro ações lado a lado, painel de status e
+log de operações com horário. O botão **Aplicar migrations** é destacado
+em azul; os demais mantêm aparência secundária.
+
+O utilitário principal carrega `database/portus-db-utility-theme.ps1`.
+Este arquivo é obrigatório para o layout. No repositório, a marca é
+lida diretamente de `build/icon.png`; o pacote ZIP independente traz
+uma cópia em `database/portus-utility-logo.png`, sem modificar a arte.
+
+A janela permite redimensionamento e rolagem em telas pequenas; o
+teste `-SmokeTest` do Windows valida sua abertura sem acessar o banco.
+
 ## Utilitario visual de administracao (Windows)
 
 Se o PowerShell ficar ocupado mas a janela nao aparecer, tente **Alt+Tab**.
