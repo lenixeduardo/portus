@@ -153,6 +153,7 @@ function ProductFormModal({ initial, onClose, onSaved }: FormProps) {
 }
 
 function formatDate(iso: string): string {
-  const d = new Date(iso.replace(" ", "T") + "Z");
-  return d.toLocaleString("pt-BR");
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(iso) ? iso : iso.replace(" ", "T") + "Z";
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR");
 }
