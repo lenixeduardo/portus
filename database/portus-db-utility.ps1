@@ -152,31 +152,31 @@ public static class PortusNativeIcon { [DllImport("user32.dll")] public static e
 }
 $title = Add-Label "PORTUS" 155 36 490 63
 $title.Font = UiFont "Sora" 36 "700"
-$title.ForeColor = Color "#081D3F"
+$title.ForeColor = UiColor "navy"
 $brandSubtitle = Add-Label "DATABASE UTILITY" 160 99 480 30
 $brandSubtitle.Font = UiFont "Sora" 18 "600"
-$brandSubtitle.ForeColor = Color "#355B87"
+$brandSubtitle.ForeColor = UiColor "brandMuted"
 [void](Add-Label "PostgreSQL  |  Gerenciamento e manutencao do banco de dados" 160 130 620 30)
 $headerDivider = New-Object System.Windows.Forms.Panel
-$headerDivider.BackColor = Color "#CBD5E1"
+$headerDivider.BackColor = UiColor "divider"
 $headerDivider.Location = New-Object System.Drawing.Point(786,38)
 $headerDivider.Size = New-Object System.Drawing.Size(1,112)
 $canvas.Controls.Add($headerDivider)
 $headerHelp = Add-Label "Configuracao, validacao e manutencao do PostgreSQL central do PORTUS, com verificacao do IP do servidor." 810 45 282 110
-$headerHelp.ForeColor = Color "#52647C"
+$headerHelp.ForeColor = UiColor "intro"
 
 # Connection card.
 [void](Make-Card 24 180 1086 229)
 $connTitle = Add-Label "CONFIGURACOES DE CONEXAO" 47 195 460 35
 $connTitle.Font = UiFont "Sora" 18 "600"
-$connTitle.ForeColor = Color "#112749"
+$connTitle.ForeColor = UiColor "heading"
 $helpBar = New-Object System.Windows.Forms.Panel
 $helpBar.Location = New-Object System.Drawing.Point(550,195)
 $helpBar.Size = New-Object System.Drawing.Size(534,37)
-$helpBar.BackColor = Color "#EAF4FF"
+$helpBar.BackColor = UiColor "primarySoft"
 $canvas.Controls.Add($helpBar)
 $helpText = Add-Label "IP validado com base no servidor da primeira instalacao." 564 198 512 31
-$helpText.ForeColor = Color "#215C9B"
+$helpText.ForeColor = UiColor "infoText"
 $helpText.BackColor = $helpBar.BackColor
 $hostField = Add-Field "Servidor" 48 247 326 "127.0.0.1"
 $portField = Add-Field "Porta" 398 247 326 "5432"
@@ -191,7 +191,7 @@ $browseButton.Font = UiFont "Inter" 13 "600"
 $browseButton.Location = New-Object System.Drawing.Point(690,351)
 $browseButton.Size = New-Object System.Drawing.Size(32,36)
 $browseButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$browseButton.BackColor = Color "#E8EFF8"
+$browseButton.BackColor = UiColor "iconButtonSurface"
 $browseButton.FlatAppearance.BorderSize = 0
 $canvas.Controls.Add($browseButton)
 $browseButton.Add_Click({
@@ -208,7 +208,7 @@ $showPasswordButton.Text = "Ver"
 $showPasswordButton.Location = New-Object System.Drawing.Point(1035,351)
 $showPasswordButton.Size = New-Object System.Drawing.Size(36,36)
 $showPasswordButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$showPasswordButton.BackColor = Color "#E8EFF8"
+$showPasswordButton.BackColor = UiColor "iconButtonSurface"
 $showPasswordButton.FlatAppearance.BorderSize = 0
 $canvas.Controls.Add($showPasswordButton)
 $showPasswordButton.Add_Click({
@@ -220,7 +220,7 @@ $showPasswordButton.Add_Click({
 [void](Make-Card 24 423 1086 163)
 $actionTitle = Add-Label "ACOES" 47 437 440 37
 $actionTitle.Font = UiFont "Sora" 18 "600"
-$actionTitle.ForeColor = Color "#112749"
+$actionTitle.ForeColor = UiColor "heading"
 $checkButton = Make-Action "Validar banco de dados" 49
 $migrateButton = Make-Action "Aplicar migrations" 313 $true
 $networkButton = Make-Action "Verificar IP / rede" 577
@@ -255,7 +255,7 @@ $captions = @(
 )
 foreach ($caption in $captions) {
   $description = Add-Label $caption.text $caption.x 553 243 26
-  $description.ForeColor = Color "#64748B"
+  $description.ForeColor = UiColor "textSecondary"
   $description.Font = UiFont "Inter" 12
   $description.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 }
@@ -264,7 +264,7 @@ foreach ($caption in $captions) {
 [void](Make-Card 24 600 1086 94)
 $statusTitle = Add-Label "STATUS" 47 611 450 28
 $statusTitle.Font = UiFont "Sora" 16 "600"
-$statusTitle.ForeColor = Color "#112749"
+$statusTitle.ForeColor = UiColor "heading"
 $statusDot = Add-Label ([string][char]0x25CF) 51 640 36 36
 $statusDot.Font = UiFont "Inter" 22 "600"
 $statusDot.ForeColor = UiColor "success"
@@ -272,7 +272,7 @@ $status = Add-Label "Pronto para executar." 91 641 600 27
 $status.Font = UiFont "Inter" 14 "600"
 $status.ForeColor = UiColor "success"
 $referenceLabel = Add-Label "Servidor inicial: nao cadastrado" 718 647 363 27
-$referenceLabel.ForeColor = Color "#475569"
+$referenceLabel.ForeColor = UiColor "reference"
 $referenceLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight
 function Refresh-Reference {
   $referencePath = Join-Path (Join-Path $env:LOCALAPPDATA "PORTUS") "server-endpoint.json"
@@ -314,7 +314,7 @@ if ($initialIp) {
 [void](Make-Card 24 709 1086 216)
 $logTitle = Add-Label "LOG DA OPERACAO" 47 718 430 30
 $logTitle.Font = UiFont "Sora" 16 "600"
-$logTitle.ForeColor = Color "#112749"
+$logTitle.ForeColor = UiColor "heading"
 $clearLogButton = New-Object System.Windows.Forms.Button
 $clearLogButton.Text = "Limpar log"
 $clearLogButton.Location = New-Object System.Drawing.Point(960,719)
@@ -331,7 +331,7 @@ $log.Size = New-Object System.Drawing.Size(1037,132)
 $log.Font = UiFont "Inter" 12
 $log.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $log.BackColor = UiColor "surfaceMuted"
-$log.ForeColor = Color "#334155"
+$log.ForeColor = UiColor "textPrimary"
 $canvas.Controls.Add($log)
 $clearLogButton.Add_Click({ $log.Clear() })
 $clearLogButton.Font = UiFont "Inter" 12 "500"
