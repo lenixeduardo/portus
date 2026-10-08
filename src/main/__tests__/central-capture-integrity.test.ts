@@ -82,6 +82,16 @@ describe("integridade da captura PostgreSQL após o merge", () => {
     expect(mockQuery.mock.calls[0][1]).toEqual([[42, 51, 99]]);
   });
 
+  it("garante que a identidade física da estação corresponda ao ledger importado", () => {
+    const importer = readFileSync(
+      resolve(process.cwd(), "scripts/import-legacy-to-postgres.mjs"), "utf8"
+    );
+    expect(importer).toContain("station-identity.json");
+    expect(importer).toContain("PORTUS_STATION_CODE diverge de --station=");
+    expect(importer).toContain('const persistStationIdentity = process.platform === "win32"');
+    expect(importer).toContain('await pgClient.query("COMMIT")');
+  });
+
   it("registra falhas de gravações concluídas e impede falso sucesso no encerramento", () => {
     const capture = readFileSync(
       resolve(process.cwd(), "src/main/serial/capture-service.ts"), "utf8"
