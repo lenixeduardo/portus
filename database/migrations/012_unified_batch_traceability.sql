@@ -101,7 +101,7 @@ RETURNS BIGINT
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $
+AS $$
 DECLARE
   v_sector_id BIGINT;
   v_station_id BIGINT;
@@ -132,7 +132,7 @@ BEGIN
 
   RETURN v_station_id;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION supervisor_finalize_batch(
   p_batch_id BIGINT,
@@ -284,7 +284,7 @@ $$;
 
 -- Herda os privilégios de execução das roles operacionais que já podem abrir lote.
 -- Isso mantém upgrades "MigrationsOnly" funcionais sem conhecer o nome da role de runtime.
-DO $
+DO $$
 DECLARE
   v_grantee TEXT;
 BEGIN
@@ -314,6 +314,6 @@ BEGIN
     );
   END LOOP;
 END;
-$;
+$$;
 
 COMMIT;
