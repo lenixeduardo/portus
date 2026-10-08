@@ -7,6 +7,30 @@ Esta pasta contém a fundação do banco central definida no
 
 ## Interface visual PORTUS Database Utility
 
+A identidade visual v1 esta especificada em [PORTUS-UTILITY-UI-SPEC.md](PORTUS-UTILITY-UI-SPEC.md).
+Os quatro icones avulsos de acoes ficam em `assets/actions/` (PNG 24 px e
+SVG vetorial). A interface utiliza o emblema azul aprovado em
+`assets/portus-blue-logo.png`, inclusive no icone nativo da janela.
+
+**Tipografia obrigatoria:** Sora para titulos e Inter para campos, botoes,
+status e logs, com tamanhos em pixels. O operador pode provisionar as fontes
+OFL da distribuicao oficial Google Fonts em sua pasta local, sem instalar no
+Windows globalmente:
+
+~~~powershell
+.\\database\\install-portus-ui-fonts.ps1
+~~~
+
+Reinicie o utilitario depois da instalacao. Se uma fonte estiver ausente,
+um alerta e exibido no log, status e terminal; nao ocorre substituicao
+silenciosa. Para confirmar o carregamento da fonte e da interface com
+`-StrictFonts` sem acessar o PostgreSQL:
+
+~~~powershell
+powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\\database\\portus-db-utility.ps1 -SmokeTest -StrictFonts
+~~~
+
+
 O utilitario passou a usar o visual claro do mockup PORTUS: logotipo
 **original** de `build/icon.png`, cabecalho de marca, painel de conexao,
 quatro acoes com destaque azul para migrations, status e log colorido.
