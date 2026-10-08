@@ -263,3 +263,22 @@ tools/           Simulador serial
 
 Estas pendências dependem do ambiente e do processo industrial real; não são
 tratadas como funcionalidades concluídas.
+
+## Atualizações disponíveis na abertura
+
+O instalador Windows consulta a última GitHub Release pública ao abrir, antes do
+login. Se houver uma versão estável mais recente com o instalador x64 esperado,
+exibe “Atualização disponível”, a versão instalada e a nova versão. “Baixar
+atualização” abre o download oficial no navegador; “Agora não” adia o aviso até
+a próxima abertura. A instalação permanece manual: concluir as leituras e fechar
+o PORTUS antes de executar o instalador. A consulta tem limite de 8 segundos e
+falhas de rede não bloqueiam o uso. Em desenvolvimento, a consulta é desativada.
+
+Para publicar uma atualização, incremente e registre a versão do `package.json`
+e `package-lock.json`, envie uma tag correspondente (por exemplo, `v0.1.15`) ou
+execute **Publicar atualização Windows** no GitHub Actions. O workflow valida,
+testa e compila antes de criar a Release com `PORTUS-Setup-VERSAO-x64.exe`.
+Commits sem uma nova Release não acionam o aviso. Não reutilize versões publicadas.
+
+As instalações anteriores a este recurso precisam receber uma primeira atualização
+manual; a consulta passa a funcionar a partir dessa instalação.

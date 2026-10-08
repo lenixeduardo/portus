@@ -38,6 +38,10 @@ function subscribe<T>(channel: string, cb: (data: T) => void): Unsubscribe {
 }
 
 const api: SerialReaderApi = {
+  updates: {
+    check: () => ipcRenderer.invoke(IPC.updatesCheck),
+    download: () => ipcRenderer.invoke(IPC.updatesDownload)
+  },
   auth: {
     login: (req: LoginRequest): Promise<LoginResult> => ipcRenderer.invoke(IPC.authLogin, req),
     loginBarcode: (req: BarcodeLoginRequest): Promise<LoginResult> => ipcRenderer.invoke(IPC.authLoginBarcode, req),
