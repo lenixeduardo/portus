@@ -198,7 +198,21 @@ export async function withCentralTransaction<T>(
 
 export async function checkCentralDatabase(): Promise<boolean> {
   if (!isCentralDatabaseConfigured()) return false;
-  await centralQuery("SELECT 1");
+  const schema = await centralQuery<{ ready: boolean }>(
+    "SELECT " +
+    "EXISTS (SELECT 1 FROM information_schema.columns " +
+    "WHERE table_schema = 'public' AND table_name = 'batches' AND column_name = 'completed') " +
+    "AND EXISTS (SELECT 1 FROM information_schema.columns " +
+    "WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'active') " +
+    "AND EXISTS (SELECT 1 FROM information_schema.columns " +
+    "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'barcode_value') " +
+    "AND to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NOT NULL " +
+    "AS ready"
+  );
+  if (!schema.rows[0]?.ready) {
+    throw new Error("Servidor PostgreSQL precisa das migrations 012 e 013. " +
+      "Execute install-portus-database.ps1 -MigrationsOnly na máquina servidor.");
+  }
   return true;
 }
 
