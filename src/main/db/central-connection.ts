@@ -133,7 +133,8 @@ export async function persistCentralDatabaseUrl(connectionString: string): Promi
  * available only when a developer explicitly opts into PORTUS_DATABASE_MODE=local.
  */
 export function getCentralDatabaseMode(): CentralDatabaseMode {
-  return getRuntimeSetting("PORTUS_DATABASE_MODE")?.toLowerCase() === "local" ? "local" : "central";
+  // O parâmetro PORTUS_DATABASE_MODE=local foi aposentado. Não há fallback.
+  return "central";
 }
 
 export function isCentralDatabaseRequired(): boolean {
