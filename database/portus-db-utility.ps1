@@ -146,6 +146,13 @@ $form.Controls.Add($log)
 $foot = Add-Label "Validacao IP/rede nao altera configuracoes. O registro inicial pede confirmacao." 24 682 670
 $foot.Font = New-Object System.Drawing.Font("Segoe UI",8)
 
+# A camada de marca aplica o mockup sem substituir handlers de banco/rede.
+$themeScript = Join-Path $PSScriptRoot "portus-db-utility-theme.ps1"
+if (-not (Test-Path -LiteralPath $themeScript)) {
+  throw "Layout PORTUS ausente: $themeScript. Atualize a pasta database completa."
+}
+. $themeScript
+
 $script:child = $null
 $script:outFile = $null
 $script:errFile = $null
@@ -154,7 +161,7 @@ $script:errOffset = 0
 $script:action = ""
 
 function Show-Log([string]$value) {
-  $log.AppendText($value + [Environment]::NewLine)
+  $log.AppendText(("[" + (Get-Date -Format "HH:mm:ss") + "]  " + $value + [Environment]::NewLine))
   $log.SelectionStart = $log.TextLength
   $log.ScrollToCaret()
 }
