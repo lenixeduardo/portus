@@ -1,6 +1,7 @@
 BEGIN;
 
 -- 013: Cadastro compartilhado de produtos e metadados de identidade.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
 -- Os IDs passam a ser centralizados no PostgreSQL, independentemente da estação.
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS barcode_value TEXT,
@@ -62,7 +63,7 @@ BEGIN
   ELSE
     UPDATE products
        SET name = v_name, description = NULLIF(trim(p_description), '')
-     WHERE id = p_id
+     WHERE id = p_id AND active
     RETURNING id INTO v_product_id;
     IF v_product_id IS NULL THEN
       RAISE EXCEPTION 'Produto não encontrado' USING ERRCODE = 'P0002';
@@ -94,9 +95,10 @@ BEGIN
     RAISE EXCEPTION 'Produto com histórico de lotes não pode ser excluído'
       USING ERRCODE = '23503';
   END IF;
-  DELETE FROM products WHERE id = p_product_id;
+  -- Exclusão lógica preserva IDs para a importação de lotes históricos.
+  UPDATE products SET active = FALSE WHERE id = p_product_id AND active;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Produto não encontrado' USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'Produto não encontrado ou já desativado' USING ERRCODE = 'P0002';
   END IF;
   RETURN TRUE;
 END;
