@@ -1,4 +1,4 @@
-# PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
+﻿# PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
 # Apenas o botao Aplicar migrations altera o banco, mediante confirmacao.
 [CmdletBinding()]
 param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts,
@@ -386,6 +386,7 @@ $foot.ForeColor = UiColor "textSecondary"
 $logPlaceholder = Add-Label "Nenhuma operação executada. As mensagens reais aparecerão aqui." 66 790 930 28
 $logPlaceholder.Font = UiFont "Inter" 13
 $logPlaceholder.ForeColor = UiColor "textSecondary"
+$logPlaceholder.BackColor = UiColor "surfaceMuted"
 
 # Labels/inputs pertencem ao card fisico, nao ao canvas cinza.
 # Sem isso, WinForms desenha retangulos cinza atras dos textos brancos.
@@ -405,6 +406,9 @@ foreach ($control in @($canvas.Controls)) {
     }
   }
 }
+
+# O empty state fica acima do RichTextBox sem adicionar resultados ficticios.
+$logPlaceholder.BringToFront()
 
 # Molduras de 40px com foco azul; TextBox monolinha nao respeita altura
 # maior que a fonte no WinForms sem um container proprio.
