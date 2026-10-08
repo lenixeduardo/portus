@@ -219,6 +219,18 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
       Write-Utf8NoBom $configPath $configJson
       Write-Host "Configuração do PORTUS salva para o usuário atual do Windows." -ForegroundColor Green
       Write-Host "Arquivo de conexão salvo em $configPath." -ForegroundColor Green
+      # Registrar apenas no primeiro provisionamento o IP IPv4 do servidor,
+      # sem credenciais e sem sobrescrever a referencia de outra instalacao.
+      $ipCheck = $null
+      if ([System.Net.IPAddress]::TryParse($DatabaseHost, [ref]$ipCheck) -and
+          $ipCheck.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and
+          -not (Test-Path -LiteralPath (Join-Path $configDirectory "server-endpoint.json"))) {
+        try {
+          & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") -ServerIp $DatabaseHost -Port $Port -DatabaseName $DatabaseName -RegisterFirstInstallation
+          if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw "Verificacao de IP falhou." }
+        } catch { Write-Warning ("IP do servidor ainda nao registrado: " + $_.Exception.Message) }
+      }
+
       Write-Host "Feche e reabra o PORTUS caso ele já estivesse em execução." -ForegroundColor Yellow
     }
     Write-Host "Banco PORTUS pronto para uso em $DatabaseHost`:$Port/$DatabaseName." -ForegroundColor Green
