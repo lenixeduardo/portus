@@ -142,5 +142,5 @@ if ($RegisterFirstInstallation) {
 if ($reference -or $RegisterFirstInstallation) {
   Write-Host "VALIDACAO DE IP E REDE: OK"
 } else {
-  Write-Warning "Conectividade OK; falta registrar o IP de referencia desta estacao."
+  throw "Conectividade OK, mas o IP da primeira instalacao nao esta registrado. Clique em Registrar IP inicial para concluir a verificacao."
 }
