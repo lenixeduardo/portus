@@ -19,9 +19,16 @@ export function UsersTab({ currentUser }: Props) {
 
   async function reload() {
     setLoading(true);
-    const list = await window.api.users.list();
-    setUsers(list);
-    setLoading(false);
+    try {
+      const list = await window.api.users.list();
+      setUsers(list);
+      setError(null);
+    } catch (error) {
+      setUsers([]);
+      setError(error instanceof Error ? error.message : "Falha ao consultar PostgreSQL central.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
