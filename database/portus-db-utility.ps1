@@ -358,6 +358,27 @@ foreach ($control in @($canvas.Controls)) {
   }
 }
 
+# Molduras de 40px com foco azul; TextBox monolinha nao respeita altura
+# maior que a fonte no WinForms sem um container proprio.
+$script:UiInputFrames = @()
+foreach ($field in $fields) {
+  $outer = New-Object System.Windows.Forms.Panel
+  $outer.Location = $field.Location
+  $outer.Size = New-Object System.Drawing.Size($field.Width,40)
+  $outer.BackColor = UiColor "borderStrong"
+  $field.Parent.Controls.Add($outer)
+  $field.Parent = $outer
+  $field.BorderStyle = [System.Windows.Forms.BorderStyle]::None
+  $field.Location = New-Object System.Drawing.Point(10,10)
+  $field.Width = $outer.Width - 20
+  $field.BackColor = UiColor "surface"
+  $field.Add_Enter({ param($sender,$event) $sender.Parent.BackColor = UiColor "primary" })
+  $field.Add_Leave({ param($sender,$event) $sender.Parent.BackColor = UiColor "borderStrong" })
+  $script:UiInputFrames += $outer
+}
+$browseButton.BringToFront()
+$showPasswordButton.BringToFront()
+
 $script:child = $null
 $script:outFile = $null
 $script:errFile = $null
@@ -383,7 +404,17 @@ function Show-Log([string]$value) {
   $log.ScrollToCaret()
 }
 function Set-Busy([bool]$busy) {
-  foreach ($field in $fields) { $field.Enabled = -not $busy }
+  foreach ($field in $fields) {
+    $field.Enabled = -not $busy
+    $field.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
+    if ($field -ne $form.ActiveControl) {
+      $field.Parent.BackColor = if ($busy) { UiColor "disabled" } else { UiColor "borderStrong" }
+    }
+  }
+  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton)) {
+    if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
+    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}else{"register"})) { "Executando..." } else { $button.AccessibleDescription }
+  }
   $checkButton.Enabled = -not $busy
   $migrateButton.Enabled = -not $busy
   $networkButton.Enabled = -not $busy
