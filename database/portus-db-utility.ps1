@@ -367,15 +367,28 @@ foreach ($field in $fields) {
   $outer.Size = New-Object System.Drawing.Size($field.Width,40)
   $outer.BackColor = UiColor "borderStrong"
   $field.Parent.Controls.Add($outer)
-  $field.Parent = $outer
+  $inner = New-Object System.Windows.Forms.Panel
+  $inner.Location = New-Object System.Drawing.Point(1,1)
+  $inner.Size = New-Object System.Drawing.Size(($outer.Width-2),38)
+  $inner.BackColor = UiColor "surface"
+  $outer.Controls.Add($inner)
+  $field.Parent = $inner
   $field.BorderStyle = [System.Windows.Forms.BorderStyle]::None
-  $field.Location = New-Object System.Drawing.Point(10,10)
-  $field.Width = $outer.Width - 20
+  $field.Location = New-Object System.Drawing.Point(9,8)
+  $field.Width = $inner.Width - 18
   $field.BackColor = UiColor "surface"
-  $field.Add_Enter({ param($sender,$event) $sender.Parent.BackColor = UiColor "primary" })
-  $field.Add_Leave({ param($sender,$event) $sender.Parent.BackColor = UiColor "borderStrong" })
+  $field.Tag = @{ Border=$outer; Surface=$inner }
+  $field.Add_Enter({ param($sender,$event) $sender.Tag.Border.BackColor = UiColor "primary" })
+  $field.Add_Leave({ param($sender,$event) $sender.Tag.Border.BackColor = UiColor "borderStrong" })
   $script:UiInputFrames += $outer
 }
+# Ferramentas ao lado dos campos: nao devem ficar escondidas pelas molduras.
+$browseButton.Parent = $binField.Tag.Border.Parent
+$browseButton.Location = New-Object System.Drawing.Point(($binField.Tag.Border.Right-34),($binField.Tag.Border.Top+1))
+$browseButton.Size = New-Object System.Drawing.Size(33,38)
+$showPasswordButton.Parent = $passField.Tag.Border.Parent
+$showPasswordButton.Location = New-Object System.Drawing.Point(($passField.Tag.Border.Right-39),($passField.Tag.Border.Top+1))
+$showPasswordButton.Size = New-Object System.Drawing.Size(38,38)
 $browseButton.BringToFront()
 $showPasswordButton.BringToFront()
 
@@ -408,8 +421,9 @@ function Set-Busy([bool]$busy) {
     $field.Enabled = -not $busy
     $field.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
     if ($field -ne $form.ActiveControl) {
-      $field.Parent.BackColor = if ($busy) { UiColor "disabled" } else { UiColor "borderStrong" }
+      $field.Tag.Border.BackColor = if ($busy) { UiColor "disabled" } else { UiColor "borderStrong" }
     }
+    $field.Tag.Surface.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
   }
   foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton)) {
     if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
