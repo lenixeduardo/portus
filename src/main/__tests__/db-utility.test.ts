@@ -50,7 +50,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(ui).toContain("Refresh-Reference");
     expect(packager).toContain('join(root, "build", "icon.png")');
     expect(packager).toContain('join(packageRoot, "portus-logo.png")');
-    expect(ui).toContain('assets\\portus-blue-logo.png');
+    expect(ui).toContain("portus-blue-logo.png");
     expect(ui).toContain('PortusNativeIcon');
     const logo = readFileSync(join(db, "assets", "portus-blue-logo.png"));
     expect(logo.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex"))).toBe(true);
