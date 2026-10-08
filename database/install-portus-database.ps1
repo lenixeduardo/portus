@@ -123,7 +123,14 @@ BEGIN
   ) OR NOT EXISTS (
     SELECT 1 FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'barcode_value'
-  ) OR to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NULL THEN
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'sector_code'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'laboratory_profile'
+  ) OR to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NULL
+    OR to_regprocedure('public.portus_delete_product(bigint,text)') IS NULL THEN
     RAISE EXCEPTION 'PORTUS: cadastro central incompleto; aplique a migration 013.';
   END IF;
 
