@@ -3,6 +3,37 @@
 Esta pasta contém a fundação do banco central definida no
 `PORTUS_SPEC_TECNICO(1).md`.
 
+## Utilitario visual de administracao (Windows)
+
+Para abrir sem digitar comandos, execute com duplo clique:
+
+~~~text
+database\portus-db-utility.bat
+~~~
+
+O aplicativo independente abre uma janela com dois botoes:
+
+- **Validar banco de dados:** acao somente leitura. Testa a conexao ao
+  PostgreSQL indicado, compara `portus_schema_migrations` com os arquivos SQL
+  da pasta `migrations` e valida tabelas, funcoes e colunas usadas no login
+  (incluindo `users.sector_code`). Mostra erros e migrations pendentes.
+- **Aplicar migrations:** solicita confirmacao explicita, usa
+  `install-portus-database.ps1 -MigrationsOnly -SkipAppConfiguration` e exibe
+  progresso e eventuais falhas sem recriar o banco.
+
+O formulario solicita host, porta, banco, administrador do PostgreSQL,
+caminho da pasta `bin` e senha. A senha nao e salva em arquivo nem aparece
+nos parametros da linha de comando. A conexao configurada no PORTUS nao e
+alterada por esse utilitario. Os scripts precisam estar na mesma pasta
+`database`, junto de `migrations`. A janela funciona em Windows com
+PowerShell 5.1 e PostgreSQL/`psql.exe` instalados.
+
+A geracao do pacote `npm run package:database-installer` inclui esses arquivos
+no ZIP. Nao use a opcao Aplicar migrations em banco de producao sem conferir
+host, nome do banco, migracoes pendentes e backup. O utilitario nao ativa
+automaticamente `admin/admin`; a conta fraca permanece disponivel apenas
+pelo comando de desenvolvimento explicitamente autorizado.
+
 ## Erro ao fazer login: coluna "sector_code" não existe
 
 A versão PostgreSQL-only do aplicativo lê a coluna `users.sector_code` criada
