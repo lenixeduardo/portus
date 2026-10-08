@@ -142,7 +142,7 @@ BEGIN
     RAISE EXCEPTION 'PORTUS: esquema de estacoes/auditoria incompleto; aplique a migration 014.';
   END IF;
 END;
-$;
+$$;
 '@
   Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", $schemaCheck)
 
