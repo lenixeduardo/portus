@@ -415,12 +415,14 @@ foreach ($field in $fields) {
   $script:UiInputFrames += $outer
 }
 # Ferramentas ao lado dos campos: nao devem ficar escondidas pelas molduras.
-$browseButton.Parent = $binField.Tag.Border.Parent
-$browseButton.Location = New-Object System.Drawing.Point(($binField.Tag.Border.Right-34),($binField.Tag.Border.Top+1))
-$browseButton.Size = New-Object System.Drawing.Size(33,38)
-$showPasswordButton.Parent = $passField.Tag.Border.Parent
-$showPasswordButton.Location = New-Object System.Drawing.Point(($passField.Tag.Border.Right-39),($passField.Tag.Border.Top+1))
-$showPasswordButton.Size = New-Object System.Drawing.Size(38,38)
+# Botões auxiliares são siblings dos cards no canvas: o renderer
+# WinForms/DrawToBitmap não perde estes botões na composição aninhada.
+$browseButton.Parent = $canvas
+$browseButton.Location = New-Object System.Drawing.Point(690,351)
+$browseButton.Size = New-Object System.Drawing.Size(33,40)
+$showPasswordButton.Parent = $canvas
+$showPasswordButton.Location = New-Object System.Drawing.Point(1035,351)
+$showPasswordButton.Size = New-Object System.Drawing.Size(39,40)
 $browseButton.BringToFront()
 $showPasswordButton.BringToFront()
 
