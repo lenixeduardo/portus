@@ -1,16 +1,24 @@
 # PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
 # Apenas o botao Aplicar migrations altera o banco, mediante confirmacao.
+[CmdletBinding()]
+param([switch]$SmokeTest)
+
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
+# Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
+try {
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "PORTUS | Utilitario PostgreSQL"
 $form.StartPosition = "CenterScreen"
 $form.ClientSize = New-Object System.Drawing.Size(720,726)
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
+$form.MinimizeBox = $true
+$form.ShowInTaskbar = $true
+$form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
 $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#F8FAFC")
 $form.Font = New-Object System.Drawing.Font("Segoe UI",10)
 
@@ -319,4 +327,55 @@ $form.Add_FormClosing({
   }
 })
 Show-Log "Informe a senha administrativa e selecione uma das acoes."
+
+# Janela topmost apenas durante a inicializacao. Ela deve aparecer mesmo se o
+# .bat foi chamado de um terminal que permaneceu em primeiro plano.
+$focusTimer = New-Object System.Windows.Forms.Timer
+$focusTimer.Interval = 1100
+$focusTimer.Add_Tick({
+  $focusTimer.Stop()
+  $form.TopMost = $false
+  $focusTimer.Dispose()
+})
+$form.Add_Shown({
+  $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+  $form.TopMost = $true
+  $form.BringToFront()
+  $form.Activate()
+  $focusTimer.Start()
+})
+
+if ($SmokeTest) {
+  # Testa a abertura REAL do formulario sem conectar ou alterar o PostgreSQL.
+  $smokeTimer = New-Object System.Windows.Forms.Timer
+  $smokeTimer.Interval = 600
+  $smokeTimer.Add_Tick({
+    $smokeTimer.Stop()
+    if (-not $form.Visible -or -not $form.IsHandleCreated -or
+        -not $checkButton.Visible -or -not $migrateButton.Visible -or
+        -not $networkButton.Visible -or -not $registerButton.Visible) {
+      $script:smokeFailed = $true
+    }
+    $form.Close()
+  })
+  $form.Add_Shown({ $smokeTimer.Start() })
+}
+
+Write-Host "PORTUS: iniciando interface. Se necessario, use Alt+Tab."
 [void]$form.ShowDialog()
+if ($SmokeTest) {
+  if ($script:smokeFailed) { throw "Smoke test: janela ou botoes nao ficaram visiveis." }
+  Write-Host "PORTUS_DB_UTILITY_SMOKE_OK"
+}
+} catch {
+  $message = "Nao foi possivel abrir o utilitario PORTUS: " + $_.Exception.Message
+  [Console]::Error.WriteLine($message)
+  try {
+    if (-not $SmokeTest) {
+    [void][System.Windows.Forms.MessageBox]::Show($message,"Falha ao iniciar PORTUS",
+      [System.Windows.Forms.MessageBoxButtons]::OK,
+      [System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+  } catch { }
+  exit 1
+}

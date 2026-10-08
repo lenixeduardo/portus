@@ -5,6 +5,19 @@ Esta pasta contém a fundação do banco central definida no
 
 ## Utilitario visual de administracao (Windows)
 
+Se o PowerShell ficar ocupado mas a janela nao aparecer, tente **Alt+Tab**.
+A interface atualizada abre em primeiro plano e exibe mensagens de inicializacao
+ou erros no terminal. Um comando de diagnostico verifica a abertura REAL do
+formulario, sem se conectar ao PostgreSQL e sem alterar dados:
+
+~~~powershell
+powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\\database\\portus-db-utility.ps1 -SmokeTest
+~~~
+
+O resultado esperado do teste e `PORTUS_DB_UTILITY_SMOKE_OK`.
+Se falhar, o erro sera impresso no terminal; nao e preciso aplicar migrations
+para testar a interface.
+
 Para abrir sem digitar comandos, execute com duplo clique:
 
 ~~~text
