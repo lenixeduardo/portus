@@ -22,6 +22,7 @@ export function registerAuthHandlers(): void {
         await logAudit({ actorUserId: user.id, action: "auth.login", resourceType: "session" });
         return { ok: true, user };
       } catch (error) {
+        logout();
         return { ok: false, error: error instanceof Error
           ? "PostgreSQL central indisponível: " + error.message
           : "PostgreSQL central indisponível." };
@@ -38,6 +39,7 @@ export function registerAuthHandlers(): void {
         await logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" });
         return { ok: true, user };
       } catch (error) {
+        logout();
         return { ok: false, error: error instanceof Error
           ? "PostgreSQL central indisponível: " + error.message
           : "PostgreSQL central indisponível." };
