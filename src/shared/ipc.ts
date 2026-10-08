@@ -82,6 +82,7 @@ export interface AvailableUpdate {
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
 
 export interface CentralDatabaseStatus {
+  error?: string;
   configured: boolean;
   available: boolean;
   required: boolean;
