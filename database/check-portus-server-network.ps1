@@ -112,7 +112,7 @@ if ($adapters.Count -eq 0) {
 if ($server -notlike "127.*") {
   $localIps = @($adapters | ForEach-Object { $_.IPv4Address } | ForEach-Object { $_.IPAddress })
   if ($localIps -contains $server) {
-    throw "Conflito: o IP do servidor tambem esta configurado nesta estacao. Verifique se ela e mesmo o computador servidor."
+    Write-Host "Servidor local: o IP informado pertence a esta maquina. O teste TCP confirmara se o PostgreSQL esta acessivel."
   }
 }
 if (-not (Test-Tcp $server $Port)) {
@@ -133,7 +133,7 @@ if ($RegisterFirstInstallation) {
   $json = $identity | ConvertTo-Json
   $file = [System.IO.File]::Open($referenceFile,[System.IO.FileMode]::CreateNew,[System.IO.FileAccess]::Write,[System.IO.FileShare]::None)
   try {
-    $writer = New-Object System.IO.StreamWriter($file,(New-Object System.Text.UTF8Encoding($false)))
+    $writer = [System.IO.StreamWriter]::new($file, [System.Text.UTF8Encoding]::new($false))
     try { $writer.WriteLine($json); $writer.Flush() }
     finally { $writer.Dispose() }
   } finally { $file.Dispose() }
