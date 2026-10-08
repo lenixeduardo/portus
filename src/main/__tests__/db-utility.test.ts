@@ -24,6 +24,29 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('"-MigrationsOnly","-SkipAppConfiguration"');
   });
 
+  it("implementa o mockup premium com a identidade visual original do PORTUS", () => {
+    const ui = read("portus-db-utility.ps1");
+    const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
+    expect(ui).toContain('$form.Text = "PORTUS Database Utility"');
+    expect(ui).toContain('"DATABASE UTILITY"');
+    expect(ui).toContain('"CONFIGURACOES DE CONEXAO"');
+    expect(ui).toContain('"ACOES"');
+    expect(ui).toContain('"STATUS"');
+    expect(ui).toContain('"LOG DA OPERACAO"');
+    expect(ui).toContain('Join-Path $PSScriptRoot "portus-logo.png"');
+    expect(ui).toContain('"build\\icon.png"');
+    expect(ui).toContain('PictureBoxSizeMode]::Zoom');
+    expect(ui).toContain('$page.AutoScroll = $true');
+    expect(ui).toContain('New-Object System.Windows.Forms.RichTextBox');
+    expect(ui).toContain('Limpar log');
+    expect(ui).toContain('$showPasswordButton.Add_Click');
+    expect(ui).toContain('$browseButton.Add_Click');
+    expect(ui).toContain('Color "#1479E5"');
+    expect(ui).toContain("Refresh-Reference");
+    expect(packager).toContain('join(root, "build", "icon.png")');
+    expect(packager).toContain('join(packageRoot, "portus-logo.png")');
+  });
+
   it("mostra status/erros e nao executa duas operacoes simultaneas", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('$timer.Add_Tick({');
