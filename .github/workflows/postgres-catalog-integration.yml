@@ -1,0 +1,48 @@
+name: PostgreSQL — integração de catálogo
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  catalog-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: portus
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: portus-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGPASSWORD: portus-ci-password
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGDATABASE: portus
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Aplicar todas as migrations em banco PostgreSQL limpo
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in database/migrations/*.sql; do
+            echo "Aplicando $migration"
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+      - name: Executar contrato real de sincronização Produção / Laboratório
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/005_shared_catalog.sql
