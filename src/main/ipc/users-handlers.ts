@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { IPC, type BarcodeUserRegistrationInput, type ServiceResult } from "../../shared/ipc";
 import type { LaboratoryProfile, User, UserSector } from "../../shared/types";
@@ -6,7 +7,7 @@ import { isUserBarcode, normalizeUserBarcode } from "../../shared/user-barcode";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import { isCentralDatabaseConfigured } from "../db/central-connection";
-import { ensureCentralUserAccess } from "../db/central-users-repo";
+import { ensureCentralUserAccess, listCentralUsers, updateCentralUserPassword, deactivateCentralUser } from "../db/central-users-repo";
 import {
   countUsers,
   createUser,
@@ -71,19 +72,29 @@ function mapBarcodeProfile(profile: BarcodeUserRegistrationInput["profile"]): {
 export function registerUsersHandlers(): void {
   ipcMain.handle(
     IPC.usersList,
-    compose([requireAdmin])((): User[] => listUsers())
+    compose([requireAdmin])(async (): Promise<User[]> => {
+      const localUsers = listUsers();
+      const centralUsers = await listCentralUsers();
+      return centralUsers.map((user) => {
+        const local = localUsers.find((u) => u.username.toLowerCase() === user.username.toLowerCase());
+        // IDs negativos identificam usuários gerenciados em outras estações
+        // durante a migração de autenticação para PostgreSQL.
+        return { ...user, id: local?.id ?? -user.id };
+      });
+    })
   );
 
   ipcMain.handle(
     IPC.usersCreate,
     compose([requireAdmin, validateInput(createUserWithDisplayNameSchema)])(
-      (_e, input: CreateUserWithDisplayNameInput): ServiceResult<User> => {
+      async (_e, input: CreateUserWithDisplayNameInput): Promise<ServiceResult<User>> => {
         const actor = getCurrentUser();
         if (input.role === "master" && actor?.role !== "master") {
           return { ok: false, error: "Somente o usuário Master pode criar outro perfil Master." };
         }
         const username = input.username.trim();
-        if (usernameExists(username)) {
+        if (usernameExists(username) ||
+          (await listCentralUsers()).some((u) => u.username.toLowerCase() === username.toLowerCase())) {
           return { ok: false, error: "Já existe um usuário com esse nome." };
         }
         const user = createUser(
@@ -94,6 +105,16 @@ export function registerUsersHandlers(): void {
           input.laboratoryProfile,
           input.displayName
         );
+        try {
+          const localRow = getUserByUsername(user.username);
+          await ensureCentralUserAccess(user, {
+            passwordHash: localRow?.password_hash,
+            barcodeValue: localRow?.barcode_value
+          });
+        } catch (error) {
+          deleteUser(user.id);
+          return { ok: false, error: error instanceof Error ? error.message : "Falha na sincronização central." };
+        }
         logAudit({ actorUserId: actor?.id, action: "users.create", resourceType: "user", resourceId: user.id, details: { username: user.username, displayName: user.displayName, role: user.role, sectorCode: user.sectorCode, laboratoryProfile: user.laboratoryProfile } });
         return { ok: true, data: user };
       }
@@ -122,7 +143,11 @@ export function registerUsersHandlers(): void {
 
         let username: string;
         try {
-          username = generateUniqueUsername(input.displayName, usernameExists);
+          const centralUsernames = new Set((await listCentralUsers()).map((u) => u.username.toLowerCase()));
+          username = generateUniqueUsername(
+            input.displayName,
+            (candidate) => usernameExists(candidate) || centralUsernames.has(candidate.toLowerCase())
+          );
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Não foi possível gerar o usuário." };
         }
@@ -150,7 +175,11 @@ export function registerUsersHandlers(): void {
 
         try {
           if (isCentralDatabaseConfigured()) {
-            await ensureCentralUserAccess(user);
+            const localRow = getUserByUsername(user.username);
+            await ensureCentralUserAccess(user, {
+              passwordHash: localRow?.password_hash,
+              barcodeValue: localRow?.barcode_value
+            });
           }
         } catch (error) {
           deleteUser(user.id);
@@ -184,7 +213,7 @@ export function registerUsersHandlers(): void {
   ipcMain.handle(
     IPC.usersChangePassword,
     compose([requireAuth, validateInput(changePasswordSchema)])(
-      (_e, input: ChangePasswordInput): ServiceResult<true> => {
+      async (_e, input: ChangePasswordInput): Promise<ServiceResult<true>> => {
         const actor = getCurrentUser();
         const target = getUser(input.id);
         if (!actor) return { ok: false, error: "Sessão expirada." };
@@ -196,6 +225,11 @@ export function registerUsersHandlers(): void {
         if (target.role === "master" && actor.role !== "master") {
           return { ok: false, error: "Somente um Master pode alterar a senha de outro Master." };
         }
+        try {
+          await updateCentralUserPassword(target.username, bcrypt.hashSync(input.password, 10));
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao atualizar senha central." };
+        }
         updateUserPassword(input.id, input.password);
         logAudit({ actorUserId: actor?.id, action: "users.change_password", resourceType: "user", resourceId: input.id });
         return { ok: true, data: true };
@@ -206,7 +240,7 @@ export function registerUsersHandlers(): void {
   ipcMain.handle(
     IPC.usersDelete,
     compose([requireAdmin, validateInput(deleteUserSchema)])(
-      (_e, input: DeleteUserInput): ServiceResult<true> => {
+      async (_e, input: DeleteUserInput): Promise<ServiceResult<true>> => {
         const current = getCurrentUser();
         if (!current) return { ok: false, error: "Sessão expirada." };
         if (current.id === input.id) {
@@ -217,6 +251,11 @@ export function registerUsersHandlers(): void {
         if (!target) return { ok: false, error: "Usuário não encontrado." };
         if (target.role === "master" && current.role !== "master") {
           return { ok: false, error: "Somente um Master pode excluir outro perfil Master." };
+        }
+        try {
+          await deactivateCentralUser(target.username);
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao excluir usuário central." };
         }
         reassignUserReferences(input.id, current.id);
         deleteUser(input.id);
