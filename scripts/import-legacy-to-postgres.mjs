@@ -270,6 +270,14 @@ try {
     );
   }
 
+  if (args.server === "true") {
+    await pgClient.query(
+      "INSERT INTO portus_station_settings(station_code,key,value) VALUES($1,'installation_mode','server') " +
+      "ON CONFLICT(station_code,key) DO UPDATE SET value='server'",
+      [station]
+    );
+  }
+
   const localBatches=sourceRows("batches");
   for (const b of localBatches) {
     const creator=userIds.get(Number(b.created_by));
