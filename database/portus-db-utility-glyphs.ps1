@@ -45,13 +45,13 @@ function New-PortusGlyph([string]$kind,[int]$size=24,[string]$tone="primary") {
       }
       "folder" {
         $g.DrawLines($pen,[System.Drawing.Point[]]@(
-          (New-Object System.Drawing.Point((pt 3),(pt 19))),
-          (New-Object System.Drawing.Point((pt 3),(pt 7))),
-          (New-Object System.Drawing.Point((pt 9),(pt 7))),
-          (New-Object System.Drawing.Point((pt 11),(pt 10))),
-          (New-Object System.Drawing.Point((pt 21),(pt 10))),
-          (New-Object System.Drawing.Point((pt 21),(pt 19))),
-          (New-Object System.Drawing.Point((pt 3),(pt 19)))
+          ([System.Drawing.Point]::new((pt 3),(pt 19))),
+          ([System.Drawing.Point]::new((pt 3),(pt 7))),
+          ([System.Drawing.Point]::new((pt 9),(pt 7))),
+          ([System.Drawing.Point]::new((pt 11),(pt 10))),
+          ([System.Drawing.Point]::new((pt 21),(pt 10))),
+          ([System.Drawing.Point]::new((pt 21),(pt 19))),
+          ([System.Drawing.Point]::new((pt 3),(pt 19)))
         ))
       }
       "lock" {
@@ -80,9 +80,9 @@ function New-PortusGlyph([string]$kind,[int]$size=24,[string]$tone="primary") {
         $whitePen = New-Object System.Drawing.Pen([System.Drawing.Color]::White,(3*$scale))
         try {
           $g.DrawLines($whitePen,[System.Drawing.Point[]]@(
-            (New-Object System.Drawing.Point((pt 6),(pt 12))),
-            (New-Object System.Drawing.Point((pt 10),(pt 16))),
-            (New-Object System.Drawing.Point((pt 18),(pt 8)))
+            ([System.Drawing.Point]::new((pt 6),(pt 12))),
+            ([System.Drawing.Point]::new((pt 10),(pt 16))),
+            ([System.Drawing.Point]::new((pt 18),(pt 8)))
           ))
         } finally { $whitePen.Dispose() }
       }
