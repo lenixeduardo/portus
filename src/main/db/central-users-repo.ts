@@ -53,11 +53,13 @@ export async function ensureCentralUserAccess(
     "INSERT INTO users (username, password_hash, display_name, role, active, sector_code, laboratory_profile, barcode_value) " +
     "VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7) " +
     "ON CONFLICT (username) DO UPDATE SET " +
-    "display_name = EXCLUDED.display_name, role = EXCLUDED.role, active = users.active, " +
-    "sector_code = EXCLUDED.sector_code, laboratory_profile = EXCLUDED.laboratory_profile, " +
+    "display_name = COALESCE(users.display_name, EXCLUDED.display_name), active = users.active, " +
     "barcode_value = COALESCE(users.barcode_value, EXCLUDED.barcode_value), " +
     "password_hash = CASE WHEN users.password_hash = 'managed-by-portus' " +
     "THEN EXCLUDED.password_hash ELSE users.password_hash END " +
+    "WHERE users.role = EXCLUDED.role AND users.sector_code = EXCLUDED.sector_code " +
+    "AND (users.barcode_value IS NULL OR EXCLUDED.barcode_value IS NULL " +
+    "OR lower(users.barcode_value) = lower(EXCLUDED.barcode_value)) " +
     "RETURNING id",
     [
       user.username,
@@ -70,7 +72,7 @@ export async function ensureCentralUserAccess(
     ]
   );
   const userId = userResult.rows[0]?.id;
-  if (!userId) throw new Error("Não foi possível sincronizar o usuário com a base central.");
+  if (!userId) throw new Error("Conflito de identidade: perfil, setor ou etiqueta diferem do cadastro PostgreSQL existente.");
 
   const isMaster = user.role === "master";
   const isAdmin = user.role === "admin";
