@@ -1,9 +1,36 @@
 import { hostname } from "node:os";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { centralQuery } from "./central-connection";
 import type { StationIdentity } from "./settings-repo";
 
+function stationIdentityFile(): string | null {
+  const root = process.env.LOCALAPPDATA || process.env.APPDATA;
+  return root ? join(root, "PORTUS", "station-identity.json") : null;
+}
+
+function savedStationCode(): string | undefined {
+  const filename = stationIdentityFile();
+  if (!filename || !existsSync(filename)) return undefined;
+  const parsed = JSON.parse(readFileSync(filename, "utf8")) as { code?: string };
+  return parsed.code;
+}
+
+/**
+ * A identificação física da estação é o único bootstrap local. Todos os
+ * dados de negócio e parâmetros operacionais permanecem no PostgreSQL.
+ */
+export function saveStationIdentityFromLegacy(raw: string): void {
+  const filename = stationIdentityFile();
+  if (!filename || existsSync(filename) || process.env.PORTUS_STATION_CODE) return;
+  const code = raw.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "-").slice(0, 64);
+  if (!code) return;
+  mkdirSync(join(process.env.LOCALAPPDATA || process.env.APPDATA!, "PORTUS"), { recursive: true });
+  writeFileSync(filename, JSON.stringify({ code }, null, 2), { flag: "wx" });
+}
+
 export function getRuntimeStationCode(): string {
-  const raw = process.env.PORTUS_STATION_CODE?.trim() || hostname().trim();
+  const raw = process.env.PORTUS_STATION_CODE?.trim() || savedStationCode() || hostname().trim();
   const code = raw.toUpperCase().replace(/[^A-Z0-9._-]/g, "-").slice(0, 64);
   if (!code) throw new Error("Identificação física da estação indisponível.");
   return code;
