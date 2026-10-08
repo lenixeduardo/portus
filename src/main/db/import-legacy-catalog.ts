@@ -24,7 +24,7 @@ export async function importLegacyCatalogToCentral(): Promise<void> {
     });
   }
 
-  const existing = await listCentralProducts();
+  const existing = await listCentralProducts(true);
   const knownNames = new Set(existing.map(p => p.name.trim().toLocaleLowerCase("pt-BR")));
   for (const product of listProducts()) {
     const name = product.name.trim();
