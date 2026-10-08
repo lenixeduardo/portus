@@ -21,16 +21,16 @@ function toProduct(row: CentralProductRow): Product {
 
 const SELECT_PRODUCT = "SELECT id, name, description, created_by, created_at FROM products";
 
-export async function listCentralProducts(): Promise<Product[]> {
+export async function listCentralProducts(includeInactive = false): Promise<Product[]> {
   const result = await centralQuery<CentralProductRow>(
-    SELECT_PRODUCT + " ORDER BY lower(name), name"
+    SELECT_PRODUCT + (includeInactive ? "" : " WHERE active") + " ORDER BY lower(name), name"
   );
   return result.rows.map(toProduct);
 }
 
 export async function getCentralProduct(id: number): Promise<Product | null> {
   const result = await centralQuery<CentralProductRow>(
-    SELECT_PRODUCT + " WHERE id = $1",
+    SELECT_PRODUCT + " WHERE id = $1 AND active",
     [id]
   );
   return result.rows[0] ? toProduct(result.rows[0]) : null;
