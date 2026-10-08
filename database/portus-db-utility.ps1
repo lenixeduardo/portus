@@ -1,7 +1,8 @@
 # PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
 # Apenas o botao Aplicar migrations altera o banco, mediante confirmacao.
 [CmdletBinding()]
-param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts)
+param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts,
+      [int]$ViewportWidth = 0, [int]$ViewportHeight = 0)
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
@@ -20,6 +21,10 @@ $workingArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
 $windowWidth = [Math]::Min(1160,[Math]::Max(640,$workingArea.Width - 52))
 $windowHeight = [Math]::Min(928,[Math]::Max(540,$workingArea.Height - 75))
 $form.ClientSize = New-Object System.Drawing.Size($windowWidth,$windowHeight)
+if ($ViewportWidth -gt 0 -and $ViewportHeight -gt 0) {
+  if (-not $SmokeTest -and -not $CapturePath) { throw "Viewport customizado disponivel apenas em testes de interface." }
+  $form.ClientSize = New-Object System.Drawing.Size($ViewportWidth,$ViewportHeight)
+}
 $form.FormBorderStyle = "FixedSingle"
 $form.MaximizeBox = $false
 $form.MinimizeBox = $true
@@ -674,6 +679,23 @@ if ($SmokeTest -or $CapturePath) {
         -not $canvas.Visible -or
         -not $checkButton.Image -or -not $migrateButton.Image -or
         -not $networkButton.Image -or -not $registerButton.Image) {
+      $script:smokeFailed = $true
+    }
+    if ($ViewportWidth -gt 0 -and $ViewportHeight -gt 0 -and
+        ($ViewportWidth -lt $canvas.Width -or $ViewportHeight -lt $canvas.Height) -and
+        -not ($page.HorizontalScroll.Visible -or $page.VerticalScroll.Visible)) {
+      $script:smokeFailed = $true
+    }
+    if ($StrictFonts) {
+      foreach ($h in @($title,$brandSubtitle,$connTitle,$actionTitle,$statusTitle,$logTitle)) {
+        if ($h.Font.FontFamily.Name -ne "Sora") { $script:smokeFailed = $true }
+      }
+      foreach ($component in @($hostField,$portField,$dbField,$userField,$binField,$passField,
+                               $checkButton,$migrateButton,$networkButton,$registerButton,$log)) {
+        if ($component.Font.FontFamily.Name -ne "Inter") { $script:smokeFailed = $true }
+      }
+    }
+    if ($false) {
       $script:smokeFailed = $true
     }
     # O teste usa o asset real do projeto e nao aceita uma marca ausente.
