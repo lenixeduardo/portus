@@ -19,7 +19,7 @@ export function registerAuthHandlers(): void {
           recordFailedLogin(req.username);
           return { ok: false, error: "Usuário ou senha inválidos." };
         }
-        logAudit({ actorUserId: user.id, action: "auth.login", resourceType: "session" });
+        await logAudit({ actorUserId: user.id, action: "auth.login", resourceType: "session" });
         return { ok: true, user };
       } catch (error) {
         return { ok: false, error: error instanceof Error
@@ -35,7 +35,7 @@ export function registerAuthHandlers(): void {
       try {
         const user = await loginByBarcode(req.barcodeValue);
         if (!user) return { ok: false, error: "Etiqueta não cadastrada." };
-        logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" });
+        await logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" });
         return { ok: true, user };
       } catch (error) {
         return { ok: false, error: error instanceof Error
@@ -58,7 +58,7 @@ export function registerAuthHandlers(): void {
       }
     }
     logout();
-    if (user) logAudit({ actorUserId: user.id, action: "auth.logout", resourceType: "session" });
+    if (user) await logAudit({ actorUserId: user.id, action: "auth.logout", resourceType: "session" });
   });
 
   ipcMain.handle(IPC.authCurrentUser, () => getCurrentUser());
