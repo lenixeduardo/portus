@@ -126,8 +126,16 @@ BEGIN
   ) OR to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NULL THEN
     RAISE EXCEPTION 'PORTUS: cadastro central incompleto; aplique a migration 013.';
   END IF;
+
+  IF to_regclass('public.portus_station_settings') IS NULL
+     OR to_regclass('public.portus_station_equipment_profiles') IS NULL
+     OR to_regclass('public.portus_audit_log') IS NULL
+     OR to_regclass('public.portus_auto_exports') IS NULL
+     OR to_regclass('public.portus_legacy_import_ledger') IS NULL THEN
+    RAISE EXCEPTION 'PORTUS: esquema de estacoes/auditoria incompleto; aplique a migration 014.';
+  END IF;
 END;
-$$;
+$;
 '@
   Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", $schemaCheck)
 

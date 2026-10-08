@@ -1,3 +1,5 @@
+// HISTÓRICO: teste de integração exclusivo do SQLite legado.
+// Não deve executar como teste da versão PostgreSQL-only.
 import { existsSync, rmSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 

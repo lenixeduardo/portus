@@ -16,7 +16,6 @@ function toEquipment(row: EquipmentProfileRow): Equipment {
   const idx = ORDER.indexOf(row.code || "");
   const config = typeof row.config === "string" ? JSON.parse(row.config) : row.config ?? {};
   return {
-    id: Number(row.id),
     name: row.name,
     portPath: "",
     baudRate: 9600,
@@ -24,7 +23,6 @@ function toEquipment(row: EquipmentProfileRow): Equipment {
     stopBits: 1,
     parity: "none",
     enabled: idx < 5,
-    slotIndex: idx < 0 ? 64 : idx + 1,
     parseRegex: NUMBER_REGEX,
     lineDelimiter: "lf",
     skipFirstReading: false,

@@ -11,9 +11,11 @@ describe("catálogo compartilhado entre servidor, produção e laboratório", ()
   const centralHandlers = read("src/main/ipc/central-handlers.ts");
   const userHandlers = read("src/main/ipc/users-handlers.ts");
   const centralUsers = read("src/main/db/central-users-repo.ts");
-  const importer = read("src/main/db/import-legacy-catalog.ts");
+  const importer = read("scripts/import-legacy-to-postgres.mjs");
+  const auth = read("src/main/auth/auth-service.ts");
+  const stationMigration = read("database/migrations/014_station_profiles_audit_ledger.sql");
+  const release = read("scripts/check-postgres-only-runtime.mjs");
   const start = read("src/main/index.ts");
-  const usersUI = read("src/renderer/screens/settings/UsersTab.tsx");
 
   it("migra o catálogo e a identificação dos usuários sem remover dados existentes", () => {
     expect(migration).toContain("ADD COLUMN IF NOT EXISTS sector_code");
@@ -42,18 +44,35 @@ describe("catálogo compartilhado entre servidor, produção e laboratório", ()
     expect(centralHandlers).not.toContain("const product = getProduct(input.productId)");
   });
 
-  it("todos os usuários aparecem na listagem central e uma estação não edita IDs remotos locais", () => {
-    expect(userHandlers).toContain("await listCentralUsers()");
+  it("todos os usuários aparecem e são gerenciados pelo PostgreSQL", () => {
+    expect(userHandlers).toContain("listCentralUsers()");
     expect(centralUsers).toContain("FROM users WHERE active");
-    expect(userHandlers).toContain("await ensureCentralUserAccess(user, {");
-    expect(usersUI).toContain("Cadastrado em outra estação");
+    expect(userHandlers).toContain("await createCentralUser(");
+    expect(userHandlers).toContain("await updateCentralUserPassword(");
+    expect(userHandlers).toContain("await deactivateCentralUser(");
+    expect(auth).toContain("await centralQuery<CentralCredentialRow>");
+    expect(auth).not.toContain('from "../db/users-repo"');
   });
 
-  it("importa cadastros legados antes da interface e não indica sucesso prematuro", () => {
-    expect(start).toContain("await importLegacyCatalogToCentral()");
-    expect(importer).toContain("for (const user of users)");
-    expect(importer).toContain("for (const product of listProducts())");
-    expect(importer).toContain('setSetting(LEGACY_IMPORT_MARKER, "done")');
-    expect(userHandlers).toContain("PostgreSQL central obrigatório para cadastrar usuários.");
+  it("importa todas as entidades com rollback, ledger e conciliação", () => {
+    for (const entity of ["users","products","equipments","batches","capture_sessions",
+                          "readings","audit_log","capture_error_logs"]) {
+      expect(importer).toContain('transfer("'+entity+'"');
+    }
+    expect(importer).toContain('await pgClient.query("BEGIN")');
+    expect(importer).toContain('await pgClient.query("COMMIT")');
+    expect(importer).toContain('await pgClient.query("ROLLBACK")');
+    expect(importer).toContain("source_hash");
+    expect(importer).toContain("originalCounts");
   });
+
+  it("desliga SQLite do Electron e configura estações e auditoria no PostgreSQL", () => {
+    expect(start).not.toContain("openDb()");
+    expect(start).not.toContain("runMigrations()");
+    expect(start).not.toContain("seedInitialData()");
+    expect(stationMigration).toContain("CREATE TABLE IF NOT EXISTS portus_station_settings");
+    expect(stationMigration).toContain("CREATE TABLE IF NOT EXISTS portus_audit_log");
+    expect(release).toContain("runtime ainda depende de SQLite");
+  });
+
 });

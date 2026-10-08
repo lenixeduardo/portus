@@ -10,6 +10,8 @@ const { databaseDirectory } = vi.hoisted(() => {
   return { databaseDirectory: directory };
 });
 
+vi.mock("../db/central-connection", () => ({ centralQuery: vi.fn() }));
+
 vi.mock("electron", () => ({
   app: { getPath: () => databaseDirectory },
   BrowserWindow: { getAllWindows: () => [] },
@@ -25,6 +27,7 @@ import {
 } from "../db/users-repo";
 import { generateUniqueUsername } from "../users/barcode-user-registration";
 import { loginByBarcode, logout } from "../auth/auth-service";
+import { centralQuery } from "../db/central-connection";
 
 describe("criação dos três usuários operacionais pelas etiquetas reais", () => {
   beforeAll(async () => {
@@ -118,16 +121,30 @@ describe("criação dos três usuários operacionais pelas etiquetas reais", () 
     expect(getUserByBarcodeValue("PRODUCAO 01")?.username).toBe("producao.01");
   });
 
-  it("faz login somente pela leitura do código de barras para os três usuários", () => {
+  it("faz login das etiquetas exclusivamente consultando o PostgreSQL", async () => {
+    const local = listUsers();
+    vi.mocked(centralQuery).mockImplementation(async (_query: string, params: unknown[] = []) => {
+      const barcode = String(params[0]).toUpperCase();
+      const matched = local.find(user => user.displayName?.toUpperCase() === barcode);
+      return { rows: matched ? [{
+        ...matched,
+        password_hash: "test-hash",
+        display_name: matched.displayName,
+        sector_code: matched.sectorCode,
+        laboratory_profile: matched.laboratoryProfile ?? null,
+        created_at: matched.createdAt
+      }] : [] } as any;
+    });
     for (const [barcode, expectedUsername] of [
       ["ANALISTA 01", "analista.01"],
       ["ANALISTA 02", "analista.02"],
       ["PRODUCAO 01", "producao.01"]
     ] as const) {
       logout();
-      const user = loginByBarcode(barcode);
+      const user = await loginByBarcode(barcode);
       expect(user?.username).toBe(expectedUsername);
     }
+    expect(centralQuery).toHaveBeenCalledTimes(3);
   });
 
   it("rejeita duplicidade de barcode_value", () => {

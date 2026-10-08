@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS portus_audit_log (
 CREATE INDEX IF NOT EXISTS portus_audit_log_time_idx
   ON portus_audit_log (created_at DESC);
 
+CREATE TABLE IF NOT EXISTS portus_auto_exports (
+  batch_id BIGINT PRIMARY KEY REFERENCES batches(id) ON DELETE CASCADE,
+  export_path TEXT NOT NULL,
+  exported_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS portus_legacy_import_ledger (
   station_code TEXT NOT NULL,
   entity_type TEXT NOT NULL,
@@ -70,8 +76,30 @@ BEGIN
     EXECUTE format('GRANT SELECT, INSERT ON portus_audit_log TO %I', v_grantee);
     EXECUTE format('GRANT INSERT ON capture_error_logs TO %I', v_grantee);
     EXECUTE format('GRANT SELECT, INSERT ON portus_legacy_import_ledger TO %I', v_grantee);
+    EXECUTE format('GRANT SELECT, INSERT ON portus_auto_exports TO %I', v_grantee);
     EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE portus_audit_log_id_seq TO %I', v_grantee);
   END LOOP;
 END;
 $$;
+
+-- Permissões de ambas as aplicações para a leitura compartilhada do lote.
+INSERT INTO application_sector_permissions
+  (application_id,sector_id,can_read,can_open,can_capture,can_move,
+   can_confirm_production,can_confirm_laboratory)
+SELECT a.id,s.id,TRUE,
+       (a.code='PORTUS' AND s.code='PRODUCTION') OR
+       (a.code='PORTUS_LABORATORY' AND s.code='LABORATORY'),
+       (a.code='PORTUS' AND s.code='PRODUCTION') OR
+       (a.code='PORTUS_LABORATORY' AND s.code='LABORATORY'),
+       a.code='PORTUS' AND s.code='PRODUCTION',
+       FALSE,FALSE
+FROM applications a CROSS JOIN sectors s
+WHERE a.code IN ('PORTUS','PORTUS_LABORATORY')
+  AND s.code IN ('PRODUCTION','LABORATORY')
+ON CONFLICT(application_id,sector_id) DO UPDATE SET
+ can_read=EXCLUDED.can_read,
+ can_open=EXCLUDED.can_open,
+ can_capture=EXCLUDED.can_capture,
+ can_move=EXCLUDED.can_move;
+
 COMMIT;

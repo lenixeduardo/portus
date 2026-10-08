@@ -33,7 +33,9 @@ for (const path of [
   "database/migrations/010_admin_reopen_batch.sql",
   "database/migrations/011_operational_closure_rules.sql",
   "database/migrations/012_unified_batch_traceability.sql",
-  "database/migrations/013_central_catalog_user_metadata.sql"
+  "database/migrations/013_central_catalog_user_metadata.sql",
+  "database/migrations/014_station_profiles_audit_ledger.sql",
+  "scripts/import-legacy-to-postgres.mjs"
 ]) requireFile(path);
 
 const artifactName = packageJson.build?.win?.artifactName;

@@ -1,4 +1,4 @@
-name: PostgreSQL — integração de catálogo
+name: PostgreSQL — integração completa
 
 on:
   pull_request:
@@ -46,3 +46,51 @@ jobs:
 
       - name: Executar contrato real de sincronização Produção / Laboratório
         run: psql -v ON_ERROR_STOP=1 -f database/tests/005_shared_catalog.sql
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependências de migração
+        run: npm ci --ignore-scripts
+
+      - name: Inicializar setores e aplicações
+        run: psql -v ON_ERROR_STOP=1 -f database/seed/reference.sql
+
+      - name: Gerar SQLite legados de Produção e Laboratório
+        run: |
+          node database/tests/build_legacy_fixture.mjs /tmp/portus-producao.sqlite PRODUCTION
+          node database/tests/build_legacy_fixture.mjs /tmp/portus-laboratorio.sqlite LABORATORY
+
+      - name: Importar duas estações com backup e repetir sem duplicar
+        env:
+          PORTUS_ADMIN_DATABASE_URL: postgresql://postgres:portus-ci-password@127.0.0.1:5432/portus
+        run: |
+          set -euo pipefail
+          node scripts/import-legacy-to-postgres.mjs --sqlite=/tmp/portus-producao.sqlite --station=PRODUCAO-TESTE --sector=PRODUCTION --backup-dir=/tmp
+          node scripts/import-legacy-to-postgres.mjs --sqlite=/tmp/portus-laboratorio.sqlite --station=LABORATORIO-TESTE --sector=LABORATORY --backup-dir=/tmp
+          node scripts/import-legacy-to-postgres.mjs --sqlite=/tmp/portus-producao.sqlite --station=PRODUCAO-TESTE --sector=PRODUCTION --backup-dir=/tmp
+          node scripts/import-legacy-to-postgres.mjs --sqlite=/tmp/portus-laboratorio.sqlite --station=LABORATORIO-TESTE --sector=LABORATORY --backup-dir=/tmp
+
+      - name: Validar unificação dos cadastros e preservação integral do histórico
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF (SELECT COUNT(*) FROM products WHERE name='Produto compartilhado para importação') <> 1
+              OR (SELECT COUNT(*) FROM users WHERE username IN ('analista.central.teste','operador.central.teste')) <> 2
+              OR (SELECT COUNT(*) FROM batches WHERE code LIKE 'LEGACY-%') <> 2
+              OR (SELECT COUNT(*) FROM capture_sessions cs JOIN batches b ON b.id=cs.batch_id WHERE b.code LIKE 'LEGACY-%') <> 2
+              OR (SELECT COUNT(*) FROM readings r JOIN batches b ON b.id=r.batch_id WHERE b.code LIKE 'LEGACY-%') <> 2
+              OR (SELECT COUNT(*) FROM portus_audit_log WHERE action='capture.test') <> 2
+              OR (SELECT COUNT(*) FROM portus_legacy_import_ledger WHERE entity_type='readings') <> 2
+              OR (SELECT COUNT(*) FROM portus_station_equipment_profiles WHERE station_code IN ('PRODUCAO-TESTE','LABORATORIO-TESTE')) <> 2
+              THEN
+              RAISE EXCEPTION 'Conciliação cross-station incompleta após importação';
+            END IF;
+          END;
+          $$;
+          SQL

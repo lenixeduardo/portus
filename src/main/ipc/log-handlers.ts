@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { IPC, type LogReportInput } from "../../shared/ipc";
 import { getLogsDir, getRecentLogs, logError } from "../logger";
-import { getSetting } from "../db/settings-repo";
+import { getCentralStationSetting } from "../db/central-station-settings-repo";
 import { requireAuth } from "./middleware";
 
 export function registerLogHandlers(): void {
@@ -23,7 +23,7 @@ export function registerLogHandlers(): void {
 
       const logs = getRecentLogs();
       const timestamp = new Date().toISOString();
-      const webhookUrl = getSetting("error_report_webhook")?.trim() ?? "";
+      const webhookUrl = (await getCentralStationSetting("error_report_webhook"))?.trim() ?? "";
 
       const reportText = [
         "PORTUS — Relatório de Erro",

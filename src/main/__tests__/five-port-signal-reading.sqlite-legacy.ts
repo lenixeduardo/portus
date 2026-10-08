@@ -1,3 +1,5 @@
+// HISTÓRICO: teste de integração exclusivo do SQLite legado.
+// Não deve executar como teste da versão PostgreSQL-only.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { startCapture, cancelCapture, isActive } from "../serial/capture-service";
 import * as captureRepo from "../db/capture-repo";

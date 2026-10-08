@@ -1,18 +1,12 @@
 import { BrowserWindow } from "electron";
 import { SerialPort } from "serialport";
-import { listEquipments, updateEquipment } from "../db/equipments-repo";
-import { getCaptureTimeoutSeconds, getStationIdentity, type StationIdentity } from "../db/settings-repo";
-import { getBatchWithProduct } from "../db/batches-repo";
+import { listCentralEquipments, updateCentralEquipment } from "../db/central-equipments-repo";
+import type { StationIdentity } from "../db/settings-repo";
+import { getCentralCaptureTimeoutSeconds, getCentralStationIdentity } from "../db/central-station-settings-repo";
 import { insertCaptureErrorLog } from "../db/capture-error-logs-repo";
-import {
-  cancelCaptureSession,
-  completeCaptureSession,
-  createCaptureSession,
-  insertReading
-} from "../db/capture-repo";
 import { delimiterChars, parseReading } from "./parse";
 import { isCentralDatabaseConfigured } from "../db/central-connection";
-import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, isSectorCaptureClosed, ensureDefaultCentralEquipmentCatalog, validateCentralEquipmentMapping } from "../db/central-capture-repo";
+import { createCentralCaptureSession, finishCentralCaptureSession, getCentralBatchById, insertCentralReading, isSectorCaptureClosed, validateCentralEquipmentMapping } from "../db/central-capture-repo";
 import { startModbusPolling } from "./modbus-poller";
 import type {
   CaptureEndedEvent,
@@ -167,7 +161,7 @@ function persistReading(input: {
     void write.finally(() => pendingCentralWrites.delete(write)).catch(() => undefined);
     return;
   }
-  insertReading(input);
+  throw new Error("Captura sem conexão central: a leitura não foi gravada.");
 }
 
 function logCaptureError(input: {
@@ -180,7 +174,7 @@ function logCaptureError(input: {
   context?: Record<string, unknown>;
 }): void {
   try {
-    insertCaptureErrorLog({
+    void insertCaptureErrorLog({
       batchId,
       captureSessionId: sessionId,
       equipmentId: input.slot?.equipment.id ?? null,
@@ -190,7 +184,7 @@ function logCaptureError(input: {
       message: input.message,
       rawValue: input.rawValue ?? null,
       context: input.context
-    });
+    }).catch(err => console.error("[central-db] Falha ao registrar erro de captura:", err));
   } catch (err) {
     console.error("[serial] Falha ao gravar log de erro da captura:", err);
   }
@@ -371,10 +365,6 @@ async function cleanup(reason: "completed" | "cancelled"): Promise<void> {
       } catch (error) {
         console.error("[central-db] Falha ao encerrar sessão:", error);
       }
-    } else if (reason === "completed") {
-      completeCaptureSession(sessionId);
-    } else {
-      cancelCaptureSession(sessionId);
     }
   }
 
@@ -545,65 +535,49 @@ export async function startCapture(
   if (!Number.isInteger(targetBatchId)) {
     return { ok: false, error: "Lote inválido." };
   }
-  // O modo central exige contexto explícito de usuário. Chamadas internas e
-  // testes que invocam startCapture(batchId) permanecem no repositório local.
-  centralCapture = isCentralDatabaseConfigured() && Boolean(username);
-  centralUsername = centralCapture ? username! : null;
+  if (!isCentralDatabaseConfigured() || !username) {
+    return { ok: false, error: "PostgreSQL central obrigatório: captura local está desabilitada." };
+  }
+  centralCapture = true;
+  centralUsername = username;
   centralSectorCode = sectorCode;
 
-  const localBatch = centralCapture ? null : getBatchWithProduct(targetBatchId);
-  const centralBatch = centralCapture
-    ? await getCentralBatchById(targetBatchId).catch(() => null)
-    : null;
-  const batchStatus = centralCapture ? centralBatch?.status : localBatch?.status;
-  if (!centralBatch && !localBatch) {
-    return { ok: false, error: "Lote não encontrado." };
-  }
-  if (batchStatus !== "open") {
+  const centralBatch = await getCentralBatchById(targetBatchId);
+  if (!centralBatch) return { ok: false, error: "Lote não encontrado no PostgreSQL central." };
+  if (centralBatch.status !== "open") {
     return { ok: false, error: "O lote já foi finalizado e não aceita novas leituras." };
   }
-  if (centralBatch && isSectorCaptureClosed(centralBatch, sectorCode)) {
-    return {
-      ok: false,
-      error: `A ${sectorCode === "LABORATORY" ? "etapa do Laboratório" : "Produção"} já foi confirmada e não aceita novas leituras neste lote.`
-    };
+  if (isSectorCaptureClosed(centralBatch, sectorCode)) {
+    return { ok: false, error: "O setor já confirmou as leituras deste lote." };
   }
 
-  let stationIdentity: StationIdentity | null = null;
-
-  const equipments = listEquipments().filter(
-    (e) => e.enabled && (equipmentIds == null || equipmentIds.includes(e.id))
-  );
-  if (equipments.length === 0) {
-    return { ok: false, error: "Nenhum equipamento habilitado configurado." };
-  }
-
-  if (centralCapture) {
-    try {
-      stationIdentity = getStationIdentity();
-      await ensureDefaultCentralEquipmentCatalog();
-      const missingEquipment = await validateCentralEquipmentMapping(equipments.map((equipment) => equipment.name));
-      if (missingEquipment.length > 0) {
-        return {
-          ok: false,
-          error: `Equipamentos não mapeados na base central: ${missingEquipment.join(", ")}.`
-        };
-      }
-    } catch (error) {
-      centralCapture = false;
-      centralUsername = null;
-      centralSectorCode = "PRODUCTION";
-      return {
-        ok: false,
-        error: `Não foi possível validar a base central antes da captura: ${String(error)}`
-      };
+  let stationIdentity: StationIdentity;
+  let equipments: Equipment[];
+  let timeoutSeconds: number;
+  try {
+    stationIdentity = await getCentralStationIdentity();
+    if (stationIdentity.sectorCode !== sectorCode) {
+      return { ok: false, error: "O setor do computador difere do perfil operacional do usuário." };
     }
+    const allEquipments = await listCentralEquipments();
+    equipments = allEquipments.filter(
+      e => e.enabled && (equipmentIds == null || equipmentIds.includes(e.id))
+    );
+    if (equipments.length === 0) {
+      return { ok: false, error: "Nenhum equipamento habilitado configurado no PostgreSQL." };
+    }
+    const missing = await validateCentralEquipmentMapping(equipments.map(e => e.name));
+    if (missing.length) {
+      return { ok: false, error: "Equipamentos não mapeados no PostgreSQL: " + missing.join(", ") };
+    }
+    timeoutSeconds = await getCentralCaptureTimeoutSeconds();
+  } catch (error) {
+    return { ok: false, error: "Falha ao carregar captura central: " + String(error) };
   }
 
-  const timeoutSeconds = getCaptureTimeoutSeconds();
-  const session = centralCapture
-    ? await createCentralCaptureSession(targetBatchId, timeoutSeconds, centralUsername!, centralSectorCode, stationIdentity!)
-    : createCaptureSession(targetBatchId, timeoutSeconds);
+  const session = await createCentralCaptureSession(
+    targetBatchId, timeoutSeconds, username, sectorCode, stationIdentity
+  );
   sessionId = session.id;
   batchId = targetBatchId;
   remaining = timeoutSeconds;
@@ -764,7 +738,7 @@ export async function startCapture(
 
       // Se falhar e for um slot de 1-5, tenta usar fallback (slot 6 "Reserva")
       if (!opened && eq.slotIndex >= 1 && eq.slotIndex <= 5) {
-        const allEquipments = listEquipments();
+        const allEquipments = await listCentralEquipments();
         const reserveEq = allEquipments.find((e) => e.slotIndex === 6 || e.name === "Reserva");
         if (reserveEq && reserveEq.portPath && reserveEq.portPath !== eq.portPath) {
           console.log(`[serial] Acionando fallback para porta reserva (slot ${eq.slotIndex}, porta ${reserveEq.portPath})`);
@@ -846,7 +820,7 @@ export async function startCapture(
         });
         console.error(`[serial] Desabilitando equipamento permanentemente por falhas consecutivas de abertura (slot ${eq.slotIndex}, id ${eq.id})`);
         try {
-          updateEquipment(eq.id, { enabled: false });
+          await updateCentralEquipment(eq.id, { enabled: false });
         } catch (dbErr) {
           logCaptureError({
             slot,
