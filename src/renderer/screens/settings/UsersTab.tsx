@@ -63,7 +63,7 @@ export function UsersTab({ currentUser }: Props) {
               <tr key={u.id}>
                 <td>
                   <strong>{u.username}</strong>
-                  {u.id === currentUser.id && (
+                  {u.username === currentUser.username && (
                     <span className="chip chip-blue" style={{ marginLeft: 8 }}>VOCÊ</span>
                   )}
                 </td>
@@ -74,11 +74,19 @@ export function UsersTab({ currentUser }: Props) {
                 </td>
                 <td className="muted">{formatDate(u.createdAt)}</td>
                 <td>
-                  <button className="link" onClick={() => setModal({ mode: "password", user: u })}>
-                    Alterar senha
-                  </button>
-                  {u.id !== currentUser.id && (
-                    <button className="link danger" onClick={() => handleDelete(u)}>Excluir</button>
+                  {u.id < 0 ? (
+                    <span className="muted" title="Conta central visível; a gestão remota aguarda migração da autenticação.">
+                      Cadastrado em outra estação
+                    </span>
+                  ) : (
+                    <>
+                      <button className="link" onClick={() => setModal({ mode: "password", user: u })}>
+                        Alterar senha
+                      </button>
+                      {u.username !== currentUser.username && (
+                        <button className="link danger" onClick={() => handleDelete(u)}>Excluir</button>
+                      )}
+                    </>
                   )}
                 </td>
               </tr>
@@ -334,8 +342,9 @@ function getPasswordLengthError(password: string): string | null {
 }
 
 function formatDate(iso: string): string {
-  const d = new Date(iso.replace(" ", "T") + "Z");
-  return d.toLocaleString("pt-BR");
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(iso) ? iso : iso.replace(" ", "T") + "Z";
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR");
 }
 
 function formatAccessProfile(user: User): string {
