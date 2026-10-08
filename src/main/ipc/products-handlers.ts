@@ -4,13 +4,12 @@ import type { Product } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import {
-  countOpenBatchesForProduct,
-  createProduct,
-  deleteProduct,
-  getProduct,
-  listProducts,
-  updateProduct
-} from "../db/products-repo";
+  createCentralProduct,
+  deleteCentralProduct,
+  listCentralProducts,
+  updateCentralProduct
+} from "../db/central-products-repo";
+import { ensureCentralUserAccess } from "../db/central-users-repo";
 import {
   createProductSchema,
   deleteProductSchema,
@@ -21,24 +20,34 @@ import {
 } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
 
+function errorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "Erro ao acessar o catálogo central de produtos.";
+  const databaseError = error as Error & { code?: string };
+  if (databaseError.code === "23505") return "Já existe um produto com esse nome.";
+  if (databaseError.code === "23503") return "Produto com histórico de lotes não pode ser excluído.";
+  return error.message;
+}
+
 export function registerProductsHandlers(): void {
-  ipcMain.handle(IPC.productsList, (): Product[] => listProducts());
+  // Não consulta mais SQLite: as três estações leem o mesmo catálogo central.
+  ipcMain.handle(
+    IPC.productsList,
+    compose([requireAuth])(async (): Promise<Product[]> => listCentralProducts())
+  );
 
   ipcMain.handle(
     IPC.productsCreate,
     compose([requireAuth, validateInput(createProductSchema)])(
-      (_e, input: CreateProductInput): ServiceResult<Product> => {
+      async (_e, input: CreateProductInput): Promise<ServiceResult<Product>> => {
         const user = getCurrentUser();
         if (!user) return { ok: false, error: "Sessão expirada." };
         try {
-          const product = createProduct(input.name.trim(), input.description?.trim() || undefined, user.id);
+          await ensureCentralUserAccess(user);
+          const product = await createCentralProduct(input.name, input.description, user.username);
           logAudit({ actorUserId: user.id, action: "products.create", resourceType: "product", resourceId: product.id, details: { name: product.name } });
           return { ok: true, data: product };
-        } catch (e: any) {
-          if (String(e?.message).includes("UNIQUE")) {
-            return { ok: false, error: "Já existe um produto com esse nome." };
-          }
-          return { ok: false, error: "Erro ao criar produto." };
+        } catch (error) {
+          return { ok: false, error: errorMessage(error) };
         }
       }
     )
@@ -47,21 +56,16 @@ export function registerProductsHandlers(): void {
   ipcMain.handle(
     IPC.productsUpdate,
     compose([requireAuth, validateInput(updateProductSchema)])(
-      (_e, input: UpdateProductInput): ServiceResult<Product> => {
-        if (!getProduct(input.id)) return { ok: false, error: "Produto não encontrado." };
+      async (_e, input: UpdateProductInput): Promise<ServiceResult<Product>> => {
+        const user = getCurrentUser();
+        if (!user) return { ok: false, error: "Sessão expirada." };
         try {
-          const product = updateProduct(
-            input.id,
-            input.name?.trim() || "",
-            input.description?.trim() || undefined
-          );
-          logAudit({ actorUserId: getCurrentUser()?.id, action: "products.update", resourceType: "product", resourceId: input.id });
-          return { ok: true, data: product! };
-        } catch (e: any) {
-          if (String(e?.message).includes("UNIQUE")) {
-            return { ok: false, error: "Já existe um produto com esse nome." };
-          }
-          return { ok: false, error: "Erro ao atualizar produto." };
+          await ensureCentralUserAccess(user);
+          const product = await updateCentralProduct(input.id, input.name ?? "", input.description, user.username);
+          logAudit({ actorUserId: user.id, action: "products.update", resourceType: "product", resourceId: product.id });
+          return { ok: true, data: product };
+        } catch (error) {
+          return { ok: false, error: errorMessage(error) };
         }
       }
     )
@@ -70,13 +74,17 @@ export function registerProductsHandlers(): void {
   ipcMain.handle(
     IPC.productsDelete,
     compose([requireAuth, validateInput(deleteProductSchema)])(
-      (_e, input: DeleteProductInput): ServiceResult<true> => {
-        if (countOpenBatchesForProduct(input.id) > 0) {
-          return { ok: false, error: "Produto possui lotes abertos e não pode ser excluído." };
+      async (_e, input: DeleteProductInput): Promise<ServiceResult<true>> => {
+        const user = getCurrentUser();
+        if (!user) return { ok: false, error: "Sessão expirada." };
+        try {
+          await ensureCentralUserAccess(user);
+          await deleteCentralProduct(input.id, user.username);
+          logAudit({ actorUserId: user.id, action: "products.delete", resourceType: "product", resourceId: input.id });
+          return { ok: true, data: true };
+        } catch (error) {
+          return { ok: false, error: errorMessage(error) };
         }
-        deleteProduct(input.id);
-        logAudit({ actorUserId: getCurrentUser()?.id, action: "products.delete", resourceType: "product", resourceId: input.id });
-        return { ok: true, data: true };
       }
     )
   );
