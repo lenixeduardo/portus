@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS portus_audit_log (
 CREATE INDEX IF NOT EXISTS portus_audit_log_time_idx
   ON portus_audit_log (created_at DESC);
 
+CREATE TABLE IF NOT EXISTS portus_auto_exports (
+  batch_id BIGINT PRIMARY KEY REFERENCES batches(id) ON DELETE CASCADE,
+  export_path TEXT NOT NULL,
+  exported_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS portus_legacy_import_ledger (
   station_code TEXT NOT NULL,
   entity_type TEXT NOT NULL,
@@ -70,6 +76,7 @@ BEGIN
     EXECUTE format('GRANT SELECT, INSERT ON portus_audit_log TO %I', v_grantee);
     EXECUTE format('GRANT INSERT ON capture_error_logs TO %I', v_grantee);
     EXECUTE format('GRANT SELECT, INSERT ON portus_legacy_import_ledger TO %I', v_grantee);
+    EXECUTE format('GRANT SELECT, INSERT ON portus_auto_exports TO %I', v_grantee);
     EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE portus_audit_log_id_seq TO %I', v_grantee);
   END LOOP;
 END;
