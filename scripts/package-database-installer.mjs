@@ -11,7 +11,7 @@ const archive = join(release, "portus-database-installer.zip");
 
 rmSync(stagingRoot, { recursive: true, force: true });
 mkdirSync(packageRoot, { recursive: true });
-for (const file of ["install-portus-database.ps1", "install-portus-database.bat", "migrate-portus-database.bat", "verify-portus-database.ps1", "check-portus-database.bat"]) {
+for (const file of ["install-portus-database.ps1", "install-portus-database.bat", "migrate-portus-database.bat", "verify-portus-database.ps1", "check-portus-database.bat", "portus-db-utility.bat", "portus-db-utility.ps1", "validate-portus-schema.ps1"]) {
   cpSync(join(root, "database", file), join(packageRoot, file));
 }
 cpSync(join(root, "database", "migrations"), join(packageRoot, "migrations"), { recursive: true });
@@ -36,6 +36,7 @@ executado novamente sem reaplicar migrations já registradas.
 - \`database\\check-portus-database.bat\`: testa a conexão como \`portus_admin\` e
   repara a configuração em \`%LOCALAPPDATA%\\PORTUS\\database-config.json\`.
 - \`database\\migrate-portus-database.bat\`: aplica migrations ainda pendentes.
+- \`database\\portus-db-utility.bat\`: abre a janela com botoes Validar banco de dados e Aplicar migrations.
 
 Para configurar manualmente uma sessão de desenvolvimento:
 
