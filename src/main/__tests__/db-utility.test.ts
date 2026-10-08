@@ -60,13 +60,14 @@ describe("utilitario de banco PORTUS", () => {
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
     for (const path of ["portus-db-utility.ps1", "validate-portus-schema.ps1"]) {
       const full = join(db, path);
+      const escaped = full.replace(/'/g, "''");
       const command = [
         "$tokens=$null;",
         "$errors=$null;",
-        '[void][System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$tokens,[ref]$errors);',
+        "[void][System.Management.Automation.Language.Parser]::ParseFile('" + escaped + "',[ref]$tokens,[ref]$errors);",
         'if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
       ].join(" ");
-      expect(() => execFileSync("powershell.exe", ["-NoProfile", "-Command", command, full], { encoding: "utf8" }))
+      expect(() => execFileSync("powershell.exe", ["-NoProfile", "-Command", command], { encoding: "utf8" }))
         .not.toThrow();
     }
   });
