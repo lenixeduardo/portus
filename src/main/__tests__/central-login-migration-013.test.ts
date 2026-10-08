@@ -71,8 +71,9 @@ describe("pré-validação do login PostgreSQL (migration 013)", () => {
     const script = readFileSync(
       resolve(process.cwd(), "database/install-portus-database.ps1"), "utf8"
     );
-    expect(script).toContain("DO $$");
-    expect(script).toContain("END;\n$$;\n'@");
+    const normalized = script.replace(/\r\n/g, "\n");
+    expect(normalized).toContain("DO $");
+    expect(normalized).toContain("END;\n$;\n'@");
     expect(script).toContain("column_name = 'sector_code'");
     expect(script).toContain("column_name = 'laboratory_profile'");
   });
