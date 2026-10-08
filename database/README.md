@@ -5,6 +5,23 @@ Esta pasta contém a fundação do banco central definida no
 
 ## Utilitario visual de administracao (Windows)
 
+## Interface visual PORTUS Database Utility
+
+O utilitario passou a usar o visual claro do mockup PORTUS: logotipo
+**original** de `build/icon.png`, cabecalho de marca, painel de conexao,
+quatro acoes com destaque azul para migrations, status e log colorido.
+A interface usa rolagem quando a resolucao da estacao e menor ou quando
+o Windows tem escala ampliada. O utilitario continua em WinForms/PowerShell
+5.1, sem WebView ou dependencias de frontend.
+
+Na pasta do repositorio o logotipo e lido de `build/icon.png`.
+No instalador ZIP independente, o empacotador inclui uma copia identica
+em `database/portus-logo.png`. Sem imagem disponivel, a interface continua
+funcional com o nome PORTUS visivel. O utilitario inclui seletor da pasta
+`bin` do PostgreSQL, visualizacao temporaria da senha e botao
+**Limpar log**; essas funcoes nao modificam o PostgreSQL.
+
+
 Se o PowerShell ficar ocupado mas a janela nao aparecer, tente **Alt+Tab**.
 A interface atualizada abre em primeiro plano e exibe mensagens de inicializacao
 ou erros no terminal. Um comando de diagnostico verifica a abertura REAL do

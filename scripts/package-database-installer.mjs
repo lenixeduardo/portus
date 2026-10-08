@@ -14,6 +14,8 @@ mkdirSync(packageRoot, { recursive: true });
 for (const file of ["install-portus-database.ps1", "install-portus-database.bat", "migrate-portus-database.bat", "verify-portus-database.ps1", "check-portus-database.bat", "portus-db-utility.bat", "portus-db-utility.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
   cpSync(join(root, "database", file), join(packageRoot, file));
 }
+// Use the exact production PORTUS icon in the standalone WinForms utility.
+cpSync(join(root, "build", "icon.png"), join(packageRoot, "portus-logo.png"));
 cpSync(join(root, "database", "migrations"), join(packageRoot, "migrations"), { recursive: true });
 cpSync(join(root, "database", "seed"), join(packageRoot, "seed"), { recursive: true });
 cpSync(join(root, "database", "tests"), join(packageRoot, "tests"), { recursive: true });
@@ -36,7 +38,7 @@ executado novamente sem reaplicar migrations já registradas.
 - \`database\\check-portus-database.bat\`: testa a conexão como \`portus_admin\` e
   repara a configuração em \`%LOCALAPPDATA%\\PORTUS\\database-config.json\`.
 - \`database\\migrate-portus-database.bat\`: aplica migrations ainda pendentes.
-- \`database\\portus-db-utility.bat\`: abre a janela com botoes Aplicar migrations, Validar banco e Verificar IP/rede, alem do cadastro inicial do IP do servidor.
+- \`database\\portus-db-utility.bat\`: abre a interface PORTUS com logo real, configuracao de conexao, validar banco, aplicar migrations e verificar/registrar IP do servidor.
 
 Para configurar manualmente uma sessão de desenvolvimento:
 
