@@ -46,6 +46,43 @@ Para uma instalação com PostgreSQL em outro caminho, por exemplo versão 17:
 .\database\install-portus-database.ps1 -PostgresBin "C:\Program Files\PostgreSQL\17\bin"
 ```
 
+## Atualizar um servidor existente: erro `coluna b.completed não existe`
+
+A versão com lote único e conclusão supervisionada depende da migration
+`012_unified_batch_traceability.sql`. Atualizar apenas o executável da estação
+**não atualiza o PostgreSQL do servidor**. Se a lista de lotes falhar com
+`b.completed`, faça a atualização **somente no computador servidor**, usando
+o pacote mais recente (com a migration 012 corrigida).
+
+Abra PowerShell no diretório do projeto ou na pasta `database` extraída do
+pacote de instalação e execute, a partir da raiz do projeto:
+
+```powershell
+.\database\install-portus-database.ps1 -MigrationsOnly
+```
+
+O script solicita a senha do **administrador PostgreSQL** e aplica somente
+migrations ainda não registradas, sem recriar o banco ou limpar lotes, sessões,
+leituras e histórico. Se o PostgreSQL estiver instalado em outro local,
+informe `-PostgresBin "C:\Program Files\PostgreSQL\17\bin"` (ajuste a versão).
+
+Confira o resultado no banco `portus`:
+
+```sql
+SELECT name, applied_at
+  FROM portus_schema_migrations
+ WHERE name = '012_unified_batch_traceability.sql';
+
+SELECT column_name
+  FROM information_schema.columns
+ WHERE table_schema = 'public'
+   AND table_name = 'batches'
+   AND column_name IN ('completed', 'completed_at', 'completed_by');
+```
+
+Depois de aplicar com sucesso, reinicie o PORTUS nas estações. Não conceda
+credenciais administrativas PostgreSQL aos operadores/clientes.
+
 ## Ordem de aplicação manual
 
 Execute as migrations em ordem:
