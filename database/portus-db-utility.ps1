@@ -56,13 +56,40 @@ function Add-Label([string]$value,[int]$x,[int]$y,[int]$width,[int]$height=26) {
   $canvas.Controls.Add($item)
   return $item
 }
+function Rounded-Path([int]$w,[int]$h,[int]$radius=6) {
+  $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $diameter = $radius * 2
+  $path.AddArc(0,0,$diameter,$diameter,180,90)
+  $path.AddArc(($w-$diameter-1),0,$diameter,$diameter,270,90)
+  $path.AddArc(($w-$diameter-1),($h-$diameter-1),$diameter,$diameter,0,90)
+  $path.AddArc(0,($h-$diameter-1),$diameter,$diameter,90,90)
+  $path.CloseFigure()
+  return $path
+}
 $script:UiCards = @()
 function Make-Card([int]$x,[int]$y,[int]$w,[int]$h) {
+  $shadow = New-Object System.Windows.Forms.Panel
+  $shadow.Location = New-Object System.Drawing.Point(($x+1),($y+2))
+  $shadow.Size = New-Object System.Drawing.Size($w,$h)
+  $shadow.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#ECF1F8")
+  $canvas.Controls.Add($shadow)
   $panel = New-Object System.Windows.Forms.Panel
   $panel.Location = New-Object System.Drawing.Point($x,$y)
   $panel.Size = New-Object System.Drawing.Size($w,$h)
   $panel.BackColor = UiColor "surface"
-  $panel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+  $panel.BorderStyle = [System.Windows.Forms.BorderStyle]::None
+  $rounded = Rounded-Path $w $h 6
+  $panel.Region = New-Object System.Drawing.Region($rounded)
+  $rounded.Dispose()
+  $panel.Add_Paint({
+    param($sender,$paint)
+    $outline = Rounded-Path $sender.Width $sender.Height 6
+    $pen = New-Object System.Drawing.Pen((UiColor "border"),1)
+    try {
+      $paint.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+      $paint.Graphics.DrawPath($pen,$outline)
+    } finally { $pen.Dispose(); $outline.Dispose() }
+  })
   $canvas.Controls.Add($panel)
   $script:UiCards += $panel
   return $panel
