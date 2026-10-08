@@ -1,11 +1,10 @@
 import { BrowserWindow, dialog, ipcMain } from "electron";
 import { z } from "zod";
-import { IPC, type ServiceResult } from "../../shared/ipc";
+import { IPC, type ServiceResult, type BatchHistory, type BatchWithProduct } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
-import { isCentralDatabaseConfigured, isCentralDatabaseRequired } from "../db/central-connection";
 import { getCentralBatchHistory } from "../db/central-history-repo";
-import { listAllBatches } from "../db/batches-repo";
-import { buildCsvContent, getBatchHistory } from "../db/history-repo";
+import { listCentralAllBatches } from "../db/central-batches-repo";
+import { buildCsvContent } from "../db/central-report-content";
 import { writeFormattedXlsx } from "../db/excel-report";
 import { buildBatchPrintHtml } from "../db/traceability-report";
 import { compose, requireAuth, validateInput } from "./middleware";
@@ -23,14 +22,10 @@ const exportCsvSchema = z.object({
   }).optional()
 });
 
-async function loadHistoryForCurrentUser(batchId: number) {
+async function loadHistoryForCurrentUser(batchId: number): Promise<BatchHistory | null> {
   const user = getCurrentUser();
   if (!user) throw new Error("Sessão expirada.");
-  return isCentralDatabaseConfigured()
-    ? getCentralBatchHistory(batchId, user.username, user.sectorCode ?? "PRODUCTION")
-    : isCentralDatabaseRequired()
-      ? null
-      : getBatchHistory(batchId);
+  return getCentralBatchHistory(batchId, user.username, user.sectorCode ?? "PRODUCTION");
 }
 
 async function printTraceabilityHtml(html: string): Promise<void> {
@@ -54,19 +49,24 @@ async function printTraceabilityHtml(html: string): Promise<void> {
 export function registerHistoryHandlers(): void {
   ipcMain.handle(
     IPC.batchesListAll,
-    compose([requireAuth])((): ReturnType<typeof listAllBatches> => isCentralDatabaseRequired() ? [] : listAllBatches())
+    compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
+      const user = getCurrentUser();
+      if (!user) throw new Error("Sessão expirada.");
+      return listCentralAllBatches(user.username, user.sectorCode ?? "PRODUCTION");
+    })
   );
 
   ipcMain.handle(
     IPC.historyGetBatch,
     compose([requireAuth, validateInput(getBatchHistorySchema)])(
-      (_e, input: z.infer<typeof getBatchHistorySchema>): ServiceResult<ReturnType<typeof getBatchHistory>> => {
-        if (isCentralDatabaseRequired()) {
-          return { ok: false, error: "O histórico local está desabilitado no modo PostgreSQL central." };
+      async (_e, input: z.infer<typeof getBatchHistorySchema>): Promise<ServiceResult<BatchHistory>> => {
+        try {
+          const history = await loadHistoryForCurrentUser(input.batchId);
+          return history ? { ok: true, data: history }
+            : { ok: false, error: "Lote não encontrado no PostgreSQL." };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao consultar histórico." };
         }
-        const history = getBatchHistory(input.batchId);
-        if (!history) return { ok: false, error: "Lote não encontrado." };
-        return { ok: true, data: history };
       }
     )
   );
@@ -95,11 +95,7 @@ export function registerHistoryHandlers(): void {
         if (!user) return { ok: false, error: "Sessão expirada." };
         let history;
         try {
-          history = isCentralDatabaseConfigured()
-            ? await getCentralBatchHistory(input.batchId, user.username, user.sectorCode ?? "PRODUCTION")
-            : isCentralDatabaseRequired()
-              ? null
-              : getBatchHistory(input.batchId);
+          history = await loadHistoryForCurrentUser(input.batchId);
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Não foi possível carregar o histórico central." };
         }
@@ -111,7 +107,7 @@ export function registerHistoryHandlers(): void {
             const filteredReadings = session.readings.filter((r) => {
               if (filters.equipmentId && r.equipmentId !== filters.equipmentId) return false;
 
-              const rDate = new Date(r.capturedAt.replace(" ", "T") + "Z");
+              const rDate = new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(r.capturedAt) ? r.capturedAt : r.capturedAt.replace(" ", "T") + "Z");
               if (filters.startDate) {
                 const start = new Date(filters.startDate + "T00:00:00");
                 if (rDate < start) return false;
