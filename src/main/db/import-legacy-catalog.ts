@@ -1,3 +1,4 @@
+import type { Product } from "../../shared/types";
 import { getSetting, setSetting } from "./settings-repo";
 import { getUser, getUserByUsername, listUsers } from "./users-repo";
 import { listProducts } from "./products-repo";
@@ -25,7 +26,7 @@ export async function importLegacyCatalogToCentral(): Promise<void> {
   }
 
   const existing = await listCentralProducts(true);
-  const knownProducts = new Map(existing.map(p => [p.name.trim().toLocaleLowerCase("pt-BR"), p]));
+  const knownProducts = new Map<string, Product>(existing.map(p => [p.name.trim().toLocaleLowerCase("pt-BR"), p] as [string, Product]));
   for (const product of listProducts()) {
     const name = product.name.trim();
     const key = name.toLocaleLowerCase("pt-BR");
