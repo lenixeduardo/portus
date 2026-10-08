@@ -156,7 +156,10 @@ export function getCentralPool(): Pool {
       max: Number(process.env.PORTUS_DATABASE_POOL_MAX ?? 5),
       connectionTimeoutMillis: Number(process.env.PORTUS_DATABASE_CONNECT_TIMEOUT_MS ?? 5000),
       idleTimeoutMillis: 30000,
-      application_name: "portus-electron"
+      application_name: "portus-electron",
+      // Toda a estrutura instalada pelas migrations pertence ao schema public.
+      // Não permitir que search_path do usuário resolva outra tabela users.
+      options: "-c search_path=public"
     });
   }
   return pool;
@@ -170,6 +173,14 @@ export async function centralQuery<T extends QueryResultRow = QueryResultRow>(
     return await getCentralPool().query<T>(text, values);
   } catch (error) {
     const postgresError = error as { code?: string; message?: string } | null;
+    if (postgresError?.code === "42703" &&
+        /(?:column|coluna)\s+["']sector_code["']/i.test(postgresError.message ?? "")) {
+      throw new Error(
+        "Esquema PostgreSQL desatualizado: users.sector_code ausente. " +
+        "Aplique a migration 013 no servidor do banco conectado com " +
+        "database/install-portus-database.ps1 -MigrationsOnly."
+      );
+    }
     if (postgresError?.code === "42703" && /\bb\.completed\b/i.test(postgresError.message ?? "")) {
       throw new Error(
         "Banco central PORTUS desatualizado (coluna batches.completed ausente). " +
@@ -207,6 +218,10 @@ export async function checkCentralDatabase(): Promise<boolean> {
     "WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'active') " +
     "AND EXISTS (SELECT 1 FROM information_schema.columns " +
     "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'barcode_value') " +
+    "AND EXISTS (SELECT 1 FROM information_schema.columns " +
+    "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'sector_code') " +
+    "AND EXISTS (SELECT 1 FROM information_schema.columns " +
+    "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'laboratory_profile') " +
     "AND to_regprocedure('public.portus_save_product(bigint,text,text,text)') IS NOT NULL " +
     "AND to_regclass('public.portus_station_settings') IS NOT NULL " +
     "AND to_regclass('public.portus_station_equipment_profiles') IS NOT NULL " +
@@ -216,8 +231,26 @@ export async function checkCentralDatabase(): Promise<boolean> {
     "AS ready"
   );
   if (!schema.rows[0]?.ready) {
-    throw new Error("Servidor PostgreSQL precisa das migrations 012, 013 e 014. " +
-      "Execute install-portus-database.ps1 -MigrationsOnly na máquina servidor.");
+    const existingColumns = await centralQuery<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns " +
+      "WHERE table_schema = 'public' AND table_name = 'users' " +
+      "AND column_name = ANY($1::text[])",
+      [["sector_code", "laboratory_profile", "barcode_value"]]
+    );
+    const present = new Set(existingColumns.rows.map(row => row.column_name));
+    const missing = ["sector_code", "laboratory_profile", "barcode_value"]
+      .filter(column => !present.has(column));
+    if (missing.length) {
+      throw new Error(
+        "Esquema PostgreSQL desatualizado: colunas ausentes " +
+        missing.map(column => "users." + column).join(", ") +
+        ". Aplique a migration 013 no servidor do banco conectado com " +
+        "database/install-portus-database.ps1 -MigrationsOnly. " +
+        "Confira também portus_schema_migrations."
+      );
+    }
+    throw new Error("Esquema PostgreSQL central incompleto (migrations 012, 013 ou 014). " +
+      "Execute database/install-portus-database.ps1 -MigrationsOnly no servidor do banco conectado.");
   }
   return true;
 }

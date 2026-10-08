@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { IPC, type BarcodeLoginRequest, type LoginRequest, type LoginResult } from "../../shared/ipc";
 import { getCurrentUser, isLoginBlocked, login, loginByBarcode, logout, recordFailedLogin } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
+import { checkCentralDatabase } from "../db/central-connection";
 import { cancelCapture, isActive } from "../serial/capture-service";
 import { barcodeLoginSchema, loginSchema } from "../validation/schemas";
 import { validateInput } from "./middleware";
@@ -14,6 +15,7 @@ export function registerAuthHandlers(): void {
         return { ok: false, error: "Usuário ou senha inválidos." };
       }
       try {
+        await checkCentralDatabase();
         const user = await login(req.username.trim(), req.password);
         if (!user) {
           recordFailedLogin(req.username);
@@ -23,8 +25,8 @@ export function registerAuthHandlers(): void {
         return { ok: true, user };
       } catch (error) {
         return { ok: false, error: error instanceof Error
-          ? "PostgreSQL central indisponível: " + error.message
-          : "PostgreSQL central indisponível." };
+          ? "Falha no PostgreSQL central: " + error.message
+          : "Falha na validação do PostgreSQL central." };
       }
     })
   );
@@ -33,14 +35,15 @@ export function registerAuthHandlers(): void {
     IPC.authLoginBarcode,
     validateInput(barcodeLoginSchema)(async (_e, req: BarcodeLoginRequest): Promise<LoginResult> => {
       try {
+        await checkCentralDatabase();
         const user = await loginByBarcode(req.barcodeValue);
         if (!user) return { ok: false, error: "Etiqueta não cadastrada." };
         await logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" });
         return { ok: true, user };
       } catch (error) {
         return { ok: false, error: error instanceof Error
-          ? "PostgreSQL central indisponível: " + error.message
-          : "PostgreSQL central indisponível." };
+          ? "Falha no PostgreSQL central: " + error.message
+          : "Falha na validação do PostgreSQL central." };
       }
     })
   );

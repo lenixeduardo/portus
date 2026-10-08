@@ -3,6 +3,62 @@
 Esta pasta contém a fundação do banco central definida no
 `PORTUS_SPEC_TECNICO(1).md`.
 
+## Erro ao fazer login: coluna "sector_code" não existe
+
+A versão PostgreSQL-only do aplicativo lê a coluna `users.sector_code` criada
+pela migration `013_central_catalog_user_metadata.sql`. O servidor do banco
+**deve ser atualizado antes de iniciar as estações**. O merge do código
+não executa automaticamente migrations num PostgreSQL já instalado.
+
+No computador onde o PostgreSQL configurado no PORTUS está rodando, use os
+scripts **atualizados** do repositório:
+
+```powershell
+# Ajustar host, porta, banco e versão PostgreSQL conforme a instalação real.
+.\database\install-portus-database.ps1 -MigrationsOnly `
+  -DatabaseHost "127.0.0.1" -Port 5432 -DatabaseName "portus" `
+  -PostgresBin "C:\Program Files\PostgreSQL\18\bin"
+```
+
+O comando solicita a senha administrativa do PostgreSQL. Não execute a
+instalação completa (sem `-MigrationsOnly`) para corrigir apenas o schema:
+ela também altera credenciais/configuração de conexão e não é necessária.
+
+Verifique no **mesmo banco apontado por `PORTUS_DATABASE_URL`**:
+
+```sql
+SELECT current_database(), current_user, inet_server_addr(), inet_server_port();
+
+SELECT name, applied_at
+FROM portus_schema_migrations
+WHERE name IN (
+  '012_unified_batch_traceability.sql',
+  '013_central_catalog_user_metadata.sql',
+  '014_station_profiles_audit_ledger.sql'
+)
+ORDER BY name;
+
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'users'
+  AND column_name IN ('sector_code', 'laboratory_profile', 'barcode_value')
+ORDER BY column_name;
+```
+
+As três colunas e as migrations 012, 013 e 014 devem estar presentes.
+Se a migration 013 constar como aplicada mas uma de suas colunas estiver
+ausente, **não** altere manualmente o histórico de migrations e **não** apague
+o banco. Isso indica inconsistência física que exige inspeção e reparo
+controlado. Se a coluna não aparecer apenas no aplicativo, confira o host,
+porta e nome do banco na configuração da estação; a prioridade é variável
+`PORTUS_DATABASE_URL`, depois o arquivo
+`%LOCALAPPDATA%\PORTUS\database-config.json`, depois o Registro Windows.
+Nunca compartilhe a senha que aparece na URL completa.
+
+Após aplicar e validar, reinicie o PORTUS. Como a migration 013 é
+transacional e usa `ADD COLUMN IF NOT EXISTS`, sua aplicação normal mantém
+os usuários, produtos, lotes, sessões e leituras existentes.
+
 ## Ordem de aplicação
 
 ## Instalação no Windows (máquina nova)
