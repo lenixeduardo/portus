@@ -6,7 +6,7 @@
  *   --sqlite=/path/to/serial-reader.sqlite --station=PRODUCAO-01 --sector=PRODUCTION
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import initSqlJs from "sql.js";
@@ -27,6 +27,26 @@ if (!sqlitePath || !existsSync(sqlitePath) || !connectionString ||
     !["PRODUCTION","LABORATORY"].includes(sector)) {
   console.error("Obrigatório: PORTUS_ADMIN_DATABASE_URL e --sqlite=ARQUIVO --station=CODIGO --sector=PRODUCTION|LABORATORY");
   process.exit(2);
+}
+
+// Cada máquina deve usar o mesmo código de estação na importação e no runtime.
+const persistStationIdentity = process.platform === "win32" && args["skip-station-identity"] !== "true";
+const profileRoot = process.env.LOCALAPPDATA || process.env.APPDATA;
+if (persistStationIdentity && !profileRoot) {
+  throw new Error("LOCALAPPDATA/APPDATA ausente. Execute a migração no perfil do usuário do PORTUS.");
+}
+const stationIdentityFile = persistStationIdentity
+  ? join(profileRoot, "PORTUS", "station-identity.json") : null;
+if (stationIdentityFile && existsSync(stationIdentityFile)) {
+  const current = JSON.parse(readFileSync(stationIdentityFile, "utf8"));
+  if (current.code !== station) {
+    throw new Error("Identidade física da estação é " + current.code +
+      ", diferente de --station=" + station + ". Corrija antes de importar.");
+  }
+}
+if (process.env.PORTUS_STATION_CODE &&
+    process.env.PORTUS_STATION_CODE.trim().toUpperCase() !== station) {
+  throw new Error("PORTUS_STATION_CODE diverge de --station=" + station);
 }
 
 const backupDir = resolve(args["backup-dir"] || dirname(sqlitePath));
@@ -382,6 +402,20 @@ try {
     }
   }
   await pgClient.query("COMMIT");
+
+  // O PostgreSQL já foi confirmado: uma eventual falha ao salvar a identidade
+  // precisa interromper o upgrade sem fingir rollback da transação.
+  if (stationIdentityFile && !existsSync(stationIdentityFile)) {
+    try {
+      mkdirSync(dirname(stationIdentityFile), { recursive: true });
+      writeFileSync(stationIdentityFile, JSON.stringify({ code: station }, null, 2) + "\\n",
+        { flag: "wx" });
+      console.log("Identidade de estação salva:", stationIdentityFile);
+    } catch (identityError) {
+      console.error("PostgreSQL importado; NÃO atualize o cliente até salvar a identidade:", identityError);
+      process.exitCode = 1;
+    }
+  }
   console.log("IMPORTAÇÃO CONCILIADA:",JSON.stringify({
     station, sector, total:originalCounts,
     newlyInserted:Object.fromEntries(importedCounts)
