@@ -300,7 +300,7 @@ $script:errOffset = 0
 $script:action = ""
 
 function Show-Log([string]$value) {
-  foreach ($line in ($value -split "\\r?\\n")) {
+  foreach ($line in ($value -split "\r?\n")) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
     $stamp = Get-Date -Format "HH:mm:ss"
     $log.SelectionStart = $log.TextLength
