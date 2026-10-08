@@ -1,9 +1,12 @@
 import { app, ipcMain } from "electron";
 import { existsSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import bcrypt from "bcryptjs";
 import { join } from "node:path";
 import { z } from "zod";
 import { IPC, type InitialSetupInput, type InitialSetupStatus, type ServiceResult } from "../../shared/ipc";
-import { buildCentralDatabaseUrl, checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired, persistCentralDatabaseUrl, verifyCentralDatabaseUrl } from "../db/central-connection";
+import { buildCentralDatabaseUrl, checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired, persistCentralDatabaseUrl, verifyCentralDatabaseUrl, centralQuery } from "../db/central-connection";
+import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { findPostgresBin, runInitialSetup } from "../setup/initial-setup-service";
 import { validateInput } from "./middleware";
 
@@ -62,6 +65,39 @@ export function registerSetupHandlers(): void {
           if (!existsSync(script)) return { ok: false, error: "Arquivos de instalação do banco não foram encontrados. Reinstale o PORTUS." };
           if (!existsSync(join(serverInput.postgresBin, "psql.exe"))) return { ok: false, error: "psql.exe não foi encontrado na pasta informada." };
           await runInitialSetup(serverInput, script);
+          const connectionString = buildCentralDatabaseUrl(serverInput);
+          await verifyCentralDatabaseUrl(connectionString);
+          await persistCentralDatabaseUrl(connectionString);
+
+          // Bootstrap controlado somente no servidor, nunca por estação cliente.
+          const rows = await centralQuery<{ count: string }>("SELECT COUNT(*)::text AS count FROM users");
+          if (Number(rows.rows[0]?.count ?? 0) === 0) {
+            const previousSqlite = join(app.getPath("userData"), "serial-reader.sqlite");
+            if (existsSync(previousSqlite)) {
+              throw new Error("Banco local legado detectado. Importe todos os dados antes do corte PostgreSQL-only.");
+            }
+            const password = process.env.PORTUS_INITIAL_ADMIN_PASSWORD || randomBytes(18).toString("base64url");
+            const hash = await bcrypt.hash(password, 12);
+            await centralQuery(
+              "INSERT INTO users(username,password_hash,role,sector_code,active) " +
+              "VALUES ('admin',$1,'master','PRODUCTION',TRUE)",
+              [hash]
+            );
+            const user = {
+              id: 0, username: "admin", role: "master" as const,
+              sectorCode: "PRODUCTION" as const, createdAt: new Date().toISOString()
+            };
+            await ensureCentralUserAccess(user,{passwordHash:hash});
+            await import("../db/central-station-settings-repo").then(m =>
+              m.setCentralStationSetting("station_sector_code","PRODUCTION"));
+            // Senha única exibida uma só vez ao administrador do servidor.
+            await import("electron").then(m => m.dialog.showMessageBox({
+              type: "warning", title: "PORTUS — conta Master inicial",
+              message: "Usuário: admin",
+              detail: "Anote a senha única e altere-a após entrar:\\n\\n" + password,
+              buttons: ["Anotei a senha"]
+            }));
+          }
         } else {
           const connectionString = buildCentralDatabaseUrl(input);
           await verifyCentralDatabaseUrl(connectionString);
