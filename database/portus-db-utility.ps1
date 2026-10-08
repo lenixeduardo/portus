@@ -1,12 +1,13 @@
 # PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
 # Apenas o botao Aplicar migrations altera o banco, mediante confirmacao.
 [CmdletBinding()]
-param([switch]$SmokeTest, [string]$CapturePath = '')
+param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts)
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
+. (Join-Path $PSScriptRoot "portus-ui-design-tokens.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
 try {
@@ -25,8 +26,8 @@ $form.MinimizeBox = $true
 $form.ShowInTaskbar = $true
 $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
-$form.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#F3F6FA")
-$form.Font = New-Object System.Drawing.Font("Segoe UI",10)
+$form.BackColor = UiColor "background"
+$form.Font = UiFont "Inter" 14
 
 # A scrollable page keeps the entire mockup usable on 1366x768 laptops
 # and Windows installations with display scaling above 100%.
@@ -38,7 +39,7 @@ $form.Controls.Add($page)
 $canvas = New-Object System.Windows.Forms.Panel
 $canvas.Location = New-Object System.Drawing.Point(0,0)
 $canvas.Size = New-Object System.Drawing.Size(1136,946)
-$canvas.BackColor = $form.BackColor
+$canvas.BackColor = UiColor "background"
 $page.Controls.Add($canvas)
 
 function Color([string]$hex) {
@@ -49,7 +50,8 @@ function Add-Label([string]$value,[int]$x,[int]$y,[int]$width,[int]$height=26) {
   $item.Text = $value
   $item.Location = New-Object System.Drawing.Point($x,$y)
   $item.Size = New-Object System.Drawing.Size($width,$height)
-  $item.ForeColor = Color "#334155"
+  $item.ForeColor = UiColor "textPrimary"
+  $item.Font = UiFont "Inter" 13
   $item.TextAlign = [System.Drawing.ContentAlignment]::MiddleLeft
   $canvas.Controls.Add($item)
   return $item
@@ -58,19 +60,19 @@ function Make-Card([int]$x,[int]$y,[int]$w,[int]$h) {
   $panel = New-Object System.Windows.Forms.Panel
   $panel.Location = New-Object System.Drawing.Point($x,$y)
   $panel.Size = New-Object System.Drawing.Size($w,$h)
-  $panel.BackColor = [System.Drawing.Color]::White
+  $panel.BackColor = UiColor "surface"
   $panel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
   $canvas.Controls.Add($panel)
   return $panel
 }
 function Add-Field([string]$label,[int]$x,[int]$y,[int]$width,[string]$initial,[bool]$secret=$false) {
   $caption = Add-Label $label $x $y $width 24
-  $caption.Font = New-Object System.Drawing.Font("Segoe UI Semibold",9.5)
-  $caption.ForeColor = Color "#20314C"
+  $caption.Font = UiFont "Inter" 13 "600"
+  $caption.ForeColor = UiColor "textPrimary"
   $item = New-Object System.Windows.Forms.TextBox
   $item.Location = New-Object System.Drawing.Point($x,($y+28))
-  $item.Size = New-Object System.Drawing.Size($width,36)
-  $item.Font = New-Object System.Drawing.Font("Segoe UI",11)
+  $item.Size = New-Object System.Drawing.Size($width,40)
+  $item.Font = UiFont "Inter" 14
   $item.Text = $initial
   $item.UseSystemPasswordChar = $secret
   $item.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
@@ -81,13 +83,21 @@ function Make-Action([string]$caption,[int]$x,[bool]$primary=$false) {
   $button = New-Object System.Windows.Forms.Button
   $button.Text = $caption
   $button.Location = New-Object System.Drawing.Point($x,496)
-  $button.Size = New-Object System.Drawing.Size(243,54)
-  $button.Font = New-Object System.Drawing.Font("Segoe UI Semibold",10)
+  $button.Size = New-Object System.Drawing.Size(243,56)
+  $button.Font = UiFont "Inter" 14 "600"
   $button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
   $button.FlatAppearance.BorderSize = if ($primary) { 0 } else { 1 }
-  $button.FlatAppearance.BorderColor = Color "#C8D5E5"
-  $button.BackColor = if ($primary) { Color "#1479E5" } else { [System.Drawing.Color]::White }
-  $button.ForeColor = if ($primary) { [System.Drawing.Color]::White } else { Color "#16365F" }
+  $button.FlatAppearance.BorderColor = UiColor "borderStrong"
+  $button.BackColor = if ($primary) { UiColor "primary" } else { UiColor "surface" }
+  $button.ForeColor = if ($primary) { UiColor "surface" } else { UiColor "navy" }
+  $button.Padding = New-Object System.Windows.Forms.Padding(10,0,6,0)
+  $button.TextImageRelation = [System.Windows.Forms.TextImageRelation]::ImageBeforeText
+  $button.ImageAlign = [System.Drawing.ContentAlignment]::MiddleLeft
+  $button.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+  $button.Tag = if ($primary) { "primary" } else { "secondary" }
+  $button.Add_MouseEnter({ param($sender,$event) if ($sender.Enabled) { $sender.BackColor = if ($sender.Tag -eq "primary") { UiColor "primaryHover" } else { UiColor "primarySoft" } } })
+  $button.Add_MouseLeave({ param($sender,$event) if ($sender.Enabled) { $sender.BackColor = if ($sender.Tag -eq "primary") { UiColor "primary" } else { UiColor "surface" } } })
+  $button.Add_MouseDown({ param($sender,$event) if ($sender.Enabled -and $sender.Tag -eq "primary") { $sender.BackColor = UiColor "primaryPressed" } })
   $button.Cursor = [System.Windows.Forms.Cursors]::Hand
   $canvas.Controls.Add($button)
   return $button
@@ -127,10 +137,10 @@ foreach ($logoPath in $logoCandidates) {
 }
 $canvas.Controls.Add($logoPicture)
 $title = Add-Label "PORTUS" 155 36 490 63
-$title.Font = New-Object System.Drawing.Font("Segoe UI Semibold",33)
+$title.Font = UiFont "Sora" 36 "700"
 $title.ForeColor = Color "#081D3F"
 $brandSubtitle = Add-Label "DATABASE UTILITY" 160 99 480 30
-$brandSubtitle.Font = New-Object System.Drawing.Font("Segoe UI Semibold",13)
+$brandSubtitle.Font = UiFont "Sora" 18 "600"
 $brandSubtitle.ForeColor = Color "#355B87"
 [void](Add-Label "PostgreSQL  |  Gerenciamento e manutencao do banco de dados" 160 130 620 30)
 $headerDivider = New-Object System.Windows.Forms.Panel
@@ -144,7 +154,7 @@ $headerHelp.ForeColor = Color "#52647C"
 # Connection card.
 [void](Make-Card 24 180 1086 229)
 $connTitle = Add-Label "CONFIGURACOES DE CONEXAO" 47 195 460 35
-$connTitle.Font = New-Object System.Drawing.Font("Segoe UI Semibold",14)
+$connTitle.Font = UiFont "Sora" 18 "600"
 $connTitle.ForeColor = Color "#112749"
 $helpBar = New-Object System.Windows.Forms.Panel
 $helpBar.Location = New-Object System.Drawing.Point(550,195)
@@ -163,7 +173,7 @@ $passField = Add-Field "Senha do administrador PostgreSQL" 748 323 326 "" $true
 $fields = @($hostField,$portField,$dbField,$userField,$binField,$passField)
 $browseButton = New-Object System.Windows.Forms.Button
 $browseButton.Text = "..."
-$browseButton.Font = New-Object System.Drawing.Font("Segoe UI Semibold",9)
+$browseButton.Font = UiFont "Inter" 13 "600"
 $browseButton.Location = New-Object System.Drawing.Point(690,351)
 $browseButton.Size = New-Object System.Drawing.Size(32,36)
 $browseButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -195,12 +205,34 @@ $showPasswordButton.Add_Click({
 # Action card: four actions have identical widths with the update as primary.
 [void](Make-Card 24 423 1086 163)
 $actionTitle = Add-Label "ACOES" 47 437 440 37
-$actionTitle.Font = New-Object System.Drawing.Font("Segoe UI Semibold",14)
+$actionTitle.Font = UiFont "Sora" 18 "600"
 $actionTitle.ForeColor = Color "#112749"
 $checkButton = Make-Action "Validar banco de dados" 49
 $migrateButton = Make-Action "Aplicar migrations" 313 $true
 $networkButton = Make-Action "Verificar IP / rede" 577
 $registerButton = Make-Action "Registrar IP inicial" 841
+
+# Ícones avulsos transparentes do design system (24 px, assets PNG).
+$script:UiActionImages = @()
+function Set-ActionIcon([System.Windows.Forms.Button]$button,[string]$file) {
+  $iconPath = Join-Path $PSScriptRoot ("assets\\actions\\" + $file + ".png")
+  if (-not (Test-Path -LiteralPath $iconPath)) {
+    throw "Asset de acao PORTUS ausente: $iconPath"
+  }
+  $bytes = [System.IO.File]::ReadAllBytes($iconPath)
+  $stream = New-Object System.IO.MemoryStream(,$bytes)
+  try {
+    $source = [System.Drawing.Image]::FromStream($stream)
+    try { $bitmap = New-Object System.Drawing.Bitmap($source) }
+    finally { $source.Dispose() }
+  } finally { $stream.Dispose() }
+  $button.Image = $bitmap
+  $script:UiActionImages += $bitmap
+}
+Set-ActionIcon $checkButton "validar-banco"
+Set-ActionIcon $migrateButton "aplicar-migrations"
+Set-ActionIcon $networkButton "verificar-rede"
+Set-ActionIcon $registerButton "registrar-ip"
 $captions = @(
   @{x=49; text="Conecta e verifica a integridade do schema."},
   @{x=313; text="Executa apenas migrations pendentes."},
@@ -210,21 +242,21 @@ $captions = @(
 foreach ($caption in $captions) {
   $description = Add-Label $caption.text $caption.x 553 243 26
   $description.ForeColor = Color "#64748B"
-  $description.Font = New-Object System.Drawing.Font("Segoe UI",8.5)
+  $description.Font = UiFont "Inter" 12
   $description.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 }
 
 # Status card.
 [void](Make-Card 24 600 1086 94)
 $statusTitle = Add-Label "STATUS" 47 611 450 28
-$statusTitle.Font = New-Object System.Drawing.Font("Segoe UI Semibold",11)
+$statusTitle.Font = UiFont "Sora" 16 "600"
 $statusTitle.ForeColor = Color "#112749"
 $statusDot = Add-Label ([string][char]0x25CF) 51 640 36 36
-$statusDot.Font = New-Object System.Drawing.Font("Segoe UI",18)
-$statusDot.ForeColor = Color "#16A34A"
+$statusDot.Font = UiFont "Inter" 22 "600"
+$statusDot.ForeColor = UiColor "success"
 $status = Add-Label "Pronto para executar." 91 641 600 27
-$status.Font = New-Object System.Drawing.Font("Segoe UI Semibold",10)
-$status.ForeColor = Color "#166534"
+$status.Font = UiFont "Inter" 14 "600"
+$status.ForeColor = UiColor "success"
 $referenceLabel = Add-Label "Servidor inicial: nao cadastrado" 718 647 363 27
 $referenceLabel.ForeColor = Color "#475569"
 $referenceLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight
@@ -267,30 +299,31 @@ if ($initialIp) {
 # Log card.
 [void](Make-Card 24 709 1086 216)
 $logTitle = Add-Label "LOG DA OPERACAO" 47 718 430 30
-$logTitle.Font = New-Object System.Drawing.Font("Segoe UI Semibold",11)
+$logTitle.Font = UiFont "Sora" 16 "600"
 $logTitle.ForeColor = Color "#112749"
 $clearLogButton = New-Object System.Windows.Forms.Button
 $clearLogButton.Text = "Limpar log"
 $clearLogButton.Location = New-Object System.Drawing.Point(960,719)
 $clearLogButton.Size = New-Object System.Drawing.Size(125,30)
 $clearLogButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$clearLogButton.BackColor = [System.Drawing.Color]::White
-$clearLogButton.FlatAppearance.BorderColor = Color "#C8D5E5"
+$clearLogButton.BackColor = UiColor "surface"
+$clearLogButton.FlatAppearance.BorderColor = UiColor "borderStrong"
 $canvas.Controls.Add($clearLogButton)
 $log = New-Object System.Windows.Forms.RichTextBox
 $log.ReadOnly = $true
 $log.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
 $log.Location = New-Object System.Drawing.Point(47,756)
 $log.Size = New-Object System.Drawing.Size(1037,132)
-$log.Font = New-Object System.Drawing.Font("Consolas",9)
+$log.Font = UiFont "Inter" 12
 $log.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-$log.BackColor = Color "#FAFCFF"
+$log.BackColor = UiColor "surfaceMuted"
 $log.ForeColor = Color "#334155"
 $canvas.Controls.Add($log)
 $clearLogButton.Add_Click({ $log.Clear() })
+$clearLogButton.Font = UiFont "Inter" 12 "500"
 $foot = Add-Label "Validar e verificar IP sao operacoes de leitura. Aplicar migrations exige confirmacao." 47 896 1030 22
-$foot.Font = New-Object System.Drawing.Font("Segoe UI",8.5)
-$foot.ForeColor = Color "#64748B"
+$foot.Font = UiFont "Inter" 12
+$foot.ForeColor = UiColor "textSecondary"
 
 $script:child = $null
 $script:outFile = $null
@@ -305,11 +338,11 @@ function Show-Log([string]$value) {
     $stamp = Get-Date -Format "HH:mm:ss"
     $log.SelectionStart = $log.TextLength
     $log.SelectionColor = if ($line -match '(falhou|Falha|Erro|ERROR|FATAL|inacessivel)') {
-      Color "#B42318"
+      UiColor "error"
     } elseif ($line -match '(sucesso|OK|validado|concluid|pronto)') {
-      Color "#16803B"
+      UiColor "success"
     } else {
-      Color "#334155"
+      UiColor "textPrimary"
     }
     $log.AppendText(("[{0}]  {1}" -f $stamp,$line) + [Environment]::NewLine)
   }
@@ -370,11 +403,11 @@ $timer.Add_Tick({
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
-      $statusDot.ForeColor = Color "#16A34A"
+      $statusDot.ForeColor = UiColor "success"
     } else {
       $status.Text = "Falha (codigo $code). Confira o log."
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
-      $statusDot.ForeColor = Color "#B91C1C"
+      $statusDot.ForeColor = UiColor "error"
     }
     Show-Log $status.Text
     [void](Refresh-Reference)
@@ -474,7 +507,7 @@ function Start-Action([string]$operation) {
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
   $status.Text = "Executando operacao..."
   $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B45309")
-  $statusDot.ForeColor = Color "#CA8A04"
+  $statusDot.ForeColor = UiColor "warning"
   Set-Busy $true
   $timer.Start()
 }
@@ -491,6 +524,20 @@ $form.Add_FormClosing({
   }
 })
 Show-Log "Informe a senha administrativa e selecione uma das acoes."
+if ($script:UiMissingFonts.Count -gt 0) {
+  $message = "Fontes ausentes: " + ($script:UiMissingFonts -join ", ") + ". Execute database\\install-portus-ui-fonts.ps1 e reinicie."
+  Show-Log $message
+  $status.Text = "Tipografia incompleta: instale Sora e Inter."
+  $status.ForeColor = UiColor "warning"
+  $statusDot.ForeColor = UiColor "warning"
+}
+if ($StrictFonts -and $script:UiMissingFonts.Count -gt 0) {
+  throw ("Fontes obrigatorias nao instaladas: " + ($script:UiMissingFonts -join ", "))
+}
+$form.Add_FormClosed({
+  foreach ($image in $script:UiActionImages) { if ($image) { $image.Dispose() } }
+  if ($script:UiFontCollection) { $script:UiFontCollection.Dispose() }
+})
 
 # Janela topmost apenas durante a inicializacao. Ela deve aparecer mesmo se o
 # .bat foi chamado de um terminal que permaneceu em primeiro plano.
@@ -519,7 +566,9 @@ if ($SmokeTest -or $CapturePath) {
         -not $checkButton.Visible -or -not $migrateButton.Visible -or
         -not $networkButton.Visible -or -not $registerButton.Visible -or
         -not $title.Visible -or -not $log.Visible -or
-        -not $canvas.Visible) {
+        -not $canvas.Visible -or
+        -not $checkButton.Image -or -not $migrateButton.Image -or
+        -not $networkButton.Image -or -not $registerButton.Image) {
       $script:smokeFailed = $true
     }
     # O teste usa o asset real do projeto e nao aceita uma marca ausente.
