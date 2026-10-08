@@ -72,7 +72,7 @@ export function registerUsersHandlers(): void {
         }
         try {
           const user = await createCentralUser(input);
-          logAudit({
+          await logAudit({
             actorUserId: actor.id, action: "users.create",
             resourceType: "user", resourceId: user.id,
             details: { username: user.username, sectorCode: user.sectorCode }
@@ -110,7 +110,7 @@ export function registerUsersHandlers(): void {
             sectorCode: laboratory ? "LABORATORY" : "PRODUCTION",
             laboratoryProfile: laboratory ? "capture" : undefined
           }, barcode);
-          logAudit({
+          await logAudit({
             actorUserId: actor.id, action: "users.create_barcode",
             resourceType: "user", resourceId: user.id,
             details: { username: user.username, sectorCode: user.sectorCode }
@@ -140,7 +140,7 @@ export function registerUsersHandlers(): void {
             return { ok: false, error: "Somente Master pode alterar a senha de outro Master." };
           }
           await updateCentralUserPassword(target.id, input.password);
-          logAudit({
+          await logAudit({
             actorUserId: actor.id, action: "users.change_password",
             resourceType: "user", resourceId: target.id
           });
@@ -168,7 +168,7 @@ export function registerUsersHandlers(): void {
             return { ok: false, error: "Somente Master pode excluir outro Master." };
           }
           await deactivateCentralUser(target.id);
-          logAudit({
+          await logAudit({
             actorUserId: actor.id, action: "users.delete",
             resourceType: "user", resourceId: target.id
           });
