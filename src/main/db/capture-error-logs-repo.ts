@@ -1,4 +1,4 @@
-import { run } from "./query";
+import { centralQuery } from "./central-connection";
 
 export interface CaptureErrorLogInput {
   batchId?: number | null;
@@ -12,19 +12,16 @@ export interface CaptureErrorLogInput {
   context?: Record<string, unknown>;
 }
 
-export function insertCaptureErrorLog(input: CaptureErrorLogInput): void {
-  run(
-    `INSERT INTO capture_error_logs
-       (batch_id, capture_session_id, equipment_id, slot_index, severity, code, message, raw_value, context_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    input.batchId ?? null,
-    input.captureSessionId ?? null,
-    input.equipmentId ?? null,
-    input.slotIndex ?? null,
-    input.severity ?? "error",
-    input.code,
-    input.message,
-    input.rawValue ?? null,
-    input.context ? JSON.stringify(input.context) : null
+export async function insertCaptureErrorLog(input: CaptureErrorLogInput): Promise<void> {
+  await centralQuery(
+    "INSERT INTO capture_error_logs " +
+    "(batch_id,capture_session_id,equipment_id,slot_index,severity,code,message,raw_value,context_json) " +
+    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)",
+    [
+      input.batchId ?? null, input.captureSessionId ?? null,
+      input.equipmentId ?? null, input.slotIndex ?? null,
+      input.severity ?? "error", input.code, input.message,
+      input.rawValue ?? null, JSON.stringify(input.context ?? {})
+    ]
   );
 }
