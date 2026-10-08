@@ -382,7 +382,7 @@ try {
     }
   }
   await pgClient.query("COMMIT");
-  if (args["write-identity"] === "true") {
+  if (args["write-identity"] === "true" || (process.platform === "win32" && args["write-identity"] !== "false")) {
     // Os IDs do ledger e do aplicativo devem referir-se à mesma estação.
     const root = process.env.LOCALAPPDATA || process.env.APPDATA;
     if (!root) throw new Error("LOCALAPPDATA/APPDATA ausente para salvar identificação da estação.");
