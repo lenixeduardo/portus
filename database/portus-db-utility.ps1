@@ -16,10 +16,9 @@ $form = New-Object System.Windows.Forms.Form
 $form.Text = "PORTUS Database Utility"
 $form.StartPosition = "CenterScreen"
 $workingArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
-$form.ClientSize = New-Object System.Drawing.Size(
-  [Math]::Min(1160,[Math]::Max(640,$workingArea.Width - 52)),
-  [Math]::Min(928,[Math]::Max(540,$workingArea.Height - 75))
-)
+$windowWidth = [Math]::Min(1160,[Math]::Max(640,$workingArea.Width - 52))
+$windowHeight = [Math]::Min(928,[Math]::Max(540,$workingArea.Height - 75))
+$form.ClientSize = New-Object System.Drawing.Size($windowWidth,$windowHeight)
 $form.FormBorderStyle = "FixedSingle"
 $form.MaximizeBox = $false
 $form.MinimizeBox = $true
@@ -301,7 +300,19 @@ $script:errOffset = 0
 $script:action = ""
 
 function Show-Log([string]$value) {
-  $log.AppendText($value + [Environment]::NewLine)
+  foreach ($line in ($value -split "\\r?\\n")) {
+    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+    $stamp = Get-Date -Format "HH:mm:ss"
+    $log.SelectionStart = $log.TextLength
+    $log.SelectionColor = if ($line -match '(falhou|Falha|Erro|ERROR|FATAL|inacessivel)') {
+      Color "#B42318"
+    } elseif ($line -match '(sucesso|OK|validado|concluid|pronto)') {
+      Color "#16803B"
+    } else {
+      Color "#334155"
+    }
+    $log.AppendText(("[{0}]  {1}" -f $stamp,$line) + [Environment]::NewLine)
+  }
   $log.SelectionStart = $log.TextLength
   $log.ScrollToCaret()
 }
@@ -311,6 +322,9 @@ function Set-Busy([bool]$busy) {
   $migrateButton.Enabled = -not $busy
   $networkButton.Enabled = -not $busy
   $registerButton.Enabled = -not $busy
+  $browseButton.Enabled = -not $busy
+  $showPasswordButton.Enabled = -not $busy
+  $clearLogButton.Enabled = -not $busy
 }
 function Quoted([string]$value) {
   if ($value.Contains('"')) { throw "Aspas nao permitidas em parametros." }
@@ -356,9 +370,11 @@ $timer.Add_Tick({
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
+      $statusDot.ForeColor = Color "#16A34A"
     } else {
       $status.Text = "Falha (codigo $code). Confira o log."
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
+      $statusDot.ForeColor = Color "#B91C1C"
     }
     Show-Log $status.Text
     [void](Refresh-Reference)
@@ -458,6 +474,7 @@ function Start-Action([string]$operation) {
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
   $status.Text = "Executando operacao..."
   $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B45309")
+  $statusDot.ForeColor = Color "#CA8A04"
   Set-Busy $true
   $timer.Start()
 }
