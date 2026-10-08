@@ -9,6 +9,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 . (Join-Path $PSScriptRoot "portus-ui-design-tokens.ps1")
+. (Join-Path $PSScriptRoot "portus-db-utility-glyphs.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
 try {
@@ -146,8 +147,8 @@ function Find-PostgresBin {
 
 # Header with the original installed PORTUS icon, never an invented logo.
 $logoPicture = New-Object System.Windows.Forms.PictureBox
-$logoPicture.Location = New-Object System.Drawing.Point(42,28)
-$logoPicture.Size = New-Object System.Drawing.Size(100,112)
+$logoPicture.Location = New-Object System.Drawing.Point(38,19)
+$logoPicture.Size = New-Object System.Drawing.Size(115,127)
 $logoPicture.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
 $logoCandidates = @(
   (Join-Path $PSScriptRoot "assets\\portus-blue-logo.png"),
@@ -182,13 +183,13 @@ public static class PortusNativeIcon { [DllImport("user32.dll")] public static e
   try { $form.Icon = [System.Drawing.Icon]::FromHandle($hIcon).Clone() }
   finally { [void][PortusNativeIcon]::DestroyIcon($hIcon) }
 }
-$title = Add-Label "PORTUS" 155 36 490 63
-$title.Font = UiFont "Sora" 36 "700"
+$title = Add-Label "PORTUS" 166 24 545 83
+$title.Font = UiFont "Sora" 52 "700"
 $title.ForeColor = UiColor "navy"
-$brandSubtitle = Add-Label "DATABASE UTILITY" 160 99 480 30
+$brandSubtitle = Add-Label "DATABASE UTILITY" 171 105 490 30
 $brandSubtitle.Font = UiFont "Sora" 18 "600"
 $brandSubtitle.ForeColor = UiColor "brandMuted"
-[void](Add-Label "PostgreSQL  |  Gerenciamento e manutencao do banco de dados" 160 130 620 30)
+[void](Add-Label "PostgreSQL  |  Gerenciamento e manutencao do banco de dados" 171 133 585 30)
 $headerDivider = New-Object System.Windows.Forms.Panel
 $headerDivider.BackColor = UiColor "divider"
 $headerDivider.Location = New-Object System.Drawing.Point(786,38)
@@ -199,7 +200,8 @@ $headerHelp.ForeColor = UiColor "intro"
 
 # Connection card.
 [void](Make-Card 24 180 1086 229)
-$connTitle = Add-Label "CONFIGURACOES DE CONEXAO" 47 195 460 35
+$connTitle = Add-Label "Configurações de Conexão" 87 195 440 35
+[void](Add-PortusGlyph "database" 49 201 27 "primary")
 $connTitle.Font = UiFont "Sora" 18 "600"
 $connTitle.ForeColor = UiColor "heading"
 $helpBar = New-Object System.Windows.Forms.Panel
@@ -207,7 +209,8 @@ $helpBar.Location = New-Object System.Drawing.Point(550,195)
 $helpBar.Size = New-Object System.Drawing.Size(534,37)
 $helpBar.BackColor = UiColor "primarySoft"
 $canvas.Controls.Add($helpBar)
-$helpText = Add-Label "IP validado com base no servidor da primeira instalacao." 564 198 512 31
+$helpText = Add-Label "Verifique se o IP corresponde ao servidor da primeira instalação." 586 198 488 31
+[void](Add-PortusGlyph "network" 559 203 19 "primary")
 $helpText.ForeColor = UiColor "infoText"
 $helpText.BackColor = $helpBar.BackColor
 $hostField = Add-Field "Servidor" 48 247 326 "127.0.0.1"
@@ -250,7 +253,8 @@ $showPasswordButton.Add_Click({
 
 # Action card: four actions have identical widths with the update as primary.
 [void](Make-Card 24 423 1086 163)
-$actionTitle = Add-Label "ACOES" 47 437 440 37
+$actionTitle = Add-Label "Ações" 87 437 440 37
+[void](Add-PortusGlyph "settings" 49 443 27 "primary")
 $actionTitle.Font = UiFont "Sora" 18 "600"
 $actionTitle.ForeColor = UiColor "heading"
 $checkButton = Make-Action "Validar banco de dados" 49
@@ -294,13 +298,19 @@ foreach ($caption in $captions) {
 
 # Status card.
 [void](Make-Card 24 600 1086 94)
-$statusTitle = Add-Label "STATUS" 47 611 450 28
+$statusTitle = Add-Label "Status" 87 611 450 28
+[void](Add-PortusGlyph "document" 49 612 26 "primary")
 $statusTitle.Font = UiFont "Sora" 16 "600"
 $statusTitle.ForeColor = UiColor "heading"
 $statusDot = Add-Label ([string][char]0x25CF) 51 640 36 36
+$statusDot.Visible = $false
+$statusGlyph = Add-PortusGlyph "check" 52 643 30 "success"
 $statusDot.Font = UiFont "Inter" 22 "600"
 $statusDot.ForeColor = UiColor "success"
-$status = Add-Label "Pronto para executar." 91 641 600 27
+$status = Add-Label "Pronto para executar." 93 639 599 27
+$statusDescription = Add-Label "Configure os parâmetros e selecione uma ação." 93 664 597 22
+$statusDescription.ForeColor = UiColor "textSecondary"
+$statusDescription.Font = UiFont "Inter" 12
 $status.Font = UiFont "Inter" 14 "600"
 $status.ForeColor = UiColor "success"
 $referenceLabel = Add-Label "Servidor inicial: nao cadastrado" 718 647 363 27
@@ -344,7 +354,8 @@ if ($initialIp) {
 
 # Log card.
 [void](Make-Card 24 709 1086 216)
-$logTitle = Add-Label "LOG DA OPERACAO" 47 718 430 30
+$logTitle = Add-Label "Log" 87 718 430 30
+[void](Add-PortusGlyph "document" 50 721 25 "primary")
 $logTitle.Font = UiFont "Sora" 16 "600"
 $logTitle.ForeColor = UiColor "heading"
 $clearLogButton = New-Object System.Windows.Forms.Button
@@ -365,11 +376,16 @@ $log.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $log.BackColor = UiColor "surfaceMuted"
 $log.ForeColor = UiColor "textPrimary"
 $canvas.Controls.Add($log)
-$clearLogButton.Add_Click({ $log.Clear() })
+$clearLogButton.Add_Click({ $log.Clear(); $logPlaceholder.Visible = $true })
 $clearLogButton.Font = UiFont "Inter" 12 "500"
 $foot = Add-Label "Validar e verificar IP sao operacoes de leitura. Aplicar migrations exige confirmacao." 47 896 1030 22
 $foot.Font = UiFont "Inter" 12
 $foot.ForeColor = UiColor "textSecondary"
+
+# Mensagem neutra de estado vazio: nao simula conexoes ou migrations.
+$logPlaceholder = Add-Label "Nenhuma operação executada. As mensagens reais aparecerão aqui." 66 790 930 28
+$logPlaceholder.Font = UiFont "Inter" 13
+$logPlaceholder.ForeColor = UiColor "textSecondary"
 
 # Labels/inputs pertencem ao card fisico, nao ao canvas cinza.
 # Sem isso, WinForms desenha retangulos cinza atras dos textos brancos.
@@ -428,6 +444,28 @@ $passField.Width = $passField.Width - 40
 $browseButton.BringToFront()
 $showPasswordButton.BringToFront()
 
+# Iconografia semanticamente associada aos campos (sem alterar o valor real).
+foreach ($item in @(
+  @{ field=$hostField; icon="server" },
+  @{ field=$portField; icon="network" },
+  @{ field=$dbField; icon="database" },
+  @{ field=$userField; icon="user" },
+  @{ field=$binField; icon="folder" },
+  @{ field=$passField; icon="lock" }
+)) {
+  $field = $item.field
+  $prefix = New-Object System.Windows.Forms.PictureBox
+  $prefix.Location = New-Object System.Drawing.Point(9,10)
+  $prefix.Size = New-Object System.Drawing.Size(18,18)
+  $prefix.BackColor = UiColor "surface"
+  $prefix.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+  $prefix.Image = New-PortusGlyph $item.icon 18 "brandMuted"
+  $field.Tag.Surface.Controls.Add($prefix)
+  $field.Location = New-Object System.Drawing.Point(35,8)
+  $field.Width = $field.Width - 26
+}
+
+
 $script:child = $null
 $script:outFile = $null
 $script:errFile = $null
@@ -436,6 +474,7 @@ $script:errOffset = 0
 $script:action = ""
 
 function Show-Log([string]$value) {
+  $logPlaceholder.Visible = $false
   foreach ($line in ($value -split "\r?\n")) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
     $stamp = Get-Date -Format "HH:mm:ss"
@@ -453,6 +492,7 @@ function Show-Log([string]$value) {
   $log.ScrollToCaret()
 }
 function Set-Busy([bool]$busy) {
+  if ($busy) { $statusDescription.Text = "Operação em andamento. Aguarde a confirmação." }
   foreach ($field in $fields) {
     $field.Enabled = -not $busy
     $field.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
@@ -524,6 +564,7 @@ $timer.Add_Tick({
       $statusDot.ForeColor = UiColor "error"
     }
     Show-Log $status.Text
+    $statusDescription.Text = if ($code -eq 0) { "Confira o log para os detalhes da operação." } else { "Revise o erro apresentado no log antes de tentar novamente." }
     [void](Refresh-Reference)
   }
 })
@@ -651,6 +692,7 @@ if ($StrictFonts -and $script:UiMissingFonts.Count -gt 0) {
 $form.Add_FormClosed({
   foreach ($image in $script:UiActionImages) { if ($image) { $image.Dispose() } }
   if ($script:UiFontCollection) { $script:UiFontCollection.Dispose() }
+  foreach ($icon in $script:UiDecorativeIcons) { if ($icon) { $icon.Dispose() } }
 })
 
 # Janela topmost apenas durante a inicializacao. Ela deve aparecer mesmo se o
