@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { InitialSetupInput } from "../../shared/ipc";
 
@@ -49,4 +50,34 @@ export async function runInitialSetup(
       PORTUS_SETUP_APP_PASSWORD: input.appPassword
     }
   });
+}
+
+/** Onboarding is per Windows profile and machine, not inferred from a shared database URL. */
+function installationStatePath(): string | null {
+  const root = process.env.LOCALAPPDATA?.trim() || process.env.APPDATA?.trim();
+  return root ? join(root, "PORTUS", "installation-state.json") : null;
+}
+
+export function isInitialSetupCompleted(): boolean {
+  const filename = installationStatePath();
+  if (!filename) return false;
+  try {
+    const state = JSON.parse(readFileSync(filename, "utf8")) as Record<string, unknown>;
+    return state.schemaVersion === 1 && state.completed === true &&
+      (state.installationMode === "server" || state.installationMode === "client");
+  } catch {
+    return false;
+  }
+}
+
+export function markInitialSetupComplete(mode: "server" | "client"): void {
+  const filename = installationStatePath();
+  if (!filename) throw new Error("Não foi possível determinar o perfil Windows para concluir a configuração.");
+  mkdirSync(dirname(filename), { recursive: true });
+  writeFileSync(filename, JSON.stringify({
+    schemaVersion: 1,
+    completed: true,
+    installationMode: mode,
+    completedAt: new Date().toISOString()
+  }, null, 2) + "\n", { encoding: "utf8" });
 }
