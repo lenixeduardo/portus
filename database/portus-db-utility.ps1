@@ -10,6 +10,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 . (Join-Path $PSScriptRoot "portus-ui-design-tokens.ps1")
 . (Join-Path $PSScriptRoot "portus-db-utility-glyphs.ps1")
+. (Join-Path $PSScriptRoot "portus-db-utility-process.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
 try {
@@ -583,13 +584,8 @@ $timer.Add_Tick({
       # WinPS 5.1 pode expor ExitCode como null em Process (-PassThru)
       # se o handle ainda nao foi sincronizado. WaitForExit() garante
       # que Windows informou o encerramento antes de ler ExitCode.
-      $script:child.WaitForExit()
+      $code = Get-PortusChildExitCode -Process $script:child
       Poll-Log
-      $actualExitCode = $script:child.ExitCode
-      if ($null -eq $actualExitCode) {
-        throw "Windows devolveu ExitCode nulo apos WaitForExit()."
-      }
-      $code = [int]$actualExitCode
       Show-Log ("Processo filho finalizado. ExitCode={0}" -f $code) "ui"
     } catch {
       $code = 1
