@@ -1386,6 +1386,102 @@ button.secondary:hover { background: var(--surface-raised); }
 .setup-input-icon { position: relative; }.setup-input-icon svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-faint); }.setup-input-icon input { padding-left: 34px; }
 .setup-warning { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 9px 10px; color: #facc15; background: var(--warn-dim); border: 1px solid rgba(250, 204, 21, .28); font-size: 11px; border-radius: 4px; }.setup-warning code { color: inherit; }
 .success { display: flex; align-items: center; gap: 8px; }.setup-submit { width: 100%; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* First-run setup: isolated high-contrast black theme, independent from the app theme. */
+.initial-setup-wrap {
+  background: #050505;
+  color: #f8fafc;
+  color-scheme: dark;
+}
+.initial-setup-wrap::before { opacity: .035; }
+.initial-setup-card {
+  background: #0b0d0e;
+  border-color: #303639;
+  color: #f8fafc;
+}
+.initial-setup-intro {
+  background: #080a0b;
+  border-right-color: #303639;
+  color: #f8fafc;
+}
+.initial-setup-intro h1,
+.initial-setup-form-wrap h2,
+.initial-setup-form-wrap .field label,
+.initial-setup-form-wrap strong {
+  color: #ffffff;
+}
+.initial-setup-intro p,
+.initial-setup-intro .setup-note,
+.initial-setup-form-wrap .setup-form-heading p,
+.initial-setup-form-wrap .field small,
+.initial-setup-form-wrap .field small code,
+.initial-setup-form-wrap .setup-mode-choice small {
+  color: #c8d0d3;
+}
+.initial-setup-intro .setup-steps { color: #acb8bd; }
+.initial-setup-intro .setup-steps .is-current { color: #ffffff; }
+.initial-setup-intro .setup-steps span { border-color: #586267; }
+.initial-setup-intro .setup-steps .is-current span {
+  background: #00ceb7;
+  border-color: #00ceb7;
+  color: #04110f;
+}
+.initial-setup-intro .setup-note { border-top-color: #343c3f; }
+.initial-setup-form-wrap { background: #0b0d0e; }
+.initial-setup-form-wrap .field input,
+.initial-setup-form-wrap .field select {
+  background: #141819;
+  color: #ffffff;
+  border: 1px solid #485155;
+  border-radius: 5px;
+}
+.initial-setup-form-wrap .field input::placeholder { color: #9ba7ac; opacity: 1; }
+.initial-setup-form-wrap .field input:focus,
+.initial-setup-form-wrap .field select:focus {
+  border-color: #00ceb7;
+  outline: 2px solid rgba(0, 206, 183, .28);
+  outline-offset: 1px;
+}
+.initial-setup-form-wrap .setup-mode-choice button {
+  background: #15191a;
+  border-color: #444f52;
+  color: #e5ecee;
+}
+.initial-setup-form-wrap .setup-mode-choice button.is-selected {
+  background: #102721;
+  border-color: #00ceb7;
+  color: #ffffff;
+}
+.initial-setup-form-wrap .setup-mode-choice button small { color: #c4cfd2; }
+.initial-setup-form-wrap .setup-mode-choice svg,
+.initial-setup-form-wrap .setup-form-heading svg { color: #00dec8; }
+.initial-setup-form-wrap .setup-warning {
+  background: #29200e;
+  border-color: #80652b;
+  color: #ffe2a0;
+}
+.initial-setup-form-wrap .setup-warning code { color: #fff0c6; }
+.initial-setup-form-wrap .success {
+  background: #102920;
+  color: #b0f5d9;
+  border: 1px solid #326c58;
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+.initial-setup-form-wrap .error {
+  background: #34181a;
+  color: #ffd3d3;
+  border: 1px solid #a34e51;
+}
+.initial-setup-form-wrap .setup-submit {
+  background: #00ceb7;
+  border-color: #00ceb7;
+  color: #051411;
+  font-weight: 700;
+}
+.initial-setup-form-wrap .setup-submit:hover:not(:disabled) { background: #25e0cd; }
+.initial-setup-form-wrap .setup-submit:focus-visible { outline: 2px solid #ffffff; outline-offset: 3px; }
+
 @media (max-width: 780px) { .initial-setup-wrap { padding: 18px; align-items: flex-start; }.initial-setup-card { grid-template-columns: 1fr; }.initial-setup-intro { gap: 18px; border-right: 0; border-bottom: 1px solid var(--border-strong); }.setup-steps { display: none; }.setup-note { margin-top: 0; }.initial-setup-form-wrap { padding: 26px 22px; }.setup-grid, .setup-mode-choice { grid-template-columns: 1fr; gap: 0; }.setup-mode-choice { gap: 8px; } }
 
 /* ── Active batches: operational list ───────────────── */
