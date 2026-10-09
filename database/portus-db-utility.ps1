@@ -867,7 +867,7 @@ if ($SmokeTest -or $CapturePath) {
       try {
         $rect = New-Object System.Drawing.Rectangle(0,0,$canvas.Width,$canvas.Height)
         $canvas.DrawToBitmap($visualCheck,$rect)
-        $buttonColor = $visualCheck.GetPixel(531,500)
+        $buttonColor = $visualCheck.GetPixel(350,500)
         $cardColor = $visualCheck.GetPixel(40,210)
         $expectedButton = UiColor "primary"
         $expectedCard = UiColor "surface"
