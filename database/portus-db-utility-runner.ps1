@@ -14,7 +14,6 @@ param(
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = $utf8
-[Console]::InputEncoding = $utf8
 $OutputEncoding = $utf8
 $env:PGCLIENTENCODING = "UTF8"
 
