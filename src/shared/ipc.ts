@@ -92,6 +92,8 @@ export interface CentralDatabaseStatus {
 export interface InitialSetupStatus extends CentralDatabaseStatus {
   supported: boolean;
   postgresBin: string | null;
+  setupCompleted: boolean;
+  stationCode: string;
 }
 
 export interface InitialSetupInput {
@@ -104,6 +106,7 @@ export interface InitialSetupInput {
   databaseName: string;
   appUser: string;
   appPassword: string;
+  stationSectorCode?: "PRODUCTION" | "LABORATORY";
 }
 
 export interface SlotInitState {
