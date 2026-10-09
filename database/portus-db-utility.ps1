@@ -10,6 +10,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 . (Join-Path $PSScriptRoot "portus-ui-design-tokens.ps1")
 . (Join-Path $PSScriptRoot "portus-db-utility-glyphs.ps1")
+. (Join-Path $PSScriptRoot "portus-db-utility-process.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
 try {
@@ -497,13 +498,15 @@ $script:outOffset = 0
 $script:errOffset = 0
 $script:action = ""
 
-function Show-Log([string]$value) {
+function Show-Log([string]$value, [ValidateSet("ui","stdout","stderr","diagnostic")][string]$source="ui") {
   $logPlaceholder.Visible = $false
   foreach ($line in ($value -split "\r?\n")) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
     $stamp = Get-Date -Format "HH:mm:ss"
+    $isError = $source -in @("stderr","diagnostic") -or
+      $line -match '(falhou|Falha|Erro|ERROR|FATAL|inacessivel)'
     $log.SelectionStart = $log.TextLength
-    $log.SelectionColor = if ($line -match '(falhou|Falha|Erro|ERROR|FATAL|inacessivel)') {
+    $log.SelectionColor = if ($isError) {
       UiColor "error"
     } elseif ($line -match '(sucesso|OK|validado|concluid|pronto)') {
       UiColor "success"
@@ -511,6 +514,11 @@ function Show-Log([string]$value) {
       UiColor "textPrimary"
     }
     $log.AppendText(("[{0}]  {1}" -f $stamp,$line) + [Environment]::NewLine)
+    # O mesmo log tambem aparece no terminal que iniciou o .bat. O segredo do
+    # PostgreSQL nao faz parte dos argumentos CLI, nem e escrito aqui.
+    $terminalLine = "[PORTUS][$stamp][$source] $line"
+    if ($isError) { Write-Host $terminalLine -ForegroundColor Red }
+    else { Write-Host $terminalLine }
   }
   $log.SelectionStart = $log.TextLength
   $log.ScrollToCaret()
@@ -553,7 +561,10 @@ function Poll-Log {
       $previous = if ($name -eq "out") { $script:outOffset } else { $script:errOffset }
       if ($all.Length -gt $previous) {
         $next = $all.Substring($previous).TrimEnd()
-        if ($next.Length -gt 0) { Show-Log $next }
+        if ($next.Length -gt 0) {
+          $stream = if ($name -eq "err") { "stderr" } else { "stdout" }
+          Show-Log $next $stream
+        }
       }
       if ($name -eq "out") { $script:outOffset = $all.Length }
       else { $script:errOffset = $all.Length }
@@ -567,9 +578,20 @@ $timer.Add_Tick({
   Poll-Log
   $script:child.Refresh()
   if ($script:child.HasExited) {
-    Poll-Log
-    $code = $script:child.ExitCode
     $timer.Stop()
+    $code = $null
+    try {
+      # WinPS 5.1 pode expor ExitCode como null em Process (-PassThru)
+      # se o handle ainda nao foi sincronizado. WaitForExit() garante
+      # que Windows informou o encerramento antes de ler ExitCode.
+      $code = Get-PortusChildExitCode -Process $script:child
+      Poll-Log
+      Show-Log ("Processo filho finalizado. ExitCode={0}" -f $code) "ui"
+    } catch {
+      $code = 1
+      Show-Log ("Falha ao obter resultado do processo: " + $_.Exception.ToString()) "diagnostic"
+      Poll-Log
+    }
     $script:child.Dispose()
     $script:child = $null
     foreach ($file in @($script:outFile,$script:errFile)) {
@@ -586,7 +608,7 @@ $timer.Add_Tick({
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
     } else {
-      $status.Text = "Falha (codigo $code). Confira o log."
+      $status.Text = "Operacao falhou (codigo de saida: $code). Detalhes no terminal."
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
       $statusDot.ForeColor = UiColor "error"
     }
@@ -685,13 +707,14 @@ function Start-Action([string]$operation) {
     }
     $script:child = Start-Process @options
   } catch {
-    Show-Log ("Erro ao executar: " + $_.Exception.Message)
+    Show-Log ("Erro ao executar: " + $_.Exception.ToString()) "diagnostic"
     return
   } finally {
     [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")
     if ($operation -in @("validate","migrate")) { $passField.Clear() }
   }
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
+  Show-Log ("Script: " + $filename + " | PID: " + $script:child.Id)
   $status.Text = "Executando operacao..."
   $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B45309")
   $statusDot.ForeColor = UiColor "warning"
