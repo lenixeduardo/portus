@@ -242,7 +242,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$dataImportButton.Enabled = -not $busy');
     expect(gui).toContain('Show-PortusLegacyImportDialog -Owner $form');
     expect(gui).toContain('pg_dump.exe');
-    expect(gui).toContain('Backups SQLite e PostgreSQL');
+    expect(gui).toContain('backups SQLite e PostgreSQL');
     expect(gui).toContain('-SqlitePath');
     expect(gui).toContain('-StationCode');
     expect(gui).toContain('-Sector');
