@@ -74,11 +74,9 @@ function Rounded-Path([int]$w,[int]$h,[int]$radius=6) {
 }
 $script:UiCards = @()
 function Make-Card([int]$x,[int]$y,[int]$w,[int]$h) {
-  $shadow = New-Object System.Windows.Forms.Panel
-  $shadow.Location = New-Object System.Drawing.Point(($x+1),($y+2))
-  $shadow.Size = New-Object System.Drawing.Size($w,$h)
-  $shadow.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#ECF1F8")
-  $canvas.Controls.Add($shadow)
+  # Nunca coloque um Panel de sombra por cima dos controles filhos: no
+  # Windows PowerShell 5.1 isso pode ocultar todos os labels, inputs e botoes.
+  # Use apenas o card (Surface) como container real de seus controles.
   $panel = New-Object System.Windows.Forms.Panel
   $panel.Location = New-Object System.Drawing.Point($x,$y)
   $panel.Size = New-Object System.Drawing.Size($w,$h)
@@ -97,6 +95,7 @@ function Make-Card([int]$x,[int]$y,[int]$w,[int]$h) {
     } finally { $pen.Dispose(); $outline.Dispose() }
   })
   $canvas.Controls.Add($panel)
+  $panel.BringToFront()
   $script:UiCards += $panel
   return $panel
 }
@@ -404,6 +403,27 @@ foreach ($control in @($canvas.Controls)) {
       }
       break
     }
+  }
+}
+
+# Garantir que o card esta acima do canvas, nao atras de outros paineis.
+# Conteudo sempre pertence ao proprio card, evitando overlays nativos.
+foreach ($card in $script:UiCards) {
+  $card.BringToFront()
+}
+# Cada um dos 4 cards precisa ter filhos renderizaveis e handlers visiveis.
+$script:UiPanelControls = @(
+  @{card=$script:UiCards[0]; controls=@($connTitle,$hostField,$portField,$dbField,$userField,$binField,$passField)},
+  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton)},
+  @{card=$script:UiCards[2]; controls=@($statusTitle,$status,$statusDescription,$statusGlyph)},
+  @{card=$script:UiCards[3]; controls=@($logTitle,$log,$clearLogButton)}
+)
+foreach ($group in $script:UiPanelControls) {
+  foreach ($control in $group.controls) {
+    if ($control.Parent -ne $group.card) {
+      throw ("Layout PORTUS: controle fora do card: " + $control.GetType().Name + " " + $control.Text)
+    }
+    $control.BringToFront()
   }
 }
 
@@ -739,6 +759,19 @@ if ($SmokeTest -or $CapturePath) {
         -not $checkButton.Image -or -not $migrateButton.Image -or
         -not $networkButton.Image -or -not $registerButton.Image) {
       $script:smokeFailed = $true
+    }
+    foreach ($group in $script:UiPanelControls) {
+      if (-not $group.card.Visible -or
+          $canvas.Controls.GetChildIndex($group.card) -ge $canvas.Controls.Count) {
+        $script:smokeFailed = $true
+      }
+      foreach ($child in $group.controls) {
+        # O controle precisa pertencer ao card e estar em arvore de UI visivel;
+        # a propriedade Visible sozinha nao revela um painel sobreposto.
+        if ($child.Parent -ne $group.card -or -not $child.Visible) {
+          $script:smokeFailed = $true
+        }
+      }
     }
     foreach ($pair in @(
       @{button=$checkButton; tip="Conecta e verifica a integridade do schema."},
