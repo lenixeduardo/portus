@@ -1,6 +1,6 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,6 +44,39 @@ describe("utilitario de banco PORTUS", () => {
     expect(auth).toContain('await bcrypt.compare(password, row.password_hash)');
     expect(auth).not.toContain('username === "admin" && password === "admin"');
   });
+
+  it("detecta psql.exe ausente, vazio ou invalido antes de conectar", () => {
+    const helper = read("portus-psql-preflight.ps1");
+    const ui = read("portus-db-utility.ps1");
+    const validator = read("validate-portus-schema.ps1");
+    const installer = read("install-portus-database.ps1");
+    const packager = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
+    expect(helper).toContain('function Get-PortusPsqlValidationError');
+    expect(helper).toContain('$file.Length -lt 1024');
+    expect(helper).toContain('cabecalho de executavel Windows ausente');
+    expect(helper).toContain('$psql --version');
+    expect(helper).toContain('nao altere a pasta data do banco');
+    expect(ui).toContain('Get-PortusPsqlValidationError -BinPath $bin -CheckVersion');
+    expect(ui).toContain('Show-Log $psqlProblem "diagnostic"');
+    expect(validator).toContain('Get-PortusPsqlValidationError -BinPath $PostgresBin -CheckVersion');
+    expect(installer).toContain('Get-PortusPsqlValidationError -BinPath $PostgresBin -CheckVersion');
+    expect(packager).toContain('portus-psql-preflight.ps1');
+  });
+
+  it.skipIf(process.platform !== "win32")("recusa executavel psql.exe de zero byte com erro explicito", () => {
+    const folder = mkdtempSync(join(tmpdir(),"portus-psql-zero-test-"));
+    try {
+      writeFileSync(join(folder,"psql.exe"),"");
+      const script = join(db,"portus-psql-preflight.ps1").replace(/'/g,"''");
+      const temp = folder.replace(/'/g,"''");
+      const command = ". '" + script + "'; $errorText = Get-PortusPsqlValidationError -BinPath '" + temp + "'; Write-Output $errorText; if ($errorText -notmatch '0 bytes') { exit 1 }";
+      const output = execFileSync("powershell.exe", ["-NoProfile","-NonInteractive","-Command",command], {encoding:"utf8",timeout:15_000,windowsHide:true});
+      expect(output).toContain("0 bytes");
+      expect(output).toContain("psql.exe invalido");
+    } finally {
+      rmSync(folder,{recursive:true,force:true});
+    }
+  },20_000);
 
   it("expoe migrations, validacao do banco e verificacao do IP do servidor", () => {
     const gui = read("portus-db-utility.ps1");
@@ -442,7 +475,7 @@ describe("utilitario de banco PORTUS", () => {
   });
 
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
-    for (const path of ["portus-db-utility.ps1", "portus-db-utility-runner.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+    for (const path of ["portus-db-utility.ps1", "portus-db-utility-runner.ps1", "portus-psql-preflight.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
       const escaped = full.replace(/'/g, "''");
       const command = [
