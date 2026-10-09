@@ -76,7 +76,7 @@ export function App() {
     }).catch(() => {});
     Promise.all([window.api.auth.currentUser(), window.api.setup.status()]).then(([u, setup]) => {
       setUser(u);
-      if (!u && setup.required && !setup.configured) setInitialSetup(setup);
+      if (!setup.setupCompleted || !setup.configured) setInitialSetup(setup);
       setBootstrapping(false);
     }).catch(() => setBootstrapping(false));
     return () => { active = false; };
