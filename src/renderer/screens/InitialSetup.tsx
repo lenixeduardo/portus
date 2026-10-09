@@ -145,9 +145,12 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
           <div className={initialStatus.postgresBin ? "success" : "setup-warning"}>
             {initialStatus.postgresBin ? <CheckCircle2 size={16} /> : <TriangleAlert size={16} />}
             {initialStatus.postgresBin
-              ? `PostgreSQL detectado nesta máquina: ${initialStatus.postgresBin}. A instalação local só é necessária para o servidor.`
+              ? `Ferramentas PostgreSQL localizadas: ${initialStatus.postgresBin}. Isso não comprova que o serviço servidor está ativo.`
               : "PostgreSQL não detectado nesta máquina. Isso é normal para Produção/Laboratório como estação cliente."}
           </div>
+          {modeChosen && form.installationMode === "server" && initialStatus.postgresServiceStatus === "not-found" && initialStatus.postgresBin && (
+            <div className="setup-warning"><TriangleAlert size={16} /> O cliente PostgreSQL foi encontrado, mas nenhum serviço PostgreSQL padrão foi identificado. Confira se esta máquina hospeda realmente o servidor antes de configurar o banco.</div>
+          )}
           {modeChosen && form.installationMode === "server" && initialStatus.postgresServiceStatus === "stopped" && (
             <div className="setup-warning"><TriangleAlert size={16} /> Um serviço PostgreSQL foi encontrado, mas está parado. Abra <code>services.msc</code>, inicie o serviço existente e tente novamente. Não reinstale nem exclua a pasta de dados.</div>
           )}
