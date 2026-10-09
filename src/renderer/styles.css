@@ -1511,8 +1511,13 @@ button.secondary:hover { background: var(--surface-raised); }
 }
 .initial-setup-form-wrap .setup-error-log strong { color: #efb9b9; font-size: 11px; }
 .initial-setup-form-wrap .setup-error-log code {
+  display: block;
+  max-height: 240px;
+  overflow: auto;
   color: #f0c9c9;
   font-size: 11px;
+  line-height: 1.6;
+  user-select: text;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
