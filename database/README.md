@@ -1,3 +1,25 @@
+## Estação sem setor configurado: falha ao iniciar captura
+
+Se a captura mostrar `Defina o setor desta máquina em Configurações antes da captura`,
+a estação ainda não possui `station_sector_code` válido registrado no PostgreSQL.
+
+Entre com usuário **Master** ou **Admin** **na máquina que vai capturar** e siga:
+
+1. Abra **Configurações > Captura**.
+2. Confira o **Código da estação**, que identifica fisicamente esta máquina.
+3. Escolha **Produção** ou **Laboratório** em **Setor desta máquina**.
+4. Clique **Salvar setor desta máquina** e aguarde a confirmação no PostgreSQL.
+5. Retorne ao lote e inicie a captura com usuário do mesmo setor.
+
+Repita o procedimento em cada computador físico. A configuração é centralizada
+por `station_code` em `portus_station_settings`, mas nunca é copiada
+automaticamente de outra estação ou da sessão de usuário. Se o setor do
+usuário for diferente do setor físico configurado, a captura permanecerá
+bloqueada para preservar a rastreabilidade.
+
+Não é necessário reinstalar o PostgreSQL nem executar migrations para
+definir o setor quando a migration 014 já tiver sido aplicada.
+
 # PostgreSQL central do PORTUS
 
 Esta pasta contém a fundação do banco central definida no

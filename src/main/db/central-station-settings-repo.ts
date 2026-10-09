@@ -70,7 +70,7 @@ export async function getCentralStationIdentity(): Promise<StationIdentity> {
   const settings = await listCentralStationSettings();
   const sector = settings.station_sector_code?.trim().toUpperCase();
   if (sector !== "PRODUCTION" && sector !== "LABORATORY") {
-    throw new Error("Defina o setor desta máquina em Configurações antes da captura.");
+    throw new Error("Setor desta estação não configurado. Entre como Master/Admin, abra Configurações > Captura, selecione Produção ou Laboratório em Setor desta máquina e salve.");
   }
   const name = settings.station_name?.trim() || getRuntimeStationCode();
   return { code: getRuntimeStationCode(), name, sectorCode: sector };

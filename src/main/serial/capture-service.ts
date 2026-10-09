@@ -592,7 +592,7 @@ export async function startCapture(
     }
     timeoutSeconds = await getCentralCaptureTimeoutSeconds();
   } catch (error) {
-    return { ok: false, error: "Falha ao carregar captura central: " + String(error) };
+    return { ok: false, error: "Falha ao carregar captura central: " + (error instanceof Error ? error.message : String(error)) };
   }
 
   const session = await createCentralCaptureSession(

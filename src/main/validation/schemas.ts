@@ -225,6 +225,16 @@ export const updateSettingSchema = z.object({
     "station_sector_code"
   ]),
   value: z.string().min(0)
+}).superRefine((input, context) => {
+  // Evita valores de setor vazios ou desconhecidos mesmo via IPC direto.
+  if (input.key === "station_sector_code" &&
+      input.value !== "PRODUCTION" && input.value !== "LABORATORY") {
+    context.addIssue({
+      code: "custom",
+      path: ["value"],
+      message: "Selecione um setor válido para esta máquina: Produção ou Laboratório."
+    });
+  }
 });
 
 export type UpdateSettingInput = z.infer<typeof updateSettingSchema>;

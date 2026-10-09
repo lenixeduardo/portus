@@ -8,8 +8,10 @@ export function CaptureSettingsTab() {
   const [backupRetention, setBackupRetention] = useState<string>("10");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [stationCode, setStationCode] = useState<string>("");
-  const [stationSectorCode, setStationSectorCode] = useState<"PRODUCTION" | "LABORATORY">("PRODUCTION");
+  const [stationSectorCode, setStationSectorCode] = useState<"" | "PRODUCTION" | "LABORATORY">("");
   const [loading, setLoading] = useState(true);
+  const [savingStation, setSavingStation] = useState(false);
+  const [stationSaved, setStationSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -18,7 +20,9 @@ export function CaptureSettingsTab() {
   const [backupError, setBackupError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.api.settings.getAll().then((s) => {
+    let active = true;
+    void window.api.settings.getAll().then((s) => {
+      if (!active) return;
       setTimeout_(s.capture_timeout_seconds ?? "30");
       setBarcodeRegex(s.barcode_regex ?? "");
       setExportFolder(s.auto_export_folder ?? "");
@@ -26,10 +30,48 @@ export function CaptureSettingsTab() {
       setBackupRetention(s.auto_backup_retention ?? "10");
       setWebhookUrl(s.error_report_webhook ?? "");
       setStationCode(s.station_code ?? "");
-      setStationSectorCode(s.station_sector_code === "LABORATORY" ? "LABORATORY" : "PRODUCTION");
-      setLoading(false);
+      // Nunca assumir Produção: o setor físico deve ser escolhido por um administrador.
+      setStationSectorCode(
+        s.station_sector_code === "PRODUCTION" || s.station_sector_code === "LABORATORY"
+          ? s.station_sector_code
+          : ""
+      );
+    }).catch((cause: unknown) => {
+      if (active) setError(cause instanceof Error ? cause.message : "Não foi possível carregar a configuração da estação.");
+    }).finally(() => {
+      if (active) setLoading(false);
     });
+    return () => { active = false; };
   }, []);
+
+  async function saveStationSector(): Promise<boolean> {
+    if (stationSectorCode !== "PRODUCTION" && stationSectorCode !== "LABORATORY") {
+      setError("Selecione o setor físico desta máquina: Produção ou Laboratório.");
+      return false;
+    }
+    setSavingStation(true);
+    setError(null);
+    setStationSaved(false);
+    try {
+      const stationResult = await window.api.settings.set("station_sector_code", stationSectorCode);
+      if (!stationResult.ok) {
+        setError(stationResult.error);
+        return false;
+      }
+      const updated = await window.api.settings.getAll();
+      if (updated.station_sector_code !== stationSectorCode || updated.station_code !== stationCode) {
+        setError("O setor não foi confirmado para esta estação no PostgreSQL. Reabra Configurações e tente novamente.");
+        return false;
+      }
+      setStationSaved(true);
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível salvar o setor físico da máquina.");
+      return false;
+    } finally {
+      setSavingStation(false);
+    }
+  }
 
   async function save() {
     const timeoutNum = Number(timeout);
@@ -51,12 +93,21 @@ export function CaptureSettingsTab() {
       return;
     }
     if (!stationCode.trim()) {
-      setError("Informe a identificação deste computador, por exemplo PRODUCAO-01 ou LABORATORIO-01.");
+      setError("Não foi possível identificar esta máquina. Verifique a instalação do PORTUS.");
+      return;
+    }
+    if (stationSectorCode !== "PRODUCTION" && stationSectorCode !== "LABORATORY") {
+      setError("Selecione o setor físico desta máquina: Produção ou Laboratório.");
       return;
     }
     setSaving(true);
     setError(null);
     setSaved(false);
+    // A configuração física pode ser salva isoladamente ou junto às demais.
+    if (!(await saveStationSector())) {
+      setSaving(false);
+      return;
+    }
     const r1 = await window.api.settings.set("capture_timeout_seconds", timeout);
     if (!r1.ok) { setSaving(false); setError(r1.error); return; }
     const r2 = await window.api.settings.set("barcode_regex", barcodeRegex.trim());
@@ -69,10 +120,6 @@ export function CaptureSettingsTab() {
     if (!r5.ok) { setSaving(false); setError(r5.error); return; }
     const r6 = await window.api.settings.set("error_report_webhook", webhookUrl.trim());
     if (!r6.ok) { setSaving(false); setError(r6.error); return; }
-    const r7 = await window.api.settings.set("station_code", stationCode.trim().toUpperCase());
-    if (!r7.ok) { setSaving(false); setError(r7.error); return; }
-    const r8 = await window.api.settings.set("station_sector_code", stationSectorCode);
-    if (!r8.ok) { setSaving(false); setError(r8.error); return; }
     setSaving(false);
     setSaved(true);
   }
@@ -94,6 +141,57 @@ export function CaptureSettingsTab() {
 
   return (
     <div className="card" style={{ padding: 24, maxWidth: 480 }}>
+      <section aria-labelledby="station-settings-title" style={{ marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid var(--border, #d8e2ee)" }}>
+        <h3 id="station-settings-title" style={{ marginTop: 0, marginBottom: 12 }}>Identificação desta máquina</h3>
+        <div className="field">
+          <label htmlFor="portus-station-code">Código da estação</label>
+          <input id="portus-station-code" value={stationCode} readOnly className="mono" aria-describedby="portus-station-help" />
+          <small id="portus-station-help" className="muted">
+            Identificação física atribuída a este computador. As configurações são mantidas no PostgreSQL por estação.
+          </small>
+        </div>
+        <div className="field" style={{ marginTop: 16 }}>
+          <label htmlFor="portus-station-sector">Setor desta máquina</label>
+          <select
+            id="portus-station-sector"
+            value={stationSectorCode}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "" || value === "PRODUCTION" || value === "LABORATORY") {
+                setStationSectorCode(value);
+                setSaved(false);
+                setStationSaved(false);
+                setError(null);
+              }
+            }}
+            required
+            aria-required="true"
+            aria-describedby="portus-station-sector-help"
+          >
+            <option value="">Selecione o setor...</option>
+            <option value="PRODUCTION">Produção</option>
+            <option value="LABORATORY">Laboratório</option>
+          </select>
+          <small id="portus-station-sector-help" className="muted">
+            Selecione o setor físico deste computador, não o setor temporário de um usuário.
+            A captura só será permitida quando o setor do usuário e o da estação coincidirem.
+          </small>
+          {!stationSectorCode && (
+            <p role="alert" style={{ marginBottom: 0 }}>
+              Esta estação ainda não tem setor configurado. Selecione Produção ou Laboratório e salve antes de iniciar a leitura.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => { void saveStationSector(); }}
+            disabled={savingStation || saving || !stationSectorCode || !stationCode.trim()}
+            style={{ marginTop: 12 }}
+          >
+            {savingStation ? "Salvando setor..." : "Salvar setor desta máquina"}
+          </button>
+          {stationSaved && <div className="success" role="status" style={{ marginTop: 8 }}>Setor desta máquina confirmado no PostgreSQL. Você já pode tentar a captura.</div>}
+        </div>
+      </section>
       <div className="field">
         <label>Tempo de captura (segundos)</label>
         <input
