@@ -10,6 +10,8 @@ export function CaptureSettingsTab() {
   const [stationCode, setStationCode] = useState<string>("");
   const [stationSectorCode, setStationSectorCode] = useState<"" | "PRODUCTION" | "LABORATORY">("");
   const [loading, setLoading] = useState(true);
+  const [savingStation, setSavingStation] = useState(false);
+  const [stationSaved, setStationSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -42,6 +44,35 @@ export function CaptureSettingsTab() {
     return () => { active = false; };
   }, []);
 
+  async function saveStationSector(): Promise<boolean> {
+    if (stationSectorCode !== "PRODUCTION" && stationSectorCode !== "LABORATORY") {
+      setError("Selecione o setor físico desta máquina: Produção ou Laboratório.");
+      return false;
+    }
+    setSavingStation(true);
+    setError(null);
+    setStationSaved(false);
+    try {
+      const stationResult = await window.api.settings.set("station_sector_code", stationSectorCode);
+      if (!stationResult.ok) {
+        setError(stationResult.error);
+        return false;
+      }
+      const updated = await window.api.settings.getAll();
+      if (updated.station_sector_code !== stationSectorCode || updated.station_code !== stationCode) {
+        setError("O setor não foi confirmado para esta estação no PostgreSQL. Reabra Configurações e tente novamente.");
+        return false;
+      }
+      setStationSaved(true);
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível salvar o setor físico da máquina.");
+      return false;
+    } finally {
+      setSavingStation(false);
+    }
+  }
+
   async function save() {
     const timeoutNum = Number(timeout);
     if (!Number.isFinite(timeoutNum) || timeoutNum < 5 || timeoutNum > 600) {
@@ -72,17 +103,8 @@ export function CaptureSettingsTab() {
     setSaving(true);
     setError(null);
     setSaved(false);
-    // Salvar primeiro o setor da estação; sem esta configuração, a leitura central falha.
-    // A associação fica no PostgreSQL pela station_code real do computador.
-    try {
-      const stationResult = await window.api.settings.set("station_sector_code", stationSectorCode);
-      if (!stationResult.ok) {
-        setError(stationResult.error);
-        setSaving(false);
-        return;
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Falha ao salvar o setor físico da máquina.");
+    // A configuração física pode ser salva isoladamente ou junto às demais.
+    if (!(await saveStationSector())) {
       setSaving(false);
       return;
     }
@@ -98,19 +120,6 @@ export function CaptureSettingsTab() {
     if (!r5.ok) { setSaving(false); setError(r5.error); return; }
     const r6 = await window.api.settings.set("error_report_webhook", webhookUrl.trim());
     if (!r6.ok) { setSaving(false); setError(r6.error); return; }
-    // Confirmar a persistência na base central antes de declarar que pode capturar.
-    try {
-      const updated = await window.api.settings.getAll();
-      if (updated.station_sector_code !== stationSectorCode || updated.station_code !== stationCode) {
-        setError("O setor não foi confirmado para esta estação no PostgreSQL. Reabra Configurações e tente novamente.");
-        setSaving(false);
-        return;
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível confirmar o setor salvo no PostgreSQL.");
-      setSaving(false);
-      return;
-    }
     setSaving(false);
     setSaved(true);
   }
@@ -151,6 +160,7 @@ export function CaptureSettingsTab() {
               if (value === "" || value === "PRODUCTION" || value === "LABORATORY") {
                 setStationSectorCode(value);
                 setSaved(false);
+                setStationSaved(false);
                 setError(null);
               }
             }}
@@ -168,9 +178,18 @@ export function CaptureSettingsTab() {
           </small>
           {!stationSectorCode && (
             <p role="alert" style={{ marginBottom: 0 }}>
-              Esta estação ainda não tem setor configurado. Selecione Produção ou Laboratório e clique em Salvar antes de iniciar a leitura.
+              Esta estação ainda não tem setor configurado. Selecione Produção ou Laboratório e salve antes de iniciar a leitura.
             </p>
           )}
+          <button
+            type="button"
+            onClick={() => { void saveStationSector(); }}
+            disabled={savingStation || saving || !stationSectorCode || !stationCode.trim()}
+            style={{ marginTop: 12 }}
+          >
+            {savingStation ? "Salvando setor..." : "Salvar setor desta máquina"}
+          </button>
+          {stationSaved && <div className="success" role="status" style={{ marginTop: 8 }}>Setor desta máquina confirmado no PostgreSQL. Você já pode tentar a captura.</div>}
         </div>
       </section>
       <div className="field">
