@@ -1482,6 +1482,41 @@ button.secondary:hover { background: var(--surface-raised); }
 .initial-setup-form-wrap .setup-submit:hover:not(:disabled) { background: #25e0cd; }
 .initial-setup-form-wrap .setup-submit:focus-visible { outline: 2px solid #ffffff; outline-offset: 3px; }
 
+/* Diagnostic errors preserve a human-readable summary and a separate technical excerpt. */
+.initial-setup-form-wrap .setup-error-panel {
+  margin: 12px 0 16px;
+  padding: 13px 14px;
+  background: #2b1518;
+  border: 1px solid #9c484c;
+  border-radius: 5px;
+  color: #ffe2e2;
+}
+.initial-setup-form-wrap .setup-error-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.initial-setup-form-wrap .setup-error-heading svg { flex: 0 0 auto; margin-top: 1px; }
+.initial-setup-form-wrap .setup-error-log {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+  padding: 10px;
+  background: #130f11;
+  border: 1px solid #573236;
+  border-radius: 4px;
+}
+.initial-setup-form-wrap .setup-error-log strong { color: #efb9b9; font-size: 11px; }
+.initial-setup-form-wrap .setup-error-log code {
+  color: #f0c9c9;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 780px) { .initial-setup-wrap { padding: 18px; align-items: flex-start; }.initial-setup-card { grid-template-columns: 1fr; }.initial-setup-intro { gap: 18px; border-right: 0; border-bottom: 1px solid var(--border-strong); }.setup-steps { display: none; }.setup-note { margin-top: 0; }.initial-setup-form-wrap { padding: 26px 22px; }.setup-grid, .setup-mode-choice { grid-template-columns: 1fr; gap: 0; }.setup-mode-choice { gap: 8px; } }
 
 /* ── Active batches: operational list ───────────────── */
