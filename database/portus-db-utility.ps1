@@ -805,6 +805,29 @@ if ($SmokeTest -or $CapturePath) {
     if ((Test-Path -LiteralPath $officialLogo) -and $null -eq $logoPicture.Image) {
       $script:smokeFailed = $true
     }
+    # Validacao de pixels renderizados: um smoke test so de .Visible podia
+    # aprovar a janela apesar de os cards inteiros aparecerem vazios no Windows.
+    if (-not $script:smokeFailed) {
+      $visualCheck = New-Object System.Drawing.Bitmap($canvas.Width,$canvas.Height)
+      try {
+        $rect = New-Object System.Drawing.Rectangle(0,0,$canvas.Width,$canvas.Height)
+        $canvas.DrawToBitmap($visualCheck,$rect)
+        $buttonColor = $visualCheck.GetPixel(531,500)
+        $cardColor = $visualCheck.GetPixel(40,210)
+        $expectedButton = UiColor "primary"
+        $expectedCard = UiColor "surface"
+        if ($buttonColor.ToArgb() -ne $expectedButton.ToArgb() -or
+            $cardColor.ToArgb() -ne $expectedCard.ToArgb()) {
+          $script:smokeFailed = $true
+          [Console]::Error.WriteLine(
+            "PORTUS: cards cobertos no render. CTA=" + $buttonColor.ToArgb() +
+            ", esperado=" + $expectedButton.ToArgb() +
+            "; card=" + $cardColor.ToArgb() +
+            ", esperado=" + $expectedCard.ToArgb()
+          )
+        }
+      } finally { $visualCheck.Dispose() }
+    }
     if ($CapturePath -and -not $script:smokeFailed) {
       # Captura os pixels realmente renderizados pela interface WinForms no runner Windows.
       # Em vez de fotografar uma tela remota, desenha os controles reais em bitmap.
