@@ -8,7 +8,7 @@ import { IPC, type InitialSetupInput, type InitialSetupStatus, type ServiceResul
 import { buildCentralDatabaseUrl, checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired, persistCentralDatabaseUrl, verifyCentralDatabaseUrl, centralQuery } from "../db/central-connection";
 import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { getRuntimeStationCode, setCentralStationSetting } from "../db/central-station-settings-repo";
-import { findPostgresBin, isInitialSetupCompleted, markInitialSetupComplete, runInitialSetup } from "../setup/initial-setup-service";
+import { detectPostgresServiceStatus, findPostgresBin, isInitialSetupCompleted, markInitialSetupComplete, runInitialSetup } from "../setup/initial-setup-service";
 import { validateInput } from "./middleware";
 
 const identifier = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,62}$/, "Use letras, números e _. O nome deve começar com uma letra.");
@@ -42,14 +42,15 @@ async function getStatus(): Promise<InitialSetupStatus> {
   const supported = process.platform === "win32";
   const setupCompleted = isInitialSetupCompleted();
   const stationCode = getRuntimeStationCode();
+  const postgresServiceStatus = detectPostgresServiceStatus();
   if (!configured) {
-    return { configured: false, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode };
+    return { configured: false, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode, postgresServiceStatus };
   }
   try {
     await checkCentralDatabase();
-    return { configured: true, available: true, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode };
+    return { configured: true, available: true, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode, postgresServiceStatus };
   } catch {
-    return { configured: true, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode };
+    return { configured: true, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode, postgresServiceStatus };
   }
 }
 
