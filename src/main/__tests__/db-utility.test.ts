@@ -10,6 +10,31 @@ const db = join(process.cwd(), "database");
 const read = (name: string) => readFileSync(join(db, name), "utf8");
 
 describe("utilitario de banco PORTUS", () => {
+  it("oferece Inserir admin restrito a desenvolvimento local sem sobrescrever conta existente", () => {
+    const ui=read("portus-db-utility.ps1");
+    const runner=read("portus-db-utility-runner.ps1");
+    const helper=read("portus-db-utility-process.ps1");
+    const installer=read("install-portus-database.ps1");
+    const seed=readFileSync(join(db,"seed","development_admin.sql"),"utf8");
+    expect(ui).toContain('$adminButton = Make-Action "Inserir admin" 885');
+    expect(ui).toContain('Start-Action "seed-admin"');
+    expect(ui).toContain('$adminButton.Enabled = -not $busy');
+    expect(ui).toContain('Somente desenvolvimento local: cria admin/admin se ausente.');
+    expect(ui).toContain('$hostName -notin @("127.0.0.1","localhost","::1","[::1]")');
+    expect(ui).toContain('MessageBoxButtons]::YesNo');
+    expect(ui).toContain('Credenciais preexistentes não serão substituídas.');
+    expect(ui).toContain('SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process")');
+    expect(runner).toContain('"seed-admin" {');
+    expect(runner).toContain('SeedDevAdmin=$true');
+    expect(runner).toContain('SkipAppConfiguration=$true');
+    expect(runner).not.toContain('ResetDevAdminPassword=$true');
+    expect(helper).toContain('"seed-admin"');
+    expect(installer).toContain('if ($SeedDevAdmin)');
+    expect(seed).toContain('WHERE NOT EXISTS');
+    expect(seed).toContain('ON CONFLICT (username) DO NOTHING');
+    expect(seed).toContain("'master'");
+  });
+
   it("expoe migrations, validacao do banco e verificacao do IP do servidor", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('Validar banco de dados');
@@ -132,7 +157,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$card.BringToFront()');
     expect(gui).toContain('$control.BringToFront()');
     expect(gui).toContain('Layout PORTUS: controle fora do card');
-    expect(gui).toContain('$visualCheck.GetPixel(531,500)');
+    expect(gui).toContain('$visualCheck.GetPixel(350,500)');
     expect(gui).toContain('$visualCheck.GetPixel(40,210)');
     expect(gui).toContain('cards cobertos no render');
     expect(gui).not.toContain('$canvas.Controls.Add($shadow)');
