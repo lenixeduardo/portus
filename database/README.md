@@ -59,6 +59,42 @@ Windows reproduzem subprocessos que terminam com exit codes 0 e 17.
 
 ## Utilitario visual de administracao (Windows)
 
+## Migrar dados legados antes de inserir admin (importante)
+
+Aplicar as 14 migrations SQL cria **schema e funcoes**, nao importa automaticamente
+o banco SQLite anterior. O novo botao **Migrar cadastros antigos** da interface
+utiliza `scripts/import-legacy-to-postgres.mjs`, que ja implementa backup,
+transacao, ledger de idempotencia e conciliacao de dados.
+
+**Ordem segura para esta instalacao:**
+
+1. Pare o aplicativo PORTUS e atualize a copia local do projeto (git pull).
+2. Inicie o Database Utility a partir da pasta completa do projeto. A migracao
+   exige Node.js, dependencias `npm ci`, e `pg_dump.exe` na pasta bin PostgreSQL.
+   A copia ZIP so de `database/` nao inclui o importador Node.
+3. Clique **Migrar cadastros antigos**, selecione o antigo SQLite da maquina
+   (geralmente `portus.db`), informe o codigo definitivo da estacao e escolha
+   Produção ou Laboratorio. Confira o destino PostgreSQL e confirme.
+4. O sistema grava copia do SQLite e backup PostgreSQL antes de escrever.
+   Registros migrados: usuarios (com hash de senha), produtos, equipamentos,
+   configuracoes, lotes, sessoes, leituras, auditoria e logs de erro.
+5. Aguarde no painel Log o marcador **IMPORTAÇÃO CONCILIADA** com contagens.
+   Em conflito, a importacao e revertida e os bancos de origem sao preservados.
+6. Repita o procedimento na outra estacao usando o SQLite proprio dela e seu
+   codigo de estacao. Nao altere o codigo em reimportacoes.
+7. Somente depois de confirmar que o usuario `admin` anterior foi importado
+   utilize as credenciais originais; nao use o botao de seed se ja houver admin.
+
+**Inserir admin (dev)** e separado. Somente em PostgreSQL localhost e mediante
+confirmacao, cria `admin/admin` quando nao ha cadastro anterior. Ele nao redefine
+senha, nao e mecanismo de recuperacao de dados e nao deve ser usado em producao.
+Quando o usuario admin anterior existir no SQLite, importe primeiro para manter
+a identidade, os dados e o hash originais.
+
+Nem a abertura do Database Utility nem a aplicacao de migrations importam os
+arquivos SQLite de outras estacoes automaticamente. Nao exclua `portus.db` nem
+seus backups ate a reconciliacao de todas as maquinas.
+
 ## Interface visual PORTUS Database Utility
 
 A identidade visual v1 esta especificada em [PORTUS-UTILITY-UI-SPEC.md](PORTUS-UTILITY-UI-SPEC.md).
