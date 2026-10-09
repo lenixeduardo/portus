@@ -148,6 +148,12 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
               ? `PostgreSQL detectado nesta máquina: ${initialStatus.postgresBin}. A instalação local só é necessária para o servidor.`
               : "PostgreSQL não detectado nesta máquina. Isso é normal para Produção/Laboratório como estação cliente."}
           </div>
+          {modeChosen && form.installationMode === "server" && initialStatus.postgresServiceStatus === "stopped" && (
+            <div className="setup-warning"><TriangleAlert size={16} /> Um serviço PostgreSQL foi encontrado, mas está parado. Abra <code>services.msc</code>, inicie o serviço existente e tente novamente. Não reinstale nem exclua a pasta de dados.</div>
+          )}
+          {modeChosen && form.installationMode === "server" && initialStatus.postgresServiceStatus === "running" && (
+            <div className="success"><CheckCircle2 size={16} /> Serviço PostgreSQL em execução nesta máquina. Confirme que ela será o servidor central antes de prosseguir.</div>
+          )}
           {modeChosen && form.installationMode === "server" && !initialStatus.postgresBin && (
             <div className="setup-warning"><TriangleAlert size={16} /> Para criar o servidor, instale o PostgreSQL no Windows, inicie o serviço e reabra o PORTUS. Página oficial: <code>postgresql.org/download/windows/</code>. Se já estiver instalado em outra pasta, informe o caminho bin abaixo. Nunca apague a pasta data existente.</div>
           )}
@@ -164,7 +170,7 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
             {form.installationMode === "server" && <div className="field">
               <label htmlFor="setup-postgres-bin">Pasta bin do PostgreSQL</label>
               <div className="setup-input-icon"><ServerCog size={15} /><input id="setup-postgres-bin" value={form.postgresBin ?? ""} onChange={(e) => update("postgresBin", e.target.value)} placeholder={'C:\\Program Files\\PostgreSQL\\18\\bin'} /></div>
-              <small>Deve conter o arquivo <code>psql.exe</code>.</small>
+              <small>Deve conter o arquivo <code>psql.exe</code>. Para acesso dos outros computadores, configure o servidor para aceitar conexões da rede local em <code>postgresql.conf</code>, <code>pg_hba.conf</code> e no firewall, apenas para os IPs autorizados.</small>
             </div>}
             <div className="setup-grid">
               <div className="field">
