@@ -12,8 +12,8 @@ try {
   $bytes = New-Object byte[] 2048
   $bytes[0] = 77; $bytes[1] = 90
   [IO.File]::WriteAllBytes((Join-Path $root "bin\psql.exe"), $bytes)
-  Assert-State "client-tools-only" (Get-PortusPostgresDiscovery -Roots @($root) -Services @())
-  Assert-State "not-detected" (Get-PortusPostgresDiscovery -Roots @((Join-Path $root "missing")) -Services @())
+  Assert-State "client-tools-only" (Get-PortusPostgresDiscovery -Roots @($root) -Services @() -SkipWindowsServices)
+  Assert-State "not-detected" (Get-PortusPostgresDiscovery -Roots @((Join-Path $root "missing")) -Services @() -SkipWindowsServices)
   $running = [pscustomobject]@{ Name="postgresql-x64-18"; State="Running"; Status="Running"; PathName="" }
   $stopped = [pscustomobject]@{ Name="postgresql-x64-18"; State="Stopped"; Status="Stopped"; PathName="" }
   Assert-State "server-running" (Get-PortusPostgresDiscovery -Roots @($root) -Services @($running))
