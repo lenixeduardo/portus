@@ -707,8 +707,7 @@ function Start-Action([string]$operation) {
     return
   }
   if ($operation -eq "import-legacy") {
-    # A origem e um arquivo SQLite especifico da estacao de onde vieram
-    # usuários/produtos/lotes; jamais invente uma base anterior.
+    # Selecionar o SQLite original, sem modificar o arquivo de origem.
     $sourceDialog = New-Object System.Windows.Forms.OpenFileDialog
     $sourceDialog.Title = "Selecione o banco SQLite PORTUS da estacao antiga"
     $sourceDialog.Filter = "SQLite PORTUS (*.db;*.sqlite;*.sqlite3)|*.db;*.sqlite;*.sqlite3|Todos os arquivos (*.*)|*.*"
@@ -727,7 +726,25 @@ function Start-Action([string]$operation) {
     $script:legacyStation = [Microsoft.VisualBasic.Interaction]::InputBox(
       "Informe o codigo fixo da estacao original. Use o mesmo codigo ao reexecutar a importacao.",
       "PORTUS: identificacao da estacao", $suggestedStation).Trim().ToUpperInvariant()
-    if ($script:legacyStation -notmatch '^[A-Z0-9._-]{2,64}
+    if ($script:legacyStation -notmatch '^[A-Z0-9._-]{2,64}$') {
+      Show-Log "Codigo da estacao vazio ou invalido. Migracao cancelada." "diagnostic"
+      return
+    }
+    $sectorAnswer = [System.Windows.Forms.MessageBox]::Show(
+      "O SQLite pertence a estacao de PRODUCAO? Clique Sim para PRODUCTION, Nao para LABORATORY, Cancelar para sair.",
+      "PORTUS: setor da origem",
+      [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
+      [System.Windows.Forms.MessageBoxIcon]::Question)
+    if ($sectorAnswer -eq [System.Windows.Forms.DialogResult]::Cancel) { return }
+    $script:legacySector = if ($sectorAnswer -eq [System.Windows.Forms.DialogResult]::Yes) { "PRODUCTION" } else { "LABORATORY" }
+    $confirmation = [System.Windows.Forms.MessageBox]::Show(
+      "Importar registros do arquivo '$($script:legacySqlite)' da estacao $($script:legacyStation) ($($script:legacySector)) para $($hostName):$port/$database? O importador faz backups do SQLite e PostgreSQL, preserva hashes de senha e historicos e aborta se detectar conflitos. Execute antes de usar Inserir admin (dev).",
+      "PORTUS: confirmar importacao com backups",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Warning)
+    if ($confirmation -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+  }
+  if ($operation -eq "seed-admin") {
     if ($hostName -notin @("127.0.0.1","localhost","::1","[::1]")) {
       Show-Log "A conta admin/admin so pode ser inserida em PostgreSQL local (localhost)." "diagnostic"
       [void][System.Windows.Forms.MessageBox]::Show(
@@ -739,7 +756,7 @@ function Start-Action([string]$operation) {
       return
     }
     $answer = [System.Windows.Forms.MessageBox]::Show(
-      "Criar a conta Master de DESENVOLVIMENTO admin/admin em $($hostName):$port/$database? A senha e conhecida e insegura, nao deve ser usada em producao. Se o login ja existir, a senha NAO sera redefinida.",
+      "Criar a conta Master de DESENVOLVIMENTO admin/admin em $($hostName):$port/$database? A senha e conhecida e insegura, nao deve ser usada em producao. Se o login ja existir, a senha NAO sera redefinida. Migre antes as contas antigas, se houver.",
       "PORTUS: confirmar insercao local de admin",
       [System.Windows.Forms.MessageBoxButtons]::YesNo,
       [System.Windows.Forms.MessageBoxIcon]::Warning
