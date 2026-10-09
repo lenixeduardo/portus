@@ -45,3 +45,23 @@ function Get-PortusOperationResult {
   $result.exitCode = $code
   return $result
 }
+
+# Returns the exact legacy import script from either a repository checkout
+# or a fully packaged, standalone Windows installer.
+function Find-PortusLegacyImporter([string]$DatabaseDirectory) {
+  $candidates=@(
+    (Join-Path $DatabaseDirectory "migration-runtime\import-legacy-to-postgres.mjs"),
+    (Join-Path (Split-Path -Parent $DatabaseDirectory) "scripts\import-legacy-to-postgres.mjs")
+  )
+  foreach($file in $candidates){
+    if(Test-Path -LiteralPath $file -PathType Leaf){return $file}
+  }
+  throw "Importador SQLite ausente. Atualize o pacote PORTUS com migration-runtime."
+}
+function Find-PortusNode([string]$DatabaseDirectory) {
+  $local=Join-Path $DatabaseDirectory "migration-runtime\node.exe"
+  if(Test-Path -LiteralPath $local -PathType Leaf){return $local}
+  $installed=Get-Command node.exe -ErrorAction SilentlyContinue
+  if($installed){return [string]$installed.Source}
+  throw "Runtime Node.js ausente. Reinstale o pacote PORTUS ou disponibilize Node.js."
+}
