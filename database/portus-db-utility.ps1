@@ -836,7 +836,7 @@ if ($SmokeTest -or $CapturePath) {
       @{button=$migrateButton; tip="Executa apenas migrations pendentes."},
       @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
       @{button=$registerButton; tip="Registra o servidor da primeira instalação."},
-      @{button=$adminButton; tip="Somente desenvolvimento local: cria admin/admin se ausente. Não altera usuário existente."}
+      @{button=$adminButton; tip="Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin."}
     )) {
       if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
         $script:smokeFailed = $true
