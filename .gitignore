@@ -8,5 +8,6 @@ PORTUS-Setup-*.exe
 .env
 .env.local
 data/
+database/migration-runtime/
 *.sqlite
 *.sqlite-journal
