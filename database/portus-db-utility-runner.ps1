@@ -2,13 +2,16 @@
 # The runner writes a machine-readable result only after the script completes.
 [CmdletBinding()]
 param(
-  [ValidateSet("validate","migrate","network","register","seed-admin","selftest")][string]$Operation,
+  [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","selftest")][string]$Operation,
   [Parameter(Mandatory=$true)][string]$ResultPath,
   [string]$DatabaseHost = "127.0.0.1",
   [ValidateRange(1,65535)][int]$Port = 5432,
   [string]$DatabaseName = "portus",
   [string]$AdminUser = "postgres",
   [string]$PostgresBin = "",
+  [string]$LegacySqlite = "",
+  [string]$StationCode = "",
+  [string]$SectorCode = "",
   [ValidateSet(0,17)][int]$SelfTestExitCode = 0
 )
 $ErrorActionPreference = "Stop"
