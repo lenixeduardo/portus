@@ -223,11 +223,66 @@ describe("utilitario de banco PORTUS", () => {
     }
     expect(gui).toContain('$actionToolTip.GetToolTip($pair.button)');
     expect(gui).not.toContain('$description = Add-Label $caption.text');
-    expect(gui).toContain('Make-Card 24 423 1086 132');
-    expect(gui).toContain('Make-Card 24 569 1086 94');
-    expect(gui).toContain('Make-Card 24 678 1086 216');
+    expect(gui).toContain('Make-Card 24 423 1086 210');
+    expect(gui).toContain('Make-Card 24 648 1086 94');
+    expect(gui).toContain('Make-Card 24 757 1086 216');
     expect(gui).toContain('$actionToolTip.Dispose()');
   });
+
+  it("expoe migracao de dados SQLite em acao separada das migrations SQL", () => {
+    const gui=read("portus-db-utility.ps1");
+    const dialog=read("portus-legacy-import-ui.ps1");
+    const runner=read("portus-db-utility-runner.ps1");
+    const helper=read("portus-db-utility-process.ps1");
+    const importer=readFileSync(join(process.cwd(),"scripts/import-legacy-to-postgres.mjs"),"utf8");
+    const build=readFileSync(join(process.cwd(),"scripts/prepare-portus-migration-runtime.mjs"),"utf8");
+    const pack=readFileSync(join(process.cwd(),"scripts/package-database-installer.mjs"),"utf8");
+    expect(gui).toContain('$dataImportButton = Make-Action "Migrar dados" 49 $false 560');
+    expect(gui).toContain('Start-Action "import-legacy"');
+    expect(gui).toContain('$dataImportButton.Enabled = -not $busy');
+    expect(gui).toContain('Show-PortusLegacyImportDialog -Owner $form');
+    expect(gui).toContain('pg_dump.exe');
+    expect(gui).toContain('Backups SQLite e PostgreSQL');
+    expect(gui).toContain('-SqlitePath');
+    expect(gui).toContain('-StationCode');
+    expect(gui).toContain('-Sector');
+    expect(gui).toContain('Make-Card 24 423 1086 210');
+    expect(gui).toContain('Size(1136,1005)');
+    expect(dialog).toContain('System.Windows.Forms.OpenFileDialog');
+    expect(dialog).toContain('station-identity.json');
+    expect(dialog).toContain('PRODUCTION');
+    expect(dialog).toContain('LABORATORY');
+    expect(runner).toContain('"import-legacy" {');
+    expect(runner).toContain('Find-PortusNode -DatabaseDirectory');
+    expect(runner).toContain('Find-PortusLegacyImporter -DatabaseDirectory');
+    expect(runner).toContain('PORTUS_ADMIN_DATABASE_URL');
+    expect(runner).toContain('pg_dump.exe');
+    expect(helper).toContain('"import-legacy"');
+    expect(importer).toContain('copyFileSync(sqlitePath, sourceBackup)');
+    expect(importer).toContain('pre-import.dump');
+    expect(importer).toContain('portus_legacy_import_ledger');
+    expect(importer).toContain('ROLLBACK');
+    expect(build).toContain('sql.js');
+    expect(build).toContain('node.exe');
+    expect(pack).toContain('migration-runtime');
+    expect(pack).toContain('portus-legacy-import-ui.ps1');
+  });
+
+  it.skipIf(process.platform !== "win32")("recusa migrar quando SQLite de origem nao existe", () => {
+    const folder=mkdtempSync(join(tmpdir(),"portus-missing-legacy-"));
+    try {
+      const resultFile=join(folder,"result.json");
+      const result=spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(db,"portus-db-utility-runner.ps1"),"-Operation","import-legacy",
+        "-ResultPath",resultFile,"-SqlitePath",join(folder,"inexistente.sqlite"),
+        "-StationCode","PRODUCAO-01","-Sector","PRODUCTION"
+      ],{encoding:"utf8",windowsHide:true,timeout:20000});
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Arquivo SQLite de origem nao encontrado");
+      expect(JSON.parse(readFileSync(resultFile,"utf8")).exitCode).toBe(1);
+    } finally { rmSync(folder,{recursive:true,force:true}); }
+  },30000);
 
   it("mostra o sucesso ou falha no log interno usando o resultado explicito do runner", () => {
     const gui = read("portus-db-utility.ps1");
