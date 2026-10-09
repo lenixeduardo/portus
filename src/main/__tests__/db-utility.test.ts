@@ -21,7 +21,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('Start-Action "validate"');
     expect(gui).toContain('Start-Action "migrate"');
     expect(gui).toContain('Confirmar alteracoes no schema');
-    expect(gui).toContain('"-MigrationsOnly","-SkipAppConfiguration"');
+    expect(read("portus-db-utility-runner.ps1")).toContain('MigrationsOnly=$true');
   });
 
   it("implementa o mockup premium com a identidade visual original do PORTUS", () => {
@@ -217,9 +217,9 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('Show-Log $next $stream');
     expect(gui).toContain('"stderr"');
     expect(gui).toContain('"stdout"');
-    expect(gui).toContain('Get-PortusChildExitCode -Process $script:child');
-    expect(gui).toContain('Show-Log ("Falha ao obter resultado do processo: " + $_.Exception.ToString()) "diagnostic"');
-    expect(gui).toContain('Processo filho finalizado. ExitCode=');
+    expect(gui).toContain('Get-PortusOperationResult -Path $script:resultFile -Operation $script:action');
+    expect(gui).toContain('Nao foi possivel confirmar a conclusao:');
+    expect(gui).toContain('Resultado confirmado:');
     expect(gui).not.toContain('Falha (codigo $code). Confira o log.');
     expect(helper).toContain('$Process.WaitForExit()');
     expect(helper).toContain('if ($null -eq $value)');
