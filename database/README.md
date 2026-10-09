@@ -254,6 +254,19 @@ explicitamente redefinir sua senha** para `admin`, use:
 .\database\install-portus-database.ps1 -MigrationsOnly -SeedDevAdmin -ResetDevAdminPassword
 ~~~
 
+No utilitário gráfico, o botão **Inserir admin** agora faz essa redefinição
+de forma **explícita**, após uma confirmação que informa que a senha atual de
+um Master ativo será substituída por `admin`. A ação cria a conta somente
+se estiver ausente e nunca contorna a verificação bcrypt do login. A execução
+se limita à conexão PostgreSQL local de desenvolvimento. Se o usuário `admin`
+estiver inativo ou tiver outro perfil, o banco rejeita a redefinição.
+
+A mensagem `INSERT 0 0` no seed indica que a conta já existia e, sem
+`-ResetDevAdminPassword`, a senha antiga foi mantida. Em caso de várias
+tentativas incorretas, o bloqueio temporário do login pode durar 15 minutos;
+reinicie o aplicativo de desenvolvimento ou aguarde o prazo. Certifique-se
+também de que o PORTUS e o utilitário apontem para o mesmo banco.
+
 As opções de teste aceitam somente `localhost`, `127.0.0.1` ou `::1` como
 host do banco. Isso não é uma garantia de que o banco não esteja exposto:
 **jamais execute esses comandos contra um banco de produção ou acessível
