@@ -69,7 +69,11 @@ describe("assistente inicial obrigatorio por estacao", () => {
     expect(handlers).toContain("Não foi localizado o banco central PORTUS");
     expect(handlers).toContain("connection terminated due to connection timeout");
     expect(handlers).toContain("Log técnico:");
-    expect(handlers).toContain("[conexão protegida]");
+    expect(handlers).toContain("[URL de conexão omitida]");
+    expect(handlers).toContain("Tempo decorrido:");
+    expect(handlers).toContain("Causa interna:");
+    expect(handlers).toContain("Etapa:");
+    expect(handlers).toContain("Verificações: testar ping/rota");
     expect(screen).toContain("Trecho do log de erro");
     expect(screen).toContain("setup-error-log");
     expect(css).toContain(".initial-setup-form-wrap .setup-error-panel");
