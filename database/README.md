@@ -69,9 +69,10 @@ transacao, ledger de idempotencia e conciliacao de dados.
 **Ordem segura para esta instalacao:**
 
 1. Pare o aplicativo PORTUS e atualize a copia local do projeto (git pull).
-2. Inicie o Database Utility a partir da pasta completa do projeto. A migracao
-   exige Node.js, dependencias `npm ci`, e `pg_dump.exe` na pasta bin PostgreSQL.
-   A copia ZIP so de `database/` nao inclui o importador Node.
+2. Inicie o Database Utility na pasta do projeto (com `npm ci`) ou use o
+   pacote ZIP completo `portus-database-installer.zip`. O ZIP inclui o
+   importador e as dependencias Node necessarias. Instale Node.js e mantenha
+   `pg_dump.exe` na pasta bin do PostgreSQL para criar o backup central.
 3. Clique **Migrar cadastros antigos**, selecione o antigo SQLite da maquina
    (geralmente `portus.db`), informe o codigo definitivo da estacao e escolha
    Produção ou Laboratorio. Confira o destino PostgreSQL e confirme.
