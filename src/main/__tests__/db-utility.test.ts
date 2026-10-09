@@ -10,7 +10,7 @@ const db = join(process.cwd(), "database");
 const read = (name: string) => readFileSync(join(db, name), "utf8");
 
 describe("utilitario de banco PORTUS", () => {
-  it("oferece Inserir admin restrito a desenvolvimento local sem sobrescrever conta existente", () => {
+  it("permite configurar admin/admin local somente com confirmacao explicita e bcrypt", () => {
     const ui=read("portus-db-utility.ps1");
     const runner=read("portus-db-utility-runner.ps1");
     const helper=read("portus-db-utility-process.ps1");
@@ -19,20 +19,30 @@ describe("utilitario de banco PORTUS", () => {
     expect(ui).toContain('$adminButton = Make-Action "Inserir admin" 885');
     expect(ui).toContain('Start-Action "seed-admin"');
     expect(ui).toContain('$adminButton.Enabled = -not $busy');
-    expect(ui).toContain('Somente desenvolvimento local: cria admin/admin se ausente.');
+    expect(ui).toContain('Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin.');
     expect(ui).toContain('$hostName -notin @("127.0.0.1","localhost","::1","[::1]")');
     expect(ui).toContain('MessageBoxButtons]::YesNo');
-    expect(ui).toContain('Credenciais preexistentes não serão substituídas.');
+    expect(ui).toContain('Se já existir um admin Master ativo, a senha atual será SUBSTITUÍDA.');
+    expect(ui).toContain('$arguments += "-ResetAdminPassword"');
     expect(ui).toContain('SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process")');
     expect(runner).toContain('"seed-admin" {');
     expect(runner).toContain('SeedDevAdmin=$true');
     expect(runner).toContain('SkipAppConfiguration=$true');
-    expect(runner).not.toContain('ResetDevAdminPassword=$true');
+    expect(runner).toContain('ResetDevAdminPassword=[bool]$ResetAdminPassword');
+    expect(runner).toContain('[switch]$ResetAdminPassword');
+    expect(runner).toContain('SeedDevAdmin=$true');
+    expect(runner).toContain('DatabaseHost -notin @("127.0.0.1","localhost","::1","[::1]")');
     expect(helper).toContain('"seed-admin"');
     expect(installer).toContain('if ($SeedDevAdmin)');
     expect(seed).toContain('WHERE NOT EXISTS');
     expect(seed).toContain('ON CONFLICT (username) DO NOTHING');
     expect(seed).toContain("'master'");
+    const reset = readFileSync(join(db,"seed","development_admin_reset.sql"),"utf8");
+    expect(reset).toContain("AND role = 'master' AND active");
+    expect(reset).toContain('UPDATE public.users');
+    const auth = readFileSync(join(process.cwd(),"src","main","auth","auth-service.ts"),"utf8");
+    expect(auth).toContain('await bcrypt.compare(password, row.password_hash)');
+    expect(auth).not.toContain('username === "admin" && password === "admin"');
   });
 
   it("expoe migrations, validacao do banco e verificacao do IP do servidor", () => {

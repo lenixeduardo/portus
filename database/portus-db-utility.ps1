@@ -297,7 +297,7 @@ $actionToolTip.SetToolTip($checkButton, "Conecta e verifica a integridade do sch
 $actionToolTip.SetToolTip($migrateButton, "Executa apenas migrations pendentes.")
 $actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TCP.")
 $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
-$actionToolTip.SetToolTip($adminButton, "Somente desenvolvimento local: cria admin/admin se ausente. Não altera usuário existente.")
+$actionToolTip.SetToolTip($adminButton, "Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin.")
 
 # Status card.
 [void](Make-Card 24 569 1086 94)
@@ -615,7 +615,7 @@ $timer.Add_Tick({
       $status.Text = if ($script:action -eq "validate") { "Banco validado com sucesso." }
         elseif ($script:action -eq "migrate") { "Migrations concluidas. Valide o banco." }
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
-        elseif ($script:action -eq "seed-admin") { "Cadastro local admin verificado. Confira o log." }
+        elseif ($script:action -eq "seed-admin") { "Conta Master local configurada. Login admin/admin disponível." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
@@ -694,12 +694,13 @@ function Start-Action([string]$operation) {
       return
     }
     $confirmation = [System.Windows.Forms.MessageBox]::Show(
-      "Criar o usuário local admin com senha admin, apenas se estiver ausente? A senha é insegura para produção. Credenciais preexistentes não serão substituídas.",
+      "Criar a conta Master local admin, caso não exista, e REDEFINIR sua senha para admin? Se já existir um admin Master ativo, a senha atual será SUBSTITUÍDA. Somente para desenvolvimento isolado: não use em produção.",
       "Confirmar conta de desenvolvimento local",
       [System.Windows.Forms.MessageBoxButtons]::YesNo,
       [System.Windows.Forms.MessageBoxIcon]::Warning
     )
     if ($confirmation -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+    Show-Log "Confirmada redefinição explícita da senha do admin Master local (desenvolvimento)." "ui"
   }
   $runnerPath = Join-Path $PSScriptRoot "portus-db-utility-runner.ps1"
   if (-not (Test-Path -LiteralPath $runnerPath)) {
@@ -718,6 +719,7 @@ function Start-Action([string]$operation) {
     "-AdminUser", (Quoted $username),
     "-PostgresBin", (Quoted $bin)
   )
+  if ($operation -eq "seed-admin") { $arguments += "-ResetAdminPassword" }
 
   $script:outFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".out")
   $script:errFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".err")
@@ -834,7 +836,7 @@ if ($SmokeTest -or $CapturePath) {
       @{button=$migrateButton; tip="Executa apenas migrations pendentes."},
       @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
       @{button=$registerButton; tip="Registra o servidor da primeira instalação."},
-      @{button=$adminButton; tip="Somente desenvolvimento local: cria admin/admin se ausente. Não altera usuário existente."}
+      @{button=$adminButton; tip="Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin."}
     )) {
       if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
         $script:smokeFailed = $true
