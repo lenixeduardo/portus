@@ -161,6 +161,45 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$actionToolTip.Dispose()');
   });
 
+  it("espelha stdout e stderr no terminal e nao interpreta codigo nulo como falha sem diagnostico", () => {
+    const gui = read("portus-db-utility.ps1");
+    const helper = read("portus-db-utility-process.ps1");
+    const packageScript = readFileSync(join(process.cwd(), "scripts/package-database-installer.mjs"), "utf8");
+    expect(gui).toContain('. (Join-Path $PSScriptRoot "portus-db-utility-process.ps1")');
+    expect(gui).toContain('Write-Host $terminalLine');
+    expect(gui).toContain('Show-Log $next $stream');
+    expect(gui).toContain('"stderr"');
+    expect(gui).toContain('"stdout"');
+    expect(gui).toContain('Get-PortusChildExitCode -Process $script:child');
+    expect(gui).toContain('Show-Log ("Falha ao obter resultado do processo: " + $_.Exception.ToString()) "diagnostic"');
+    expect(gui).toContain('Processo filho finalizado. ExitCode=');
+    expect(gui).not.toContain('Falha (codigo $code). Confira o log.');
+    expect(helper).toContain('$Process.WaitForExit()');
+    expect(helper).toContain('if ($null -eq $value)');
+    expect(helper).toContain('return [int]$value');
+    expect(packageScript).toContain('portus-db-utility-process.ps1');
+  });
+
+  it.skipIf(process.platform !== "win32")("obtem ExitCode 0 e 17 de processos Windows reais", () => {
+    const helperPath = join(db, "portus-db-utility-process.ps1").replace(/'/g, "''");
+    for (const expectedCode of [0,17]) {
+      const command = [
+        "$ErrorActionPreference = 'Stop';",
+        ". '" + helperPath + "';",
+        "$proc = Start-Process -FilePath $env:ComSpec -ArgumentList '/d /c exit " + expectedCode + "' -PassThru -WindowStyle Hidden;",
+        "$code = Get-PortusChildExitCode -Process $proc;",
+        "Write-Output ('EXIT=' + $code);",
+        "if ($code -ne " + expectedCode + ") { exit 90 }"
+      ].join(" ");
+      const result = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], {
+        encoding: "utf8",
+        timeout: 20_000,
+        windowsHide: true
+      });
+      expect(result).toContain("EXIT=" + expectedCode);
+    }
+  }, 50_000);
+
   it("mostra status/erros e impede operacoes simultaneas", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('$timer.Add_Tick({');
@@ -321,7 +360,7 @@ describe("utilitario de banco PORTUS", () => {
   });
 
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
-    for (const path of ["portus-db-utility.ps1", "portus-db-utility-glyphs.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+    for (const path of ["portus-db-utility.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
       const escaped = full.replace(/'/g, "''");
       const command = [
