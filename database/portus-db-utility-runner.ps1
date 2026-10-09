@@ -109,7 +109,7 @@ exit $code
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $importer = Join-Path $projectRoot "scripts\import-legacy-to-postgres.mjs"
         if (-not (Test-Path -LiteralPath $importer)) {
-          throw "Importador indisponivel neste pacote. Abra o utilitario pela pasta completa do projeto PORTUS com npm ci."
+          throw "Importador SQLite nao encontrado. Atualize a instalacao do PORTUS com o pacote completo (ou execute npm ci no repositorio)."
         }
         $node = Get-Command node.exe -ErrorAction SilentlyContinue
         if (-not $node) { throw "Node.js nao encontrado. Instale Node.js e execute npm ci no projeto." }
