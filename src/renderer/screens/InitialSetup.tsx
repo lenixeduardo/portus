@@ -203,7 +203,13 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
               <div className="field"><label htmlFor="setup-password">Senha do PORTUS</label><input id="setup-password" type="password" minLength={8} value={form.appPassword} onChange={(e) => update("appPassword", e.target.value)} autoComplete="new-password" /><small>Mínimo de 8 caracteres.</small></div>
               <div className="field"><label htmlFor="setup-confirm">Confirmar senha</label><input id="setup-confirm" type="password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" /><small>Repita a senha com no mínimo 8 caracteres.</small></div>
             </div>
-            {error && <div className="error">{error}</div>}
+            {error && <div className="setup-error-panel" role="alert">
+              <div className="setup-error-heading"><TriangleAlert size={17} aria-hidden="true" /> {error.split("\nLog técnico:")[0]}</div>
+              {error.includes("\nLog técnico:") && <div className="setup-error-log">
+                <strong>Trecho do log de erro</strong>
+                <code>{error.split("\nLog técnico:")[1]?.trim()}</code>
+              </div>}
+            </div>}
             {message && <div className="success"><CheckCircle2 size={16} /> {message}</div>}
             <button className="setup-submit" type="submit" disabled={running}>
               {running ? <><LoaderCircle size={16} className="database-status__spinner" /> {form.installationMode === "server" ? "Configurando banco…" : "Validando conexão…"}</> : <><CheckCircle2 size={16} /> {form.installationMode === "server" ? "Configurar e validar" : "Conectar e validar"}</>}
