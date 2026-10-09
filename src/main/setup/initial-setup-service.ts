@@ -1,11 +1,26 @@
 import { execFile, execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { InitialSetupInput } from "../../shared/ipc";
 
 const execFileAsync = promisify(execFile);
 const WINDOWS_POSTGRES_VERSIONS = [18, 17, 16, 15, 14];
+
+function isUsablePsqlExecutable(filename: string): boolean {
+  let handle: number | undefined;
+  try {
+    handle = openSync(filename, "r");
+    if (fstatSync(handle).size < 1024) return false;
+    const header = Buffer.alloc(2);
+    return readSync(handle, header, 0, 2, 0) === 2 &&
+      header[0] === 0x4d && header[1] === 0x5a;
+  } catch {
+    return false;
+  } finally {
+    if (handle !== undefined) closeSync(handle);
+  }
+}
 
 export function findPostgresBin(
   programFiles?: string,
@@ -18,7 +33,8 @@ export function findPostgresBin(
   if (!searchRoot) return null;
   for (const version of WINDOWS_POSTGRES_VERSIONS) {
     const candidate = `${searchRoot}\\PostgreSQL\\${version}\\bin`;
-    if (pathExists(`${candidate}\\psql.exe`)) return candidate;
+    if (pathExists(`${candidate}\\psql.exe`) &&
+        (pathExists !== existsSync || isUsablePsqlExecutable(`${candidate}\\psql.exe`))) return candidate;
   }
   return null;
 }
