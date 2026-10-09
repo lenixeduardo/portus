@@ -157,7 +157,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$card.BringToFront()');
     expect(gui).toContain('$control.BringToFront()');
     expect(gui).toContain('Layout PORTUS: controle fora do card');
-    expect(gui).toContain('$visualCheck.GetPixel(531,500)');
+    expect(gui).toContain('$visualCheck.GetPixel(350,500)');
     expect(gui).toContain('$visualCheck.GetPixel(40,210)');
     expect(gui).toContain('cards cobertos no render');
     expect(gui).not.toContain('$canvas.Controls.Add($shadow)');
