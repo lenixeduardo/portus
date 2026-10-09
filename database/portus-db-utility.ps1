@@ -44,7 +44,7 @@ $page.BackColor = $form.BackColor
 $form.Controls.Add($page)
 $canvas = New-Object System.Windows.Forms.Panel
 $canvas.Location = New-Object System.Drawing.Point(0,0)
-$canvas.Size = New-Object System.Drawing.Size(1136,946)
+$canvas.Size = New-Object System.Drawing.Size(1136,915)
 $canvas.BackColor = UiColor "background"
 $page.Controls.Add($canvas)
 
@@ -117,7 +117,7 @@ function Add-Field([string]$label,[int]$x,[int]$y,[int]$width,[string]$initial,[
 function Make-Action([string]$caption,[int]$x,[bool]$primary=$false) {
   $button = New-Object System.Windows.Forms.Button
   $button.Text = $caption
-  $button.Location = New-Object System.Drawing.Point($x,496)
+  $button.Location = New-Object System.Drawing.Point($x,488)
   $button.Size = New-Object System.Drawing.Size(243,56)
   $button.Font = UiFont "Inter" 14 "600"
   $button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -252,7 +252,7 @@ $showPasswordButton.Add_Click({
 })
 
 # Action card: four actions have identical widths with the update as primary.
-[void](Make-Card 24 423 1086 163)
+[void](Make-Card 24 423 1086 132)
 $actionTitle = Add-Label "Ações" 87 437 440 37
 [void](Add-PortusGlyph "settings" 49 443 27 "primary")
 $actionTitle.Font = UiFont "Sora" 18 "600"
@@ -283,37 +283,37 @@ Set-ActionIcon $checkButton "validar-banco"
 Set-ActionIcon $migrateButton "aplicar-migrations"
 Set-ActionIcon $networkButton "verificar-rede"
 Set-ActionIcon $registerButton "registrar-ip"
-$captions = @(
-  @{x=49; text="Conecta e verifica a integridade do schema."},
-  @{x=313; text="Executa apenas migrations pendentes."},
-  @{x=577; text="Verifica endereco e conectividade TCP."},
-  @{x=841; text="Registra o servidor da primeira instalacao."}
-)
-foreach ($caption in $captions) {
-  $description = Add-Label $caption.text $caption.x 553 243 26
-  $description.ForeColor = UiColor "textSecondary"
-  $description.Font = UiFont "Inter" 12
-  $description.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-}
+# Descricoes aparecem somente ao passar o mouse: nenhuma legenda fica
+# abaixo das quatro acoes. Preserva mensagens e logica dos botoes.
+$actionToolTip = New-Object System.Windows.Forms.ToolTip
+$actionToolTip.IsBalloon = $false
+$actionToolTip.ShowAlways = $true
+$actionToolTip.InitialDelay = 400
+$actionToolTip.ReshowDelay = 150
+$actionToolTip.AutoPopDelay = 9000
+$actionToolTip.SetToolTip($checkButton, "Conecta e verifica a integridade do schema.")
+$actionToolTip.SetToolTip($migrateButton, "Executa apenas migrations pendentes.")
+$actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TCP.")
+$actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
 
 # Status card.
-[void](Make-Card 24 600 1086 94)
-$statusTitle = Add-Label "Status" 87 611 450 28
-[void](Add-PortusGlyph "document" 49 612 26 "primary")
+[void](Make-Card 24 569 1086 94)
+$statusTitle = Add-Label "Status" 87 580 450 28
+[void](Add-PortusGlyph "document" 49 581 26 "primary")
 $statusTitle.Font = UiFont "Sora" 16 "600"
 $statusTitle.ForeColor = UiColor "heading"
-$statusDot = Add-Label ([string][char]0x25CF) 51 640 36 36
+$statusDot = Add-Label ([string][char]0x25CF) 51 609 36 36
 $statusDot.Visible = $false
-$statusGlyph = Add-PortusGlyph "check" 52 643 30 "success"
+$statusGlyph = Add-PortusGlyph "check" 52 612 30 "success"
 $statusDot.Font = UiFont "Inter" 22 "600"
 $statusDot.ForeColor = UiColor "success"
-$status = Add-Label "Pronto para executar." 93 639 599 27
-$statusDescription = Add-Label "Configure os parâmetros e selecione uma ação." 93 664 597 22
+$status = Add-Label "Pronto para executar." 93 608 599 27
+$statusDescription = Add-Label "Configure os parâmetros e selecione uma ação." 93 633 597 22
 $statusDescription.ForeColor = UiColor "textSecondary"
 $statusDescription.Font = UiFont "Inter" 12
 $status.Font = UiFont "Inter" 14 "600"
 $status.ForeColor = UiColor "success"
-$referenceLabel = Add-Label "Servidor inicial: nao cadastrado" 718 647 363 27
+$referenceLabel = Add-Label "Servidor inicial: nao cadastrado" 718 616 363 27
 $referenceLabel.ForeColor = UiColor "reference"
 $referenceLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight
 function Refresh-Reference {
@@ -353,14 +353,14 @@ if ($initialIp) {
 }
 
 # Log card.
-[void](Make-Card 24 709 1086 216)
-$logTitle = Add-Label "Log" 87 718 430 30
-[void](Add-PortusGlyph "document" 50 721 25 "primary")
+[void](Make-Card 24 678 1086 216)
+$logTitle = Add-Label "Log" 87 687 430 30
+[void](Add-PortusGlyph "document" 50 690 25 "primary")
 $logTitle.Font = UiFont "Sora" 16 "600"
 $logTitle.ForeColor = UiColor "heading"
 $clearLogButton = New-Object System.Windows.Forms.Button
 $clearLogButton.Text = "Limpar log"
-$clearLogButton.Location = New-Object System.Drawing.Point(960,719)
+$clearLogButton.Location = New-Object System.Drawing.Point(960,688)
 $clearLogButton.Size = New-Object System.Drawing.Size(125,30)
 $clearLogButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $clearLogButton.BackColor = UiColor "surface"
@@ -369,7 +369,7 @@ $canvas.Controls.Add($clearLogButton)
 $log = New-Object System.Windows.Forms.RichTextBox
 $log.ReadOnly = $true
 $log.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
-$log.Location = New-Object System.Drawing.Point(47,756)
+$log.Location = New-Object System.Drawing.Point(47,725)
 $log.Size = New-Object System.Drawing.Size(1037,132)
 $log.Font = UiFont "Inter" 12
 $log.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
@@ -378,12 +378,12 @@ $log.ForeColor = UiColor "textPrimary"
 $canvas.Controls.Add($log)
 $clearLogButton.Add_Click({ $log.Clear(); $logPlaceholder.Visible = $true })
 $clearLogButton.Font = UiFont "Inter" 12 "500"
-$foot = Add-Label "Validar e verificar IP sao operacoes de leitura. Aplicar migrations exige confirmacao." 47 896 1030 22
+$foot = Add-Label "Validar e verificar IP sao operacoes de leitura. Aplicar migrations exige confirmacao." 47 865 1030 22
 $foot.Font = UiFont "Inter" 12
 $foot.ForeColor = UiColor "textSecondary"
 
 # Mensagem neutra de estado vazio: nao simula conexoes ou migrations.
-$logPlaceholder = Add-Label "Nenhuma operação executada. As mensagens reais aparecerão aqui." 66 790 930 28
+$logPlaceholder = Add-Label "Nenhuma operação executada. As mensagens reais aparecerão aqui." 66 759 930 28
 $logPlaceholder.Font = UiFont "Inter" 13
 $logPlaceholder.ForeColor = UiColor "textSecondary"
 $logPlaceholder.BackColor = UiColor "surfaceMuted"
@@ -702,6 +702,7 @@ if ($StrictFonts -and $script:UiMissingFonts.Count -gt 0) {
   throw ("Fontes obrigatorias nao instaladas: " + ($script:UiMissingFonts -join ", "))
 }
 $form.Add_FormClosed({
+  $actionToolTip.Dispose()
   foreach ($image in $script:UiActionImages) { if ($image) { $image.Dispose() } }
   if ($script:UiFontCollection) { $script:UiFontCollection.Dispose() }
   foreach ($icon in $script:UiDecorativeIcons) { if ($icon) { $icon.Dispose() } }
@@ -738,6 +739,16 @@ if ($SmokeTest -or $CapturePath) {
         -not $checkButton.Image -or -not $migrateButton.Image -or
         -not $networkButton.Image -or -not $registerButton.Image) {
       $script:smokeFailed = $true
+    }
+    foreach ($pair in @(
+      @{button=$checkButton; tip="Conecta e verifica a integridade do schema."},
+      @{button=$migrateButton; tip="Executa apenas migrations pendentes."},
+      @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
+      @{button=$registerButton; tip="Registra o servidor da primeira instalação."}
+    )) {
+      if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
+        $script:smokeFailed = $true
+      }
     }
     if ($ViewportWidth -gt 0 -and $ViewportHeight -gt 0 -and
         ($ViewportWidth -lt $canvas.Width -or $ViewportHeight -lt $canvas.Height) -and
