@@ -76,7 +76,7 @@ export function App() {
     }).catch(() => {});
     Promise.all([window.api.auth.currentUser(), window.api.setup.status()]).then(([u, setup]) => {
       setUser(u);
-      if (!setup.setupCompleted || !setup.configured) setInitialSetup(setup);
+      if ((setup.supported && !setup.setupCompleted) || !setup.configured) setInitialSetup(setup);
       setBootstrapping(false);
     }).catch((error) => {
       reportRendererError("initial-setup-status", error);
