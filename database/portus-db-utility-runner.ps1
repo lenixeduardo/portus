@@ -9,7 +9,8 @@ param(
   [string]$DatabaseName = "portus",
   [string]$AdminUser = "postgres",
   [string]$PostgresBin = "",
-  [ValidateSet(0,17)][int]$SelfTestExitCode = 0
+  [ValidateSet(0,17)][int]$SelfTestExitCode = 0,
+  [switch]$ResetAdminPassword
 )
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -45,10 +46,10 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $PostgresBin "psql.exe"))) {
           throw "psql.exe nao encontrado. Informe a pasta bin do PostgreSQL."
         }
-        Write-Host "Solicitada criacao condicional do usuario local admin (sem redefinir senha existente)."
+        Write-Host "Solicitada configuracao do admin Master local com senha admin (redefinicao somente mediante solicitacao explicita)."
         $invokeParams = @{
           MigrationsOnly=$true; SkipAppConfiguration=$true
-          SeedDevAdmin=$true; PostgresBin=$PostgresBin
+          SeedDevAdmin=$true; ResetDevAdminPassword=[bool]$ResetAdminPassword; PostgresBin=$PostgresBin
           DatabaseHost=$DatabaseHost; Port=$Port
           AdminUser=$AdminUser; DatabaseName=$DatabaseName
         }
