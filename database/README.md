@@ -1,3 +1,42 @@
+## Configuracao obrigatoria na primeira abertura do aplicativo
+
+Na primeira abertura do PORTUS em uma maquina Windows, o login permanece
+bloqueado ate concluir o assistente. O usuario deve selecionar explicitamente
+o papel do computador: **Servidor central** ou **Estacao cliente**.
+A presenca de ferramentas PostgreSQL nao determina automaticamente esse papel.
+
+- **Servidor central**: precisa de PostgreSQL instalado, com servico iniciado e
+  ferramentas administrativas validas. O assistente instala/atualiza o esquema
+  PORTUS e valida a conexao antes de concluir. Acesso de outras estacoes exige
+  PostgreSQL escutando no endereco LAN, regra restrita no `pg_hba.conf` e
+  liberacao da porta apenas para IPs autorizados no firewall Windows. Evite
+  regras globais abertas e nunca apague uma pasta `data` existente.
+- **Producao e Laboratorio**: precisam apenas do aplicativo PORTUS. No assistente,
+  escolha **Estacao cliente**, informe o IP e porta do servidor, usuario e senha
+  do banco de aplicacao, e selecione o setor fisico desta maquina. Nao ha
+  instalacao de PostgreSQL, criacao de banco ou migracoes nas estacoes clientes.
+- Se o servidor estiver indisponivel, houver credenciais invalidas ou o schema
+  estiver incompleto, o assistente nao conclui e o login permanece bloqueado.
+- A conclusao e registrada por perfil Windows em
+  `%LOCALAPPDATA%\\PORTUS\\installation-state.json`, **sem senhas**.
+  Uma configuracao anterior de `PORTUS_DATABASE_URL` nao equivale a completar
+  o assistente em uma nova instalacao.
+
+## Diagnostico PostgreSQL do Database Utility
+
+O Database Utility executa uma deteccao **somente leitura** ao abrir e possui
+o botao **Detectar PostgreSQL** para repetir o diagnostico sem senha.
+Ele procura instalacoes em `Program Files`, no Registro e nos servicos
+Windows, validando a integridade basica do `psql.exe`. Exibe orientacoes
+se o servidor local estiver ativo, parado, se existirem somente as
+ferramentas cliente ou se nao houver instalacao detectada.
+
+Se a maquina for cliente, a ausencia de PostgreSQL local **nao e erro**.
+Informe o IP da maquina servidora e use **Verificar IP / rede**. Para validar
+o schema, informe as credenciais e use **Validar banco de dados**. A deteccao
+de um servico ativo nao confirma, por si so, a existencia do banco PORTUS.
+O utilitario nao baixa, instala ou altera automaticamente o PostgreSQL.
+
 ## Estação sem setor configurado: falha ao iniciar captura
 
 Se a captura mostrar `Defina o setor desta máquina em Configurações antes da captura`,
