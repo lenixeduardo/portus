@@ -161,6 +161,51 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$actionToolTip.Dispose()');
   });
 
+  it("disponibiliza Inserir admin somente para desenvolvimento local com confirmacao", () => {
+    const gui = read("portus-db-utility.ps1");
+    const runner = read("portus-db-utility-runner.ps1");
+    const helper = read("portus-db-utility-process.ps1");
+    const installer = read("install-portus-database.ps1");
+    const sql = readFileSync(join(db,"seed","development_admin.sql"),"utf8");
+    expect(gui).toContain('$seedAdminButton.Text = "Inserir admin (dev)"');
+    expect(gui).toContain('$seedAdminButton.Add_Click({ Start-Action "seed-admin" })');
+    expect(gui).toContain('localhost');
+    expect(gui).toContain('admin/admin');
+    expect(gui).toContain('MessageBoxButtons]::YesNo');
+    expect(gui).toContain('$seedAdminButton.Enabled = -not $busy');
+    expect(gui).toContain('$seedAdminButton.Visible');
+    expect(gui).toContain('nao redefine conta existente');
+    expect(runner).toContain('SeedDevAdmin=$true');
+    expect(runner).toContain('MigrationsOnly=$true');
+    expect(runner).toContain('SkipAppConfiguration=$true');
+    expect(runner).not.toContain('ResetDevAdminPassword=$true');
+    expect(runner).toContain('Inserir admin e permitido somente no PostgreSQL local');
+    expect(helper).toContain('"seed-admin"');
+    expect(installer).toContain('development_admin.sql');
+    expect(installer).toContain('DESENVOLVIMENTO SOMENTE');
+    expect(sql).toContain("WHERE NOT EXISTS");
+    expect(sql).toContain("ON CONFLICT (username) DO NOTHING");
+  });
+
+  it.skipIf(process.platform !== "win32")("bloqueia provisionamento admin em servidor remoto sem abrir PostgreSQL", () => {
+    const root = mkdtempSync(join(tmpdir(),"portus-admin-remote-"));
+    try {
+      const resultPath = join(root,"blocked.json");
+      const p = spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(db,"portus-db-utility-runner.ps1"),
+        "-Operation","seed-admin","-ResultPath",resultPath,
+        "-DatabaseHost","192.168.68.128",
+        "-DatabaseName","portus"
+      ],{encoding:"utf8",windowsHide:true,timeout:25000});
+      expect(p.status).not.toBe(0);
+      expect(p.stderr).toContain("somente no PostgreSQL local");
+      const result = JSON.parse(readFileSync(resultPath,"utf8"));
+      expect(result.operation).toBe("seed-admin");
+      expect(result.exitCode).not.toBe(0);
+    } finally { rmSync(root,{recursive:true,force:true}); }
+  }, 35000);
+
   it("mostra o sucesso ou falha no log interno usando o resultado explicito do runner", () => {
     const gui = read("portus-db-utility.ps1");
     const helper = read("portus-db-utility-process.ps1");
