@@ -1,4 +1,5 @@
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,12 +9,45 @@ const release = join(root, "release");
 const stagingRoot = join(release, "portus-database-installer");
 const packageRoot = join(stagingRoot, "database");
 const archive = join(release, "portus-database-installer.zip");
+const require = createRequire(import.meta.url);
 
 rmSync(stagingRoot, { recursive: true, force: true });
 mkdirSync(packageRoot, { recursive: true });
 for (const file of ["install-portus-database.ps1", "install-portus-database.bat", "migrate-portus-database.bat", "verify-portus-database.ps1", "check-portus-database.bat", "portus-db-utility.bat", "portus-db-utility.ps1", "portus-db-utility-runner.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "portus-ui-design-tokens.ps1", "install-portus-ui-fonts.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
   cpSync(join(root, "database", file), join(packageRoot, file));
 }
+// Include the original legacy migrator with its small JS dependencies.
+// Portable ZIP users need Node.js, but NOT a full Git repository or npm ci.
+mkdirSync(join(stagingRoot, "scripts"), { recursive: true });
+cpSync(join(root, "scripts", "import-legacy-to-postgres.mjs"),
+  join(stagingRoot, "scripts", "import-legacy-to-postgres.mjs"));
+const copied = new Set();
+function copyModule(packageName) {
+  if (copied.has(packageName)) return;
+  copied.add(packageName);
+  let directory = dirname(require.resolve(packageName));
+  let manifest;
+  for (;;) {
+    const filepath = join(directory, "package.json");
+    if (existsSync(filepath)) {
+      const info = JSON.parse(readFileSync(filepath, "utf8"));
+      if (info.name === packageName) {
+        manifest = info;
+        break;
+      }
+    }
+    const parent = dirname(directory);
+    if (parent === directory) throw new Error("Dependencia Node nao encontrada: " + packageName);
+    directory = parent;
+  }
+  cpSync(directory, join(stagingRoot, "node_modules", packageName), { recursive: true });
+  for (const dependency of Object.keys(manifest.dependencies || {})) {
+    copyModule(dependency);
+  }
+}
+copyModule("sql.js");
+copyModule("pg");
+
 // Use the exact production PORTUS icon in the standalone WinForms utility.
 cpSync(join(root, "build", "icon.png"), join(packageRoot, "portus-logo.png"));
 cpSync(join(root, "database", "assets"), join(packageRoot, "assets"), { recursive: true });
