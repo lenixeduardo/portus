@@ -39,26 +39,63 @@ const setupSchema = z.discriminatedUnion("installationMode", [
 ]);
 
 
-// Traduza indisponibilidade de rede sem ocultar o diagnóstico técnico original.
-export function formatInitialSetupError(error: unknown, input: Pick<InitialSetupInput, "databaseHost" | "port" | "databaseName">): string {
-  const detail = error instanceof Error ? error.message : String(error ?? "Erro desconhecido");
-  const code = typeof error === "object" && error !== null && "code" in error
-    ? String((error as { code?: unknown }).code ?? "") : "";
-  const connectionProblem = /(?:connection terminated due to connection timeout|connection timeout|timeout expired|connect ETIMEDOUT|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|the database system is starting up|could not connect to server)/i.test(detail) ||
+// Diagnostico voltado ao suporte: somente valores de rede/etapa e erros higienizados.
+export function formatInitialSetupError(
+  error: unknown,
+  input: Pick<InitialSetupInput, "databaseHost" | "port" | "databaseName">,
+  context: { stage?: string; elapsedMs?: number } = {}
+): string {
+  const main = error instanceof Error ? error : new Error(String(error ?? "Erro desconhecido"));
+  const metadata = main as Error & {
+    code?: string; errno?: number | string; syscall?: string;
+    address?: string; port?: number; cause?: unknown;
+  };
+  const code = metadata.code ? String(metadata.code) : "";
+  const connectionProblem = /connection terminated due to connection timeout|connection timeout|timeout expired|ETIMEDOUT|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|ENOTFOUND|EAI_AGAIN|could not connect to server|the database system is starting up/i.test(main.message) ||
     ["ETIMEDOUT", "ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "ENOTFOUND", "EAI_AGAIN"].includes(code);
   const heading = connectionProblem
     ? "Não foi localizado o banco central PORTUS no endereço informado. Confira o IP do servidor, a porta, a rede e o serviço PostgreSQL."
-    : /(?:password authentication failed|28P01|authentication failed)/i.test(detail) || code === "28P01"
+    : /password authentication failed|28P01|authentication failed/i.test(main.message) || code === "28P01"
       ? "O servidor central foi localizado, mas a autenticação falhou. Confira o usuário e a senha."
-      : /(?:database .* does not exist|3D000)/i.test(detail) || code === "3D000"
+      : /database .* does not exist|3D000/i.test(main.message) || code === "3D000"
         ? "O servidor PostgreSQL respondeu, mas o banco PORTUS não foi encontrado. Confira o nome do banco."
         : "Não foi possível validar a configuração do banco central.";
-  // Nunca mostrar URLs de conexão ou senhas no log enviado ao renderer.
-  const safeDetail = detail.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "[conexão protegida]")
-    .replace(/(password|senha|PGPASSWORD)\s*[:=]\s*\S+/gi, "$1=[oculto]")
-    .replace(/[\r\n]+/g, " ").slice(0, 320);
-  return heading + "\nLog técnico: " + (code ? "[" + code + "] " : "") + safeDetail +
-    "\nDestino: " + input.databaseHost + ":" + input.port + "/" + input.databaseName;
+
+  const redact = (raw: unknown) => String(raw ?? "")
+    .replace(/postgres(?:ql)?:\/\/[^\s"'<>]+/gi, "[URL de conexão omitida]")
+    .replace(/(password|senha|PGPASSWORD|passphrase|secret)\s*[:=]\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "$1=[oculto]")
+    .replace(/[\x00-\x1f\x7f]/g, " ")
+    .slice(0, 500);
+  const lines = [
+    "Data/hora: " + new Date().toISOString(),
+    "Etapa: " + (context.stage ?? "Validação da conexão"),
+    "Servidor: " + redact(input.databaseHost),
+    "Porta: " + input.port,
+    "Banco: " + redact(input.databaseName),
+    "Tempo decorrido: " + (context.elapsedMs === undefined ? "não medido" : context.elapsedMs + " ms"),
+    "Código: " + (code || "não informado pelo driver"),
+    "Mensagem original: " + redact(main.message)
+  ];
+  for (const [label, value] of [
+    ["Errno", metadata.errno], ["Operação de rede", metadata.syscall],
+    ["Endereço reportado", metadata.address], ["Porta reportada", metadata.port]
+  ] as const) {
+    if (value !== undefined && value !== null && String(value) !== "") {
+      lines.push(label + ": " + redact(value));
+    }
+  }
+  // node-postgres pode encapsular detalhes em cause; não exibimos stack nem credenciais.
+  const cause = metadata.cause;
+  if (cause && cause !== error) {
+    const nested = cause as Error & { code?: string };
+    lines.push("Causa interna: " + redact(nested.message || String(cause)));
+    if (nested.code) lines.push("Código da causa: " + redact(nested.code));
+  }
+  lines.push(connectionProblem
+    ? "Verificações: testar ping/rota da estação ao servidor; testar TCP " + input.port +
+      "; conferir serviço PostgreSQL, listen_addresses, pg_hba.conf e firewall no servidor."
+    : "Próximo passo: revise as credenciais, nome do banco e migrations no servidor.");
+  return heading + "\nLog técnico:\n" + lines.join("\n");
 }
 
 async function getStatus(): Promise<InitialSetupStatus> {
@@ -92,15 +129,20 @@ export function registerSetupHandlers(): void {
     IPC.setupRun,
     validateInput(setupSchema)(async (_event, input: InitialSetupInput): Promise<ServiceResult<InitialSetupStatus>> => {
       if (process.platform !== "win32") return { ok: false, error: "O assistente automático está disponível somente no Windows." };
+      const startedAt = Date.now();
+      let stage = "Iniciando assistente";
       try {
         if (input.installationMode === "server") {
           const serverInput = input as InitialSetupInput & { postgresBin: string; adminUser: string; adminPassword: string };
           const script = installerPath();
           if (!existsSync(script)) return { ok: false, error: "Arquivos de instalação do banco não foram encontrados. Reinstale o PORTUS." };
           if (!existsSync(join(serverInput.postgresBin, "psql.exe"))) return { ok: false, error: "psql.exe não foi encontrado na pasta informada." };
+          stage = "Instalação / migrations locais";
           await runInitialSetup(serverInput, script);
           const connectionString = buildCentralDatabaseUrl(serverInput);
+          stage = "Verificando acesso ao PostgreSQL";
           await verifyCentralDatabaseUrl(connectionString);
+          stage = "Salvando configuração e validando esquema";
           await persistCentralDatabaseUrl(connectionString);
           await setCentralStationSetting("installation_mode", "server");
 
@@ -137,6 +179,7 @@ export function registerSetupHandlers(): void {
           const connectionString = buildCentralDatabaseUrl(input);
           await verifyCentralDatabaseUrl(connectionString);
           await persistCentralDatabaseUrl(connectionString);
+          stage = "Validando esquema PORTUS no servidor";
           await checkCentralDatabase();
           await setCentralStationSetting("installation_mode", "client");
           await setCentralStationSetting("station_sector_code", input.stationSectorCode!);
@@ -148,7 +191,7 @@ export function registerSetupHandlers(): void {
         markInitialSetupComplete(input.installationMode);
         return { ok: true, data: await getStatus() };
       } catch (error) {
-        return { ok: false, error: formatInitialSetupError(error, input) };
+        return { ok: false, error: formatInitialSetupError(error, input, { stage, elapsedMs: Date.now() - startedAt }) };
       }
     })
   );
