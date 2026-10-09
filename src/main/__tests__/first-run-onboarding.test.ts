@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { isInitialSetupCompleted, markInitialSetupComplete } from "../setup/initial-setup-service";
+import { detectPostgresServiceStatus, isInitialSetupCompleted, markInitialSetupComplete } from "../setup/initial-setup-service";
 
 const oldLocal = process.env.LOCALAPPDATA;
 const oldApp = process.env.APPDATA;
@@ -41,6 +41,12 @@ describe("assistente inicial obrigatorio por estacao", () => {
     expect(isInitialSetupCompleted()).toBe(false);
     writeFileSync(filename, "invalid-json");
     expect(isInitialSetupCompleted()).toBe(false);
+  });
+  it("distingue servico local ativo, parado e ausente sem exigir instalacao em clientes", () => {
+    expect(detectPostgresServiceStatus("win32", () => "Running,Stopped")).toBe("running");
+    expect(detectPostgresServiceStatus("win32", () => "Stopped")).toBe("stopped");
+    expect(detectPostgresServiceStatus("win32", () => "")).toBe("not-found");
+    expect(detectPostgresServiceStatus("linux", () => { throw new Error("nao deve executar"); })).toBe("unavailable");
   });
   it("mantem escolha de cliente/setor, verificacao do schema e bloqueio do login", () => {
     const root = process.cwd();
