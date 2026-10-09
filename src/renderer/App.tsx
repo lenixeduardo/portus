@@ -78,7 +78,12 @@ export function App() {
       setUser(u);
       if (!setup.setupCompleted || !setup.configured) setInitialSetup(setup);
       setBootstrapping(false);
-    }).catch(() => setBootstrapping(false));
+    }).catch((error) => {
+      reportRendererError("initial-setup-status", error);
+      setUser(null);
+      setInitialSetup({ configured: false, available: false, required: true, mode: "central", supported: true, postgresBin: null, setupCompleted: false, stationCode: "DESCONHECIDA", postgresServiceStatus: "unavailable" });
+      setBootstrapping(false);
+    });
     return () => { active = false; };
   }, []);
 
@@ -151,7 +156,7 @@ export function App() {
     </div>
   );
   const updateModal = availableUpdate && <UpdateAvailableModal update={availableUpdate} onClose={() => setAvailableUpdate(null)} />;
-  if (initialSetup) return <><InitialSetup initialStatus={initialSetup} onCompleted={() => setInitialSetup(null)} />{updateModal}</>;
+  if (initialSetup) return <><InitialSetup initialStatus={initialSetup} onCompleted={() => { setUser(null); setInitialSetup(null); }} />{updateModal}</>;
   if (!user) return (
     <>
       <Login onAuthenticated={setUser} />
