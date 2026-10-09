@@ -12,6 +12,7 @@ Add-Type -AssemblyName System.Drawing
 . (Join-Path $PSScriptRoot "portus-db-utility-glyphs.ps1")
 . (Join-Path $PSScriptRoot "portus-db-utility-process.ps1")
 . (Join-Path $PSScriptRoot "portus-psql-preflight.ps1")
+. (Join-Path $PSScriptRoot "portus-postgres-discovery.ps1")
 . (Join-Path $PSScriptRoot "portus-legacy-import-ui.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
@@ -144,7 +145,7 @@ function Find-PostgresBin {
     $bin = Join-Path $env:ProgramFiles ("PostgreSQL\{0}\bin" -f $version)
     if (-not (Get-PortusPsqlValidationError -BinPath $bin)) { return $bin }
   }
-  return (Join-Path $env:ProgramFiles "PostgreSQL\18\bin")
+  return "" # Nao inventar um cliente PostgreSQL quando nao existe.
 }
 
 # Header with the original installed PORTUS icon, never an invented logo.
@@ -267,6 +268,7 @@ $adminButton = Make-Action "Inserir admin" 885
 $adminButton.Image = New-PortusGlyph "user" 24 "brandMuted"
 $dataImportButton = Make-Action "Migrar dados" 49 $false 560
 $dataImportButton.Image = New-PortusGlyph "database" 24 "brandMuted"
+$diagnoseButton = Make-Action "Detectar PostgreSQL" 258 $false 560
 
 # Ícones avulsos transparentes do design system (24 px, assets PNG).
 $script:UiActionImages = @()
@@ -303,6 +305,7 @@ $actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TC
 $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
 $actionToolTip.SetToolTip($adminButton, "Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin.")
 $actionToolTip.SetToolTip($dataImportButton, "Importa dados históricos do SQLite para PostgreSQL, após backups e validação de estação/setor.")
+$actionToolTip.SetToolTip($diagnoseButton, "Detecta instalacoes, ferramentas e servicos PostgreSQL neste computador, sem alterar dados.")
 
 # Status card.
 [void](Make-Card 24 648 1086 94)
@@ -423,7 +426,7 @@ foreach ($card in $script:UiCards) {
 # Cada um dos 4 cards precisa ter filhos renderizaveis e handlers visiveis.
 $script:UiPanelControls = @(
   @{card=$script:UiCards[0]; controls=@($connTitle,$hostField,$portField,$dbField,$userField,$binField,$passField)},
-  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$dataImportButton)},
+  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$dataImportButton,$diagnoseButton)},
   @{card=$script:UiCards[2]; controls=@($statusTitle,$status,$statusDescription,$statusGlyph)},
   @{card=$script:UiCards[3]; controls=@($logTitle,$log,$clearLogButton)}
 )
@@ -535,6 +538,38 @@ function Show-Log([string]$value, [ValidateSet("ui","stdout","stderr","diagnosti
   $log.SelectionStart = $log.TextLength
   $log.ScrollToCaret()
 }
+function Show-PostgresDiscovery {
+  try {
+    $detection = Get-PortusPostgresDiscovery
+    $localHost = $hostField.Text.Trim().ToLowerInvariant() -in @("127.0.0.1","localhost","::1","[::1]")
+    if ($detection.BinPath -and -not (Get-PortusPsqlValidationError -BinPath $binField.Text.Trim())) {
+      # Preservar pasta bin valida escolhida pelo usuario.
+    } elseif ($detection.BinPath) {
+      $binField.Text = $detection.BinPath
+    }
+    $headline = $detection.Title
+    if (-not $localHost -and $detection.State -eq "not-detected") {
+      $headline = "Cliente remoto: PostgreSQL local nao e necessario."
+    }
+    $status.Text = $headline
+    $statusDescription.Text = if ($detection.State -eq "server-running") { "Servico ativo. Clique Validar banco para conferir o banco PORTUS." }
+      elseif ($detection.State -eq "server-stopped") { "Inicie o servico PostgreSQL no Windows antes de validar." }
+      elseif (-not $localHost) { "Use IP e porta da maquina servidor; nao instale banco nesta estacao." }
+      else { "Servidor sem PostgreSQL? Instale-o antes de criar o banco PORTUS." }
+    $color = if ($detection.State -eq "server-running") { "success" } else { "warning" }
+    $status.ForeColor = UiColor $color
+    $statusGlyph.Image = New-PortusGlyph $(if ($color -eq "success") { "check" } else { "pending" }) 30 $color
+    Show-Log ("Diagnostico local: " + $headline)
+    if ($detection.ServiceName) { Show-Log ("Servico: " + $detection.ServiceName + " / " + $detection.ServiceStatus) }
+    if ($detection.BinPath) { Show-Log ("Cliente PostgreSQL: " + $detection.BinPath) }
+    Show-Log $detection.Guidance
+    foreach ($problem in $detection.InvalidTools) { Show-Log $problem "diagnostic" }
+  } catch {
+    Show-Log ("Nao foi possivel detectar PostgreSQL: " + $_.Exception.Message) "diagnostic"
+    $status.Text = "Diagnostico indisponivel. Selecione a pasta bin manualmente."
+  }
+}
+
 function Set-Busy([bool]$busy) {
   if ($busy) {
     $statusDescription.Text = "Operação em andamento. Aguarde a confirmação."
@@ -548,7 +583,7 @@ function Set-Busy([bool]$busy) {
     }
     $field.Tag.Surface.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
   }
-  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$dataImportButton)) {
+  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$dataImportButton,$diagnoseButton)) {
     if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
     $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}elseif($button -eq $adminButton){"seed-admin"}else{"import-legacy"})) { "Executando..." } else { $button.AccessibleDescription }
   }
@@ -558,6 +593,7 @@ function Set-Busy([bool]$busy) {
   $registerButton.Enabled = -not $busy
   $adminButton.Enabled = -not $busy
   $dataImportButton.Enabled = -not $busy
+  $diagnoseButton.Enabled = -not $busy
   $browseButton.Enabled = -not $busy
   $showPasswordButton.Enabled = -not $busy
   $clearLogButton.Enabled = -not $busy
@@ -799,6 +835,7 @@ $networkButton.Add_Click({ Start-Action "network" })
 $registerButton.Add_Click({ Start-Action "register" })
 $adminButton.Add_Click({ Start-Action "seed-admin" })
 $dataImportButton.Add_Click({ Start-Action "import-legacy" })
+$diagnoseButton.Add_Click({ if (-not $script:child) { Show-PostgresDiscovery } })
 $form.Add_FormClosing({
   param($sender,$args)
   if ($script:child -and -not $script:child.HasExited) {
@@ -850,7 +887,7 @@ if ($SmokeTest -or $CapturePath) {
     if (-not $form.Visible -or -not $form.IsHandleCreated -or
         -not $checkButton.Visible -or -not $migrateButton.Visible -or
         -not $networkButton.Visible -or -not $registerButton.Visible -or
-        -not $dataImportButton.Visible -or -not $adminButton.Visible -or
+        -not $dataImportButton.Visible -or -not $adminButton.Visible -or -not $diagnoseButton.Visible -or
         -not $title.Visible -or -not $log.Visible -or
         -not $canvas.Visible -or
         -not $checkButton.Image -or -not $migrateButton.Image -or
@@ -878,7 +915,8 @@ if ($SmokeTest -or $CapturePath) {
       @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
       @{button=$registerButton; tip="Registra o servidor da primeira instalação."},
       @{button=$adminButton; tip="Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin."},
-      @{button=$dataImportButton; tip="Importa dados históricos do SQLite para PostgreSQL, após backups e validação de estação/setor."}
+      @{button=$dataImportButton; tip="Importa dados históricos do SQLite para PostgreSQL, após backups e validação de estação/setor."},
+       @{button=$diagnoseButton; tip="Detecta instalacoes, ferramentas e servicos PostgreSQL neste computador, sem alterar dados."}
     )) {
       if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
         $script:smokeFailed = $true
