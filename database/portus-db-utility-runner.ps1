@@ -59,6 +59,66 @@ try {
         }
         & (Join-Path $PSScriptRoot "install-portus-database.ps1") @invokeParams
       }
+      "import-legacy" {
+        # O importador existente realiza backup SQLite e pg_dump antes de gravar.
+        if (-not $env:PORTUS_ADMIN_DATABASE_URL) {
+          throw "Conexao administrativa PostgreSQL indisponivel para importacao."
+        }
+        if (-not (Test-Path -LiteralPath $LegacySqlite -PathType Leaf)) {
+          throw "Arquivo SQLite anterior nao encontrado: $LegacySqlite"
+        }
+        $stationName = $StationCode.Trim().ToUpperInvariant()
+        if ($stationName -notmatch '^[A-Z0-9._-]{2,64}
+        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
+        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
+      }
+      "register" {
+        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName; RegisterFirstInstallation=$true }
+        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
+      }
+    }
+    if (-not $?) { throw "O script $Operation retornou falha sem excecao detalhada." }
+    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+      throw "Comando nativo retornou exit code $LASTEXITCODE."
+    }
+    $code = 0
+  }
+} catch {
+  $code = 1
+  $detail = $_.Exception.Message
+  [Console]::Error.WriteLine("PORTUS [$Operation]: " + $detail)
+} finally {
+  $result = @{
+    schemaVersion = 1
+    operation = $Operation
+    exitCode = [int]$code
+    completedAt = [DateTime]::UtcNow.ToString("o")
+    error = $detail
+  } | ConvertTo-Json -Compress
+  try {
+    [IO.File]::WriteAllText($ResultPath,$result,$utf8)
+  } catch {
+    [Console]::Error.WriteLine("PORTUS: nao foi possivel salvar resultado: " + $_.Exception.Message)
+    $code = 1
+  }
+}
+exit $code
+ -or $SectorCode -notin @("PRODUCTION","LABORATORY")) {
+          throw "Codigo da estacao ou setor invalido."
+        }
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $importer = Join-Path $projectRoot "scripts\import-legacy-to-postgres.mjs"
+        if (-not (Test-Path -LiteralPath $importer)) {
+          throw "Importador indisponivel neste pacote. Abra o utilitario pela pasta completa do projeto PORTUS com npm ci."
+        }
+        $node = Get-Command node.exe -ErrorAction SilentlyContinue
+        if (-not $node) { throw "Node.js nao encontrado. Instale Node.js e execute npm ci no projeto." }
+        $dump = Join-Path $PostgresBin "pg_dump.exe"
+        if (-not (Test-Path -LiteralPath $dump)) { throw "pg_dump.exe necessario para backup PostgreSQL nao encontrado." }
+        $backup = Join-Path (Split-Path -Parent $LegacySqlite) "portus-backups"
+        & $node.Source $importer ("--sqlite=" + $LegacySqlite) ("--station=" + $stationName) ("--sector=" + $SectorCode) ("--backup-dir=" + $backup) ("--pg-dump=" + $dump)
+        if ($LASTEXITCODE -ne 0) { throw "Importacao nao concluida. Codigo $LASTEXITCODE. Consulte o log." }
+      }
       "network" {
         $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
         & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
