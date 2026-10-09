@@ -281,6 +281,21 @@ $seedAdminButton.Add_MouseEnter({ param($sender,$event) if ($sender.Enabled) { $
 $seedAdminButton.Add_MouseLeave({ param($sender,$event) if ($sender.Enabled) { $sender.BackColor = UiColor "surface" } })
 $canvas.Controls.Add($seedAdminButton)
 
+$migrateLegacyButton = New-Object System.Windows.Forms.Button
+$migrateLegacyButton.Text = "Migrar cadastros antigos"
+$migrateLegacyButton.Location = New-Object System.Drawing.Point(626,431)
+$migrateLegacyButton.Size = New-Object System.Drawing.Size(234,40)
+$migrateLegacyButton.Font = UiFont "Inter" 13 "600"
+$migrateLegacyButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$migrateLegacyButton.FlatAppearance.BorderColor = UiColor "borderStrong"
+$migrateLegacyButton.BackColor = UiColor "surface"
+$migrateLegacyButton.ForeColor = UiColor "navy"
+$migrateLegacyButton.Image = New-PortusGlyph "database" 18 "primary"
+$migrateLegacyButton.TextImageRelation = [System.Windows.Forms.TextImageRelation]::ImageBeforeText
+$migrateLegacyButton.Add_MouseEnter({param($sender,$e) if ($sender.Enabled) { $sender.BackColor=UiColor "primarySoft" }})
+$migrateLegacyButton.Add_MouseLeave({param($sender,$e) if ($sender.Enabled) { $sender.BackColor=UiColor "surface" }})
+$canvas.Controls.Add($migrateLegacyButton)
+
 # Ícones avulsos transparentes do design system (24 px, assets PNG).
 $script:UiActionImages = @()
 function Set-ActionIcon([System.Windows.Forms.Button]$button,[string]$file) {
@@ -315,6 +330,7 @@ $actionToolTip.SetToolTip($migrateButton, "Executa apenas migrations pendentes."
 $actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TCP.")
 $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
 $actionToolTip.SetToolTip($seedAdminButton, "Desenvolvimento local: cria admin/admin se nao existir; nao redefine conta existente.")
+$actionToolTip.SetToolTip($migrateLegacyButton, "Importa dados do SQLite anterior com backups e verificacao de registros. Faça isto antes de inserir admin.")
 
 # Status card.
 [void](Make-Card 24 569 1086 94)
@@ -435,7 +451,7 @@ foreach ($card in $script:UiCards) {
 # Cada um dos 4 cards precisa ter filhos renderizaveis e handlers visiveis.
 $script:UiPanelControls = @(
   @{card=$script:UiCards[0]; controls=@($connTitle,$hostField,$portField,$dbField,$userField,$binField,$passField)},
-  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton)},
+  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton,$migrateLegacyButton)},
   @{card=$script:UiCards[2]; controls=@($statusTitle,$status,$statusDescription,$statusGlyph)},
   @{card=$script:UiCards[3]; controls=@($logTitle,$log,$clearLogButton)}
 )
@@ -560,15 +576,16 @@ function Set-Busy([bool]$busy) {
     }
     $field.Tag.Surface.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
   }
-  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton)) {
+  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton,$migrateLegacyButton)) {
     if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
-    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}else{"seed-admin"})) { "Executando..." } else { $button.AccessibleDescription }
+    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}elseif($button -eq $seedAdminButton){"seed-admin"}else{"import-legacy"})) { "Executando..." } else { $button.AccessibleDescription }
   }
   $checkButton.Enabled = -not $busy
   $migrateButton.Enabled = -not $busy
   $networkButton.Enabled = -not $busy
   $registerButton.Enabled = -not $busy
   $seedAdminButton.Enabled = -not $busy
+  $migrateLegacyButton.Enabled = -not $busy
   $browseButton.Enabled = -not $busy
   $showPasswordButton.Enabled = -not $busy
   $clearLogButton.Enabled = -not $busy
@@ -633,6 +650,7 @@ $timer.Add_Tick({
         elseif ($script:action -eq "migrate") { "Migrations concluidas. Valide o banco." }
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
         elseif ($script:action -eq "seed-admin") { "Rotina local admin concluida; consulte o log." }
+        elseif ($script:action -eq "import-legacy") { "Dados SQLite importados. Confira a conciliacao no log." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
@@ -668,22 +686,352 @@ function Start-Action([string]$operation) {
     [void][System.Windows.Forms.MessageBox]::Show("Verifique os dados de conexao.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate","seed-admin") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
+  if ($operation -in @("validate","migrate","seed-admin","import-legacy") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
     [void][System.Windows.Forms.MessageBox]::Show("Informe a senha administrativa do PostgreSQL.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate","seed-admin") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
+  if ($operation -in @("validate","migrate","seed-admin","import-legacy") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
     [void][System.Windows.Forms.MessageBox]::Show("psql.exe nao encontrado na pasta bin.","PORTUS")
     return
   }
 
   $filename = if ($operation -eq "validate") { "validate-portus-schema.ps1" }
     elseif ($operation -in @("migrate","seed-admin")) { "install-portus-database.ps1" }
+    elseif ($operation -eq "import-legacy") { "import-legacy-to-postgres.mjs" }
     else { "check-portus-server-network.ps1" }
-  $scriptPath = Join-Path $PSScriptRoot $filename
+  $scriptPath = if ($operation -eq "import-legacy") {
+    Join-Path (Split-Path -Parent $PSScriptRoot) ("scripts\" + $filename)
+  } else { Join-Path $PSScriptRoot $filename }
   if (-not (Test-Path -LiteralPath $scriptPath)) {
     [void][System.Windows.Forms.MessageBox]::Show("Script ausente: $filename. Atualize a pasta database.","PORTUS")
     return
+  }
+  if ($operation -eq "import-legacy") {
+    # A origem e um arquivo SQLite especifico da estacao de onde vieram
+    # usuários/produtos/lotes; jamais invente uma base anterior.
+    $sourceDialog = New-Object System.Windows.Forms.OpenFileDialog
+    $sourceDialog.Title = "Selecione o banco SQLite PORTUS da estacao antiga"
+    $sourceDialog.Filter = "SQLite PORTUS (*.db;*.sqlite;*.sqlite3)|*.db;*.sqlite;*.sqlite3|Todos os arquivos (*.*)|*.*"
+    $sourceDialog.CheckFileExists = $true
+    if ($sourceDialog.ShowDialog($form) -ne [System.Windows.Forms.DialogResult]::OK) { return }
+    $script:legacySqlite = $sourceDialog.FileName
+    Add-Type -AssemblyName Microsoft.VisualBasic
+    $suggestedStation = [Environment]::MachineName.ToUpperInvariant()
+    $stationFile = Join-Path (Join-Path $env:LOCALAPPDATA "PORTUS") "station-identity.json"
+    if (Test-Path -LiteralPath $stationFile) {
+      try {
+        $identity = Get-Content -LiteralPath $stationFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($identity.code) { $suggestedStation = [string]$identity.code }
+      } catch { }
+    }
+    $script:legacyStation = [Microsoft.VisualBasic.Interaction]::InputBox(
+      "Informe o codigo fixo da estacao original. Use o mesmo codigo ao reexecutar a importacao.",
+      "PORTUS: identificacao da estacao", $suggestedStation).Trim().ToUpperInvariant()
+    if ($script:legacyStation -notmatch '^[A-Z0-9._-]{2,64}
+    if ($hostName -notin @("127.0.0.1","localhost","::1","[::1]")) {
+      Show-Log "A conta admin/admin so pode ser inserida em PostgreSQL local (localhost)." "diagnostic"
+      [void][System.Windows.Forms.MessageBox]::Show(
+        "Inserir admin e uma operacao exclusiva de desenvolvimento LOCAL. Altere o servidor para 127.0.0.1 ou localhost.",
+        "PORTUS: operacao bloqueada",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+      )
+      return
+    }
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+      "Criar a conta Master de DESENVOLVIMENTO admin/admin em $($hostName):$port/$database? A senha e conhecida e insegura, nao deve ser usada em producao. Se o login ja existir, a senha NAO sera redefinida.",
+      "PORTUS: confirmar insercao local de admin",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+  }
+  if ($operation -eq "migrate") {
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+      "Aplicar migrations em $($hostName):$port/$database? Confira o alvo e o backup antes de prosseguir.",
+      "Confirmar alteracoes no schema",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+  }
+  if ($operation -eq "register") {
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+      "Registrar $($hostName):$port/$database como IP de referencia desta estacao? O cadastro so funciona se estiver ausente e o PostgreSQL estiver acessivel.",
+      "Registrar servidor da primeira instalacao",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+  }
+  # O runner controla UTF-8 e publica um resultado JSON independente do
+  # ExitCode nulo que Start-Process pode retornar no Windows PowerShell 5.1.
+  $runnerPath = Join-Path $PSScriptRoot "portus-db-utility-runner.ps1"
+  if (-not (Test-Path -LiteralPath $runnerPath)) {
+    Show-Log ("Runner do PORTUS ausente: " + $runnerPath) "diagnostic"
+    return
+  }
+  $script:resultFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".result.json")
+  $arguments = @(
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", (Quoted $runnerPath),
+    "-Operation", $operation,
+    "-ResultPath", (Quoted $script:resultFile),
+    "-DatabaseHost", (Quoted $hostName),
+    "-Port", "$port",
+    "-DatabaseName", (Quoted $database),
+    "-AdminUser", (Quoted $username),
+    "-PostgresBin", (Quoted $bin)
+  )
+  if ($operation -eq "import-legacy") {
+    $arguments += @(
+      "-LegacySqlite", (Quoted $script:legacySqlite),
+      "-StationCode", (Quoted $script:legacyStation),
+      "-SectorCode", $script:legacySector
+    )
+  }
+
+  $script:outFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".out")
+  $script:errFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".err")
+  $script:outOffset = 0
+  $script:errOffset = 0
+  $script:action = $operation
+  $previous = [Environment]::GetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD","Process")
+  $previousAdminUrl = [Environment]::GetEnvironmentVariable("PORTUS_ADMIN_DATABASE_URL","Process")
+  try {
+    if ($operation -in @("validate","migrate","seed-admin")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
+    if ($operation -eq "import-legacy") {
+      $safeUser = [Uri]::EscapeDataString($username)
+      $safePassword = [Uri]::EscapeDataString($passField.Text)
+      $hostForUri = if ($hostName.Contains(":") -and -not $hostName.StartsWith("[")) { "[" + $hostName + "]" } else { $hostName }
+      $adminUrl = "postgresql://$($safeUser):$($safePassword)@$($hostForUri):$port/$database"
+      [Environment]::SetEnvironmentVariable("PORTUS_ADMIN_DATABASE_URL",$adminUrl,"Process")
+      $adminUrl = $null
+      $safePassword = $null
+    }
+    $options = @{
+      FilePath = (Join-Path $PSHOME "powershell.exe")
+      ArgumentList = ($arguments -join " ")
+      PassThru = $true
+      WindowStyle = "Hidden"
+      RedirectStandardOutput = $script:outFile
+      RedirectStandardError = $script:errFile
+    }
+    $script:child = Start-Process @options
+  } catch {
+    Show-Log ("Erro ao executar: " + $_.Exception.ToString()) "diagnostic"
+    return
+  } finally {
+    [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")
+    [Environment]::SetEnvironmentVariable("PORTUS_ADMIN_DATABASE_URL",$previousAdminUrl,"Process")
+    if ($operation -in @("validate","migrate","seed-admin","import-legacy")) { $passField.Clear() }
+  }
+  Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
+  Show-Log ("Script: " + $filename + " | PID: " + $script:child.Id)
+  $status.Text = "Executando operacao..."
+  $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B45309")
+  $statusDot.ForeColor = UiColor "warning"
+  Set-Busy $true
+  $timer.Start()
+}
+
+$checkButton.Add_Click({ Start-Action "validate" })
+$migrateButton.Add_Click({ Start-Action "migrate" })
+$networkButton.Add_Click({ Start-Action "network" })
+$registerButton.Add_Click({ Start-Action "register" })
+$seedAdminButton.Add_Click({ Start-Action "seed-admin" })
+$migrateLegacyButton.Add_Click({ Start-Action "import-legacy" })
+$form.Add_FormClosing({
+  param($sender,$args)
+  if ($script:child -and -not $script:child.HasExited) {
+    [void][System.Windows.Forms.MessageBox]::Show("Ha uma operacao em andamento. Aguarde sua conclusao.","PORTUS")
+    $args.Cancel = $true
+  }
+})
+Show-Log "Informe a senha administrativa e selecione uma das acoes."
+if ($script:UiMissingFonts.Count -gt 0) {
+  $message = "Fontes ausentes: " + ($script:UiMissingFonts -join ", ") + ". Execute database\\install-portus-ui-fonts.ps1 e reinicie."
+  Show-Log $message
+  $status.Text = "Tipografia incompleta: instale Sora e Inter."
+  $status.ForeColor = UiColor "warning"
+  $statusDot.ForeColor = UiColor "warning"
+}
+if ($StrictFonts -and $script:UiMissingFonts.Count -gt 0) {
+  throw ("Fontes obrigatorias nao instaladas: " + ($script:UiMissingFonts -join ", "))
+}
+$form.Add_FormClosed({
+  $actionToolTip.Dispose()
+  foreach ($image in $script:UiActionImages) { if ($image) { $image.Dispose() } }
+  if ($script:UiFontCollection) { $script:UiFontCollection.Dispose() }
+  foreach ($icon in $script:UiDecorativeIcons) { if ($icon) { $icon.Dispose() } }
+})
+
+# Janela topmost apenas durante a inicializacao. Ela deve aparecer mesmo se o
+# .bat foi chamado de um terminal que permaneceu em primeiro plano.
+$focusTimer = New-Object System.Windows.Forms.Timer
+$focusTimer.Interval = 1100
+$focusTimer.Add_Tick({
+  $focusTimer.Stop()
+  $form.TopMost = $false
+  $focusTimer.Dispose()
+})
+$form.Add_Shown({
+  $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+  $form.TopMost = $true
+  $form.BringToFront()
+  $form.Activate()
+  $focusTimer.Start()
+})
+
+if ($SmokeTest -or $CapturePath) {
+  # Abre a janela real sem conectar ou alterar o PostgreSQL.
+  $smokeTimer = New-Object System.Windows.Forms.Timer
+  $smokeTimer.Interval = 600
+  $smokeTimer.Add_Tick({
+    $smokeTimer.Stop()
+    if (-not $form.Visible -or -not $form.IsHandleCreated -or
+        -not $checkButton.Visible -or -not $migrateButton.Visible -or
+        -not $networkButton.Visible -or -not $registerButton.Visible -or
+        -not $seedAdminButton.Visible -or -not $migrateLegacyButton.Visible -or
+        -not $title.Visible -or -not $log.Visible -or
+        -not $canvas.Visible -or
+        -not $checkButton.Image -or -not $migrateButton.Image -or
+        -not $networkButton.Image -or -not $registerButton.Image) {
+      $script:smokeFailed = $true
+    }
+    foreach ($group in $script:UiPanelControls) {
+      if (-not $group.card.Visible -or
+          $canvas.Controls.GetChildIndex($group.card) -ge $canvas.Controls.Count) {
+        $script:smokeFailed = $true
+      }
+      foreach ($child in $group.controls) {
+        # O controle precisa pertencer ao card e estar em arvore de UI visivel;
+        # a propriedade Visible sozinha nao revela um painel sobreposto.
+        $parent = $child.Parent
+        while ($parent -and $parent -ne $group.card) { $parent = $parent.Parent }
+        if ($parent -ne $group.card -or -not $child.Visible) {
+          $script:smokeFailed = $true
+        }
+      }
+    }
+    foreach ($pair in @(
+      @{button=$checkButton; tip="Conecta e verifica a integridade do schema."},
+      @{button=$migrateButton; tip="Executa apenas migrations pendentes."},
+      @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
+      @{button=$registerButton; tip="Registra o servidor da primeira instalação."},
+      @{button=$seedAdminButton; tip="Desenvolvimento local: cria admin/admin se nao existir; nao redefine conta existente."},
+      @{button=$migrateLegacyButton; tip="Importa dados do SQLite anterior com backups e verificacao de registros. Faça isto antes de inserir admin."}
+    )) {
+      if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
+        $script:smokeFailed = $true
+      }
+    }
+    if ($ViewportWidth -gt 0 -and $ViewportHeight -gt 0 -and
+        ($ViewportWidth -lt $canvas.Width -or $ViewportHeight -lt $canvas.Height) -and
+        -not ($page.HorizontalScroll.Visible -or $page.VerticalScroll.Visible)) {
+      $script:smokeFailed = $true
+    }
+    if ($StrictFonts) {
+      foreach ($h in @($title,$brandSubtitle,$connTitle,$actionTitle,$statusTitle,$logTitle)) {
+        if ($h.Font.FontFamily.Name -ne "Sora") { $script:smokeFailed = $true }
+      }
+      foreach ($component in @($hostField,$portField,$dbField,$userField,$binField,$passField,
+                               $checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton,$migrateLegacyButton,$log)) {
+        if ($component.Font.FontFamily.Name -ne "Inter") { $script:smokeFailed = $true }
+      }
+    }
+
+    # O teste usa o asset real do projeto e nao aceita uma marca ausente.
+    $officialLogo = Join-Path (Split-Path -Parent $PSScriptRoot) "build\icon.png"
+    if ((Test-Path -LiteralPath $officialLogo) -and $null -eq $logoPicture.Image) {
+      $script:smokeFailed = $true
+    }
+    # Validacao de pixels renderizados: um smoke test so de .Visible podia
+    # aprovar a janela apesar de os cards inteiros aparecerem vazios no Windows.
+    if (-not $script:smokeFailed) {
+      $visualCheck = New-Object System.Drawing.Bitmap($canvas.Width,$canvas.Height)
+      try {
+        $rect = New-Object System.Drawing.Rectangle(0,0,$canvas.Width,$canvas.Height)
+        $canvas.DrawToBitmap($visualCheck,$rect)
+        $buttonColor = $visualCheck.GetPixel(531,500)
+        $cardColor = $visualCheck.GetPixel(40,210)
+        $expectedButton = UiColor "primary"
+        $expectedCard = UiColor "surface"
+        if ($buttonColor.ToArgb() -ne $expectedButton.ToArgb() -or
+            $cardColor.ToArgb() -ne $expectedCard.ToArgb()) {
+          $script:smokeFailed = $true
+          [Console]::Error.WriteLine(
+            "PORTUS: cards cobertos no render. CTA=" + $buttonColor.ToArgb() +
+            ", esperado=" + $expectedButton.ToArgb() +
+            "; card=" + $cardColor.ToArgb() +
+            ", esperado=" + $expectedCard.ToArgb()
+          )
+        }
+      } finally { $visualCheck.Dispose() }
+    }
+    if ($CapturePath -and -not $script:smokeFailed) {
+      # Captura os pixels realmente renderizados pela interface WinForms no runner Windows.
+      # Em vez de fotografar uma tela remota, desenha os controles reais em bitmap.
+      $bitmap = New-Object System.Drawing.Bitmap($canvas.Width,$canvas.Height)
+      try {
+        $rectangle = New-Object System.Drawing.Rectangle(0,0,$canvas.Width,$canvas.Height)
+        $canvas.DrawToBitmap($bitmap,$rectangle)
+        $folder = Split-Path -Parent $CapturePath
+        if ($folder -and -not (Test-Path -LiteralPath $folder)) {
+          New-Item -ItemType Directory -Path $folder -Force | Out-Null
+        }
+        $bitmap.Save($CapturePath,[System.Drawing.Imaging.ImageFormat]::Png)
+        Write-Host ("PORTUS_REAL_UI_CAPTURE_SAVED: " + $CapturePath)
+      } catch {
+        $script:smokeFailed = $true
+        [Console]::Error.WriteLine("Falha ao capturar WinForms: " + $_.Exception.Message)
+      } finally {
+        $bitmap.Dispose()
+      }
+    }
+    $form.Close()
+  })
+  $form.Add_Shown({ $smokeTimer.Start() })
+}
+
+Write-Host "PORTUS: iniciando interface. Se necessario, use Alt+Tab."
+[void]$form.ShowDialog()
+if ($SmokeTest -or $CapturePath) {
+  if ($script:smokeFailed) { throw "Smoke test: janela, controles ou logotipo PORTUS nao carregaram." }
+  if ($CapturePath -and -not (Test-Path -LiteralPath $CapturePath)) {
+    throw "O arquivo da captura nao foi gerado."
+  }
+  Write-Host "PORTUS_DB_UTILITY_SMOKE_OK"
+}
+} catch {
+  $message = "Nao foi possivel abrir o utilitario PORTUS: " + $_.Exception.Message
+  [Console]::Error.WriteLine($message)
+  try {
+    if (-not $SmokeTest -and -not $CapturePath) {
+    [void][System.Windows.Forms.MessageBox]::Show($message,"Falha ao iniciar PORTUS",
+      [System.Windows.Forms.MessageBoxButtons]::OK,
+      [System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+  } catch { }
+  exit 1
+}
+) {
+      Show-Log "Codigo da estacao vazio ou invalido. Migracao cancelada." "diagnostic"
+      return
+    }
+    $sectorAnswer = [System.Windows.Forms.MessageBox]::Show(
+      "O SQLite pertence a estacao de PRODUCAO? Clique Sim para PRODUCTION, Nao para LABORATORY, Cancelar para sair.",
+      "PORTUS: setor da origem",
+      [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
+      [System.Windows.Forms.MessageBoxIcon]::Question)
+    if ($sectorAnswer -eq [System.Windows.Forms.DialogResult]::Cancel) { return }
+    $script:legacySector = if ($sectorAnswer -eq [System.Windows.Forms.DialogResult]::Yes) { "PRODUCTION" } else { "LABORATORY" }
+    $confirmation = [System.Windows.Forms.MessageBox]::Show(
+      "Importar registros do arquivo `"$($script:legacySqlite)`" da estacao $($script:legacyStation) ($($script:legacySector)) para $($hostName):$port/$database? O importador faz backups do SQLite e PostgreSQL, preserva hashes de senha e historicos e aborta se detectar conflitos. Execute antes de usar Inserir admin (dev).",
+      "PORTUS: confirmar importacao com backups",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Warning)
+    if ($confirmation -ne [System.Windows.Forms.DialogResult]::Yes) { return }
   }
   if ($operation -eq "seed-admin") {
     if ($hostName -notin @("127.0.0.1","localhost","::1","[::1]")) {
