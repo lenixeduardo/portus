@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -21,6 +21,25 @@ export function findPostgresBin(
     if (pathExists(`${candidate}\\psql.exe`)) return candidate;
   }
   return null;
+}
+
+/** A running local service is a hint, not proof that this station is the appointed server. */
+export function detectPostgresServiceStatus(
+  platform: NodeJS.Platform = process.platform,
+  readServices: () => string = () => execFileSync("powershell.exe", [
+    "-NoProfile", "-NonInteractive", "-Command",
+    "(Get-Service -Name 'postgresql*' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Status) -join ','"
+  ], { encoding: "utf8", timeout: 3000, windowsHide: true })
+): "running" | "stopped" | "not-found" | "unavailable" {
+  if (platform !== "win32") return "unavailable";
+  try {
+    const values = readServices().split(/[\\r\\n,]+/).map(x => x.trim().toLowerCase());
+    if (values.includes("running")) return "running";
+    if (values.includes("stopped") || values.includes("paused")) return "stopped";
+    return "not-found";
+  } catch {
+    return "unavailable";
+  }
 }
 
 export async function runInitialSetup(
