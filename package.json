@@ -107,6 +107,8 @@
       "shortcutName": "Portus",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "PORTUS - Desinstalar",
+      "deleteAppDataOnUninstall": false,
       "installerHeaderIcon": "build/icon.ico"
     }
   }
