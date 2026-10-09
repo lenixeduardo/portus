@@ -32,20 +32,20 @@ try {
   } else {
     switch ($Operation) {
       "validate" {
-        $args = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
-        & (Join-Path $PSScriptRoot "validate-portus-schema.ps1") @args
+        $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
+        & (Join-Path $PSScriptRoot "validate-portus-schema.ps1") @invokeParams
       }
       "migrate" {
-        $args = @{ MigrationsOnly=$true; SkipAppConfiguration=$true; PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
-        & (Join-Path $PSScriptRoot "install-portus-database.ps1") @args
+        $invokeParams = @{ MigrationsOnly=$true; SkipAppConfiguration=$true; PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
+        & (Join-Path $PSScriptRoot "install-portus-database.ps1") @invokeParams
       }
       "network" {
-        $args = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @args
+        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
+        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
       }
       "register" {
-        $args = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName; RegisterFirstInstallation=$true }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @args
+        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName; RegisterFirstInstallation=$true }
+        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
       }
     }
     if (-not $?) { throw "O script $Operation retornou falha sem excecao detalhada." }
