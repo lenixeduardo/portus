@@ -1,5 +1,11 @@
 import type { BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 
+const reportDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  dateStyle: "short",
+  timeStyle: "medium"
+});
+
 export function buildCsvContent(history: BatchHistory): string {
   const lines: string[] = [];
   const header = [
@@ -45,11 +51,7 @@ function formatExcelDate(value?: string): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    dateStyle: "short",
-    timeStyle: "medium"
-  }).format(date);
+  return reportDateFormatter.format(date);
 }
 
 function formatExcelDecimal(value?: string): string {
