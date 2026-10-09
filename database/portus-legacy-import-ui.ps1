@@ -1,4 +1,4 @@
-# Selecao explicita da base SQLite antiga e da identidade da estacao.
+﻿# Selecao explicita da base SQLite antiga e da identidade da estacao.
 # Nenhuma leitura, copia ou escrita no PostgreSQL e feita nesta janela.
 function Show-PortusLegacyImportDialog([System.Windows.Forms.IWin32Window]$Owner) {
   $dialog = New-Object System.Windows.Forms.Form
