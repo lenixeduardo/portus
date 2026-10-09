@@ -2,7 +2,7 @@
 # The runner writes a machine-readable result only after the script completes.
 [CmdletBinding()]
 param(
-  [ValidateSet("validate","migrate","network","register","selftest")][string]$Operation,
+  [ValidateSet("validate","migrate","network","register","seed-admin","selftest")][string]$Operation,
   [Parameter(Mandatory=$true)][string]$ResultPath,
   [string]$DatabaseHost = "127.0.0.1",
   [ValidateRange(1,65535)][int]$Port = 5432,
@@ -36,6 +36,22 @@ try {
       }
       "migrate" {
         $invokeParams = @{ MigrationsOnly=$true; SkipAppConfiguration=$true; PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
+        & (Join-Path $PSScriptRoot "install-portus-database.ps1") @invokeParams
+      }
+      "seed-admin" {
+        if ($DatabaseHost -notin @("127.0.0.1","localhost","::1","[::1]")) {
+          throw "Inserir admin/admin e permitido somente no PostgreSQL local de desenvolvimento."
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $PostgresBin "psql.exe"))) {
+          throw "psql.exe nao encontrado. Informe a pasta bin do PostgreSQL."
+        }
+        Write-Host "Solicitada criacao condicional do usuario local admin (sem redefinir senha existente)."
+        $invokeParams = @{
+          MigrationsOnly=$true; SkipAppConfiguration=$true
+          SeedDevAdmin=$true; PostgresBin=$PostgresBin
+          DatabaseHost=$DatabaseHost; Port=$Port
+          AdminUser=$AdminUser; DatabaseName=$DatabaseName
+        }
         & (Join-Path $PSScriptRoot "install-portus-database.ps1") @invokeParams
       }
       "network" {
