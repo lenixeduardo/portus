@@ -29,10 +29,12 @@ const setupSchema = z.discriminatedUnion("installationMode", [
   commonSetupSchema.extend({
     installationMode: z.literal("client"),
     stationSectorCode: z.enum(["PRODUCTION", "LABORATORY"]),
-    databaseHost: z.string().trim().min(1).refine(
-      host => !["localhost", "127.0.0.1", "::1", "[::1]"].includes(host.toLowerCase()),
-      "Informe o IP da máquina servidor. Não use localhost na estação cliente."
-    )
+    databaseHost: z.string().trim().refine(host => {
+      const octets = host.split(".");
+      return octets.length === 4 &&
+        octets.every(octet => /^[0-9]{1,3}$/.test(octet) && Number(octet) <= 255) &&
+        octets[0] !== "127" && octets[0] !== "0" && Number(octets[0]) < 224;
+    }, "Informe o IPv4 válido da máquina servidor, por exemplo 192.168.0.10.")
   })
 ]);
 
