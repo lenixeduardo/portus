@@ -208,7 +208,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('Set-Busy $true');
     expect(gui).toContain('Set-Busy $false');
     expect(gui).toContain('$networkButton.Enabled = -not $busy');
-    expect(gui).toContain("$script:child.ExitCode");
+    expect(gui).toContain("Get-PortusChildExitCode -Process $script:child");
   });
 
   it("repassa a senha sem parametros CLI ou persistencia em disco", () => {
