@@ -1,6 +1,6 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, copyFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -160,6 +160,126 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('Make-Card 24 678 1086 216');
     expect(gui).toContain('$actionToolTip.Dispose()');
   });
+
+  it("disponibiliza Inserir admin somente para desenvolvimento local com confirmacao", () => {
+    const gui = read("portus-db-utility.ps1");
+    const runner = read("portus-db-utility-runner.ps1");
+    const helper = read("portus-db-utility-process.ps1");
+    const installer = read("install-portus-database.ps1");
+    const sql = readFileSync(join(db,"seed","development_admin.sql"),"utf8");
+    expect(gui).toContain('$seedAdminButton.Text = "Inserir admin (dev)"');
+    expect(gui).toContain('$seedAdminButton.Add_Click({ Start-Action "seed-admin" })');
+    expect(gui).toContain('localhost');
+    expect(gui).toContain('admin/admin');
+    expect(gui).toContain('MessageBoxButtons]::YesNo');
+    expect(gui).toContain('$seedAdminButton.Enabled = -not $busy');
+    expect(gui).toContain('$seedAdminButton.Visible');
+    expect(gui).toContain('nao redefine conta existente');
+    expect(runner).toContain('SeedDevAdmin=$true');
+    expect(runner).toContain('MigrationsOnly=$true');
+    expect(runner).toContain('SkipAppConfiguration=$true');
+    expect(runner).not.toContain('ResetDevAdminPassword=$true');
+    expect(runner).toContain('Inserir admin e permitido somente no PostgreSQL local');
+    expect(helper).toContain('"seed-admin"');
+    expect(installer).toContain('development_admin.sql');
+    expect(installer).toContain('DESENVOLVIMENTO SOMENTE');
+    expect(sql).toContain("WHERE NOT EXISTS");
+    expect(sql).toContain("ON CONFLICT (username) DO NOTHING");
+  });
+
+  it.skipIf(process.platform !== "win32")("invoca seed admin local de forma opt-in sem redefinir senha existente", () => {
+    const temp = mkdtempSync(join(tmpdir(),"portus-admin-seed-test-"));
+    try {
+      copyFileSync(join(db,"portus-db-utility-runner.ps1"),join(temp,"portus-db-utility-runner.ps1"));
+      writeFileSync(join(temp,"install-portus-database.ps1"),[
+        "param([switch]$MigrationsOnly,[switch]$SkipAppConfiguration,[switch]$SeedDevAdmin,",
+        "      [string]$PostgresBin,[string]$DatabaseHost,[int]$Port,",
+        "      [string]$AdminUser,[string]$DatabaseName)",
+        "if (-not $MigrationsOnly -or -not $SkipAppConfiguration -or -not $SeedDevAdmin) { throw 'Flags obrigatorias ausentes' }",
+        "if ($DatabaseHost -ne '127.0.0.1') { throw 'Host local inesperado' }",
+        "Write-Output 'SEED_ADMIN_LOCAL_SIMULATED_OK'"
+      ].join("\n"),"utf8");
+      const resultPath = join(temp,"seed-admin-result.json");
+      const run = spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(temp,"portus-db-utility-runner.ps1"),
+        "-Operation","seed-admin","-ResultPath",resultPath,
+        "-DatabaseHost","127.0.0.1",
+        "-DatabaseName","portus"
+      ],{encoding:"utf8",windowsHide:true,timeout:25000});
+      expect(run.error).toBeUndefined();
+      expect(run.status,run.stderr).toBe(0);
+      expect(run.stdout).toContain("SEED_ADMIN_LOCAL_SIMULATED_OK");
+      expect(JSON.parse(readFileSync(resultPath,"utf8")).exitCode).toBe(0);
+    } finally { rmSync(temp,{recursive:true,force:true}); }
+  },35000);
+
+  it.skipIf(process.platform !== "win32")("bloqueia provisionamento admin em servidor remoto sem abrir PostgreSQL", () => {
+    const root = mkdtempSync(join(tmpdir(),"portus-admin-remote-"));
+    try {
+      const resultPath = join(root,"blocked.json");
+      const p = spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(db,"portus-db-utility-runner.ps1"),
+        "-Operation","seed-admin","-ResultPath",resultPath,
+        "-DatabaseHost","192.168.68.128",
+        "-DatabaseName","portus"
+      ],{encoding:"utf8",windowsHide:true,timeout:25000});
+      expect(p.status).not.toBe(0);
+      expect(p.stderr).toContain("somente no PostgreSQL local");
+      const result = JSON.parse(readFileSync(resultPath,"utf8"));
+      expect(result.operation).toBe("seed-admin");
+      expect(result.exitCode).not.toBe(0);
+    } finally { rmSync(root,{recursive:true,force:true}); }
+  }, 35000);
+
+  it("migracao legado importa users, products, equipamentos, lotes, sessoes, leituras e auditoria com backup", () => {
+    const gui = read("portus-db-utility.ps1");
+    const runner = read("portus-db-utility-runner.ps1");
+    const helper = read("portus-db-utility-process.ps1");
+    const importer = readFileSync(join(process.cwd(),"scripts/import-legacy-to-postgres.mjs"),"utf8");
+    expect(gui).toContain('$migrateLegacyButton.Text = "Migrar cadastros antigos"');
+    expect(gui).toContain('$migrateLegacyButton.Add_Click({ Start-Action "import-legacy" })');
+    expect(gui).toContain('New-Object System.Windows.Forms.OpenFileDialog');
+    expect(gui).toContain('station-identity.json');
+    expect(gui).toContain('Microsoft.VisualBasic.Interaction');
+    expect(gui).toContain('PORTUS_ADMIN_DATABASE_URL');
+    expect(gui).toContain('SetEnvironmentVariable("PORTUS_ADMIN_DATABASE_URL",$previousAdminUrl,"Process")');
+    expect(gui).toContain('Execute antes de usar Inserir admin (dev).');
+    expect(gui).toContain('$migrateLegacyButton.Enabled = -not $busy');
+    expect(runner).toContain('"import-legacy"');
+    expect(runner).toContain('scripts\\import-legacy-to-postgres.mjs');
+    expect(runner).toContain('pg_dump.exe');
+    expect(runner).toContain('--backup-dir=');
+    expect(runner).toContain('--station=');
+    expect(runner).toContain('--sector=');
+    expect(helper).toContain('"import-legacy"');
+    for (const table of ["users","products","equipments","settings","batches","capture_sessions","readings","audit_log","capture_error_logs"]) {
+      expect(importer).toContain('sourceRows("' + table + '")');
+    }
+    expect(importer).toContain('pg_dump');
+    expect(importer).toContain('ROLLBACK');
+    expect(importer).toContain('IMPORTAÇÃO CONCILIADA');
+  });
+
+  it.skipIf(process.platform !== "win32")("falha importacao sem origem sem alterar banco", () => {
+    const temp = mkdtempSync(join(tmpdir(),"portus-import-guard-"));
+    try {
+      const resultPath = join(temp,"result.json");
+      const run = spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(db,"portus-db-utility-runner.ps1"),
+        "-Operation","import-legacy","-ResultPath",resultPath,
+        "-LegacySqlite",join(temp,"missing.sqlite"),
+        "-StationCode","PRODUCAO-01","-SectorCode","PRODUCTION"
+      ],{encoding:"utf8",windowsHide:true,timeout:20000});
+      expect(run.status).not.toBe(0);
+      expect(run.stderr).toContain('Conexao administrativa PostgreSQL indisponivel');
+      const result = JSON.parse(readFileSync(resultPath,"utf8"));
+      expect(result.operation).toBe("import-legacy");
+      expect(result.exitCode).not.toBe(0);
+    } finally {rmSync(temp,{recursive:true,force:true})}
+  },35000);
 
   it("mostra o sucesso ou falha no log interno usando o resultado explicito do runner", () => {
     const gui = read("portus-db-utility.ps1");

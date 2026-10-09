@@ -2,13 +2,16 @@
 # The runner writes a machine-readable result only after the script completes.
 [CmdletBinding()]
 param(
-  [ValidateSet("validate","migrate","network","register","selftest")][string]$Operation,
+  [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","selftest")][string]$Operation,
   [Parameter(Mandatory=$true)][string]$ResultPath,
   [string]$DatabaseHost = "127.0.0.1",
   [ValidateRange(1,65535)][int]$Port = 5432,
   [string]$DatabaseName = "portus",
   [string]$AdminUser = "postgres",
   [string]$PostgresBin = "",
+  [string]$LegacySqlite = "",
+  [string]$StationCode = "",
+  [string]$SectorCode = "",
   [ValidateSet(0,17)][int]$SelfTestExitCode = 0
 )
 $ErrorActionPreference = "Stop"
@@ -37,6 +40,53 @@ try {
       "migrate" {
         $invokeParams = @{ MigrationsOnly=$true; SkipAppConfiguration=$true; PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
         & (Join-Path $PSScriptRoot "install-portus-database.ps1") @invokeParams
+      }
+      "seed-admin" {
+        # Admin/admin is a deliberately weak DEVELOPMENT-ONLY account.
+        # Reject any remotely addressed PostgreSQL before invoking migrations.
+        if ($DatabaseHost -notin @("127.0.0.1","localhost","::1","[::1]")) {
+          throw "Inserir admin e permitido somente no PostgreSQL local (localhost)."
+        }
+        $invokeParams = @{
+          MigrationsOnly=$true
+          SkipAppConfiguration=$true
+          SeedDevAdmin=$true
+          PostgresBin=$PostgresBin
+          DatabaseHost=$DatabaseHost
+          Port=$Port
+          AdminUser=$AdminUser
+          DatabaseName=$DatabaseName
+        }
+        & (Join-Path $PSScriptRoot "install-portus-database.ps1") @invokeParams
+      }
+      "import-legacy" {
+        if (-not $env:PORTUS_ADMIN_DATABASE_URL) {
+          throw "Conexao administrativa PostgreSQL indisponivel para importacao."
+        }
+        if (-not (Test-Path -LiteralPath $LegacySqlite -PathType Leaf)) {
+          throw "Arquivo SQLite anterior nao encontrado: $LegacySqlite"
+        }
+        $stationName = $StationCode.Trim().ToUpperInvariant()
+        if ($stationName -notmatch '^[A-Z0-9._-]{2,64}$' -or
+            $SectorCode -notin @("PRODUCTION","LABORATORY")) {
+          throw "Codigo da estacao ou setor invalido."
+        }
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $importer = Join-Path $projectRoot "scripts\import-legacy-to-postgres.mjs"
+        if (-not (Test-Path -LiteralPath $importer)) {
+          throw "Importador SQLite nao encontrado. Atualize a instalacao do PORTUS com o pacote completo (ou execute npm ci no repositorio)."
+        }
+        $node = Get-Command node.exe -ErrorAction SilentlyContinue
+        if (-not $node) { throw "Node.js nao encontrado. Instale Node.js e execute npm ci no projeto." }
+        $dump = Join-Path $PostgresBin "pg_dump.exe"
+        if (-not (Test-Path -LiteralPath $dump)) {
+          throw "pg_dump.exe necessario para backup PostgreSQL nao encontrado."
+        }
+        $backup = Join-Path (Split-Path -Parent $LegacySqlite) "portus-backups"
+        & $node.Source $importer ("--sqlite=" + $LegacySqlite) ("--station=" + $stationName) ("--sector=" + $SectorCode) ("--backup-dir=" + $backup) ("--pg-dump=" + $dump)
+        if ($LASTEXITCODE -ne 0) {
+          throw "Importacao nao concluida. Codigo $LASTEXITCODE. Consulte o log."
+        }
       }
       "network" {
         $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }

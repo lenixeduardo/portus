@@ -26,6 +26,8 @@ const code=lab?"LEGACY-LAB-01":"LEGACY-PROD-01";
 const now="2026-10-08 14:01:00";
 db.run("INSERT INTO users VALUES (1,?,?,?,?,?,?,?,?)",
   [user,bcrypt.hashSync("Senh@Teste2026",10),user,lab?"LAB001":"PROD001","operator",sector,lab?"capture":null,now]);
+if (!lab) db.run("INSERT INTO users VALUES (2,?,?,?,?,?,?,?,?)",
+  ["admin",bcrypt.hashSync("admin",10),"Administrador legado",null,"master","PRODUCTION",null,now]);
 db.run("INSERT INTO products VALUES (1,?,?,1,?)",["Produto compartilhado para importação","REF-IMPORT-001",now]);
 db.run("INSERT INTO equipments VALUES (1,'Balança',2,'COM4',9600,8,1,'none',1,'numeric','lf',0,1,'passive')");
 db.run("INSERT INTO settings VALUES ('station_sector_code',?)",[sector]);
