@@ -1,7 +1,7 @@
 import { app, dialog, ipcMain } from "electron";
 import { join } from "node:path";
 import { IPC, type AppSettings, type ServiceResult } from "../../shared/ipc";
-import { listCentralStationSettings, setCentralStationSetting, getRuntimeStationCode } from "../db/central-station-settings-repo";
+import { listCentralStationSettings, setCentralStationSetting, getCentralStationSetting, getRuntimeStationCode } from "../db/central-station-settings-repo";
 import { runBackup } from "../db/backup";
 import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
@@ -48,13 +48,18 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     IPC.settingsSelectBackupFolder,
     compose([requireAdmin])(async (): Promise<string | null> => {
-      return selectBackupFolderDialog();
+      const role = await getCentralStationSetting("installation_mode");
+      return role === "server" ? selectBackupFolderDialog() : null;
     })
   );
 
   ipcMain.handle(
     IPC.settingsBackupNow,
-    compose([requireAdmin])((): ServiceResult<{ path: string }> => {
+    compose([requireAdmin])(async (): Promise<ServiceResult<{ path: string }>> => {
+      const role = await getCentralStationSetting("installation_mode");
+      if (role !== "server") {
+        return { ok: false, error: "Backup disponível somente na máquina servidor central. Esta estação não está configurada como servidor." };
+      }
       const folder = DEFAULT_BACKUP_FOLDER();
       const retention = DEFAULT_BACKUP_RETENTION;
       const result = runBackup(folder, retention);
