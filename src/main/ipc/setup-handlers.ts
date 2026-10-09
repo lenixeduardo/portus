@@ -38,6 +38,29 @@ const setupSchema = z.discriminatedUnion("installationMode", [
   })
 ]);
 
+
+// Traduza indisponibilidade de rede sem ocultar o diagnóstico técnico original.
+export function formatInitialSetupError(error: unknown, input: Pick<InitialSetupInput, "databaseHost" | "port" | "databaseName">): string {
+  const detail = error instanceof Error ? error.message : String(error ?? "Erro desconhecido");
+  const code = typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "") : "";
+  const connectionProblem = /(?:connection terminated due to connection timeout|connection timeout|timeout expired|connect ETIMEDOUT|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|the database system is starting up|could not connect to server)/i.test(detail) ||
+    ["ETIMEDOUT", "ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "ENOTFOUND", "EAI_AGAIN"].includes(code);
+  const heading = connectionProblem
+    ? "Não foi localizado o banco central PORTUS no endereço informado. Confira o IP do servidor, a porta, a rede e o serviço PostgreSQL."
+    : /(?:password authentication failed|28P01|authentication failed)/i.test(detail) || code === "28P01"
+      ? "O servidor central foi localizado, mas a autenticação falhou. Confira o usuário e a senha."
+      : /(?:database .* does not exist|3D000)/i.test(detail) || code === "3D000"
+        ? "O servidor PostgreSQL respondeu, mas o banco PORTUS não foi encontrado. Confira o nome do banco."
+        : "Não foi possível validar a configuração do banco central.";
+  // Nunca mostrar URLs de conexão ou senhas no log enviado ao renderer.
+  const safeDetail = detail.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "[conexão protegida]")
+    .replace(/(password|senha|PGPASSWORD)\s*[:=]\s*\S+/gi, "$1=[oculto]")
+    .replace(/[\r\n]+/g, " ").slice(0, 320);
+  return heading + "\nLog técnico: " + (code ? "[" + code + "] " : "") + safeDetail +
+    "\nDestino: " + input.databaseHost + ":" + input.port + "/" + input.databaseName;
+}
+
 async function getStatus(): Promise<InitialSetupStatus> {
   const configured = isCentralDatabaseConfigured();
   const required = isCentralDatabaseRequired();
@@ -125,8 +148,7 @@ export function registerSetupHandlers(): void {
         markInitialSetupComplete(input.installationMode);
         return { ok: true, data: await getStatus() };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Falha ao configurar o PostgreSQL.";
-        return { ok: false, error: message.replace(/\s+/g, " ").slice(-900) };
+        return { ok: false, error: formatInitialSetupError(error, input) };
       }
     })
   );
