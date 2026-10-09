@@ -661,7 +661,7 @@ function Start-Action([string]$operation) {
   }
 
   $filename = if ($operation -eq "validate") { "validate-portus-schema.ps1" }
-    elseif ($operation -eq "migrate") { "install-portus-database.ps1" }
+    elseif ($operation -in @("migrate","seed-admin")) { "install-portus-database.ps1" }
     else { "check-portus-server-network.ps1" }
   $scriptPath = Join-Path $PSScriptRoot $filename
   if (-not (Test-Path -LiteralPath $scriptPath)) {
