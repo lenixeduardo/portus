@@ -63,116 +63,14 @@ try {
         if (-not (Test-Path -LiteralPath $SqlitePath -PathType Leaf)) {
           throw "Arquivo SQLite de origem nao encontrado."
         }
-        if ($StationCode -cnotmatch '^[A-Z0-9._-]{2,64}@{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
-      }
-      "register" {
-        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName; RegisterFirstInstallation=$true }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
-      }
-    }
-    if (-not $?) { throw "O script $Operation retornou falha sem excecao detalhada." }
-    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-      throw "Comando nativo retornou exit code $LASTEXITCODE."
-    }
-    $code = 0
-  }
-} catch {
-  $code = 1
-  $detail = $_.Exception.Message
-  [Console]::Error.WriteLine("PORTUS [$Operation]: " + $detail)
-} finally {
-  $result = @{
-    schemaVersion = 1
-    operation = $Operation
-    exitCode = [int]$code
-    completedAt = [DateTime]::UtcNow.ToString("o")
-    error = $detail
-  } | ConvertTo-Json -Compress
-  try {
-    [IO.File]::WriteAllText($ResultPath,$result,$utf8)
-  } catch {
-    [Console]::Error.WriteLine("PORTUS: nao foi possivel salvar resultado: " + $_.Exception.Message)
-    $code = 1
-  }
-}
-exit $code
-) {
+        if ($StationCode -cnotmatch '^[A-Z0-9._-]{2,64}$') {
           throw "Codigo da estacao invalido. Informe 2 a 64 caracteres A-Z, 0-9, ponto, hifen ou _."
         }
         if ([string]::IsNullOrEmpty($env:PORTUS_SETUP_ADMIN_PASSWORD)) {
           throw "Senha administrativa do PostgreSQL ausente."
         }
-        if ($DatabaseHost -notmatch '^[A-Za-z0-9.-]+@{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
-      }
-      "register" {
-        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName; RegisterFirstInstallation=$true }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
-      }
-    }
-    if (-not $?) { throw "O script $Operation retornou falha sem excecao detalhada." }
-    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-      throw "Comando nativo retornou exit code $LASTEXITCODE."
-    }
-    $code = 0
-  }
-} catch {
-  $code = 1
-  $detail = $_.Exception.Message
-  [Console]::Error.WriteLine("PORTUS [$Operation]: " + $detail)
-} finally {
-  $result = @{
-    schemaVersion = 1
-    operation = $Operation
-    exitCode = [int]$code
-    completedAt = [DateTime]::UtcNow.ToString("o")
-    error = $detail
-  } | ConvertTo-Json -Compress
-  try {
-    [IO.File]::WriteAllText($ResultPath,$result,$utf8)
-  } catch {
-    [Console]::Error.WriteLine("PORTUS: nao foi possivel salvar resultado: " + $_.Exception.Message)
-    $code = 1
-  }
-}
-exit $code
- -and
-            $DatabaseHost -notmatch '^\\[[0-9a-fA-F:]+\\]@{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
-      }
-      "register" {
-        $invokeParams = @{ ServerIp=$DatabaseHost; Port=$Port; DatabaseName=$DatabaseName; RegisterFirstInstallation=$true }
-        & (Join-Path $PSScriptRoot "check-portus-server-network.ps1") @invokeParams
-      }
-    }
-    if (-not $?) { throw "O script $Operation retornou falha sem excecao detalhada." }
-    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-      throw "Comando nativo retornou exit code $LASTEXITCODE."
-    }
-    $code = 0
-  }
-} catch {
-  $code = 1
-  $detail = $_.Exception.Message
-  [Console]::Error.WriteLine("PORTUS [$Operation]: " + $detail)
-} finally {
-  $result = @{
-    schemaVersion = 1
-    operation = $Operation
-    exitCode = [int]$code
-    completedAt = [DateTime]::UtcNow.ToString("o")
-    error = $detail
-  } | ConvertTo-Json -Compress
-  try {
-    [IO.File]::WriteAllText($ResultPath,$result,$utf8)
-  } catch {
-    [Console]::Error.WriteLine("PORTUS: nao foi possivel salvar resultado: " + $_.Exception.Message)
-    $code = 1
-  }
-}
-exit $code
-) {
+        if ($DatabaseHost -notmatch '^[A-Za-z0-9.-]+$' -and
+            $DatabaseHost -notmatch '^\[[0-9a-fA-F:]+\]$') {
           throw "Nome ou IP do servidor nao aceito para importar dados."
         }
         $pgDump=Join-Path $PostgresBin "pg_dump.exe"
@@ -186,7 +84,7 @@ exit $code
           $u=[Uri]::EscapeDataString($AdminUser)
           $p=[Uri]::EscapeDataString($env:PORTUS_SETUP_ADMIN_PASSWORD)
           $d=[Uri]::EscapeDataString($DatabaseName)
-          $env:PORTUS_ADMIN_DATABASE_URL="postgresql://${u}:${p}@${DatabaseHost}:${Port}/${d}"
+          $env:PORTUS_ADMIN_DATABASE_URL="postgresql://$($u):$($p)@$($DatabaseHost):$($Port)/$($d)"
           Write-Host ("Importando SQLite da estacao " + $StationCode + " (" + $Sector + "). Backups obrigatorios habilitados.")
           & $node $importer ("--sqlite=" + $SqlitePath) ("--station=" + $StationCode) ("--sector=" + $Sector) ("--pg-dump=" + $pgDump)
           $nativeCode=$LASTEXITCODE
