@@ -35,10 +35,13 @@ function Get-PortusOperationResult {
   } catch {
     throw "Resultado do processo $Operation ilegivel: $($_.Exception.Message)"
   }
+  $code = 0
   if ($result.schemaVersion -ne 1 -or $result.operation -cne $Operation -or
       $null -eq $result.exitCode -or
-      $result.exitCode -isnot [int]) {
+      -not [int]::TryParse([string]$result.exitCode,[ref]$code) -or
+      $code -lt 0) {
     throw "Resultado do processo $Operation incompleto ou inesperado."
   }
+  $result.exitCode = $code
   return $result
 }
