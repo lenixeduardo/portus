@@ -23,7 +23,7 @@ function Get-PortusOperationResult {
   param(
     [Parameter(Mandatory=$true)][string]$Path,
     [Parameter(Mandatory=$true)]
-    [ValidateSet("validate","migrate","network","register","seed-admin","selftest")]
+    [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","selftest")]
     [string]$Operation
   )
   if (-not (Test-Path -LiteralPath $Path)) {
