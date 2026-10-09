@@ -768,7 +768,9 @@ if ($SmokeTest -or $CapturePath) {
       foreach ($child in $group.controls) {
         # O controle precisa pertencer ao card e estar em arvore de UI visivel;
         # a propriedade Visible sozinha nao revela um painel sobreposto.
-        if ($child.Parent -ne $group.card -or -not $child.Visible) {
+        $parent = $child.Parent
+        while ($parent -and $parent -ne $group.card) { $parent = $parent.Parent }
+        if ($parent -ne $group.card -or -not $child.Visible) {
           $script:smokeFailed = $true
         }
       }
