@@ -170,24 +170,37 @@ try {
     if (!u.password_hash) throw new Error("Hash de senha ausente: " + u.username);
     const id = await transfer("users",u, async()=>{
       const existing = await selectOne(
-        "SELECT id,role,sector_code,password_hash,barcode_value,active FROM users " +
+        "SELECT id,role,sector_code,password_hash,barcode_value,active,display_name FROM users " +
         "WHERE lower(username)=lower($1)", [u.username]
       );
       if (existing) {
+        // Um admin de desenvolvimento *padrao* inserido antes do import deve
+        // ceder lugar ao admin genuino do SQLite, preservando sua senha antiga.
+        // So e permitido para o marcador exato criado pelo seed dev opt-in.
+        const devBootstrapHash="$2b$12$Hlt6Ovi0lL0vi1nmeBGRKeb3XtQw5NIUPWWDKsZBdy0j9qjUzP1v2";
+        const replaceDefaultDevAdmin =
+          u.username.toLowerCase()==="admin" &&
+          role==="master" && uSector==="PRODUCTION" &&
+          existing.role==="master" && existing.sector_code==="PRODUCTION" &&
+          existing.display_name==="Administrador (desenvolvimento)" &&
+          existing.password_hash===devBootstrapHash;
         if (!existing.active || existing.role !== role || existing.sector_code !== uSector ||
             (existing.password_hash !== "managed-by-portus" &&
-             existing.password_hash !== u.password_hash) ||
+             existing.password_hash !== u.password_hash && !replaceDefaultDevAdmin) ||
             (existing.barcode_value && u.barcode_value &&
              existing.barcode_value.toLowerCase() !== u.barcode_value.toLowerCase())) {
           throw new Error("Conflito de identidade central do usuário: " + u.username);
         }
         await pgClient.query(
-          "UPDATE users SET password_hash=CASE WHEN password_hash='managed-by-portus' " +
+          "UPDATE users SET password_hash=CASE WHEN password_hash='managed-by-portus' OR $5::boolean " +
           "THEN $1 ELSE password_hash END, " +
           "barcode_value=COALESCE(barcode_value,$2), " +
-          "display_name=COALESCE(display_name,$3) WHERE id=$4",
-          [u.password_hash,u.barcode_value||null,u.display_name||null,existing.id]
+          "display_name=CASE WHEN $5::boolean THEN $3 ELSE COALESCE(display_name,$3) END WHERE id=$4",
+          [u.password_hash,u.barcode_value||null,u.display_name||null,existing.id,replaceDefaultDevAdmin]
         );
+        if (replaceDefaultDevAdmin) {
+          console.log("Admin de desenvolvimento substituido pela identidade original da estacao; senha do SQLite preservada.");
+        }
         return existing.id;
       }
       const result = await selectOne(
