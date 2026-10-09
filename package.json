@@ -16,7 +16,7 @@
     "build:renderer": "vite build --configLoader runner",
     "start": "cross-env NODE_ENV=production electron .",
     "prepackage": "npm run validate:release && npm version patch --no-git-tag-version",
-    "package": "npm run build && electron-builder && node scripts/copy-installer-to-root.mjs",
+    "package": "npm run build && node scripts/prepare-portus-migration-runtime.mjs && electron-builder && node scripts/copy-installer-to-root.mjs",
     "rebuild": "electron-builder install-app-deps",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "sim:build": "tsc -p tsconfig.tools.json",
