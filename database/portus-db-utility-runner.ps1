@@ -1,4 +1,4 @@
-# UTF-8 subprocess runner for PORTUS WinForms Database Utility.
+﻿# UTF-8 subprocess runner for PORTUS WinForms Database Utility.
 # The runner writes a machine-readable result only after the script completes.
 [CmdletBinding()]
 param(
