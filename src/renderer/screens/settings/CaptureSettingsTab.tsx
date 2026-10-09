@@ -8,6 +8,7 @@ export function CaptureSettingsTab() {
   const [backupRetention, setBackupRetention] = useState<string>("10");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [stationCode, setStationCode] = useState<string>("");
+  const [isDatabaseServer, setIsDatabaseServer] = useState(false);
   const [stationSectorCode, setStationSectorCode] = useState<"" | "PRODUCTION" | "LABORATORY">("");
   const [loading, setLoading] = useState(true);
   const [savingStation, setSavingStation] = useState(false);
@@ -30,6 +31,7 @@ export function CaptureSettingsTab() {
       setBackupRetention(s.auto_backup_retention ?? "10");
       setWebhookUrl(s.error_report_webhook ?? "");
       setStationCode(s.station_code ?? "");
+      setIsDatabaseServer(s.installation_mode === "server");
       // Nunca assumir Produção: o setor físico deve ser escolhido por um administrador.
       setStationSectorCode(
         s.station_sector_code === "PRODUCTION" || s.station_sector_code === "LABORATORY"
@@ -114,10 +116,12 @@ export function CaptureSettingsTab() {
     if (!r2.ok) { setSaving(false); setError(r2.error); return; }
     const r3 = await window.api.settings.set("auto_export_folder", exportFolder.trim());
     if (!r3.ok) { setSaving(false); setError(r3.error); return; }
-    const r4 = await window.api.settings.set("auto_backup_folder", backupFolder.trim());
-    if (!r4.ok) { setSaving(false); setError(r4.error); return; }
-    const r5 = await window.api.settings.set("auto_backup_retention", String(retentionNum));
-    if (!r5.ok) { setSaving(false); setError(r5.error); return; }
+    if (isDatabaseServer) {
+      const r4 = await window.api.settings.set("auto_backup_folder", backupFolder.trim());
+      if (!r4.ok) { setSaving(false); setError(r4.error); return; }
+      const r5 = await window.api.settings.set("auto_backup_retention", String(retentionNum));
+      if (!r5.ok) { setSaving(false); setError(r5.error); return; }
+    }
     const r6 = await window.api.settings.set("error_report_webhook", webhookUrl.trim());
     if (!r6.ok) { setSaving(false); setError(r6.error); return; }
     setSaving(false);
@@ -125,6 +129,7 @@ export function CaptureSettingsTab() {
   }
 
   async function backupNow() {
+    if (!isDatabaseServer) return;
     setBackingUp(true);
     setBackupMessage(null);
     setBackupError(null);
@@ -252,6 +257,7 @@ export function CaptureSettingsTab() {
         <label>Backup automático do banco de dados</label>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
           <input
+            disabled={!isDatabaseServer}
             value={backupFolder}
             onChange={(e) => { setBackupFolder(e.target.value); setSaved(false); }}
             placeholder="Padrão: Documentos/PORTUS/backups"
@@ -262,9 +268,11 @@ export function CaptureSettingsTab() {
             type="button"
             className="secondary"
             onClick={async () => {
+              if (!isDatabaseServer) return;
               const folder = await window.api.settings.selectBackupFolder();
               if (folder) { setBackupFolder(folder); setSaved(false); }
             }}
+            disabled={!isDatabaseServer}
           >
             Selecionar
           </button>
@@ -282,6 +290,7 @@ export function CaptureSettingsTab() {
           min={1}
           max={100}
           value={backupRetention}
+          disabled={!isDatabaseServer}
           onChange={(e) => { setBackupRetention(e.target.value); setSaved(false); }}
         />
         <small className="muted">
@@ -290,9 +299,10 @@ export function CaptureSettingsTab() {
       </div>
 
       <div className="field" style={{ marginTop: 16 }}>
-        <button type="button" className="secondary" onClick={backupNow} disabled={backingUp}>
+        <button type="button" className="secondary" onClick={backupNow} disabled={backingUp || !isDatabaseServer}>
           {backingUp ? "Fazendo backup..." : "Fazer backup agora"}
         </button>
+        {!isDatabaseServer && <small className="muted">Backup indisponível nesta estação cliente. Os backups são executados somente no servidor central.</small>}
         {backupMessage && <div className="success" style={{ marginTop: 8 }}>{backupMessage}</div>}
         {backupError && <div className="error" style={{ marginTop: 8 }}>{backupError}</div>}
       </div>
