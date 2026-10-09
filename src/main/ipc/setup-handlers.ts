@@ -7,8 +7,8 @@ import { z } from "zod";
 import { IPC, type InitialSetupInput, type InitialSetupStatus, type ServiceResult } from "../../shared/ipc";
 import { buildCentralDatabaseUrl, checkCentralDatabase, isCentralDatabaseConfigured, isCentralDatabaseRequired, persistCentralDatabaseUrl, verifyCentralDatabaseUrl, centralQuery } from "../db/central-connection";
 import { ensureCentralUserAccess } from "../db/central-users-repo";
-import { setCentralStationSetting } from "../db/central-station-settings-repo";
-import { findPostgresBin, runInitialSetup } from "../setup/initial-setup-service";
+import { getRuntimeStationCode, setCentralStationSetting } from "../db/central-station-settings-repo";
+import { findPostgresBin, isInitialSetupCompleted, markInitialSetupComplete, runInitialSetup } from "../setup/initial-setup-service";
 import { validateInput } from "./middleware";
 
 const identifier = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,62}$/, "Use letras, números e _. O nome deve começar com uma letra.");
@@ -27,7 +27,12 @@ const setupSchema = z.discriminatedUnion("installationMode", [
     adminPassword: z.string().min(1, "Informe a senha do administrador PostgreSQL.")
   }),
   commonSetupSchema.extend({
-    installationMode: z.literal("client")
+    installationMode: z.literal("client"),
+    stationSectorCode: z.enum(["PRODUCTION", "LABORATORY"]),
+    databaseHost: z.string().trim().min(1).refine(
+      host => !["localhost", "127.0.0.1", "::1", "[::1]"].includes(host.toLowerCase()),
+      "Informe o IP da máquina servidor. Não use localhost na estação cliente."
+    )
   })
 ]);
 
@@ -35,14 +40,16 @@ async function getStatus(): Promise<InitialSetupStatus> {
   const configured = isCentralDatabaseConfigured();
   const required = isCentralDatabaseRequired();
   const supported = process.platform === "win32";
+  const setupCompleted = isInitialSetupCompleted();
+  const stationCode = getRuntimeStationCode();
   if (!configured) {
-    return { configured: false, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null };
+    return { configured: false, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode };
   }
   try {
     await checkCentralDatabase();
-    return { configured: true, available: true, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null };
+    return { configured: true, available: true, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode };
   } catch {
-    return { configured: true, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null };
+    return { configured: true, available: false, required, mode: required ? "central" : "local", supported, postgresBin: supported ? findPostgresBin() : null, setupCompleted, stationCode };
   }
 }
 
@@ -104,12 +111,16 @@ export function registerSetupHandlers(): void {
           const connectionString = buildCentralDatabaseUrl(input);
           await verifyCentralDatabaseUrl(connectionString);
           await persistCentralDatabaseUrl(connectionString);
+          await checkCentralDatabase();
           await setCentralStationSetting("installation_mode", "client");
+          await setCentralStationSetting("station_sector_code", input.stationSectorCode!);
         }
         const status = await getStatus();
-        return status.available
-          ? { ok: true, data: status }
-          : { ok: false, error: "O banco foi preparado, mas a conexão não pôde ser validada." };
+        if (!status.available) {
+          return { ok: false, error: "O banco foi preparado, mas a conexão ou o esquema central não pôde ser validado." };
+        }
+        markInitialSetupComplete(input.installationMode);
+        return { ok: true, data: await getStatus() };
       } catch (error) {
         const message = error instanceof Error ? error.message : "Falha ao configurar o PostgreSQL.";
         return { ok: false, error: message.replace(/\s+/g, " ").slice(-900) };
