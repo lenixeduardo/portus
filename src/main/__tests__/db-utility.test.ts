@@ -126,6 +126,28 @@ describe("utilitario de banco PORTUS", () => {
     expect(packageScript).toContain("portus-ui-design-tokens.ps1");
   });
 
+  it("mostra as quatro descricoes somente em tooltips no hover", () => {
+    const gui = read("portus-db-utility.ps1");
+    expect(gui).toContain('New-Object System.Windows.Forms.ToolTip');
+    expect(gui).toContain('$actionToolTip.InitialDelay = 400');
+    expect(gui).toContain('$actionToolTip.AutoPopDelay = 9000');
+    const expected = [
+      ['$checkButton', 'Conecta e verifica a integridade do schema.'],
+      ['$migrateButton', 'Executa apenas migrations pendentes.'],
+      ['$networkButton', 'Verifica endereço e conectividade TCP.'],
+      ['$registerButton', 'Registra o servidor da primeira instalação.']
+    ];
+    for (const [button, description] of expected) {
+      expect(gui).toContain('$actionToolTip.SetToolTip(' + button + ', "' + description + '")');
+    }
+    expect(gui).toContain('$actionToolTip.GetToolTip($pair.button)');
+    expect(gui).not.toContain('$description = Add-Label $caption.text');
+    expect(gui).toContain('Make-Card 24 423 1086 132');
+    expect(gui).toContain('Make-Card 24 569 1086 94');
+    expect(gui).toContain('Make-Card 24 678 1086 216');
+    expect(gui).toContain('$actionToolTip.Dispose()');
+  });
+
   it("mostra status/erros e impede operacoes simultaneas", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('$timer.Add_Tick({');
