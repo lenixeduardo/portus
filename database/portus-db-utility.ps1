@@ -494,6 +494,7 @@ foreach ($item in @(
 $script:child = $null
 $script:outFile = $null
 $script:errFile = $null
+$script:resultFile = $null
 $script:outOffset = 0
 $script:errOffset = 0
 $script:action = ""
@@ -503,11 +504,14 @@ function Show-Log([string]$value, [ValidateSet("ui","stdout","stderr","diagnosti
   foreach ($line in ($value -split "\r?\n")) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
     $stamp = Get-Date -Format "HH:mm:ss"
-    $isError = $source -in @("stderr","diagnostic") -or
-      $line -match '(falhou|Falha|Erro|ERROR|FATAL|inacessivel)'
+    $isError = $source -eq "diagnostic" -or
+      $line -match '(falhou|Falha|Erro|ERROR|FATAL|inacessivel|EXCEPTION)'
+    $isNotice = $source -eq "stderr" -and $line -match '^(NOTICE|NOTA|WARNING|AVISO)[: :]'
     $log.SelectionStart = $log.TextLength
     $log.SelectionColor = if ($isError) {
       UiColor "error"
+    } elseif ($isNotice) {
+      UiColor "warning"
     } elseif ($line -match '(sucesso|OK|validado|concluid|pronto)') {
       UiColor "success"
     } else {
@@ -557,7 +561,7 @@ function Poll-Log {
     $file = if ($name -eq "out") { $script:outFile } else { $script:errFile }
     if (-not $file -or -not (Test-Path -LiteralPath $file)) { continue }
     try {
-      $all = [System.IO.File]::ReadAllText($file)
+      $all = [System.IO.File]::ReadAllText($file,[Text.Encoding]::UTF8)
       $previous = if ($name -eq "out") { $script:outOffset } else { $script:errOffset }
       if ($all.Length -gt $previous) {
         $next = $all.Substring($previous).TrimEnd()
@@ -581,24 +585,27 @@ $timer.Add_Tick({
     $timer.Stop()
     $code = $null
     try {
-      # WinPS 5.1 pode expor ExitCode como null em Process (-PassThru)
-      # se o handle ainda nao foi sincronizado. WaitForExit() garante
-      # que Windows informou o encerramento antes de ler ExitCode.
-      $code = Get-PortusChildExitCode -Process $script:child
+      $script:child.WaitForExit()
       Poll-Log
-      Show-Log ("Processo filho finalizado. ExitCode={0}" -f $code) "ui"
+      $runResult = Get-PortusOperationResult -Path $script:resultFile -Operation $script:action
+      $code = [int]$runResult.exitCode
+      Show-Log ("Resultado confirmado: $($script:action), codigo de saida $code.") "ui"
+      if ($code -ne 0 -and -not [string]::IsNullOrWhiteSpace($runResult.error)) {
+        Show-Log ("Detalhes da falha: " + $runResult.error) "diagnostic"
+      }
     } catch {
       $code = 1
-      Show-Log ("Falha ao obter resultado do processo: " + $_.Exception.ToString()) "diagnostic"
+      Show-Log ("Nao foi possivel confirmar a conclusao: " + $_.Exception.Message) "diagnostic"
       Poll-Log
     }
     $script:child.Dispose()
     $script:child = $null
-    foreach ($file in @($script:outFile,$script:errFile)) {
+    foreach ($file in @($script:outFile,$script:errFile,$script:resultFile)) {
       if ($file) { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
     }
     $script:outFile = $null
     $script:errFile = $null
+    $script:resultFile = $null
     Set-Busy $false
     if ($code -eq 0) {
       $status.Text = if ($script:action -eq "validate") { "Banco validado com sucesso." }
@@ -608,7 +615,7 @@ $timer.Add_Tick({
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
     } else {
-      $status.Text = "Operacao falhou (codigo de saida: $code). Detalhes no terminal."
+      $status.Text = "Operacao falhou (codigo $code). Confira o log acima."
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#B91C1C")
       $statusDot.ForeColor = UiColor "error"
     }
@@ -674,20 +681,25 @@ function Start-Action([string]$operation) {
     )
     if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
   }
-  $arguments = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", (Quoted $scriptPath))
-  if ($operation -in @("network","register")) {
-    $arguments += @("-ServerIp", (Quoted $hostName), "-Port", "$port", "-DatabaseName", (Quoted $database))
-    if ($operation -eq "register") { $arguments += "-RegisterFirstInstallation" }
-  } else {
-    $arguments += @(
-      "-PostgresBin", (Quoted $bin),
-      "-DatabaseHost", (Quoted $hostName),
-      "-Port", "$port",
-      "-AdminUser", (Quoted $username),
-      "-DatabaseName", (Quoted $database)
-    )
-    if ($operation -eq "migrate") { $arguments += @("-MigrationsOnly","-SkipAppConfiguration") }
+  # O runner controla UTF-8 e publica um resultado JSON independente do
+  # ExitCode nulo que Start-Process pode retornar no Windows PowerShell 5.1.
+  $runnerPath = Join-Path $PSScriptRoot "portus-db-utility-runner.ps1"
+  if (-not (Test-Path -LiteralPath $runnerPath)) {
+    Show-Log ("Runner do PORTUS ausente: " + $runnerPath) "diagnostic"
+    return
   }
+  $script:resultFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".result.json")
+  $arguments = @(
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", (Quoted $runnerPath),
+    "-Operation", $operation,
+    "-ResultPath", (Quoted $script:resultFile),
+    "-DatabaseHost", (Quoted $hostName),
+    "-Port", "$port",
+    "-DatabaseName", (Quoted $database),
+    "-AdminUser", (Quoted $username),
+    "-PostgresBin", (Quoted $bin)
+  )
 
   $script:outFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".out")
   $script:errFile = Join-Path $env:TEMP ("portus-" + [guid]::NewGuid().ToString("N") + ".err")
