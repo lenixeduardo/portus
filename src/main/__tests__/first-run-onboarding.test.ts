@@ -61,6 +61,19 @@ describe("assistente inicial obrigatorio por estacao", () => {
     expect(screen).toContain('selectMode("client")');
     expect(app).toContain("!setup.setupCompleted");
   });
+  it("traduz timeout da conexão central e apresenta trecho do log técnico", () => {
+    const root = process.cwd();
+    const handlers = readFileSync(join(root, "src/main/ipc/setup-handlers.ts"), "utf8");
+    const screen = readFileSync(join(root, "src/renderer/screens/InitialSetup.tsx"), "utf8");
+    const css = readFileSync(join(root, "src/renderer/styles.css"), "utf8");
+    expect(handlers).toContain("Não foi localizado o banco central PORTUS");
+    expect(handlers).toContain("connection terminated due to connection timeout");
+    expect(handlers).toContain("Log técnico:");
+    expect(handlers).toContain("[conexão protegida]");
+    expect(screen).toContain("Trecho do log de erro");
+    expect(screen).toContain("setup-error-log");
+    expect(css).toContain(".initial-setup-form-wrap .setup-error-panel");
+  });
   it("inclui o diagnostico PostgreSQL no utilitario e no ZIP independente", () => {
     const root = process.cwd();
     const utility = readFileSync(join(root, "database/portus-db-utility.ps1"), "utf8");
