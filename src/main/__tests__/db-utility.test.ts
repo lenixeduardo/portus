@@ -174,7 +174,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$isNotice');
     expect(gui).not.toContain('Falha (codigo $code). Confira o log.');
     expect(helper).toContain("function Get-PortusOperationResult");
-    expect(helper).toContain("resultado");
+    expect(helper).toContain("Resultado ausente para $Operation.");
     expect(runner).toContain('[Console]::OutputEncoding = $utf8');
     expect(runner).toContain('$env:PGCLIENTENCODING = "UTF8"');
     expect(runner).toContain("[IO.File]::WriteAllText($ResultPath,$result,$utf8)");
