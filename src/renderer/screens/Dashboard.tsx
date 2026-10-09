@@ -54,6 +54,23 @@ function reportDashboardError(source: string, error: unknown): void {
   void api?.log?.error(`renderer:dashboard:${source}`, message, stack).catch(() => {});
 }
 
+/** Renderização segura para nomes legados com acentos corrompidos (mojibake). */
+export function formatRecentReadingEquipmentName(value: string): string {
+  let name = value;
+  if (/[ÃÂ][\u0080-\u00bf]|Ã[¡-¿]/.test(name)) {
+    try {
+      name = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(
+        Array.from(name, character => character.charCodeAt(0))
+      ));
+    } catch {
+      // Dados já corrompidos permanecem exibíveis após o filtro abaixo.
+    }
+  }
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9 .-]/g, "")
+    .replace(/\s+/g, " ").trim() || "Equipamento";
+}
+
 export function Dashboard({
   user,
   onUnknownUserBarcode
@@ -703,7 +720,7 @@ function BatchRow({
             <div>
               {batch.readingPreviews.slice(0, 3).map((reading, index) => (
                 <small key={`${reading.sectorCode}-${reading.equipmentName}-${reading.capturedAt}-${index}`}>
-                  {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"} · {reading.equipmentName} <strong>{reading.value}</strong>
+                  {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"} · {formatRecentReadingEquipmentName(reading.equipmentName)} <strong>{reading.value}</strong>
                 </small>
               ))}
             </div>
