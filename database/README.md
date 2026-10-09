@@ -3,6 +3,41 @@
 Esta pasta contém a fundação do banco central definida no
 `PORTUS_SPEC_TECNICO(1).md`.
 
+## Botao Migrar dados (SQLite antigo para PostgreSQL central)
+
+O comando **Aplicar migrations** atualiza somente o schema do banco. O novo
+botao **Migrar dados** importa o conteudo historico de uma instalacao SQLite
+para a base PostgreSQL central usando o importador existente
+`scripts/import-legacy-to-postgres.mjs`.
+
+No Database Utility, configure servidor, porta, banco, administrador e senha
+do PostgreSQL. Clique em **Migrar dados**, selecione o arquivo SQLite antigo,
+informe o codigo da estacao (o mesmo codigo do runtime PORTUS) e escolha
+**Producao** ou **Laboratorio**. Confirme o destino antes de continuar.
+
+Protecoes obrigatorias:
+
+- Copia do SQLite original com sufixo `.pre-postgres.bak`, sem remover a origem.
+- Backup do PostgreSQL via `pg_dump.exe` em formato custom `.pre-import.dump`.
+- Falha de backup cancela a importacao antes de gravar no PostgreSQL.
+- Importacao transacional e historico de registros por estacao no
+  `portus_legacy_import_ledger`, evitando duplicacoes e conflitos de ID.
+- Reconciliacao por tipo de dado (usuarios, produtos, equipamentos, lotes,
+  sessoes, leituras, auditoria, erros de captura).
+- Falhas de integridade executam `ROLLBACK`. O codigo de estacao nao pode
+  divergir do arquivo `station-identity.json` da maquina.
+- Somente apos confirmar a importacao em cada estacao voce deve atualizar
+  ou desinstalar a versao que utilizava SQLite.
+
+O pacote Windows inclui o importador, Node.js e as dependencias `pg` /
+`sql.js` offline. O projeto aberto usa o Node.js e as dependencias de `npm ci`.
+A pasta `database/migration-runtime` e preparada na etapa de empacotamento
+e nao deve ser adicionada ao Git.
+
+**Importante:** O botao executa a migracao somente no computador onde o
+SQLite e selecionado e o PostgreSQL e acessivel. Nao procura automaticamente
+bases SQLite de outras estacoes nem migra dados sem confirmacao do operador.
+
 ## Logs e falhas dentro do painel do Database Utility
 
 O painel **Log** do Database Utility e a origem das mensagens. O runner
