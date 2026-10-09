@@ -21,6 +21,7 @@ cpSync(join(root, "database", "assets"), join(packageRoot, "assets"), { recursiv
 cpSync(join(root, "database", "migrations"), join(packageRoot, "migrations"), { recursive: true });
 cpSync(join(root, "database", "seed"), join(packageRoot, "seed"), { recursive: true });
 cpSync(join(root, "database", "tests"), join(packageRoot, "tests"), { recursive: true });
+cpSync(join(root, "database", "migration-runtime"), join(packageRoot, "migration-runtime"), { recursive: true });
 
 writeFileSync(join(stagingRoot, "README.md"), `# PORTUS — instalador do banco central
 
