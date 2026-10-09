@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   [string]$PostgresBin = "$env:ProgramFiles\PostgreSQL\18\bin",
   [Alias("Host")]

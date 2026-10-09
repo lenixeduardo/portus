@@ -3,6 +3,32 @@
 Esta pasta contém a fundação do banco central definida no
 `PORTUS_SPEC_TECNICO(1).md`.
 
+## Logs e falhas dentro do painel do Database Utility
+
+O painel **Log** do Database Utility e a origem das mensagens. O runner
+`database/portus-db-utility-runner.ps1` executa validacao, migrations e rede
+com saida UTF-8 (`Console.OutputEncoding`, `PGCLIENTENCODING=UTF8`) para
+impedir que acentos de mensagens do PostgreSQL aparecam corrompidos.
+
+O runner grava um arquivo temporario de resultado JSON somente apos concluir
+a operacao. A GUI usa esse resultado confirmado e nao interpreta um
+`ExitCode` nulo do `Start-Process` como falha da migration. Os arquivos
+temporarios sao apagados no fim.
+
+- `Resultado confirmado: migrate, codigo de saida 0.` indica sucesso.
+- Codigo diferente de zero exibe detalhes da falha no proprio log.
+- `NOTA: relacao ja existe, ignorando` e informativo, nao um erro.
+- Sem resultado confirmado, a GUI informa a impossibilidade de confirmar
+  a conclusao, sem declarar sucesso automaticamente.
+
+Para atualizar a pasta database local, execute:
+
+~~~powershell
+git switch main
+git pull --ff-only origin main
+.\database\portus-db-utility.bat
+~~~
+
 ## Diagnostico: operacao conclui com sucesso, mas GUI mostra "Falha (codigo )"
 
 Este problema indicava que o Windows PowerShell 5.1 estava retornando
