@@ -3,6 +3,34 @@
 Esta pasta contém a fundação do banco central definida no
 `PORTUS_SPEC_TECNICO(1).md`.
 
+## Diagnostico: operacao conclui com sucesso, mas GUI mostra "Falha (codigo )"
+
+Este problema indicava que o Windows PowerShell 5.1 estava retornando
+um `ExitCode` nulo do processo filho para o WinForms. A interface
+anterior interpretava `null` como erro, mesmo apos a validacao do banco
+imprimir "Banco de dados validado com sucesso".
+
+O utilitario agora aguarda `WaitForExit()` do processo Windows antes de ler
+seu codigo de saida; `0` significa sucesso e outros codigos indicam falha.
+Se nao conseguir ler o codigo, imprime o detalhe tecnico em vermelho,
+em vez de exibir `Falha (codigo )`.
+
+O **mesmo stdout e stderr** usado no log do aplicativo tambem e impresso
+no PowerShell de origem (prefixos `[PORTUS][HH:mm:ss][stdout]` e
+`[PORTUS][HH:mm:ss][stderr]`). Em caso de erro, copie as mensagens
+daquele terminal para diagnostico, **removendo previamente segredos e
+URLs de conexao que possam conter credenciais**.
+
+~~~powershell
+git switch main
+git pull --ff-only origin main
+.\\database\\portus-db-utility.bat
+~~~
+
+Executar Validar banco de dados ou Verificar IP/rede nao altera dados.
+Para confirmar a resolucao de codigos sem usar PostgreSQL, os testes
+Windows reproduzem subprocessos que terminam com exit codes 0 e 17.
+
 ## Utilitario visual de administracao (Windows)
 
 ## Interface visual PORTUS Database Utility
