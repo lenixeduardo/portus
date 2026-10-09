@@ -5,7 +5,7 @@ const root = resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const errors = [];
 const packageLock = JSON.parse(readFileSync(join(root, "package-lock.json"), "utf8"));
-const versionParts = packageJson.version.match(/^(\\d+)\\.(\\d+)\\.(\\d+)$/)?.slice(1).map(Number);
+const versionParts = packageJson.version.match(/^(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
 if (!versionParts || versionParts.some(part => !Number.isSafeInteger(part))) {
   errors.push("Versão do aplicativo deve seguir SemVer numérico MAJOR.MINOR.PATCH.");
 } else if (versionParts[0] === 0 && versionParts[1] === 1 && versionParts[2] < 26) {
