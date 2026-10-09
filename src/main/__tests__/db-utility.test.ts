@@ -233,6 +233,54 @@ describe("utilitario de banco PORTUS", () => {
     } finally { rmSync(root,{recursive:true,force:true}); }
   }, 35000);
 
+  it("migracao legado importa users, products, equipamentos, lotes, sessoes, leituras e auditoria com backup", () => {
+    const gui = read("portus-db-utility.ps1");
+    const runner = read("portus-db-utility-runner.ps1");
+    const helper = read("portus-db-utility-process.ps1");
+    const importer = readFileSync(join(process.cwd(),"scripts/import-legacy-to-postgres.mjs"),"utf8");
+    expect(gui).toContain('$migrateLegacyButton.Text = "Migrar cadastros antigos"');
+    expect(gui).toContain('$migrateLegacyButton.Add_Click({ Start-Action "import-legacy" })');
+    expect(gui).toContain('New-Object System.Windows.Forms.OpenFileDialog');
+    expect(gui).toContain('station-identity.json');
+    expect(gui).toContain('Microsoft.VisualBasic.Interaction');
+    expect(gui).toContain('PORTUS_ADMIN_DATABASE_URL');
+    expect(gui).toContain('SetEnvironmentVariable("PORTUS_ADMIN_DATABASE_URL",$previousAdminUrl,"Process")');
+    expect(gui).toContain('Execute antes de usar Inserir admin (dev).');
+    expect(gui).toContain('$migrateLegacyButton.Enabled = -not $busy');
+    expect(runner).toContain('"import-legacy"');
+    expect(runner).toContain('scripts\\import-legacy-to-postgres.mjs');
+    expect(runner).toContain('pg_dump.exe');
+    expect(runner).toContain('--backup-dir=');
+    expect(runner).toContain('--station=');
+    expect(runner).toContain('--sector=');
+    expect(helper).toContain('"import-legacy"');
+    for (const table of ["users","products","equipments","settings","batches","capture_sessions","readings","audit_log","capture_error_logs"]) {
+      expect(importer).toContain('sourceRows("' + table + '")');
+    }
+    expect(importer).toContain('pg_dump');
+    expect(importer).toContain('ROLLBACK');
+    expect(importer).toContain('IMPORTAÇÃO CONCILIADA');
+  });
+
+  it.skipIf(process.platform !== "win32")("falha importacao sem origem sem alterar banco", () => {
+    const temp = mkdtempSync(join(tmpdir(),"portus-import-guard-"));
+    try {
+      const resultPath = join(temp,"result.json");
+      const run = spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(db,"portus-db-utility-runner.ps1"),
+        "-Operation","import-legacy","-ResultPath",resultPath,
+        "-LegacySqlite",join(temp,"missing.sqlite"),
+        "-StationCode","PRODUCAO-01","-SectorCode","PRODUCTION"
+      ],{encoding:"utf8",windowsHide:true,timeout:20000});
+      expect(run.status).not.toBe(0);
+      expect(run.stderr).toContain('Conexao administrativa PostgreSQL indisponivel');
+      const result = JSON.parse(readFileSync(resultPath,"utf8"));
+      expect(result.operation).toBe("import-legacy");
+      expect(result.exitCode).not.toBe(0);
+    } finally {rmSync(temp,{recursive:true,force:true})}
+  },35000);
+
   it("mostra o sucesso ou falha no log interno usando o resultado explicito do runner", () => {
     const gui = read("portus-db-utility.ps1");
     const helper = read("portus-db-utility-process.ps1");
