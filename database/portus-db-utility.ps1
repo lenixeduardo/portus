@@ -118,8 +118,8 @@ function Make-Action([string]$caption,[int]$x,[bool]$primary=$false) {
   $button = New-Object System.Windows.Forms.Button
   $button.Text = $caption
   $button.Location = New-Object System.Drawing.Point($x,488)
-  $button.Size = New-Object System.Drawing.Size(243,56)
-  $button.Font = UiFont "Inter" 14 "600"
+  $button.Size = New-Object System.Drawing.Size(197,56)
+  $button.Font = UiFont "Inter" 12 "600"
   $button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
   $button.FlatAppearance.BorderSize = if ($primary) { 0 } else { 1 }
   $button.FlatAppearance.BorderColor = UiColor "borderStrong"
@@ -258,9 +258,11 @@ $actionTitle = Add-Label "Ações" 87 437 440 37
 $actionTitle.Font = UiFont "Sora" 18 "600"
 $actionTitle.ForeColor = UiColor "heading"
 $checkButton = Make-Action "Validar banco de dados" 49
-$migrateButton = Make-Action "Aplicar migrations" 313 $true
-$networkButton = Make-Action "Verificar IP / rede" 577
-$registerButton = Make-Action "Registrar IP inicial" 841
+$migrateButton = Make-Action "Aplicar migrations" 258 $true
+$networkButton = Make-Action "Verificar IP / rede" 467
+$registerButton = Make-Action "Registrar IP inicial" 676
+$adminButton = Make-Action "Inserir admin" 885
+$adminButton.Image = New-PortusGlyph "user" 24 "brandMuted"
 
 # Ícones avulsos transparentes do design system (24 px, assets PNG).
 $script:UiActionImages = @()
@@ -295,6 +297,7 @@ $actionToolTip.SetToolTip($checkButton, "Conecta e verifica a integridade do sch
 $actionToolTip.SetToolTip($migrateButton, "Executa apenas migrations pendentes.")
 $actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TCP.")
 $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
+$actionToolTip.SetToolTip($adminButton, "Somente desenvolvimento local: cria admin/admin se ausente. Não altera usuário existente.")
 
 # Status card.
 [void](Make-Card 24 569 1086 94)
@@ -415,7 +418,7 @@ foreach ($card in $script:UiCards) {
 # Cada um dos 4 cards precisa ter filhos renderizaveis e handlers visiveis.
 $script:UiPanelControls = @(
   @{card=$script:UiCards[0]; controls=@($connTitle,$hostField,$portField,$dbField,$userField,$binField,$passField)},
-  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton)},
+  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton,$adminButton)},
   @{card=$script:UiCards[2]; controls=@($statusTitle,$status,$statusDescription,$statusGlyph)},
   @{card=$script:UiCards[3]; controls=@($logTitle,$log,$clearLogButton)}
 )
@@ -540,14 +543,15 @@ function Set-Busy([bool]$busy) {
     }
     $field.Tag.Surface.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
   }
-  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton)) {
+  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$adminButton)) {
     if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
-    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}else{"register"})) { "Executando..." } else { $button.AccessibleDescription }
+    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}else{"seed-admin"})) { "Executando..." } else { $button.AccessibleDescription }
   }
   $checkButton.Enabled = -not $busy
   $migrateButton.Enabled = -not $busy
   $networkButton.Enabled = -not $busy
   $registerButton.Enabled = -not $busy
+  $adminButton.Enabled = -not $busy
   $browseButton.Enabled = -not $busy
   $showPasswordButton.Enabled = -not $busy
   $clearLogButton.Enabled = -not $busy
@@ -611,6 +615,7 @@ $timer.Add_Tick({
       $status.Text = if ($script:action -eq "validate") { "Banco validado com sucesso." }
         elseif ($script:action -eq "migrate") { "Migrations concluidas. Valide o banco." }
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
+        elseif ($script:action -eq "seed-admin") { "Cadastro local admin verificado. Confira o log." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
@@ -646,11 +651,11 @@ function Start-Action([string]$operation) {
     [void][System.Windows.Forms.MessageBox]::Show("Verifique os dados de conexao.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
+  if ($operation -in @("validate","migrate","seed-admin") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
     [void][System.Windows.Forms.MessageBox]::Show("Informe a senha administrativa do PostgreSQL.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
+  if ($operation -in @("validate","migrate","seed-admin") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
     [void][System.Windows.Forms.MessageBox]::Show("psql.exe nao encontrado na pasta bin.","PORTUS")
     return
   }
@@ -683,6 +688,19 @@ function Start-Action([string]$operation) {
   }
   # O runner controla UTF-8 e publica um resultado JSON independente do
   # ExitCode nulo que Start-Process pode retornar no Windows PowerShell 5.1.
+  if ($operation -eq "seed-admin") {
+    if ($hostName -notin @("127.0.0.1","localhost","::1","[::1]")) {
+      Show-Log "Inserir admin indisponível para servidores remotos. Use somente PostgreSQL local." "diagnostic"
+      return
+    }
+    $confirmation = [System.Windows.Forms.MessageBox]::Show(
+      "Criar o usuário local admin com senha admin, apenas se estiver ausente? A senha é insegura para produção. Credenciais preexistentes não serão substituídas.",
+      "Confirmar conta de desenvolvimento local",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    if ($confirmation -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+  }
   $runnerPath = Join-Path $PSScriptRoot "portus-db-utility-runner.ps1"
   if (-not (Test-Path -LiteralPath $runnerPath)) {
     Show-Log ("Runner do PORTUS ausente: " + $runnerPath) "diagnostic"
@@ -708,7 +726,7 @@ function Start-Action([string]$operation) {
   $script:action = $operation
   $previous = [Environment]::GetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD","Process")
   try {
-    if ($operation -in @("validate","migrate")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
+    if ($operation -in @("validate","migrate","seed-admin")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
     $options = @{
       FilePath = (Join-Path $PSHOME "powershell.exe")
       ArgumentList = ($arguments -join " ")
@@ -723,7 +741,7 @@ function Start-Action([string]$operation) {
     return
   } finally {
     [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")
-    if ($operation -in @("validate","migrate")) { $passField.Clear() }
+    if ($operation -in @("validate","migrate","seed-admin")) { $passField.Clear() }
   }
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
   Show-Log ("Script: " + $filename + " | PID: " + $script:child.Id)
@@ -738,6 +756,7 @@ $checkButton.Add_Click({ Start-Action "validate" })
 $migrateButton.Add_Click({ Start-Action "migrate" })
 $networkButton.Add_Click({ Start-Action "network" })
 $registerButton.Add_Click({ Start-Action "register" })
+$adminButton.Add_Click({ Start-Action "seed-admin" })
 $form.Add_FormClosing({
   param($sender,$args)
   if ($script:child -and -not $script:child.HasExited) {
@@ -788,11 +807,11 @@ if ($SmokeTest -or $CapturePath) {
     $smokeTimer.Stop()
     if (-not $form.Visible -or -not $form.IsHandleCreated -or
         -not $checkButton.Visible -or -not $migrateButton.Visible -or
-        -not $networkButton.Visible -or -not $registerButton.Visible -or
+        -not $networkButton.Visible -or -not $registerButton.Visible -or -not $adminButton.Visible -or
         -not $title.Visible -or -not $log.Visible -or
         -not $canvas.Visible -or
         -not $checkButton.Image -or -not $migrateButton.Image -or
-        -not $networkButton.Image -or -not $registerButton.Image) {
+        -not $networkButton.Image -or -not $registerButton.Image -or -not $adminButton.Image) {
       $script:smokeFailed = $true
     }
     foreach ($group in $script:UiPanelControls) {
@@ -814,7 +833,8 @@ if ($SmokeTest -or $CapturePath) {
       @{button=$checkButton; tip="Conecta e verifica a integridade do schema."},
       @{button=$migrateButton; tip="Executa apenas migrations pendentes."},
       @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
-      @{button=$registerButton; tip="Registra o servidor da primeira instalação."}
+      @{button=$registerButton; tip="Registra o servidor da primeira instalação."},
+      @{button=$adminButton; tip="Somente desenvolvimento local: cria admin/admin se ausente. Não altera usuário existente."}
     )) {
       if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
         $script:smokeFailed = $true
@@ -830,7 +850,7 @@ if ($SmokeTest -or $CapturePath) {
         if ($h.Font.FontFamily.Name -ne "Sora") { $script:smokeFailed = $true }
       }
       foreach ($component in @($hostField,$portField,$dbField,$userField,$binField,$passField,
-                               $checkButton,$migrateButton,$networkButton,$registerButton,$log)) {
+                               $checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$log)) {
         if ($component.Font.FontFamily.Name -ne "Inter") { $script:smokeFailed = $true }
       }
     }
