@@ -2,202 +2,140 @@
 
 ![PORTUS — captura industrial e gestão central de lotes](docs/assets/portus-cover.png)
 
-Aplicativo desktop industrial para leitura de equipamentos via porta serial,
-controle de lotes e persistência compartilhada em PostgreSQL. O PORTUS mantém a
-aquisição física no Electron e centraliza o estado operacional para Produção e
-Laboratório.
+**Captura industrial, rastreabilidade de leituras e gestão centralizada de lotes.**
 
-## Estado atual
+O PORTUS é um aplicativo desktop para ambientes de **Produção e Laboratório**. Integra a leitura de equipamentos por porta serial, identifica responsáveis e computadores, acompanha o ciclo de vida dos lotes e mantém um histórico operacional compartilhado em **PostgreSQL**.
 
-- captura simultânea de até seis equipamentos seriais;
-- protocolos passivo e Modbus RTU;
-- leitura por scanner de código de barras e simulação de scan;
-- sessões, leituras, histórico e exportação CSV;
-- banco local para configuração da estação e operação legada;
-- PostgreSQL central opcional para lotes, sessões e leituras;
-- fechamento global somente após confirmação da Produção e do Laboratório;
-- badge de conectividade PostgreSQL atualizado a cada 15 segundos;
-- instalador Windows NSIS e instalador idempotente do banco PostgreSQL.
+A aplicação foi projetada para instalações Windows com uma **máquina servidora** e **estações clientes**. Toda a operação dos lotes, sessões e leituras utiliza a base central; as estações não precisam instalar PostgreSQL.
+
+> **Status:** desenvolvimento ativo. A instalação, os equipamentos físicos, as rotinas de backup e o fechamento operacional exigem homologação na rede industrial de destino.
+
+## Funcionalidades
+
+- **Leitura de equipamentos:** captura de dados de até seis equipamentos seriais, incluindo cenários de protocolo passivo e Modbus RTU.
+- **Identificação e rastreabilidade:** registro do lote, equipamento, leitura, data/hora, estação e usuário responsável.
+- **Produção e Laboratório:** acesso por perfis e setores, com confirmações de encerramento por ambas as áreas.
+- **Códigos de barras:** abertura e localização de lotes por scanner, com ambiente de simulação.
+- **PostgreSQL central:** persistência compartilhada, migrations e controles de acesso.
+- **Configuração assistida:** escolha explícita entre servidor central e estação cliente no primeiro acesso.
+- **Histórico e relatórios:** impressão de registros e exportação de relatórios CSV/XLSX.
+- **XLSX independente do Office:** geração nativa de planilhas formatadas, sem Microsoft Excel ou automação COM.
+- **Backup centralizado:** operação de backup restrita à máquina configurada como servidor.
+- **Distribuição Windows:** instalador NSIS, desinstalador integrado e verificação de atualizações publicadas.
 
 ## Arquitetura
 
 ```mermaid
 flowchart LR
-  E["Equipamentos"] --> M["Electron main"]
-  M --> L["Configuração local"]
-  M --> P["PostgreSQL central"]
-  R["React renderer"] -->|"IPC seguro"| M
-  P --> F["Produção + Laboratório"]
+    P["Produção<br/>Estação cliente"] -->|Rede local / PostgreSQL| DB[("PostgreSQL central")]
+    L["Laboratório<br/>Estação cliente"] -->|Rede local / PostgreSQL| DB
+    S["PORTUS<br/>Máquina servidora"] --> DB
+    EP["Equipamentos seriais"] --> P
+    EL["Equipamentos seriais"] --> L
+    S --> B["Backup local no servidor"]
 ```
 
-O frontend não recebe credenciais nem acessa o PostgreSQL diretamente. Todas as
-operações passam pelo preload, pelos handlers IPC e pela camada de domínio do
-processo principal.
+O frontend React comunica-se com o processo principal do Electron por **IPC/preload**. A conexão ao PostgreSQL e os procedimentos operacionais são executados no processo principal; credenciais não são fornecidas diretamente à interface React.
 
-## Stack
-
-| Camada | Tecnologia |
+| Camada | Tecnologias |
 |---|---|
-| Desktop | Electron 44 |
-| Interface | React 18, Vite e TypeScript |
-| Captura | serialport, protocolo passivo e Modbus RTU |
-| Banco local | sql.js |
-| Banco central | PostgreSQL 18 e `pg` |
-| Validação | Zod e Vitest |
-| Distribuição | electron-builder e NSIS |
+| Desktop | Electron |
+| Interface | React, TypeScript, Vite, Lucide |
+| Integração industrial | serialport, protocolos seriais, Modbus RTU |
+| Backend local | Node.js, handlers IPC, validação Zod |
+| Dados operacionais | PostgreSQL, driver `pg` |
+| Testes | Vitest e testes SQL |
+| Instalação Windows | electron-builder, NSIS e PowerShell |
 
-## Requisitos
+## Primeira instalação
 
-- Node.js 20 ou superior;
-- npm;
-- PostgreSQL local ou remoto para o modo central;
-- Windows 10/11 para gerar e testar o instalador NSIS.
+### 1. Escolha a função de cada computador
 
-Docker não é obrigatório. Em máquinas com poucos recursos, use diretamente a
-instalação local do PostgreSQL.
+Na primeira abertura, o assistente solicita uma das opções:
 
-## Instalação
+| Tipo de máquina | Comportamento |
+|---|---|
+| **Servidor central** | Detecta as ferramentas PostgreSQL, prepara ou valida a base e registra esta máquina como servidor |
+| **Estação cliente** | Solicita o IPv4 da máquina central e o setor (**Produção** ou **Laboratório**), valida a conexão e registra a estação |
 
-```bash
-git clone https://github.com/lenixeduardo/portus.git
-cd portus
-git checkout feat/portus-stage-0-database-baseline
-npm install
-```
+**Somente o servidor precisa ter PostgreSQL instalado.** A máquina cliente não instala nem executa o servidor PostgreSQL.
 
-### Assistente de configuração inicial
+### 2. Prepare a máquina servidora
 
-Na primeira abertura do executável, quando a base central ainda não estiver
-configurada, o PORTUS mostra um assistente com duas escolhas explícitas:
+Instale o PostgreSQL no Windows e mantenha seu serviço em execução. Configure o acesso das estações autorizadas na rede local:
 
-- **Servidor central**: localiza o PostgreSQL, cria ou atualiza o banco, aplica
-  migrations e grava a configuração nesta máquina.
-- **Estação cliente**: recebe o IP ou DNS do servidor, testa a conexão e grava
-  somente a credencial local; não cria banco, usuário ou migrations.
+- `postgresql.conf`: escuta nas interfaces necessárias;
+- `pg_hba.conf`: autenticação apenas para usuários e endereços autorizados;
+- Firewall do Windows: libere a porta PostgreSQL somente na rede confiável.
 
-As senhas são enviadas apenas ao processo de instalação ou à validação de
-conexão, nunca para logs.
+A porta padrão do PostgreSQL é **5432**. Evite exposição direta dessa porta à internet.
 
-O assistente exige que o PostgreSQL já esteja instalado no computador. Para
-instalações técnicas ou recuperação manual, use o procedimento abaixo.
-
-### Configurar o PostgreSQL no Windows manualmente
-
-Depois de instalar PostgreSQL 18, execute no PowerShell, dentro do projeto:
+Para preparar manualmente a base usando os scripts do projeto:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\database\install-portus-database.ps1
 ```
 
-O instalador pede as senhas, cria o banco `portus` e o usuário operacional
-`portus_admin`, aplica cada migration somente uma vez, concede o mínimo de
-privilégios da aplicação, roda os testes SQL e configura a conexão do PORTUS
-para o usuário atual do Windows. Em uma máquina gráfica, a mesma ação pode ser
-iniciada com `database\install-portus-database.bat`.
+Também é possível abrir o utilitário visual de banco incluído na instalação do PORTUS:
 
-Use `-SkipTests` apenas em automações em que a validação ocorrerá depois. Veja
-[database/README.md](database/README.md) para parâmetros de host, porta e uma
-instalação de PostgreSQL em caminho diferente.
+```text
+C:\Program Files\Portus\resources\database\portus-db-utility.bat
+```
 
-No primeiro início do aplicativo, o usuário local `admin` recebe uma senha
-aleatória exibida uma única vez. Para instalação automatizada, defina
-`PORTUS_INITIAL_ADMIN_PASSWORD` antes de iniciar o PORTUS e altere essa senha
-na primeira operação administrativa.
+O utilitário identifica instalações PostgreSQL locais e disponibiliza procedimentos de validação e manutenção.
 
-### Conectar o Electron à base central
+Consulte [database/README.md](database/README.md) para os comandos específicos de instalação, migrations, conexão e diagnóstico.
 
-O instalador do banco salva `PORTUS_DATABASE_URL` e `PORTUS_DATABASE_MODE=central`
-no perfil do Windows e também em
-`%LOCALAPPDATA%\PORTUS\database-config.json`. O executável instalado lê esse
-arquivo diretamente, sem depender de reiniciar o Explorer.
+### 3. Configure as estações clientes
 
-Se o banco já existe, mas o aplicativo mostra **Não configurado**, execute
-`database\check-portus-database.bat`, informe a senha de `portus_admin` e reabra
-o PORTUS. Além de validar o schema, esse comando repara a configuração do aplicativo.
+No assistente inicial, selecione **Estação cliente**, informe o IPv4 da máquina servidora e escolha **Produção** ou **Laboratório**. O aplicativo valida a conexão antes de liberar a utilização.
 
-Para desenvolvimento manual, defina as variáveis no mesmo terminal que iniciará
-o aplicativo:
+Os erros de conexão exibem uma mensagem compreensível e um **relatório técnico** com etapa, horário, IP, porta, código e causa do erro, quando disponíveis. As credenciais são ocultadas.
 
-```powershell
-$env:PORTUS_DATABASE_URL="postgresql://portus_admin:SUA_SENHA@127.0.0.1:5432/portus"
-$env:PORTUS_DATABASE_POOL_MAX="5"
-$env:PORTUS_DATABASE_CONNECT_TIMEOUT_MS="5000"
-$env:PORTUS_SECTOR_CODE="PRODUCTION"
-$env:PORTUS_DATABASE_MODE="central"
+As configurações locais de conexão ficam no perfil Windows, em `%LOCALAPPDATA%\PORTUS\`.
+
+## Backup do banco
+
+A opção **Fazer backup agora** e seus controles ficam desabilitados em estações clientes. O processo principal também bloqueia a execução manual fora da máquina configurada como **servidor central**.
+
+No servidor, a rotina utiliza o utilitário oficial `pg_dump.exe` do PostgreSQL. Esse arquivo normalmente está em:
+
+```text
+C:\Program Files\PostgreSQL\18\bin\pg_dump.exe
+```
+
+> **Atenção:** o `pg_dump` faz parte das ferramentas da instalação PostgreSQL, não do instalador do PORTUS. A localização automática do executável e a geração de backups devem ser verificadas no servidor Windows de produção antes da implantação definitiva.
+
+## Histórico, impressão e Excel
+
+O histórico reúne leituras, sessões, responsáveis, estações e equipamentos vinculados ao lote. Os relatórios podem ser impressos ou exportados.
+
+A exportação `.xlsx` é gerada **diretamente em Node.js**, sem exigir Microsoft Excel, COM ou PowerShell. O arquivo inclui cabeçalhos formatados, larguras de colunas, autofiltro e primeira linha congelada.
+
+O suporte a arquivos XLSX não implica instalação de um aplicativo para visualizá-los. Para abrir o resultado, o usuário pode utilizar um leitor de planilhas compatível.
+
+## Desenvolvimento
+
+**Requisitos para desenvolvimento:** Node.js, npm e ambiente capaz de executar Electron. A geração do instalador NSIS deve ser validada no Windows.
+
+```bash
+git clone https://github.com/lenixeduardo/portus.git
+cd portus
+npm install
 npm run dev
 ```
 
-Se a senha possuir `@`, `:`, `/`, `#` ou outros caracteres reservados, aplique
-URL encoding antes de colocá-la em `PORTUS_DATABASE_URL`.
-
-O PostgreSQL central é o modo autoritativo padrão. O legado SQLite para lotes
-só pode ser ativado deliberadamente em desenvolvimento com
-`PORTUS_DATABASE_MODE=local`; ele não deve ser usado em estações de Produção ou
-Laboratório.
-
-## Badge do banco central
-
-| Estado | Significado |
-|---|---|
-| Banco conectado | `PORTUS_DATABASE_URL` configurada e `SELECT 1` respondendo |
-| Banco desconectado | URL configurada, mas a conexão falhou |
-| Banco não configurado | variável `PORTUS_DATABASE_URL` ausente |
-| Verificando banco | teste de conectividade em andamento |
-
-O status é consultado ao autenticar e atualizado a cada 15 segundos.
-
-## Visão Laboratório
-
-A interface é definida pelo usuário autenticado. No cadastro local, selecione
-`Laboratório · Captura` para quem opera equipamentos ou
-`Laboratório · Fechamento` para quem revisa e confirma o lote. O mesmo nome de
-usuário deve existir no PostgreSQL e receber permissão no setor `LABORATORY`.
-
-A visão Laboratório não cria lotes e nunca usa o SQLite como alternativa de
-escrita. Produtos vêm do lote central, os equipamentos vêm da configuração da
-estação e o responsável por cada captura fica registrado na sessão central.
-
-## Regra de fechamento
-
-O cliente não altera diretamente o status global. As funções PostgreSQL
-`confirm_production_close` e `confirm_laboratory_close` bloqueiam o lote,
-registram histórico e mantêm as confirmações idempotentes.
-
-```text
-Produção confirmou + Laboratório confirmou = lote fechado
-Qualquer confirmação isolada                 = lote permanece aberto
-```
-
-Não existe limite global de seis lotes no modelo central. As permissões são
-definidas por usuário, aplicação e setor.
-
-## Desenvolvimento e validação
+### Verificações
 
 ```bash
-npm run dev        # Vite, TypeScript watch e Electron
-npm run typecheck  # valida main e renderer
-npm test           # suíte automatizada
-npm run build      # build do renderer e do processo principal
-npm run validate:release # confere assets, migrations e configuração de empacotamento
+npm run typecheck
+npm test
+npm run build
+npm run validate:release
 ```
 
-A suíte automatizada cobre o núcleo serial, autorização, relatórios unificados
-e o modo autoritativo do PostgreSQL. A validação PostgreSQL fica em
-`database/tests` e deve ser executada separadamente contra um banco de teste.
-
-```powershell
-$env:PORTUS_DATABASE_URL="postgresql://portus_admin:portus_dev_123@127.0.0.1:5432/portus"
-npm run test:postgres:concurrency
-```
-
-Esse comando automatiza a disputa pelo mesmo lote entre Produção e Laboratório
-e remove os dados temporários ao terminar.
-
-## Simulação serial
-
-O projeto inclui presets de balança, pH, viscosímetro, espectrofotômetro e carga
-genérica.
+Os testes que exigem uma instância PostgreSQL ou dispositivos reais dependem de um ambiente de teste apropriado. Para simular a captura serial:
 
 ```bash
 npm run sim -- --port COM11 --preset balanca
@@ -205,80 +143,62 @@ npm run sim -- --port COM11 --preset ph --interval 2000
 npm run sim:test
 ```
 
-No Windows, crie um par de portas com `com0com` e configure, por exemplo, o app
-na `COM10` e o simulador na `COM11`. No Linux, use duas PTYs criadas pelo
-`socat`. O guia detalhado está em [docs/RUNNING.md](docs/RUNNING.md).
+O guia completo de execução está em [docs/RUNNING.md](docs/RUNNING.md).
 
-## Empacotamento Windows
+## Instalador e versionamento
 
-```bash
-npm run rebuild
+No Windows:
+
+```powershell
+npm run typecheck
+npm test
 npm run package
 ```
 
-O `electron-builder` cria os arquivos auxiliares em `release/` e copia o instalador
-final para a raiz do projeto, identificado como
-`PORTUS-Setup-<versão>-x64.exe`. Os arquivos usados no build ficam em
-`build/icon.png` e `build/icon.ico`. A identidade oficial fica em
-`assets/branding/`; para sincronizar os arquivos:
-
-```bash
-node scripts/gen-icon.mjs
-node scripts/gen-ico.mjs
-```
-
-## Estrutura principal
+O empacotamento gera um instalador no formato:
 
 ```text
-database/
-  migrations/   Schema, funções e segurança PostgreSQL
-  seed/          Aplicações e setores de referência
-  tests/         Testes transacionais do domínio
-docs/            ADRs, especificações e guias operacionais
-src/
-  main/          Electron, captura, banco e IPC
-  preload/       Contrato seguro do renderer
-  renderer/      Interface React
-  shared/        Tipos e canais IPC
-tools/           Simulador serial
+PORTUS-Setup-<versão>-x64.exe
 ```
 
-## Documentação
+A versão apresentada no login é obtida do `package.json` durante a compilação do frontend. O comando `npm run package` executa uma etapa de incremento da versão antes do build.
 
+O instalador inclui os scripts e o utilitário PostgreSQL. O NSIS registra a desinstalação no Windows. A remoção do aplicativo não deve eliminar automaticamente os dados operacionais armazenados no PostgreSQL.
+
+A verificação de novas versões utiliza as **GitHub Releases** oficiais do repositório; a instalação da atualização permanece uma ação do operador.
+
+## Estrutura do projeto
+
+```text
+build/               Ícones e recursos de empacotamento
+database/
+  migrations/        Evolução do esquema PostgreSQL
+  seed/              Cadastros iniciais
+  tests/             Testes de banco e procedimentos
+docs/                Guias, ADRs e especificações
+scripts/             Build, empacotamento e validações
+src/
+  main/              Electron, IPC, acesso ao banco e captura
+  preload/           API de comunicação protegida
+  renderer/          Interface React
+  shared/            Contratos e tipos compartilhados
+tools/               Simulador de equipamentos
+```
+
+## Documentação técnica
+
+- [Banco de dados e instalação](database/README.md)
 - [Baseline do PostgreSQL](docs/PORTUS-DATABASE-BASELINE.md)
-- [Decisão de autoridade central](docs/ADR-001-lot-service-authority.md)
-- [Especificação da Visão Laboratório](docs/PORTUS-LABORATORIO-SPEC.md)
-- [Changelog da integração](docs/POSTGRESQL-INTEGRATION-CHANGELOG.md)
+- [Arquitetura de autoridade central](docs/ADR-001-lot-service-authority.md)
+- [Especificação do Laboratório](docs/PORTUS-LABORATORIO-SPEC.md)
 - [Guia de execução](docs/RUNNING.md)
-- [Empacotamento](docs/PACKAGING.md)
-- [Pendências](TODO.md)
+- [Empacotamento Windows](docs/PACKAGING.md)
+- [Pendências de desenvolvimento](TODO.md)
 
-## Pendências de homologação
+## Homologação antes da operação
 
-- executar e registrar o teste automatizado de concorrência no ambiente de homologação;
-- validar permissões com roles físicas de runtime;
-- homologar o mapeamento dos equipamentos reais;
-- validar com o Laboratório quais leituras são obrigatórias;
-- implementar o cliente dedicado PORTUS Visão Laboratório.
+Antes da implantação definitiva, validar em ambiente real: comunicação com equipamentos e leitores de código de barras; permissões entre Produção e Laboratório; abertura e fechamento de lotes; backup e restauração; exportação de arquivos XLSX em máquinas sem Office; falhas de rede; atualização e desinstalação do aplicativo.
 
-Estas pendências dependem do ambiente e do processo industrial real; não são
-tratadas como funcionalidades concluídas.
+---
 
-## Atualizações disponíveis na abertura
-
-O instalador Windows consulta a última GitHub Release pública ao abrir, antes do
-login. Se houver uma versão estável mais recente com o instalador x64 esperado,
-exibe “Atualização disponível”, a versão instalada e a nova versão. “Baixar
-atualização” abre o download oficial no navegador; “Agora não” adia o aviso até
-a próxima abertura. A instalação permanece manual: concluir as leituras e fechar
-o PORTUS antes de executar o instalador. A consulta tem limite de 8 segundos e
-falhas de rede não bloqueiam o uso. Em desenvolvimento, a consulta é desativada.
-
-Para publicar uma atualização, incremente e registre a versão do `package.json`
-e `package-lock.json`, envie uma tag correspondente (por exemplo, `v0.1.15`) ou
-execute **Publicar atualização Windows** no GitHub Actions. O workflow valida,
-testa e compila antes de criar a Release com `PORTUS-Setup-VERSAO-x64.exe`.
-Commits sem uma nova Release não acionam o aviso. Não reutilize versões publicadas.
-
-As instalações anteriores a este recurso precisam receber uma primeira atualização
-manual; a consulta passa a funcionar a partir dessa instalação.
+**PORTUS** · Gestão e rastreabilidade de operações industriais · 2026
