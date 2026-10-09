@@ -1,6 +1,6 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, copyFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -186,6 +186,33 @@ describe("utilitario de banco PORTUS", () => {
     expect(sql).toContain("WHERE NOT EXISTS");
     expect(sql).toContain("ON CONFLICT (username) DO NOTHING");
   });
+
+  it.skipIf(process.platform !== "win32")("invoca seed admin local de forma opt-in sem redefinir senha existente", () => {
+    const temp = mkdtempSync(join(tmpdir(),"portus-admin-seed-test-"));
+    try {
+      copyFileSync(join(db,"portus-db-utility-runner.ps1"),join(temp,"portus-db-utility-runner.ps1"));
+      writeFileSync(join(temp,"install-portus-database.ps1"),[
+        "param([switch]$MigrationsOnly,[switch]$SkipAppConfiguration,[switch]$SeedDevAdmin,",
+        "      [string]$PostgresBin,[string]$DatabaseHost,[int]$Port,",
+        "      [string]$AdminUser,[string]$DatabaseName)",
+        "if (-not $MigrationsOnly -or -not $SkipAppConfiguration -or -not $SeedDevAdmin) { throw 'Flags obrigatorias ausentes' }",
+        "if ($DatabaseHost -ne '127.0.0.1') { throw 'Host local inesperado' }",
+        "Write-Output 'SEED_ADMIN_LOCAL_SIMULATED_OK'"
+      ].join("\n"),"utf8");
+      const resultPath = join(temp,"seed-admin-result.json");
+      const run = spawnSync("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",
+        join(temp,"portus-db-utility-runner.ps1"),
+        "-Operation","seed-admin","-ResultPath",resultPath,
+        "-DatabaseHost","127.0.0.1",
+        "-DatabaseName","portus"
+      ],{encoding:"utf8",windowsHide:true,timeout:25000});
+      expect(run.error).toBeUndefined();
+      expect(run.status,run.stderr).toBe(0);
+      expect(run.stdout).toContain("SEED_ADMIN_LOCAL_SIMULATED_OK");
+      expect(JSON.parse(readFileSync(resultPath,"utf8")).exitCode).toBe(0);
+    } finally { rmSync(temp,{recursive:true,force:true}); }
+  },35000);
 
   it.skipIf(process.platform !== "win32")("bloqueia provisionamento admin em servidor remoto sem abrir PostgreSQL", () => {
     const root = mkdtempSync(join(tmpdir(),"portus-admin-remote-"));
