@@ -26,6 +26,10 @@ describe("configuração obrigatória do setor físico da estação", () => {
     expect(ui).not.toContain('useState<"PRODUCTION" | "LABORATORY">("PRODUCTION")');
     expect(ui).toContain('window.api.settings.set("station_sector_code", stationSectorCode)');
     expect(ui).toContain('updated.station_sector_code !== stationSectorCode');
+    expect(ui).toContain("Salvar setor desta máquina");
+    expect(ui).toContain("async function saveStationSector()");
+    expect(ui).toContain("if (!(await saveStationSector()))");
+    expect(ui).toContain("Setor desta máquina confirmado no PostgreSQL.");
     expect(ui).toContain("Esta estação ainda não tem setor configurado.");
     expect(ui).toContain("readOnly");
     expect(ui).not.toContain('window.api.settings.set("station_code"');
