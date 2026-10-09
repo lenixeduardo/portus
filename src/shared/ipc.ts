@@ -94,6 +94,7 @@ export interface InitialSetupStatus extends CentralDatabaseStatus {
   postgresBin: string | null;
   setupCompleted: boolean;
   stationCode: string;
+  postgresServiceStatus: "running" | "stopped" | "not-found" | "unavailable";
 }
 
 export interface InitialSetupInput {
