@@ -4,6 +4,17 @@ import { join, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const errors = [];
+const packageLock = JSON.parse(readFileSync(join(root, "package-lock.json"), "utf8"));
+const versionParts = packageJson.version.match(/^(\\d+)\\.(\\d+)\\.(\\d+)$/)?.slice(1).map(Number);
+if (!versionParts || versionParts.some(part => !Number.isSafeInteger(part))) {
+  errors.push("Versão do aplicativo deve seguir SemVer numérico MAJOR.MINOR.PATCH.");
+} else if (versionParts[0] === 0 && versionParts[1] === 1 && versionParts[2] < 26) {
+  errors.push("Versão do PORTUS regrediu: a sequência 0.1.x deve continuar a partir de 0.1.26.");
+}
+if (packageLock.version !== packageJson.version || packageLock.packages?.[""]?.version !== packageJson.version) {
+  errors.push("package-lock.json e package.json possuem versões divergentes.");
+}
+
 
 function requireFile(path) {
   if (!existsSync(join(root, path))) errors.push(`Arquivo obrigatório ausente: ${path}`);
@@ -50,6 +61,15 @@ if (!packageJson.build?.extraResources?.some((entry) => entry?.to === "portus-ic
 }
 if (packageJson.scripts?.start?.includes("ELECTRON_DEV=1")) {
   errors.push("O script start força o modo de desenvolvimento e tenta abrir o servidor Vite.");
+}
+
+const viteConfig = readFileSync(join(root, "vite.config.ts"), "utf8");
+const releaseNotes = readFileSync(join(root, "src/renderer/releaseNotes.ts"), "utf8");
+const loginScreen = readFileSync(join(root, "src/renderer/screens/Login.tsx"), "utf8");
+if (!viteConfig.includes('JSON.stringify(pkg.version)') ||
+    !releaseNotes.includes('import.meta.env.VITE_APP_VERSION') ||
+    !loginScreen.includes('v{APP_VERSION}')) {
+  errors.push("A versão exibida no login não está vinculada à versão oficial do package.json.");
 }
 
 const mainEntry = readFileSync(join(root, "src/main/index.ts"), "utf8");
