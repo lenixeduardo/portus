@@ -28,6 +28,7 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
     appPassword: ""
   });
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [modeChosen, setModeChosen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -42,9 +43,11 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
 
   function selectMode(installationMode: InitialSetupInput["installationMode"]) {
     setError(null);
+    setModeChosen(true);
     setForm((current) => ({
       ...current,
       installationMode,
+      stationSectorCode: undefined,
       databaseHost: installationMode === "server"
         ? "127.0.0.1"
         : LOOPBACK_HOSTS.has(current.databaseHost.trim().toLowerCase())
@@ -57,6 +60,18 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
     event.preventDefault();
     setError(null);
     setMessage(null);
+    if (!modeChosen) {
+      setError("Selecione se esta máquina será o servidor central ou uma estação cliente.");
+      return;
+    }
+    if (form.installationMode === "server" && !initialStatus.postgresBin && !form.postgresBin?.trim()) {
+      setError("Instale o PostgreSQL no servidor ou informe a pasta bin de uma instalação existente.");
+      return;
+    }
+    if (form.installationMode === "client" && !form.stationSectorCode) {
+      setError("Selecione o setor desta estação: Produção ou Laboratório.");
+      return;
+    }
     if (form.installationMode === "client" && LOOPBACK_HOSTS.has(form.databaseHost.trim().toLowerCase())) {
       setError("Na estação cliente, informe o IP da máquina servidor.");
       return;
@@ -100,12 +115,12 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
           <div>
             <span className="setup-eyebrow">PRIMEIRO ACESSO</span>
             <h1>Configuração inicial</h1>
-            <p>Prepare a conexão do PORTUS com o PostgreSQL central nesta estação.</p>
+            <p>Escolha a função desta máquina. Apenas o servidor precisa do PostgreSQL instalado; as estações se conectam pela rede.</p>
           </div>
           <ol className="setup-steps">
-            <li className="is-current"><span>1</span> Localizar PostgreSQL</li>
-            <li><span>2</span> Criar ou atualizar o banco</li>
-            <li><span>3</span> Validar conexão central</li>
+            <li className="is-current"><span>1</span> Selecionar servidor ou estação</li>
+            <li><span>2</span> Configurar banco ou conexão por IP</li>
+            <li><span>3</span> Validar e liberar o primeiro acesso</li>
           </ol>
           <p className="setup-note">As senhas são usadas somente durante esta configuração e não são exibidas pelo PORTUS.</p>
         </aside>
@@ -114,23 +129,38 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
             <Database size={20} aria-hidden="true" />
             <div>
               <h2 id="setup-title">Banco PostgreSQL</h2>
-              <p>Use o servidor local ou o servidor central da sua operação.</p>
+              <p>Estação: {initialStatus.stationCode}. Escolha abaixo o papel deste computador.</p>
             </div>
           </div>
 
           <div className="setup-mode-choice" role="radiogroup" aria-label="Tipo de instalação">
-            <button type="button" role="radio" aria-checked={form.installationMode === "server"} className={form.installationMode === "server" ? "is-selected" : ""} onClick={() => selectMode("server")}>
+            <button type="button" role="radio" aria-checked={modeChosen && form.installationMode === "server"} className={modeChosen && form.installationMode === "server" ? "is-selected" : ""} onClick={() => selectMode("server")}>
               <ServerCog size={18} /><span><strong>Servidor central</strong><small>Cria ou atualiza o banco nesta máquina.</small></span>
             </button>
-            <button type="button" role="radio" aria-checked={form.installationMode === "client"} className={form.installationMode === "client" ? "is-selected" : ""} onClick={() => selectMode("client")}>
+            <button type="button" role="radio" aria-checked={modeChosen && form.installationMode === "client"} className={modeChosen && form.installationMode === "client" ? "is-selected" : ""} onClick={() => selectMode("client")}>
               <Network size={18} /><span><strong>Estação cliente</strong><small>Só conecta ao banco já existente.</small></span>
             </button>
           </div>
 
-          {form.installationMode === "server" && !initialStatus.postgresBin && (
-            <div className="setup-warning"><TriangleAlert size={16} /> PostgreSQL não foi localizado automaticamente. Informe a pasta <code>bin</code>.</div>
+          <div className={initialStatus.postgresBin ? "success" : "setup-warning"}>
+            {initialStatus.postgresBin ? <CheckCircle2 size={16} /> : <TriangleAlert size={16} />}
+            {initialStatus.postgresBin
+              ? `PostgreSQL detectado nesta máquina: ${initialStatus.postgresBin}. A instalação local só é necessária para o servidor.`
+              : "PostgreSQL não detectado nesta máquina. Isso é normal para Produção/Laboratório como estação cliente."}
+          </div>
+          {modeChosen && form.installationMode === "server" && !initialStatus.postgresBin && (
+            <div className="setup-warning"><TriangleAlert size={16} /> Para criar o servidor, instale o PostgreSQL no Windows, inicie o serviço e reabra o PORTUS. Página oficial: <code>postgresql.org/download/windows/</code>. Se já estiver instalado em outra pasta, informe o caminho bin abaixo. Nunca apague a pasta data existente.</div>
           )}
-          <form onSubmit={submit} noValidate>
+          {modeChosen && <form onSubmit={submit} noValidate>
+            {form.installationMode === "client" && <div className="field">
+              <label htmlFor="setup-sector">Setor desta máquina</label>
+              <select id="setup-sector" required value={form.stationSectorCode ?? ""} onChange={(e) => update("stationSectorCode", e.target.value as "PRODUCTION" | "LABORATORY")}>
+                <option value="">Selecione o setor</option>
+                <option value="PRODUCTION">Produção</option>
+                <option value="LABORATORY">Laboratório</option>
+              </select>
+              <small>Esta identificação será registrada no PostgreSQL para rastrear as leituras desta estação.</small>
+            </div>}
             {form.installationMode === "server" && <div className="field">
               <label htmlFor="setup-postgres-bin">Pasta bin do PostgreSQL</label>
               <div className="setup-input-icon"><ServerCog size={15} /><input id="setup-postgres-bin" value={form.postgresBin ?? ""} onChange={(e) => update("postgresBin", e.target.value)} placeholder={'C:\\Program Files\\PostgreSQL\\18\\bin'} /></div>
@@ -169,7 +199,7 @@ export function InitialSetup({ initialStatus, onCompleted }: Props) {
             <button className="setup-submit" type="submit" disabled={running}>
               {running ? <><LoaderCircle size={16} className="database-status__spinner" /> {form.installationMode === "server" ? "Configurando banco…" : "Validando conexão…"}</> : <><CheckCircle2 size={16} /> {form.installationMode === "server" ? "Configurar e validar" : "Conectar e validar"}</>}
             </button>
-          </form>
+          </form>}
         </div>
       </section>
     </main>
