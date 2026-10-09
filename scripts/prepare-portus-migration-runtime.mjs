@@ -22,12 +22,12 @@ if (process.platform==="win32") {
 }
 if (!existsSync(join(destination,"node_modules","pg","package.json")) ||
     !existsSync(join(destination,"node_modules","sql.js","package.json"))) {
-  const npmArgs=["install","--prefix",destination,"--omit=dev","--ignore-scripts","--no-audit","--no-fund"];
+  const npmArgs=["install","--omit=dev","--ignore-scripts","--no-audit","--no-fund"];
   if (process.platform === "win32") {
-    execFileSync("cmd.exe",["/d","/s","/c",'npm install --prefix "' + destination + '" --omit=dev --ignore-scripts --no-audit --no-fund'],
-      {stdio:"inherit",timeout:240000});
+    execFileSync("cmd.exe",["/d","/c","npm install --omit=dev --ignore-scripts --no-audit --no-fund"],
+      {cwd:destination,stdio:"inherit",timeout:240000});
   } else {
-    execFileSync("npm",npmArgs,{stdio:"inherit",timeout:240000});
+    execFileSync("npm",npmArgs,{cwd:destination,stdio:"inherit",timeout:240000});
   }
 }
 console.log("PORTUS migration runtime ready:",destination);
