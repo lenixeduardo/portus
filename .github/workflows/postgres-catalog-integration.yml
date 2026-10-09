@@ -101,6 +101,8 @@ jobs:
           BEGIN
             IF (SELECT COUNT(*) FROM products WHERE name='Produto compartilhado para importação') <> 1
               OR (SELECT COUNT(*) FROM users WHERE username IN ('analista.central.teste','operador.central.teste')) <> 2
+              OR (SELECT COUNT(*) FROM users WHERE username='admin' AND display_name='Administrador legado' AND role='master') <> 1
+              OR (SELECT COUNT(*) FROM users WHERE username='admin' AND password_hash='$2b$12$Hlt6Ovi0lL0vi1nmeBGRKeb3XtQw5NIUPWWDKsZBdy0j9qjUzP1v2') <> 0
               OR (SELECT COUNT(*) FROM batches WHERE code LIKE 'LEGACY-%') <> 2
               OR (SELECT COUNT(*) FROM capture_sessions cs JOIN batches b ON b.id=cs.batch_id WHERE b.code LIKE 'LEGACY-%') <> 2
               OR (SELECT COUNT(*) FROM readings r JOIN batches b ON b.id=r.batch_id WHERE b.code LIKE 'LEGACY-%') <> 2
