@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -161,6 +161,53 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('$actionToolTip.Dispose()');
   });
 
+  it("mostra o sucesso ou falha no log interno usando o resultado explicito do runner", () => {
+    const gui = read("portus-db-utility.ps1");
+    const helper = read("portus-db-utility-process.ps1");
+    const runner = read("portus-db-utility-runner.ps1");
+    const packager = readFileSync(join(process.cwd(),"scripts/package-database-installer.mjs"),"utf8");
+    expect(gui).toContain("portus-db-utility-runner.ps1");
+    expect(gui).toContain('Get-PortusOperationResult -Path $script:resultFile -Operation $script:action');
+    expect(gui).toContain('Resultado confirmado:');
+    expect(gui).toContain('Confira o log acima.');
+    expect(gui).toContain('ReadAllText($file,[Text.Encoding]::UTF8)');
+    expect(gui).toContain('$isNotice');
+    expect(gui).not.toContain('Falha (codigo $code). Confira o log.');
+    expect(helper).toContain("function Get-PortusOperationResult");
+    expect(helper).toContain("resultado");
+    expect(runner).toContain('[Console]::OutputEncoding = $utf8');
+    expect(runner).toContain('$env:PGCLIENTENCODING = "UTF8"');
+    expect(runner).toContain("[IO.File]::WriteAllText($ResultPath,$result,$utf8)");
+    expect(runner).toContain("MigrationsOnly=$true");
+    expect(packager).toContain("portus-db-utility-runner.ps1");
+  });
+
+  it.skipIf(process.platform !== "win32")("confirma saída UTF-8 e resultados 0/17 no runner sem banco", () => {
+    const root = mkdtempSync(join(tmpdir(),"portus-runner-test-"));
+    try {
+      for (const expected of [0,17]) {
+        const resultPath = join(root, "result-" + expected + ".json");
+        const run = spawnSync("powershell.exe", [
+          "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
+          join(db,"portus-db-utility-runner.ps1"),
+          "-Operation", "selftest", "-ResultPath", resultPath,
+          "-SelfTestExitCode", String(expected)
+        ], { encoding:"utf8", windowsHide:true, timeout:25_000 });
+        expect(run.error).toBeUndefined();
+        expect(run.status).toBe(expected);
+        expect(run.stdout).toContain("validação de saída UTF-8");
+        expect(run.stdout).toContain("operação concluída");
+        if (expected === 17) expect(run.stderr).toContain("erro de teste UTF-8");
+        const result = JSON.parse(readFileSync(resultPath,"utf8"));
+        expect(result.schemaVersion).toBe(1);
+        expect(result.operation).toBe("selftest");
+        expect(result.exitCode).toBe(expected);
+      }
+    } finally {
+      rmSync(root,{ recursive:true,force:true });
+    }
+  }, 65_000);
+
   it("espelha stdout e stderr no terminal e nao interpreta codigo nulo como falha sem diagnostico", () => {
     const gui = read("portus-db-utility.ps1");
     const helper = read("portus-db-utility-process.ps1");
@@ -208,7 +255,7 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain('Set-Busy $true');
     expect(gui).toContain('Set-Busy $false');
     expect(gui).toContain('$networkButton.Enabled = -not $busy');
-    expect(gui).toContain("Get-PortusChildExitCode -Process $script:child");
+    expect(gui).toContain("Get-PortusOperationResult -Path $script:resultFile -Operation $script:action");
   });
 
   it("repassa a senha sem parametros CLI ou persistencia em disco", () => {
@@ -360,7 +407,7 @@ describe("utilitario de banco PORTUS", () => {
   });
 
   it.skipIf(process.platform !== "win32")("analisa a sintaxe dos scripts no Windows PowerShell", () => {
-    for (const path of ["portus-db-utility.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+    for (const path of ["portus-db-utility.ps1", "portus-db-utility-runner.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
       const full = join(db, path);
       const escaped = full.replace(/'/g, "''");
       const command = [
