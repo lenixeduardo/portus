@@ -33,7 +33,7 @@ export function detectPostgresServiceStatus(
 ): "running" | "stopped" | "not-found" | "unavailable" {
   if (platform !== "win32") return "unavailable";
   try {
-    const values = readServices().split(/[\\r\\n,]+/).map(x => x.trim().toLowerCase());
+    const values = readServices().split(/[\r\n,]+/).map(x => x.trim().toLowerCase());
     if (values.includes("running")) return "running";
     if (values.includes("stopped") || values.includes("paused")) return "stopped";
     return "not-found";
