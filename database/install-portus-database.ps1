@@ -17,6 +17,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $psql = Join-Path $PostgresBin "psql.exe"
+. (Join-Path $PSScriptRoot "portus-psql-preflight.ps1")
 
 function Assert-Identifier([string]$Value, [string]$Label) {
   if ($Value -notmatch '^[A-Za-z][A-Za-z0-9_]{0,62}$') {
@@ -43,7 +44,8 @@ function Invoke-Psql([string]$User, [string]$Password, [string]$Database, [strin
 }
 
 try {
-  if (-not (Test-Path $psql)) { throw "psql.exe não encontrado em '$psql'. Informe -PostgresBin com a pasta bin correta." }
+  $psqlProblem = Get-PortusPsqlValidationError -BinPath $PostgresBin -CheckVersion
+  if ($psqlProblem) { throw $psqlProblem }
   Assert-Identifier $DatabaseName "Nome do banco"
   Assert-Identifier $AppUser "Usuário da aplicação"
 

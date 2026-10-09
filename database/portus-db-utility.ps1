@@ -11,6 +11,7 @@ Add-Type -AssemblyName System.Drawing
 . (Join-Path $PSScriptRoot "portus-ui-design-tokens.ps1")
 . (Join-Path $PSScriptRoot "portus-db-utility-glyphs.ps1")
 . (Join-Path $PSScriptRoot "portus-db-utility-process.ps1")
+. (Join-Path $PSScriptRoot "portus-psql-preflight.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
 try {
@@ -140,7 +141,7 @@ function Make-Action([string]$caption,[int]$x,[bool]$primary=$false) {
 function Find-PostgresBin {
   foreach ($version in @(18,17,16,15,14)) {
     $bin = Join-Path $env:ProgramFiles ("PostgreSQL\{0}\bin" -f $version)
-    if (Test-Path -LiteralPath (Join-Path $bin "psql.exe")) { return $bin }
+    if (-not (Get-PortusPsqlValidationError -BinPath $bin)) { return $bin }
   }
   return (Join-Path $env:ProgramFiles "PostgreSQL\18\bin")
 }
@@ -655,9 +656,13 @@ function Start-Action([string]$operation) {
     [void][System.Windows.Forms.MessageBox]::Show("Informe a senha administrativa do PostgreSQL.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate","seed-admin") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
-    [void][System.Windows.Forms.MessageBox]::Show("psql.exe nao encontrado na pasta bin.","PORTUS")
-    return
+  if ($operation -in @("validate","migrate","seed-admin")) {
+    $psqlProblem = Get-PortusPsqlValidationError -BinPath $bin -CheckVersion
+    if ($psqlProblem) {
+      Show-Log $psqlProblem "diagnostic"
+      [void][System.Windows.Forms.MessageBox]::Show($psqlProblem,"PORTUS - cliente PostgreSQL invalido")
+      return
+    }
   }
 
   $filename = if ($operation -eq "validate") { "validate-portus-schema.ps1" }

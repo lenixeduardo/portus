@@ -29,6 +29,26 @@ git pull --ff-only origin main
 .\database\portus-db-utility.bat
 ~~~
 
+## Cliente PostgreSQL: psql.exe com 0 KB ou invalido
+
+Se a maquina mostrar `psql.exe` com 0 KB, o arquivo esta vazio e nao executara.
+O PORTUS agora verifica tamanho, assinatura de executavel Windows e
+`psql.exe --version` antes de validar banco, aplicar migrations ou cadastrar admin.
+Quando o teste falha, o caminho e a causa aparecem no painel de logs.
+
+Em PowerShell na maquina afetada:
+
+~~~powershell
+Get-ChildItem 'C:\Program Files\PostgreSQL' -Filter psql.exe -Recurse -ErrorAction SilentlyContinue |
+  Select-Object FullName,Length
+& 'C:\Program Files\PostgreSQL\18\bin\psql.exe' --version
+~~~
+
+Se houver outro `psql.exe` valido, selecione a pasta `bin` correspondente
+no utilitario. Caso contrario, repare/reinstale o cliente PostgreSQL oficial
+compatível com o computador. Nunca exclua a pasta de dados do servidor
+nem recrie o banco PORTUS para solucionar este erro do executavel.
+
 ## Diagnostico: operacao conclui com sucesso, mas GUI mostra "Falha (codigo )"
 
 Este problema indicava que o Windows PowerShell 5.1 estava retornando

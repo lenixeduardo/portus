@@ -8,10 +8,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "portus-psql-preflight.ps1")
 $psql = Join-Path $PostgresBin "psql.exe"
-if (-not (Test-Path -LiteralPath $psql)) {
-  throw "psql.exe nao encontrado em '$PostgresBin'. Informe o caminho da pasta bin do PostgreSQL."
-}
+$psqlProblem = Get-PortusPsqlValidationError -BinPath $PostgresBin -CheckVersion
+if ($psqlProblem) { throw $psqlProblem }
 if ([string]::IsNullOrWhiteSpace($env:PORTUS_SETUP_ADMIN_PASSWORD)) {
   throw "Senha administrativa obrigatoria. Informe-a na interface do utilitario."
 }
