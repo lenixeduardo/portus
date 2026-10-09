@@ -1,5 +1,5 @@
 ﻿# PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
-# Apenas o botao Aplicar migrations altera o banco, mediante confirmacao.
+# As acoes Aplicar migrations e Inserir admin alteram o banco, mediante confirmacao.
 [CmdletBinding()]
 param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts,
       [int]$ViewportWidth = 0, [int]$ViewportHeight = 0)
@@ -262,6 +262,25 @@ $migrateButton = Make-Action "Aplicar migrations" 313 $true
 $networkButton = Make-Action "Verificar IP / rede" 577
 $registerButton = Make-Action "Registrar IP inicial" 841
 
+# Acao de administracao exclusivamente LOCAL, separada das 4 operacoes principais.
+$seedAdminButton = New-Object System.Windows.Forms.Button
+$seedAdminButton.Text = "Inserir admin (dev)"
+$seedAdminButton.Location = New-Object System.Drawing.Point(872,431)
+$seedAdminButton.Size = New-Object System.Drawing.Size(201,40)
+$seedAdminButton.Font = UiFont "Inter" 13 "600"
+$seedAdminButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$seedAdminButton.FlatAppearance.BorderSize = 1
+$seedAdminButton.FlatAppearance.BorderColor = UiColor "warning"
+$seedAdminButton.BackColor = UiColor "surface"
+$seedAdminButton.ForeColor = UiColor "warning"
+$seedAdminButton.TextImageRelation = [System.Windows.Forms.TextImageRelation]::ImageBeforeText
+$seedAdminButton.ImageAlign = [System.Drawing.ContentAlignment]::MiddleLeft
+$seedAdminButton.Image = New-PortusGlyph "user" 18 "warning"
+$seedAdminButton.Tag = "seed-admin"
+$seedAdminButton.Add_MouseEnter({ param($sender,$event) if ($sender.Enabled) { $sender.BackColor = UiColor "primarySoft" } })
+$seedAdminButton.Add_MouseLeave({ param($sender,$event) if ($sender.Enabled) { $sender.BackColor = UiColor "surface" } })
+$canvas.Controls.Add($seedAdminButton)
+
 # Ícones avulsos transparentes do design system (24 px, assets PNG).
 $script:UiActionImages = @()
 function Set-ActionIcon([System.Windows.Forms.Button]$button,[string]$file) {
@@ -295,6 +314,7 @@ $actionToolTip.SetToolTip($checkButton, "Conecta e verifica a integridade do sch
 $actionToolTip.SetToolTip($migrateButton, "Executa apenas migrations pendentes.")
 $actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TCP.")
 $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
+$actionToolTip.SetToolTip($seedAdminButton, "Desenvolvimento local: cria admin/admin se nao existir; nao redefine conta existente.")
 
 # Status card.
 [void](Make-Card 24 569 1086 94)
@@ -415,7 +435,7 @@ foreach ($card in $script:UiCards) {
 # Cada um dos 4 cards precisa ter filhos renderizaveis e handlers visiveis.
 $script:UiPanelControls = @(
   @{card=$script:UiCards[0]; controls=@($connTitle,$hostField,$portField,$dbField,$userField,$binField,$passField)},
-  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton)},
+  @{card=$script:UiCards[1]; controls=@($actionTitle,$checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton)},
   @{card=$script:UiCards[2]; controls=@($statusTitle,$status,$statusDescription,$statusGlyph)},
   @{card=$script:UiCards[3]; controls=@($logTitle,$log,$clearLogButton)}
 )
@@ -540,14 +560,15 @@ function Set-Busy([bool]$busy) {
     }
     $field.Tag.Surface.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
   }
-  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton)) {
+  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton)) {
     if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
-    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}else{"register"})) { "Executando..." } else { $button.AccessibleDescription }
+    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}else{"seed-admin"})) { "Executando..." } else { $button.AccessibleDescription }
   }
   $checkButton.Enabled = -not $busy
   $migrateButton.Enabled = -not $busy
   $networkButton.Enabled = -not $busy
   $registerButton.Enabled = -not $busy
+  $seedAdminButton.Enabled = -not $busy
   $browseButton.Enabled = -not $busy
   $showPasswordButton.Enabled = -not $busy
   $clearLogButton.Enabled = -not $busy
@@ -611,6 +632,7 @@ $timer.Add_Tick({
       $status.Text = if ($script:action -eq "validate") { "Banco validado com sucesso." }
         elseif ($script:action -eq "migrate") { "Migrations concluidas. Valide o banco." }
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
+        elseif ($script:action -eq "seed-admin") { "Rotina local admin concluida; consulte o log." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
@@ -646,22 +668,41 @@ function Start-Action([string]$operation) {
     [void][System.Windows.Forms.MessageBox]::Show("Verifique os dados de conexao.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
+  if ($operation -in @("validate","migrate","seed-admin") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
     [void][System.Windows.Forms.MessageBox]::Show("Informe a senha administrativa do PostgreSQL.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
+  if ($operation -in @("validate","migrate","seed-admin") -and -not (Test-Path -LiteralPath (Join-Path $bin "psql.exe"))) {
     [void][System.Windows.Forms.MessageBox]::Show("psql.exe nao encontrado na pasta bin.","PORTUS")
     return
   }
 
   $filename = if ($operation -eq "validate") { "validate-portus-schema.ps1" }
-    elseif ($operation -eq "migrate") { "install-portus-database.ps1" }
+    elseif ($operation -in @("migrate","seed-admin")) { "install-portus-database.ps1" }
     else { "check-portus-server-network.ps1" }
   $scriptPath = Join-Path $PSScriptRoot $filename
   if (-not (Test-Path -LiteralPath $scriptPath)) {
     [void][System.Windows.Forms.MessageBox]::Show("Script ausente: $filename. Atualize a pasta database.","PORTUS")
     return
+  }
+  if ($operation -eq "seed-admin") {
+    if ($hostName -notin @("127.0.0.1","localhost","::1","[::1]")) {
+      Show-Log "A conta admin/admin so pode ser inserida em PostgreSQL local (localhost)." "diagnostic"
+      [void][System.Windows.Forms.MessageBox]::Show(
+        "Inserir admin e uma operacao exclusiva de desenvolvimento LOCAL. Altere o servidor para 127.0.0.1 ou localhost.",
+        "PORTUS: operacao bloqueada",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+      )
+      return
+    }
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+      "Criar a conta Master de DESENVOLVIMENTO admin/admin em $($hostName):$port/$database? A senha e conhecida e insegura, nao deve ser usada em producao. Se o login ja existir, a senha NAO sera redefinida.",
+      "PORTUS: confirmar insercao local de admin",
+      [System.Windows.Forms.MessageBoxButtons]::YesNo,
+      [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { return }
   }
   if ($operation -eq "migrate") {
     $answer = [System.Windows.Forms.MessageBox]::Show(
@@ -708,7 +749,7 @@ function Start-Action([string]$operation) {
   $script:action = $operation
   $previous = [Environment]::GetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD","Process")
   try {
-    if ($operation -in @("validate","migrate")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
+    if ($operation -in @("validate","migrate","seed-admin")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
     $options = @{
       FilePath = (Join-Path $PSHOME "powershell.exe")
       ArgumentList = ($arguments -join " ")
@@ -723,7 +764,7 @@ function Start-Action([string]$operation) {
     return
   } finally {
     [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")
-    if ($operation -in @("validate","migrate")) { $passField.Clear() }
+    if ($operation -in @("validate","migrate","seed-admin")) { $passField.Clear() }
   }
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
   Show-Log ("Script: " + $filename + " | PID: " + $script:child.Id)
@@ -738,6 +779,7 @@ $checkButton.Add_Click({ Start-Action "validate" })
 $migrateButton.Add_Click({ Start-Action "migrate" })
 $networkButton.Add_Click({ Start-Action "network" })
 $registerButton.Add_Click({ Start-Action "register" })
+$seedAdminButton.Add_Click({ Start-Action "seed-admin" })
 $form.Add_FormClosing({
   param($sender,$args)
   if ($script:child -and -not $script:child.HasExited) {
@@ -789,6 +831,7 @@ if ($SmokeTest -or $CapturePath) {
     if (-not $form.Visible -or -not $form.IsHandleCreated -or
         -not $checkButton.Visible -or -not $migrateButton.Visible -or
         -not $networkButton.Visible -or -not $registerButton.Visible -or
+        -not $seedAdminButton.Visible -or
         -not $title.Visible -or -not $log.Visible -or
         -not $canvas.Visible -or
         -not $checkButton.Image -or -not $migrateButton.Image -or
@@ -814,7 +857,8 @@ if ($SmokeTest -or $CapturePath) {
       @{button=$checkButton; tip="Conecta e verifica a integridade do schema."},
       @{button=$migrateButton; tip="Executa apenas migrations pendentes."},
       @{button=$networkButton; tip="Verifica endereço e conectividade TCP."},
-      @{button=$registerButton; tip="Registra o servidor da primeira instalação."}
+      @{button=$registerButton; tip="Registra o servidor da primeira instalação."},
+      @{button=$seedAdminButton; tip="Desenvolvimento local: cria admin/admin se nao existir; nao redefine conta existente."}
     )) {
       if ($actionToolTip.GetToolTip($pair.button) -cne $pair.tip) {
         $script:smokeFailed = $true
@@ -830,7 +874,7 @@ if ($SmokeTest -or $CapturePath) {
         if ($h.Font.FontFamily.Name -ne "Sora") { $script:smokeFailed = $true }
       }
       foreach ($component in @($hostField,$portField,$dbField,$userField,$binField,$passField,
-                               $checkButton,$migrateButton,$networkButton,$registerButton,$log)) {
+                               $checkButton,$migrateButton,$networkButton,$registerButton,$seedAdminButton,$log)) {
         if ($component.Font.FontFamily.Name -ne "Inter") { $script:smokeFailed = $true }
       }
     }
