@@ -96,10 +96,11 @@ export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose
         if (e.reason !== "completed" && e.reason !== "cancelled") return;
         setEndReason(e.reason);
         setPhase("ended");
-        onEnded(e.reason);
-        if (e.reason === "completed") {
-          void window.api.auth.logout().finally(() => window.location.reload());
+        if (e.error) {
+          setError(e.error);
+          return;
         }
+        onEnded(e.reason);
       });
 
       unsubsRef.current = [unTick, unSlot, unEnded].filter((unsubscribe): unsubscribe is () => void => typeof unsubscribe === "function");

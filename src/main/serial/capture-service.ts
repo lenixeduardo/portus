@@ -21,6 +21,8 @@ import { IPC } from "../../shared/ipc";
 import type { ServiceResult } from "../../shared/ipc";
 import type { Equipment } from "../../shared/types";
 import { isSafeOperationalRegex } from "../validation/schemas";
+import { getCurrentUser, logout } from "../auth/auth-service";
+import { logAudit } from "../db/audit-repo";
 
 // Janela de debounce para atualizações visuais por slot (ms).
 // Todas as leituras são gravadas no banco imediatamente; apenas a última
@@ -310,6 +312,8 @@ function cleanup(reason: "completed" | "cancelled"): Promise<CaptureCleanupResul
 }
 
 async function performCleanup(reason: "completed" | "cancelled"): Promise<CaptureCleanupResult> {
+  const captureOwner = centralUsername;
+  const completedSessionId = sessionId;
   if (timer) {
     clearInterval(timer);
     timer = null;
@@ -397,7 +401,22 @@ async function performCleanup(reason: "completed" | "cancelled"): Promise<Captur
 
   // Não reportar conclusão quando alguma leitura ou o encerramento falhou.
   const finalReason = failedCentralWrites > 0 || sessionCloseError ? "cancelled" : reason;
-  const event: CaptureEndedEvent = { reason: finalReason };
+  const authenticatedUser = getCurrentUser();
+  if (finalReason === "completed" && captureOwner && authenticatedUser?.username === captureOwner) {
+    // A sessao e encerrada mesmo quando o modal foi desmontado ou perdeu o
+    // evento IPC. Aguarda gravacoes e fechamento do banco antes do logout.
+    logout();
+    // Uma falha de auditoria nao pode restaurar/manter a sessao autenticada.
+    void logAudit({
+      actorUserId: authenticatedUser.id, action: "auth.logout", resourceType: "session",
+      resourceId: completedSessionId ?? undefined, details: { reason: "capture_completed" }
+    }).catch(error => console.error("[auth] Falha na auditoria do logout automatico:", error));
+  }
+  const event: CaptureEndedEvent = {
+    reason: finalReason,
+    ...(sessionCloseError ? { error: "Encerramento no PostgreSQL falhou: " + sessionCloseError }
+      : failedCentralWrites > 0 ? { error: failedCentralWrites + " leitura(s) nao foram gravadas no PostgreSQL." } : {})
+  };
   broadcast(IPC.captureEnded, event);
   return { failedReads: failedCentralWrites, sessionCloseError };
 }
