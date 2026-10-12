@@ -647,16 +647,14 @@ function BatchRow({
     <article className={`batch-row ${isCapturing ? "batch-row-capturing" : ""}`}>
       <section className="batch-row__identity">
         <div className="batch-row__title">
-          <div>
-            <div className="batch-code">#{batch.code}</div>
-            <div className="batch-recipe">{batch.productName}</div>
-          </div>
           <span className={`chip ${batch.completed ? "chip-blue" : "chip-green"}`}>
             {batch.completed ? "CONCLUÍDO" : "ABERTO"}
           </span>
+          <div className="batch-code" title={batch.code}>#{batch.code}</div>
+          <div className="batch-recipe" title={batch.productName}>{batch.productName}</div>
         </div>
         <div className="batch-barcode">
-          <BarcodeDisplay value={batch.code} height={36} displayValue />
+          <BarcodeDisplay value={batch.code} height={54} displayValue />
         </div>
       </section>
 
