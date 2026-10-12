@@ -81,6 +81,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "assets/branding",
+        "to": "branding",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "directories": {
