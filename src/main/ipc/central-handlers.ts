@@ -201,13 +201,15 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesForceClose,
-    compose([requireAuth, validateInput(closeBatchSchema)])(
-      async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
+    compose([requireAuth, validateInput(administrativeBatchSchema)])(
+      async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
           if (user.role !== "supervisor" && user.role !== "master") return { ok: false, error: "Somente Supervisor ou Master podem finalizar o lote." };
         try {
-          return { ok: true, data: await forceCentralBatchClose(input.id, user.username) };
+          const batch = await forceCentralBatchClose(input.id, user.username);
+          await auditAdministrativeReason(user.id, input.id, "MASTER_BATCH_CLOSED", input.justification);
+          return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
         }
