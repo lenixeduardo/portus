@@ -63,8 +63,7 @@ async function exportTraceabilityPdf(html: string, suggestedName: string): Promi
     await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     const pdf = await win.webContents.printToPDF({
       printBackground: true,
-      pageSize: "A4",
-      margins: { marginType: "none" }
+      pageSize: "A4"
     });
     await writeFile(filePath, pdf);
     return true;
