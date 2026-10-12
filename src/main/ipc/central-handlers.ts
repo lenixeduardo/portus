@@ -7,7 +7,8 @@ import {
   checkCentralDatabase,
   getCentralDatabaseMode,
   isCentralDatabaseRequired,
-  isCentralDatabaseConfigured
+  isCentralDatabaseConfigured,
+  centralQuery
 } from "../db/central-connection";
 import {
   confirmCentralLaboratoryClose,
@@ -22,8 +23,16 @@ import {
 } from "../db/central-batches-repo";
 import { getCentralProduct } from "../db/central-products-repo";
 import { getCentralBatchHistory } from "../db/central-history-repo";
-import { closeBatchSchema, createBatchSchema } from "../validation/schemas";
+import { administrativeBatchSchema, closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
+
+async function auditAdministrativeReason(userId: number, batchId: number, action: string, justification: string): Promise<void> {
+  await centralQuery(
+    `INSERT INTO portus_audit_log (actor_user_id, station_code, action, resource_type, resource_id, details)
+      VALUES ($1, $2, $3, 'batch', $4, jsonb_build_object('justification', $5))`,
+    [userId, "PORTUS", action, String(batchId), justification]
+  );
+}
 
 const setCompletedSchema = z.object({
   id: z.number().positive("ID do lote deve ser um número positivo"),
@@ -138,8 +147,8 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesFinalize,
-    compose([requireAuth, validateInput(closeBatchSchema)])(
-      async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
+    compose([requireAuth, validateInput(administrativeBatchSchema)])(
+      async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (user.role !== "supervisor" && user.role !== "master") {
@@ -148,7 +157,7 @@ export function registerCentralHandlers(): void {
           try {
           return {
             ok: true,
-            data: await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user))
+            data: await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user)).then(async batch => { await auditAdministrativeReason(user.id, input.id, "BATCH_FINALIZED", input.justification); return batch; })
           };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
@@ -208,15 +217,17 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesReopen,
-    compose([requireAuth, validateInput(closeBatchSchema)])(
-      async (_e, input: { id: number }): Promise<ServiceResult<BatchWithProduct>> => {
+    compose([requireAuth, validateInput(administrativeBatchSchema)])(
+      async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (user.role !== "supervisor" && user.role !== "master") {
           return { ok: false, error: "Somente Supervisor ou Master podem reabrir um lote finalizado." };
         }
           try {
-          return { ok: true, data: await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user)) };
+          const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user));
+          await auditAdministrativeReason(user.id, input.id, "BATCH_REOPENED", input.justification);
+          return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao reabrir lote." };
         }
