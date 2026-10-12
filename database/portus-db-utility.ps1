@@ -14,6 +14,7 @@ Add-Type -AssemblyName System.Drawing
 . (Join-Path $PSScriptRoot "portus-psql-preflight.ps1")
 . (Join-Path $PSScriptRoot "portus-postgres-discovery.ps1")
 . (Join-Path $PSScriptRoot "portus-legacy-import-ui.ps1")
+. (Join-Path $PSScriptRoot "portus-utility-credentials.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
 try {
@@ -309,6 +310,7 @@ $actionToolTip.SetToolTip($networkButton, "Verifica endereço e conectividade TC
 $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira instalação.")
 $actionToolTip.SetToolTip($adminButton, "Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin.")
 $actionToolTip.SetToolTip($dataImportButton, "Importa dados históricos do SQLite para PostgreSQL, após backups e validação de estação/setor.")
+$actionToolTip.SetToolTip($passField, "Senha lembrada para esta conexao, protegida pelo usuario Windows. Para esquecer, apague o campo e feche o utilitario.")
 $actionToolTip.SetToolTip($cleanupButton, "Seleciona lotes de teste e remove seus dados relacionados, com backup obrigatorio.")
 $actionToolTip.SetToolTip($diagnoseButton, "Detecta instalacoes, ferramentas e servicos PostgreSQL neste computador, sem alterar dados.")
 
@@ -366,6 +368,28 @@ if ($initialIp) {
       }
     } catch { }
   }
+}
+
+# Carrega apenas a senha do mesmo servidor/porta/banco/usuario PostgreSQL.
+function Restore-UtilityPassword {
+  try {
+    $passField.Text = Read-PortusUtilityPassword -DatabaseHost $hostField.Text -Port $portField.Text -DatabaseName $dbField.Text -AdminUser $userField.Text
+  } catch {
+    $passField.Text = ""
+    $script:credentialWarning = "Nao foi possivel recuperar a senha salva. Digite-a novamente para substituir o cadastro protegido."
+  }
+}
+function Save-UtilityPassword {
+  if ($SmokeTest -or $CapturePath) { return }
+  try {
+    Save-PortusUtilityPassword -DatabaseHost $hostField.Text -Port $portField.Text -DatabaseName $dbField.Text -AdminUser $userField.Text -Password $passField.Text
+  } catch {
+    Show-Log "Nao foi possivel salvar a senha protegida. O campo continua disponivel nesta sessao." "diagnostic"
+  }
+}
+if (-not $SmokeTest -and -not $CapturePath) { Restore-UtilityPassword }
+foreach ($connectionField in @($hostField,$portField,$dbField,$userField)) {
+  $connectionField.Add_TextChanged({ Restore-UtilityPassword })
 }
 
 # Log card.
@@ -832,6 +856,7 @@ function Start-Action([string]$operation) {
   $script:outOffset = 0
   $script:errOffset = 0
   $script:action = $operation
+  Save-UtilityPassword
   $previous = [Environment]::GetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD","Process")
   try {
     if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
@@ -849,7 +874,7 @@ function Start-Action([string]$operation) {
     return
   } finally {
     [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")
-    if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data") -and $operation -ne "cleanup-preview") { $passField.Clear() }
+    # A senha permanece no campo; apenas a variavel temporaria do processo e restaurada.
   }
   Show-Log ("Operacao iniciada: $operation, destino $($hostName):$port/$database")
   Show-Log ("Script: " + $filename + " | PID: " + $script:child.Id)
@@ -873,9 +898,10 @@ $form.Add_FormClosing({
   if ($script:child -and -not $script:child.HasExited) {
     [void][System.Windows.Forms.MessageBox]::Show("Ha uma operacao em andamento. Aguarde sua conclusao.","PORTUS")
     $args.Cancel = $true
-  }
+  } else { Save-UtilityPassword }
 })
 Show-Log "Informe a senha administrativa e selecione uma das acoes."
+if ($script:credentialWarning) { Show-Log $script:credentialWarning "diagnostic" }
 if ($script:UiMissingFonts.Count -gt 0) {
   $message = "Fontes ausentes: " + ($script:UiMissingFonts -join ", ") + ". Execute database\\install-portus-ui-fonts.ps1 e reinicie."
   Show-Log $message

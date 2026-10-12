@@ -12,13 +12,14 @@ const archive = join(release, "portus-database-installer.zip");
 
 rmSync(stagingRoot, { recursive: true, force: true });
 mkdirSync(packageRoot, { recursive: true });
-for (const file of ["install-portus-database.ps1", "install-portus-database.bat", "migrate-portus-database.bat", "verify-portus-database.ps1", "check-portus-database.bat", "portus-db-utility.bat", "portus-db-utility.ps1", "portus-db-utility-runner.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "portus-legacy-import-ui.ps1", "portus-psql-preflight.ps1", "portus-postgres-discovery.ps1", "portus-ui-design-tokens.ps1", "install-portus-ui-fonts.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
+for (const file of ["install-portus-database.ps1", "install-portus-database.bat", "migrate-portus-database.bat", "verify-portus-database.ps1", "check-portus-database.bat", "portus-db-utility.bat", "portus-db-utility.ps1", "portus-db-utility-runner.ps1", "portus-db-utility-glyphs.ps1", "portus-db-utility-process.ps1", "portus-legacy-import-ui.ps1", "portus-utility-credentials.ps1", "cleanup-portus-test-data.ps1", "portus-test-cleanup-dialog.ps1", "portus-psql-preflight.ps1", "portus-postgres-discovery.ps1", "portus-ui-design-tokens.ps1", "install-portus-ui-fonts.ps1", "validate-portus-schema.ps1", "check-portus-server-network.ps1"]) {
   cpSync(join(root, "database", file), join(packageRoot, file));
 }
 // Use the exact production PORTUS icon in the standalone WinForms utility.
 cpSync(join(root, "build", "icon.png"), join(packageRoot, "portus-logo.png"));
 cpSync(join(root, "database", "assets"), join(packageRoot, "assets"), { recursive: true });
 cpSync(join(root, "database", "migrations"), join(packageRoot, "migrations"), { recursive: true });
+cpSync(join(root, "database", "maintenance"), join(packageRoot, "maintenance"), { recursive: true });
 cpSync(join(root, "database", "seed"), join(packageRoot, "seed"), { recursive: true });
 cpSync(join(root, "database", "tests"), join(packageRoot, "tests"), { recursive: true });
 cpSync(join(root, "database", "migration-runtime"), join(packageRoot, "migration-runtime"), { recursive: true });

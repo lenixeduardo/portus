@@ -381,12 +381,12 @@ describe("utilitario de banco PORTUS", () => {
     expect(gui).toContain("Get-PortusOperationResult -Path $script:resultFile -Operation $script:action");
   });
 
-  it("repassa a senha sem parametros CLI ou persistencia em disco", () => {
+  it("repassa a senha sem parametros CLI e mantem o campo apos operacoes", () => {
     const gui = read("portus-db-utility.ps1");
     expect(gui).toContain('UseSystemPasswordChar = $secret');
     expect(gui).toContain('SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process")');
     expect(gui).toContain('SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$previous,"Process")');
-    expect(gui).toContain("$passField.Clear()");
+    expect(gui).not.toContain("$passField.Clear()");
     expect(gui).not.toContain("ResetDevAdminPassword");
     expect(gui).not.toContain("SeedDevAdmin");
   });

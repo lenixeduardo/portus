@@ -630,3 +630,12 @@ selecao e o caminho do backup. Arquivos CSV ja exportados nao sao apagados.
 Esta acao usa as credenciais administrativas preenchidas no utilitario;
 ela nao executa uma limpeza global nem infere testes pelo nome do registro.
 A janela WinForms deve ser validada no Windows antes de distribuir o pacote.
+
+### Senha lembrada no utilitario
+
+A senha administrativa digitada permanece no campo apos cada operacao e e
+lembrada ao reabrir o utilitario com o mesmo usuario Windows. Ela e salva ao
+executar uma acao ou fechar a janela, protegida por DPAPI e separada por
+servidor, porta, banco e usuario PostgreSQL. Trocar o destino carrega somente
+a credencial daquele destino. Para esquecer a senha salva, apague o campo e
+feche a janela. O utilitario nao salva credenciais durante SmokeTest/CapturePath.
