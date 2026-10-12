@@ -195,6 +195,22 @@ tools/               Simulador de equipamentos
 - [Empacotamento Windows](docs/PACKAGING.md)
 - [Pendências de desenvolvimento](TODO.md)
 
+## Validação visual com Playwright (Chromium)
+
+O projeto já utiliza `playwright-core`. O teste de navegador abre o **renderer React real** no Chromium e simula somente as respostas IPC do Electron (sem acessar dados de produção).
+
+```bash
+npm ci
+npm run browser:install
+npm run test:browser
+```
+
+Os testes verificam o dashboard em **1600 × 900** e **1024 × 768**: badge acima do código do lote, código e produto sem truncamento, dimensões do código de barras e ausência de erros JavaScript. As capturas são gravadas em `test-results/browser/dashboard-desktop.png` e `dashboard-compacto.png`.
+
+No Linux de CI, a instalação usa `npx playwright-core install --with-deps chromium`. A workflow `browser-playwright.yml` executa os testes e disponibiliza as capturas como artefato **portus-playwright-screenshots** no GitHub Actions. Para usar um Chromium já instalado, configure `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+
+**Limite:** o teste valida a interface no browser, não substitui a homologação da aplicação Electron instalada nem a leitura física de etiquetas.
+
 ## Homologação antes da operação
 
 Antes da implantação definitiva, validar em ambiente real: comunicação com equipamentos e leitores de código de barras; permissões entre Produção e Laboratório; abertura e fechamento de lotes; backup e restauração; exportação de arquivos XLSX em máquinas sem Office; falhas de rede; atualização e desinstalação do aplicativo.
