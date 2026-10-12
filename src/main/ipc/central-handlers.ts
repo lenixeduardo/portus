@@ -1,4 +1,5 @@
 import { getUserOperationalSector } from "../../shared/user-sector";
+import { canReopenFinalizedBatch } from "../../shared/batch-permissions";
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
@@ -223,8 +224,8 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
-        if (user.role !== "supervisor" && user.role !== "master") {
-          return { ok: false, error: "Somente Supervisor ou Master podem reabrir um lote finalizado." };
+        if (!canReopenFinalizedBatch(user.role)) {
+          return { ok: false, error: "Somente Admin, Supervisor ou Master podem reabrir um lote finalizado." };
         }
           try {
           const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user));
