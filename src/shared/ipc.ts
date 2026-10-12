@@ -396,9 +396,9 @@ export interface SerialReaderApi {
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
       confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
       setCompleted(id: number, completed: boolean): Promise<ServiceResult<BatchWithProduct>>;
-      finalize(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      finalize(id: number, justification: string): Promise<ServiceResult<BatchWithProduct>>;
       forceClose(id: number): Promise<ServiceResult<BatchWithProduct>>;
-      reopen(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      reopen(id: number, justification: string): Promise<ServiceResult<BatchWithProduct>>;
     };
     history: {
       getBatch(id: number): Promise<ServiceResult<BatchHistory>>;
