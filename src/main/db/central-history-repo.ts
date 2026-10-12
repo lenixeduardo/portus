@@ -38,11 +38,11 @@ export async function getCentralBatchHistory(
             b.stage, b.production_closed AS "productionClosed",
             b.laboratory_closed AS "laboratoryClosed",
             b.completed AS "completed", b.completed_at AS "completedAt", b.completed_by AS "completedBy",
-            u.username AS "operatorName",
+            COALESCE(u.username, 'Usuário excluído') AS "operatorName",
             (SELECT COUNT(*) FROM readings r0 WHERE r0.batch_id = b.id) AS "readingsCount"
        FROM batches b
        JOIN products p ON p.id = b.product_id
-       JOIN users u ON u.id = b.created_by
+       LEFT JOIN users u ON u.id = b.created_by
       WHERE b.id = $1`,
     [batchId]
   );
@@ -50,6 +50,7 @@ export async function getCentralBatchHistory(
   if (!batchRow) return null;
   const batch: BatchWithProduct = {
     ...batchRow,
+    createdBy: batchRow.createdBy == null ? undefined : Number(batchRow.createdBy),
     openedAt: toCentralTimestamp(batchRow.openedAt),
     closedAt: batchRow.closedAt ? toCentralTimestamp(batchRow.closedAt) : undefined,
     completedAt: batchRow.completedAt ? toCentralTimestamp(batchRow.completedAt) : undefined,

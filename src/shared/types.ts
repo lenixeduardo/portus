@@ -9,6 +9,7 @@ export interface User {
   displayName?: string;
   role: UserRole;
   sectorCode?: UserSector;
+  active?: boolean;
   laboratoryProfile?: LaboratoryProfile;
   createdAt: string;
 }
@@ -17,7 +18,7 @@ export interface Product {
   id: number;
   name: string;
   description?: string;
-  createdBy: number;
+  createdBy?: number;
   createdAt: string;
 }
 
@@ -29,7 +30,7 @@ export interface Batch {
   openedAt: string;
   closedAt?: string;
   closedBy?: number;
-  createdBy: number;
+  createdBy?: number;
   stage?: string;
   productionClosed?: boolean;
   laboratoryClosed?: boolean;

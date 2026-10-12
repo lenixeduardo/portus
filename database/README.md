@@ -639,3 +639,20 @@ executar uma acao ou fechar a janela, protegida por DPAPI e separada por
 servidor, porta, banco e usuario PostgreSQL. Trocar o destino carrega somente
 a credencial daquele destino. Para esquecer a senha salva, apague o campo e
 feche a janela. O utilitario nao salva credenciais durante SmokeTest/CapturePath.
+
+### Migration 016: exclusao definitiva de usuarios
+
+A acao Excluir remove a linha de `users` e as permissoes da conta no PostgreSQL
+central, em uma transacao auditada. O login e a etiqueta deixam de pertencer a
+essa conta. Produtos, lotes, sessoes, leituras e historicos sao preservados; os
+vinculos ao usuario removido ficam nulos e o lote mostra Usuario excluido.
+
+A exclusao exige Master/Admin, bloqueia autoexclusao e contas com captura
+ativa; apenas Master pode excluir outro Master. Na gestao de usuarios,
+**Mostrar usuarios desativados** permite remover definitivamente contas que
+a versao anterior havia apenas desativado. A migration nao apaga contas
+inativas automaticamente. Aplique a migration 016 e atualize o aplicativo
+para utilizar a nova exclusao; um executavel antigo continua desativando.
+
+O teste SQL `database/tests/007_physical_user_deletion.sql` verifica a remocao,
+a preservacao do historico e as restricoes de acesso, usando rollback.

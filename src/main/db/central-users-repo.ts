@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { getRuntimeStationCode } from "./central-station-settings-repo";
 import type { User } from "../../shared/types";
 import type { UserCreateInput } from "../../shared/ipc";
 import { centralQuery, withCentralTransaction } from "./central-connection";
@@ -16,12 +17,13 @@ interface CentralUserRow {
   sector_code: "PRODUCTION" | "LABORATORY" | "ADMIN";
   laboratory_profile: "capture" | null;
   created_at: Date | string;
+  active: boolean;
 }
 
-export async function listCentralUsers(): Promise<User[]> {
+export async function listCentralUsers(includeInactive = false): Promise<User[]> {
   const result = await centralQuery<CentralUserRow>(
-    "SELECT id, username, display_name, role, sector_code, laboratory_profile, created_at " +
-    "FROM users WHERE active ORDER BY lower(COALESCE(display_name, username)), username"
+    "SELECT id, username, display_name, role, sector_code, laboratory_profile, created_at, active " +
+    "FROM users" + (includeInactive ? "" : " WHERE active") + " ORDER BY lower(COALESCE(display_name, username)), username"
   );
   return result.rows.map(row => ({
     id: Number(row.id),
@@ -29,6 +31,7 @@ export async function listCentralUsers(): Promise<User[]> {
     displayName: row.display_name ?? undefined,
     role: row.role === "laboratory" ? "operator" : row.role as User["role"],
     sectorCode: row.sector_code,
+    active: row.active,
     laboratoryProfile: row.laboratory_profile ?? undefined,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at
   }));
@@ -168,10 +171,9 @@ export async function updateCentralUserPassword(id: number, password: string): P
   if (!result.rowCount) throw new Error("Usuário não encontrado no PostgreSQL central.");
 }
 
-export async function deactivateCentralUser(id: number): Promise<void> {
-  const result = await centralQuery(
-    "UPDATE users SET active = FALSE WHERE id = $1 AND active RETURNING id",
-    [id]
+export async function deleteCentralUser(id: number, actorId: number): Promise<void> {
+  const result = await centralQuery<{ deleted: boolean }>(
+    "SELECT portus_delete_user($1,$2,$3) AS deleted", [id, actorId, getRuntimeStationCode()]
   );
-  if (!result.rowCount) throw new Error("Usuário não encontrado no PostgreSQL central.");
+  if (result.rows[0]?.deleted !== true) throw new Error("A exclusão não foi confirmada no PostgreSQL central.");
 }

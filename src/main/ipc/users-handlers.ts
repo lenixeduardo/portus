@@ -7,7 +7,7 @@ import { getCurrentUser } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
 import {
   createCentralUser,
-  deactivateCentralUser,
+  deleteCentralUser,
   getCentralUserByBarcode,
   getCentralUserById,
   listCentralUsers,
@@ -50,7 +50,7 @@ function failed(error: unknown): string {
 export function registerUsersHandlers(): void {
   ipcMain.handle(
     IPC.usersList,
-    compose([requireAdmin])(async (): Promise<User[]> => listCentralUsers())
+    compose([requireAdmin])(async (): Promise<User[]> => listCentralUsers(true))
   );
 
   ipcMain.handle(
@@ -160,18 +160,13 @@ export function registerUsersHandlers(): void {
         if (!actor) return { ok: false, error: "Sessão expirada." };
         try {
           if (actor.id === input.id) return { ok: false, error: "Não é possível excluir o usuário logado." };
-          const users = await listCentralUsers();
-          if (users.length <= 1) return { ok: false, error: "Deve haver ao menos um usuário ativo." };
+          const users = await listCentralUsers(true);
           const target = users.find(u => u.id === input.id);
           if (!target) return { ok: false, error: "Usuário não encontrado." };
           if (target.role === "master" && actor.role !== "master") {
             return { ok: false, error: "Somente Master pode excluir outro Master." };
           }
-          await deactivateCentralUser(target.id);
-          await logAudit({
-            actorUserId: actor.id, action: "users.delete",
-            resourceType: "user", resourceId: target.id
-          });
+          await deleteCentralUser(target.id, actor.id);
           return { ok: true, data: true };
         } catch (error) {
           return { ok: false, error: failed(error) };
