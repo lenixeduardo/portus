@@ -197,7 +197,7 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
 * { box-sizing:border-box; }
 body { background:#fff; color:#111; margin:0; font:10pt Arial,Helvetica,sans-serif; }
 header { display:flex; align-items:center; justify-content:space-between; border-bottom:1.5px solid #111; padding-bottom:12px; margin-bottom:15px; min-height:90px; }
-h1 { margin:0; font-size:21pt; font-weight:800; }
+h1 { margin:0; padding-right:12mm; font-size:21pt; font-weight:800; text-align:right; }
 .identity { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); border:1px solid #bbb; align-items:center; padding:14px; margin-bottom:18px; }
 .product { min-width:0; padding-right:14px; font-size:13pt; overflow-wrap:anywhere; }
 .label { display:block; font-size:10pt; margin-bottom:10px; }
