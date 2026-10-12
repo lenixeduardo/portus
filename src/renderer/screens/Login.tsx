@@ -131,7 +131,7 @@ export function Login({ onAuthenticated }: Props) {
         </div>
 
         <div className="login-right">
-          <h3 className="login-form-title">Login Operador</h3>
+          <h3 className="login-form-title">Acesso ao PORTUS</h3>
           <p className="muted" style={{ marginTop: -6, marginBottom: 18 }}>
             Passe a etiqueta no leitor ou entre com usuário e senha.
           </p>
