@@ -17,6 +17,8 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BarcodeScanResult | null>(null);
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
+  const [lotCode, setLotCode] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +48,30 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   async function scan(barcode: string) {
     setLoading(true);
     setError(null);
+    if (centralMode) {
+      try {
+        const original = barcode.trim();
+        const existing = await window.api.central.batches.findByCode(original);
+        if (!mountedRef.current) return;
+        setLoading(false);
+        if (existing) {
+          setResult({ batch: existing, created: false });
+          setPendingBarcode(null);
+          return;
+        }
+        const suffix = original.slice(-4);
+        if (!/^\d{4}$/.test(suffix)) {
+          setError("O código lido deve terminar com quatro dígitos numéricos.");
+          return;
+        }
+        setLotCode(suffix);
+        setPendingBarcode(original);
+        return;
+      } catch {
+        if (mountedRef.current) { setLoading(false); setError("Não foi possível verificar o lote no banco central."); }
+        return;
+      }
+    }
     const res = await scanBarcodeByMode(window.api, barcode, centralMode, productId);
     if (!mountedRef.current) return;
     setLoading(false);
@@ -55,6 +81,32 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       return;
     }
     setResult(res.data);
+  }
+
+  async function createConfirmedBatch() {
+    if (!pendingBarcode || loading) return;
+    const code = lotCode.trim();
+    if (!/^[0-9]{4}$/.test(code)) {
+      setError("O número do lote deve conter exatamente quatro dígitos.");
+      return;
+    }
+    if (productId === null) { setError("Selecione um produto."); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const existing = await window.api.central.batches.findByCode(code);
+      if (!mountedRef.current) return;
+      if (existing) { setError("O lote " + code + " já existe."); return; }
+      const created = await window.api.central.batches.create({ productId, code });
+      if (!mountedRef.current) return;
+      if (!created.ok) { setError(created.error); return; }
+      setPendingBarcode(null);
+      setResult({ batch: created.data, created: true });
+    } catch {
+      if (mountedRef.current) setError("Não foi possível criar o lote.");
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,6 +131,13 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
               Iniciar Leitura
             </button>
           </>
+        ) : pendingBarcode ? (
+          <>
+            <button className="secondary" onClick={() => { setPendingBarcode(null); setError(null); }}>Voltar</button>
+            <button onClick={() => void createConfirmedBatch()} disabled={loading || !/^[0-9]{4}$/.test(lotCode) || productId === null}>
+              {loading ? "Criando..." : "Confirmar novo lote"}
+            </button>
+          </>
         ) : (
           <>
             <button className="secondary" onClick={onClose}>Cancelar</button>
@@ -91,6 +150,23 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
     >
       {result ? (
         <BarcodeResult result={result} />
+      ) : pendingBarcode ? (
+        <div>
+          <p className="muted">Confira ou altere o número do lote antes de confirmar a criação.</p>
+          <div className="field">
+            <label htmlFor="lot-code">Número do lote (4 dígitos)</label>
+            <input id="lot-code" className="mono" inputMode="numeric" maxLength={4} autoFocus
+              value={lotCode} onChange={(event) => { setLotCode(event.target.value.replace(/[^0-9]/g, "").slice(0, 4)); setError(null); }} />
+            <small className="muted">Sugestão: os quatro últimos dígitos de {pendingBarcode}.</small>
+          </div>
+          <div className="field">
+            <label>Produto</label>
+            <select value={productId ?? ""} onChange={(event) => setProductId(Number(event.target.value))}>
+              {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+            </select>
+          </div>
+          {error && <div className="error">{error}</div>}
+        </div>
       ) : (
         <form onSubmit={handleSubmit}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 20, color: "#6B7280" }}>
