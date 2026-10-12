@@ -1,10 +1,8 @@
 import React from "react";
-import { LayoutDashboard, Package, Clock, Settings, ExternalLink, Bug, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Clock, Settings, Bug, LogOut } from "lucide-react";
 import type { User } from "../../shared/types";
 import { PortusLogo } from "./PortusLogo";
 import { UserBarcodeRegistration } from "./UserBarcodeRegistration";
-
-const CONNECT_URL = "https://kairos-connect-nine.vercel.app";
 
 export type Route = "dashboard" | "products" | "history" | "settings";
 
@@ -53,19 +51,6 @@ export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: 
             );
           })}
         </nav>
-        <div className="ecosystem">
-          <div className="ecosystem-label">Ecossistema</div>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              window.api.shell.openExternal(CONNECT_URL).catch(console.error);
-            }}
-          >
-            <ExternalLink size={15} />
-            Kairos Connect
-          </a>
-        </div>
         <div className="sidebar-actions">
           <button
             className="sidebar-action"
