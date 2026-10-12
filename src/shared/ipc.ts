@@ -139,6 +139,7 @@ export interface CaptureTickEvent {
 
 export interface CaptureEndedEvent {
   reason: "completed" | "cancelled";
+  error?: string;
 }
 
 export interface CaptureStateSnapshot {

@@ -58,6 +58,25 @@ export function App() {
   );
 
   useEffect(() => {
+    if (!window.api?.capture?.onEnded) return;
+    let active = true;
+    const unsubscribe = window.api.capture.onEnded(event => {
+      if (event.reason !== "completed") return;
+      // O processo principal ja encerrou a sessao. Atualiza a tela mesmo se
+      // o modal de captura nao estiver montado; preserva uma sessao nova.
+      void window.api.auth.currentUser().then(current => {
+        if (!active) return;
+        setUser(current);
+        if (!current) {
+          setRoute("dashboard");
+          setRequestedUserBarcode(null);
+        }
+      }).catch(error => console.error("Falha ao atualizar sessao apos captura:", error));
+    });
+    return () => { active = false; unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
