@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { app } from "electron";
 import type { BatchAuditEvent, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 
 interface TraceRow {
@@ -132,9 +131,10 @@ function actorFor(history: BatchHistory, actions: string[]): string {
  *  inclusive no aplicativo Electron empacotado.
  */
 function epaLogoSvg(): string {
-  const paths = app.isPackaged
-    ? [join(process.resourcesPath, "branding", "epa-logo.png")]
-    : [join(process.cwd(), "assets", "branding", "epa-logo.png")];
+  const paths = [
+    join(process.resourcesPath ?? "", "branding", "epa-logo.png"),
+    join(process.cwd(), "assets", "branding", "epa-logo.png")
+  ];
 
   for (const file of paths) {
     try {
