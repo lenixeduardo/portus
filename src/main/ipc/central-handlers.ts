@@ -1,3 +1,4 @@
+import { getUserOperationalSector } from "../../shared/user-sector";
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
@@ -54,7 +55,7 @@ export function registerCentralHandlers(): void {
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return [];
-      return listCentralOpenBatches(user.username, user.sectorCode ?? "PRODUCTION");
+      return listCentralOpenBatches(user.username, getUserOperationalSector(user));
     })
   );
 
@@ -63,7 +64,7 @@ export function registerCentralHandlers(): void {
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return [];
-      return listCentralAllBatches(user.username, user.sectorCode ?? "PRODUCTION");
+      return listCentralAllBatches(user.username, getUserOperationalSector(user));
     })
   );
 
@@ -74,7 +75,7 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
           try {
-          const history = await getCentralBatchHistory(input.id, user.username, user.sectorCode ?? "PRODUCTION");
+          const history = await getCentralBatchHistory(input.id, user.username, getUserOperationalSector(user));
           return history ? { ok: true, data: history } : { ok: false, error: "Lote não encontrado na base central." };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao carregar histórico central." };
@@ -89,7 +90,7 @@ export function registerCentralHandlers(): void {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return null;
       const { findCentralBatchByCode } = await import("../db/central-batches-repo");
-      return findCentralBatchByCode(code, user.username, user.sectorCode ?? "PRODUCTION");
+      return findCentralBatchByCode(code, user.username, getUserOperationalSector(user));
     })
   );
 
@@ -106,7 +107,7 @@ export function registerCentralHandlers(): void {
         if (!product) return { ok: false, error: "Produto não encontrado no catálogo PostgreSQL." };
         try {
           const code = input.code?.trim() || `CENTRAL-${Date.now()}`;
-          return { ok: true, data: await openCentralBatch(product.name, product.description, code, user.username, user.sectorCode ?? "PRODUCTION") };
+          return { ok: true, data: await openCentralBatch(product.name, product.description, code, user.username, getUserOperationalSector(user)) };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao criar lote na base central." };
         }
@@ -126,7 +127,7 @@ export function registerCentralHandlers(): void {
           try {
           return {
             ok: true,
-            data: await setCentralBatchCompleted(input.id, user.username, user.sectorCode ?? "PRODUCTION", input.completed)
+            data: await setCentralBatchCompleted(input.id, user.username, getUserOperationalSector(user), input.completed)
           };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao atualizar conclusão do lote." };
@@ -147,7 +148,7 @@ export function registerCentralHandlers(): void {
           try {
           return {
             ok: true,
-            data: await finalizeCentralBatch(input.id, user.username, user.sectorCode ?? "PRODUCTION")
+            data: await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user))
           };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
@@ -215,7 +216,7 @@ export function registerCentralHandlers(): void {
           return { ok: false, error: "Somente Supervisor ou Master podem reabrir um lote finalizado." };
         }
           try {
-          return { ok: true, data: await reopenCentralBatch(input.id, user.username, user.sectorCode ?? "PRODUCTION") };
+          return { ok: true, data: await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user)) };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao reabrir lote." };
         }

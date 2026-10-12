@@ -14,7 +14,7 @@ WITH new_admin AS (
     '$2b$12$Hlt6Ovi0lL0vi1nmeBGRKeb3XtQw5NIUPWWDKsZBdy0j9qjUzP1v2',
     'Administrador (desenvolvimento)',
     'master',
-    'PRODUCTION',
+    'ADMIN',
     TRUE
   WHERE NOT EXISTS (
     SELECT 1 FROM public.users WHERE lower(username) = 'admin'

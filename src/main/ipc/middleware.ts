@@ -12,7 +12,7 @@ export type Handler = (event: IpcMainInvokeEvent, ...args: any[]) => any;
 interface CurrentCentralIdentity {
   id: number | string;
   role: string;
-  sector_code: "PRODUCTION" | "LABORATORY";
+  sector_code: "PRODUCTION" | "LABORATORY" | "ADMIN";
 }
 
 async function verifiedIdentity(requireAdministrator: boolean): Promise<void> {

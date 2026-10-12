@@ -123,17 +123,22 @@ export const createUserSchema = z.object({
     .min(8, "A senha precisa ter pelo menos 8 caracteres.")
     .max(100, "A senha deve ter no máximo 100 caracteres."),
   role: z.enum(["master", "supervisor", "admin", "operator"]).optional(),
-  sectorCode: z.enum(["PRODUCTION", "LABORATORY"]).optional(),
+  sectorCode: z.enum(["PRODUCTION", "LABORATORY", "ADMIN"]).optional(),
   laboratoryProfile: z.enum(["capture"]).optional()
 }).superRefine((value, context) => {
-  if (value.sectorCode === "LABORATORY" && !value.laboratoryProfile) {
+  if (value.sectorCode === "ADMIN" && value.role !== "master") {
+    context.addIssue({ code: "custom", path: ["sectorCode"], message: "Setor administrativo reservado ao Master." });
+  }
+  if (value.role !== "master" && value.sectorCode === "LABORATORY" && !value.laboratoryProfile) {
     context.addIssue({
       code: "custom",
       path: ["laboratoryProfile"],
       message: "O perfil do Laboratório deve ser Captura."
     });
   }
-});
+}).transform(value => value.role === "master"
+  ? { ...value, sectorCode: "ADMIN" as const, laboratoryProfile: undefined }
+  : value);
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 

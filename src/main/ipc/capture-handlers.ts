@@ -1,3 +1,5 @@
+import { resolveCaptureSector } from "../../shared/user-sector";
+import { getCentralStationIdentity } from "../db/central-station-settings-repo";
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC } from "../../shared/ipc";
@@ -37,7 +39,13 @@ export function registerCaptureHandlers(): void {
         if (isLaboratoryUser(user) && !canCaptureLaboratory(user)) {
           return { ok: false, error: "Seu perfil permite revisar e fechar lotes, mas não iniciar capturas." };
         }
-        return startCapture(input.batchId, input.equipmentIds, user.username, user.sectorCode ?? "PRODUCTION", input.simulated ?? false);
+        try {
+          const station = await getCentralStationIdentity();
+          const captureSector = resolveCaptureSector(user, station.sectorCode);
+          return await startCapture(input.batchId, input.equipmentIds, user.username, captureSector, input.simulated ?? false);
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao iniciar captura central." };
+        }
       }
     )
   );

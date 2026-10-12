@@ -164,8 +164,8 @@ try {
 
   for (const u of sourceRows("users")) {
     const role = normalizedRole(u);
-    const uSector = u.sector_code || "PRODUCTION";
-    if (uSector !== "PRODUCTION" && uSector !== "LABORATORY")
+    const uSector = role === "master" ? "ADMIN" : u.sector_code || "PRODUCTION";
+    if (uSector !== "PRODUCTION" && uSector !== "LABORATORY" && !(role === "master" && uSector === "ADMIN"))
       throw new Error("Setor inválido do usuário: " + u.username);
     if (!u.password_hash) throw new Error("Hash de senha ausente: " + u.username);
     const id = await transfer("users",u, async()=>{

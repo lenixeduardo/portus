@@ -1,3 +1,4 @@
+import { getUserOperationalSector } from "../../shared/user-sector";
 import { randomUUID } from "node:crypto";
 import { ipcMain } from "electron";
 import {
@@ -32,7 +33,7 @@ export function registerBatchesHandlers(): void {
     IPC.batchesListOpen,
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
       const user = current();
-      return listCentralOpenBatches(user.username, user.sectorCode ?? "PRODUCTION");
+      return listCentralOpenBatches(user.username, getUserOperationalSector(user));
     })
   );
 
@@ -41,7 +42,7 @@ export function registerBatchesHandlers(): void {
     compose([requireAuth, validateInput(findBatchByCodeSchema)])(
       async (_e, code: string): Promise<BatchWithProduct | null> => {
         const user = current();
-        return findCentralBatchByCode(code, user.username, user.sectorCode ?? "PRODUCTION");
+        return findCentralBatchByCode(code, user.username, getUserOperationalSector(user));
       }
     )
   );
@@ -60,7 +61,7 @@ export function registerBatchesHandlers(): void {
           const code = input.code?.trim() || "CENTRAL-" + randomUUID().slice(0, 12);
           const batch = await openCentralBatch(
             product.name, product.description, code,
-            user.username, user.sectorCode ?? "PRODUCTION"
+            user.username, getUserOperationalSector(user)
           );
           await logAudit({
             actorUserId: user.id, action: "batches.create",
@@ -83,7 +84,7 @@ export function registerBatchesHandlers(): void {
           return { ok: false, error: "Somente Supervisor ou Master podem finalizar lotes." };
         }
         try {
-          await finalizeCentralBatch(input.id, user.username, user.sectorCode ?? "PRODUCTION");
+          await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user));
           await logAudit({
             actorUserId: user.id, action: "batches.close",
             resourceType: "batch", resourceId: input.id
@@ -106,7 +107,7 @@ export function registerBatchesHandlers(): void {
         }
         try {
           const already = await findCentralBatchByCode(
-            input.barcodeValue.trim(), user.username, user.sectorCode ?? "PRODUCTION"
+            input.barcodeValue.trim(), user.username, getUserOperationalSector(user)
           );
           if (already) return { ok: true, data: { batch: already, created: false } };
           const pattern = await getCentralStationSetting("barcode_regex");
@@ -124,7 +125,7 @@ export function registerBatchesHandlers(): void {
           if (!product) return { ok: false, error: "Produto não cadastrado no catálogo central." };
           const batch = await openCentralBatch(
             product.name, product.description, code,
-            user.username, user.sectorCode ?? "PRODUCTION"
+            user.username, getUserOperationalSector(user)
           );
           await logAudit({
             actorUserId: user.id, action: "batches.create_barcode",

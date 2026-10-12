@@ -157,12 +157,12 @@ export function registerSetupHandlers(): void {
             const hash = await bcrypt.hash(password, 12);
             await centralQuery(
               "INSERT INTO users(username,password_hash,role,sector_code,active) " +
-              "VALUES ('admin',$1,'master','PRODUCTION',TRUE)",
+              "VALUES ('admin',$1,'master','ADMIN',TRUE)",
               [hash]
             );
             const user = {
               id: 0, username: "admin", role: "master" as const,
-              sectorCode: "PRODUCTION" as const, createdAt: new Date().toISOString()
+              sectorCode: "ADMIN" as const, createdAt: new Date().toISOString()
             };
             await ensureCentralUserAccess(user,{passwordHash:hash});
             await import("../db/central-station-settings-repo").then(m =>

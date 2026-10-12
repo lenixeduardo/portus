@@ -1,4 +1,5 @@
-export type UserSector = "PRODUCTION" | "LABORATORY";
+export type OperationalSector = "PRODUCTION" | "LABORATORY";
+export type UserSector = OperationalSector | "ADMIN";
 export type LaboratoryProfile = "capture";
 export type UserRole = "master" | "supervisor" | "admin" | "operator";
 

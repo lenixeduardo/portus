@@ -1,3 +1,4 @@
+import { getUserOperationalSector } from "../../shared/user-sector";
 import { BrowserWindow, dialog, ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type ServiceResult, type BatchHistory, type BatchWithProduct } from "../../shared/ipc";
@@ -25,7 +26,7 @@ const exportCsvSchema = z.object({
 async function loadHistoryForCurrentUser(batchId: number): Promise<BatchHistory | null> {
   const user = getCurrentUser();
   if (!user) throw new Error("Sessão expirada.");
-  return getCentralBatchHistory(batchId, user.username, user.sectorCode ?? "PRODUCTION");
+  return getCentralBatchHistory(batchId, user.username, getUserOperationalSector(user));
 }
 
 async function printTraceabilityHtml(html: string): Promise<void> {
@@ -52,7 +53,7 @@ export function registerHistoryHandlers(): void {
     compose([requireAuth])(async (): Promise<BatchWithProduct[]> => {
       const user = getCurrentUser();
       if (!user) throw new Error("Sessão expirada.");
-      return listCentralAllBatches(user.username, user.sectorCode ?? "PRODUCTION");
+      return listCentralAllBatches(user.username, getUserOperationalSector(user));
     })
   );
 

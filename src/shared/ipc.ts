@@ -244,7 +244,7 @@ export interface UserCreateInput {
   password: string;
   displayName?: string;
   role?: "master" | "supervisor" | "admin" | "operator";
-  sectorCode?: "PRODUCTION" | "LABORATORY";
+  sectorCode?: "PRODUCTION" | "LABORATORY" | "ADMIN";
   laboratoryProfile?: "capture";
 }
 

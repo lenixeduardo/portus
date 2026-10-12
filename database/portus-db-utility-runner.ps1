@@ -2,7 +2,7 @@
 # The runner writes a machine-readable result only after the script completes.
 [CmdletBinding()]
 param(
-  [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","selftest")][string]$Operation,
+  [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","cleanup-preview","cleanup-test-data","selftest")][string]$Operation,
   [Parameter(Mandatory=$true)][string]$ResultPath,
   [string]$DatabaseHost = "127.0.0.1",
   [ValidateRange(1,65535)][int]$Port = 5432,
@@ -13,7 +13,9 @@ param(
   [switch]$ResetAdminPassword,
   [string]$SqlitePath = "",
   [string]$StationCode = "",
-  [ValidateSet("PRODUCTION","LABORATORY")][string]$Sector = "PRODUCTION"
+  [ValidateSet("PRODUCTION","LABORATORY")][string]$Sector = "PRODUCTION",
+  [string]$PreviewPath = "",
+  [string]$BatchIds = ""
 )
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -35,6 +37,10 @@ try {
     }
   } else {
     switch ($Operation) {
+      { $_ -in @("cleanup-preview","cleanup-test-data") } {
+        $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName; PreviewPath=$PreviewPath; BatchIds=$BatchIds; ConfirmCleanup=($Operation -eq "cleanup-test-data") }
+        & (Join-Path $PSScriptRoot "cleanup-portus-test-data.ps1") @invokeParams
+      }
       "validate" {
         $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
         & (Join-Path $PSScriptRoot "validate-portus-schema.ps1") @invokeParams
