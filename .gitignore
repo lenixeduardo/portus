@@ -11,3 +11,6 @@ data/
 database/migration-runtime/
 *.sqlite
 *.sqlite-journal
+# Playwright screenshots and traces
+test-results/
+playwright-report/
