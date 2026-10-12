@@ -138,7 +138,7 @@ for (const [label, width, height] of [
         assert.ok(metrics.barcodeWidth >= 160, `Barcode pequeno: ${metrics.barcodeWidth}px`);
         assert.ok(metrics.barcodeHeight >= 30, "Barcode sem altura suficiente");
         assert.ok(metrics.barColor, "SVG do código de barras não foi renderizado");
-        const channels = metrics.barColor.match(/\\d+/g)?.slice(0, 3).map(Number);
+        const channels = metrics.barColor.match(/\d+/g)?.slice(0, 3).map(Number);
         assert.ok(channels && channels.length === 3 && channels.some(value => value >= 130),
           `Barras escuras no tema dark: ${metrics.barColor}`);
       }
