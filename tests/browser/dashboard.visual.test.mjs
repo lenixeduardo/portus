@@ -118,7 +118,7 @@ for (const [label, width, height] of [
           const code = element.querySelector(".batch-code");
           const product = element.querySelector(".batch-recipe");
           const barcode = element.querySelector(".batch-barcode svg");
-          const bar = barcode?.querySelector("rect");
+          const bar = barcode?.querySelector("g rect");
           return {
             badgeAboveCode: badge.getBoundingClientRect().bottom <= code.getBoundingClientRect().top,
             code: code.textContent,
@@ -138,6 +138,9 @@ for (const [label, width, height] of [
         assert.ok(metrics.barcodeWidth >= 160, `Barcode pequeno: ${metrics.barcodeWidth}px`);
         assert.ok(metrics.barcodeHeight >= 30, "Barcode sem altura suficiente");
         assert.ok(metrics.barColor, "SVG do código de barras não foi renderizado");
+        const channels = metrics.barColor.match(/\\d+/g)?.slice(0, 3).map(Number);
+        assert.ok(channels && channels.length === 3 && channels.some(value => value >= 130),
+          `Barras escuras no tema dark: ${metrics.barColor}`);
       }
       assert.deepEqual(errors, [], "Erros não tratados no renderer");
       await page.screenshot({
