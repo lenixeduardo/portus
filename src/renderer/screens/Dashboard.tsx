@@ -88,7 +88,6 @@ export function Dashboard({
   const [showBarcode, setShowBarcode] = useState(false);
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [simulatingLot, setSimulatingLot] = useState(false);
-  const [printBatch, setPrintBatch] = useState<BatchWithProduct | null>(null);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [captureEquipmentIds, setCaptureEquipmentIds] = useState<number[] | null>(null);
   const [simulatedCapture, setSimulatedCapture] = useState(false);
@@ -330,8 +329,9 @@ export function Dashboard({
     setBatches((current) => current.map((item) => item.id === res.data.id ? res.data : item));
   }
 
-  function handlePrintBarcode(batch: BatchWithProduct) {
-    setPrintBatch(batch);
+  async function handlePrintBarcode(batch: BatchWithProduct) {
+    const result = await window.api.history.printBatch(batch.id);
+    if (!result.ok) setScannerError(result.error);
   }
 
   async function handleBarcodeReady(batch: BatchWithProduct) {
@@ -524,10 +524,6 @@ export function Dashboard({
         />
       )}
 
-      {printBatch && (
-        <PrintBarcodeModal batch={printBatch} onClose={() => setPrintBatch(null)} />
-      )}
-
       {confirmBatch && (
         <ConfirmCloseModal
           batch={confirmBatch}
@@ -567,47 +563,6 @@ export function Dashboard({
         />
       )}
     </>
-  );
-}
-
-function PrintBarcodeModal({ batch, onClose }: { batch: BatchWithProduct; onClose: () => void }) {
-  function print() {
-    document.body.classList.add("portus-printing");
-
-    const cleanup = () => {
-      document.body.classList.remove("portus-printing");
-      window.removeEventListener("afterprint", cleanup);
-    };
-
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-    window.setTimeout(cleanup, 1000);
-  }
-
-  return (
-    <Modal
-      title="Imprimir código de barras"
-      onClose={onClose}
-      width={420}
-      footer={
-        <>
-          <button className="secondary" onClick={onClose}>Cancelar</button>
-          <button onClick={print} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Printer size={14} />
-            Imprimir
-          </button>
-        </>
-      }
-    >
-      <div className="print-sheet">
-        {batch.productName && batch.productName !== "—" && (
-          <div className="print-product">{batch.productName}</div>
-        )}
-        <BarcodeDisplay value={batch.code} height={60} displayValue lineColor="#111827" />
-        <div className="print-label">LOTE</div>
-        <div className="print-code">#{batch.code}</div>
-      </div>
-    </Modal>
   );
 }
 
