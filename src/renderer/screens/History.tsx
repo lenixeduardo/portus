@@ -130,11 +130,17 @@ export function History({ user }: { user: User }) {
 
   async function handleReopen() {
     if (!selectedId || !history || history.batch.status !== "closed") return;
-    if (!confirm(`Reabrir o lote "${history.batch.code}"? O lote voltará para Em andamento e novas análises poderão ser registradas.`)) return;
+    const justification = window.prompt(`Justificativa obrigatória para reabrir o lote "${history.batch.code}" (mínimo 10 caracteres):`);
+    if (justification === null) return;
+    if (justification.trim().length < 10 || justification.trim().length > 1000) {
+      setError("Informe uma justificativa entre 10 e 1000 caracteres para reabrir o lote.");
+      return;
+    }
+    if (!confirm(`Confirmar reabertura do lote "${history.batch.code}"?`)) return;
 
     setReopening(true);
     setError(null);
-    const res = await window.api.central.batches.reopen(Number(selectedId));
+    const res = await window.api.central.batches.reopen(Number(selectedId), justification.trim());
     setReopening(false);
     if (!res.ok) {
       setError(res.error);
