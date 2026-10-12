@@ -1,5 +1,5 @@
 import { getUserOperationalSector } from "../../shared/user-sector";
-import { BrowserWindow, dialog, ipcMain } from "electron";
+import { BrowserWindow, Menu, dialog, ipcMain } from "electron";
 import { writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { IPC, type ServiceResult, type BatchHistory, type BatchWithProduct } from "../../shared/ipc";
@@ -30,21 +30,69 @@ async function loadHistoryForCurrentUser(batchId: number): Promise<BatchHistory 
   return getCentralBatchHistory(batchId, user.username, getUserOperationalSector(user));
 }
 
-async function printTraceabilityHtml(html: string): Promise<void> {
+async function printTraceabilityHtml(html: string, code: string): Promise<void> {
+  // A pré-visualização fica aberta até o usuário fechar a janela.
+  // Imprimir e Salvar PDF usam exatamente o mesmo documento renderizado.
   const win = new BrowserWindow({
+    title: "PORTUS — Pré-visualização do relatório",
+    width: 980,
+    height: 900,
+    minWidth: 680,
+    minHeight: 580,
     show: false,
-    webPreferences: { sandbox: true, contextIsolation: true }
+    autoHideMenuBar: false,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
   });
+
+  const print = () => {
+    if (win.isDestroyed()) return;
+    win.webContents.print({ printBackground: true, silent: false }, (_success, reason) => {
+      if (reason && reason !== "Print job canceled") {
+        void dialog.showMessageBox(win, { type: "error", message: "Não foi possível imprimir.", detail: reason });
+      }
+    });
+  };
+
+  const save = async () => {
+    if (win.isDestroyed()) return;
+    const safeCode = code.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80);
+    const selection = await dialog.showSaveDialog(win, {
+      title: "Salvar relatório como PDF",
+      defaultPath: `relatorio-lote-${safeCode}.pdf`,
+      filters: [{ name: "Documento PDF", extensions: ["pdf"] }]
+    });
+    if (selection.canceled || !selection.filePath || win.isDestroyed()) return;
+    try {
+      const pdf = await win.webContents.printToPDF({ printBackground: true, pageSize: "A4" });
+      await writeFile(selection.filePath, pdf);
+    } catch (error) {
+      if (!win.isDestroyed()) {
+        await dialog.showMessageBox(win, {
+          type: "error",
+          message: "Não foi possível salvar o relatório.",
+          detail: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+  };
+
+  win.setMenu(Menu.buildFromTemplate([
+    {
+      label: "Relatório",
+      submenu: [
+        { label: "Imprimir…", accelerator: "CmdOrCtrl+P", click: print },
+        { label: "Salvar como PDF…", accelerator: "CmdOrCtrl+S", click: () => void save() },
+        { type: "separator" },
+        { label: "Fechar pré-visualização", role: "close" }
+      ]
+    }
+  ]));
   try {
     await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-    await new Promise<void>((resolve, reject) => {
-      win.webContents.print({ printBackground: true }, (success, failureReason) => {
-        if (success) resolve();
-        else reject(new Error(failureReason || "Falha ao imprimir."));
-      });
-    });
-  } finally {
+    win.show();
+  } catch (error) {
     if (!win.isDestroyed()) win.destroy();
+    throw error;
   }
 }
 
@@ -104,7 +152,7 @@ export function registerHistoryHandlers(): void {
         try {
           const history = await loadHistoryForCurrentUser(input.batchId);
           if (!history) return { ok: false, error: "Lote não encontrado." };
-          await printTraceabilityHtml(buildBatchPrintHtml(history));
+          await printTraceabilityHtml(buildBatchPrintHtml(history), history.batch.code);
           return { ok: true, data: true };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Não foi possível imprimir a folha do lote." };
