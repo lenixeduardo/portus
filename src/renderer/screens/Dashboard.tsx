@@ -306,12 +306,12 @@ export function Dashboard({
     setConfirmBatch(b);
   }
 
-  async function handleConfirmClose() {
+  async function handleConfirmClose(justification: string) {
     if (!confirmBatch) return;
     const b = confirmBatch;
     setConfirmBatch(null);
     const res = requiresCentral
-      ? await window.api.central.batches.finalize(b.id)
+      ? await window.api.central.batches.finalize(b.id, justification)
       : await window.api.batches.close(b.id);
     if (!res.ok) {
       setScannerError(res.error);
@@ -821,8 +821,10 @@ function ConfirmCloseModal({
   adminOverride: boolean;
   confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (justification: string) => void;
 }) {
+  const [justification, setJustification] = useState("");
+  const valid = justification.trim().length >= 10;
   return (
     <Modal
       title="Finalizar lote"
@@ -830,7 +832,7 @@ function ConfirmCloseModal({
       footer={
         <>
           <button className="secondary" onClick={onClose}>Cancelar</button>
-          <button onClick={onConfirm}>Finalizar lote</button>
+          <button disabled={!valid} onClick={() => onConfirm(justification.trim())}>Finalizar lote</button>
         </>
       }
     >
@@ -838,6 +840,10 @@ function ConfirmCloseModal({
       <p className="muted" style={{ fontSize: 13 }}>
         O lote já está marcado como concluído. A finalização será registrada no histórico e novas leituras exigirão reabertura por Supervisor ou Master.
       </p>
+      <div className="field">
+        <label htmlFor="batch-close-justification">Justificativa obrigatória</label>
+        <textarea id="batch-close-justification" value={justification} onChange={(event) => setJustification(event.target.value)} required minLength={10} maxLength={1000} rows={3} placeholder="Explique o motivo da finalização (mínimo 10 caracteres)." />
+      </div>
     </Modal>
   );
 }
