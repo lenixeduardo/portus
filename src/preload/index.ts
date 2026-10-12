@@ -147,12 +147,12 @@ const api: SerialReaderApi = {
         ipcRenderer.invoke(IPC.centralBatchesConfirmLaboratory, { id }),
       setCompleted: (id: number, completed: boolean): Promise<ServiceResult<BatchWithProduct>> =>
         ipcRenderer.invoke(IPC.centralBatchesSetCompleted, { id, completed }),
-      finalize: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
-        ipcRenderer.invoke(IPC.centralBatchesFinalize, { id }),
+      finalize: (id: number, justification: string): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesFinalize, { id, justification }),
       forceClose: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
         ipcRenderer.invoke(IPC.centralBatchesForceClose, { id }),
-      reopen: (id: number): Promise<ServiceResult<BatchWithProduct>> =>
-        ipcRenderer.invoke(IPC.centralBatchesReopen, { id })
+      reopen: (id: number, justification: string): Promise<ServiceResult<BatchWithProduct>> =>
+        ipcRenderer.invoke(IPC.centralBatchesReopen, { id, justification })
     },
     history: {
       getBatch: (id: number): Promise<ServiceResult<import("../shared/ipc").BatchHistory>> =>
