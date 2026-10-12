@@ -82,6 +82,40 @@ export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
   return rows.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
 }
 
+
+/** Desenha Code 39 real e autocontido para impressão e PDF sem rede. */
+function code39Svg(value: string): string {
+  const patterns: Record<string, string> = {
+    "0":"nnnwwnwnn","1":"wnnwnnnnw","2":"nnwwnnnnw","3":"wnwwnnnnn",
+    "4":"nnnwwnnnw","5":"wnnwwnnnn","6":"nnwwwnnnn","7":"nnnwnnwnw",
+    "8":"wnnwnnwnn","9":"nnwwnnwnn","A":"wnnnnwnnw","B":"nnwnnwnnw",
+    "C":"wnwnnwnnn","D":"nnnnwwnnw","E":"wnnnwwnnn","F":"nnwnwwnnn",
+    "G":"nnnnnwwnw","H":"wnnnnwwnn","I":"nnwnnwwnn","J":"nnnnwwwnn",
+    "K":"wnnnnnnww","L":"nnwnnnnww","M":"wnwnnnnwn","N":"nnnnwnnww",
+    "O":"wnnnwnnwn","P":"nnwnwnnwn","Q":"nnnnnnwww","R":"wnnnnnwwn",
+    "S":"nnwnnnwwn","T":"nnnnwnwwn","U":"wwnnnnnnw","V":"nwwnnnnnw",
+    "W":"wwwnnnnnn","X":"nwnnwnnnw","Y":"wwnnwnnnn","Z":"nwwnwnnnn",
+    "-":"nwnnnnwnw",".":"wwnnnnwnn"," ":"nwwnnnwnn","$":"nwnwnwnnn",
+    "/":"nwnwnnnwn","+":"nwnnnwnwn","%":"nnnwnwnwn","*":"nwnnwnwnn"
+  };
+  const clean = value.toUpperCase();
+  if (!/^[0-9A-Z. $/+%-]+$/.test(clean) || clean.length > 60) {
+    return '<div class="code">Código sem simbologia Code 39 compatível</div>';
+  }
+  let x = 10;
+  let bars = "";
+  for (const char of "*" + clean + "*") {
+    const pattern = patterns[char];
+    for (let i = 0; i < 9; i++) {
+      const width = pattern[i] === "w" ? 3 : 1;
+      if (i % 2 === 0) bars += '<rect x="' + x + '" y="0" width="' + width + '" height="38"/>';
+      x += width;
+    }
+    x += 1;
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (x + 10) + ' 38" preserveAspectRatio="none" role="img" aria-label="Código de barras do lote"><g fill="#111">' + bars + '</g></svg>';
+}
+
 export function buildBatchPrintHtml(history: BatchHistory): string {
   const rows = buildTraceabilityRows(history).filter(row => row.result !== "");
   const batch = history.batch;
@@ -111,7 +145,7 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
   .identity { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin:15px 0; }
   .product { flex:1; min-width:0; overflow-wrap:anywhere; }
   .barcode { width:190px; text-align:center; flex-shrink:0; }
-  .bars { height:38px; background: repeating-linear-gradient(90deg,#111 0px,#111 2px,#fff 2px,#fff 4px,#111 4px,#111 5px,#fff 5px,#fff 9px); }
+  .barcode svg { width:100%; height:38px; display:block; }
   .code { overflow-wrap:anywhere; padding-top:5px; font-weight:bold; }
   .label { color:#555; font-size:8pt; text-transform:uppercase; display:block; margin-bottom:5px; }
   .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; }
@@ -132,7 +166,7 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
 </header>
 <section class="identity">
   <div class="product"><span class="label">Produto</span><strong>${esc(batch.productName)}</strong></div>
-  <div class="barcode"><div class="bars" aria-hidden="true"></div><div class="code">${esc(batch.code)}</div></div>
+  <div class="barcode">${code39Svg(batch.code)}<div class="code">${esc(batch.code)}</div></div>
 </section>
 <div class="meta">
   <div><span>Situação</span><strong>${status}</strong></div>
