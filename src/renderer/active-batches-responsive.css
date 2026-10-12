@@ -346,3 +346,21 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
   }
 }
+
+/* Truncamento apenas visual: o código completo permanece nos dados e relatórios. */
+.batch-row__title, .batch-row__title > div, .batch-row__identity { min-width: 0; }
+.batch-row__title .batch-code, .batch-row__title .batch-recipe {
+  display: block; max-width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.batch-picker-item { min-width: 0; }
+.batch-picker-code, .batch-picker-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-export-actions { position: relative; min-width: 0; }
+.report-export-menu {
+  position: absolute; z-index: 30; top: calc(100% + 5px); right: 0;
+  min-width: 210px; display: grid; padding: 5px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface, #101820); box-shadow: 0 8px 24px #0003;
+}
+.report-export-menu button { text-align: left; width: 100%; background: transparent; border: 0; padding: 10px; color: var(--text, #e8eeee); cursor: pointer; }
+.report-export-menu button:hover { background: var(--border); }
