@@ -1611,11 +1611,11 @@ button.secondary:hover { background: var(--surface-raised); }
 .batch-row > :last-child { border-right: 0; }
 .batch-row-capturing { border-color: var(--portus-aqua-500); }
 .batch-row__identity { display: grid; align-content: space-between; gap: 12px; }
-.batch-row__title { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.batch-row .batch-code { font-size: 24px; font-weight: 500; letter-spacing: -.05em; }
-.batch-row .batch-recipe { margin-top: 5px; font-size: 13px; color: var(--text); }
-.batch-row .batch-barcode { padding: 0; justify-content: flex-start; opacity: 1; }
-.batch-row .batch-barcode svg { max-width: 176px; }
+.batch-row__title { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0; }
+.batch-row .batch-code { font-size: 24px; font-weight: 500; letter-spacing: -.05em; white-space: normal; overflow-wrap: anywhere; }
+.batch-row .batch-recipe { margin-top: 0; font-size: 13px; color: var(--text); white-space: normal; overflow-wrap: anywhere; }
+.batch-row .batch-barcode { padding: 0; justify-content: flex-start; opacity: 1; width: 100%; min-width: 0; }
+.batch-row .batch-barcode svg { display: block; width: 100%; max-width: 200px; height: auto; }
 
 .batch-row__operation {
   display: grid;
