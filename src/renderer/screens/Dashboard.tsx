@@ -398,7 +398,7 @@ export function Dashboard({
               onClick={handleSimulateLot}
               disabled={!scannerActive || simulatingLot}
               title={scannerActive ? "Cria um lote com número randomizado para o primeiro produto cadastrado" : "Indisponível durante captura ou com modal aberto"}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
             >
               <Zap size={14} />
               {simulatingLot ? "Criando..." : "Simular Scan"}
