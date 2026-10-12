@@ -116,10 +116,30 @@ function code39Svg(value: string): string {
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (x + 10) + ' 38" preserveAspectRatio="none" role="img" aria-label="Código de barras do lote"><g fill="#111">' + bars + '</g></svg>';
 }
 
+
+function actorFor(history: BatchHistory, actions: string[]): string {
+  const event = [...(history.auditEvents ?? [])].reverse().find(item => actions.includes(item.action));
+  if (!event) return "Não registrado";
+  const name = event.actorName ?? event.actorLogin ?? "Não registrado";
+  return event.actorLogin && event.actorLogin !== name ? name + " (" + event.actorLogin + ")" : name;
+}
+
+/** EPA Química em versão monocromática autocontida. */
+function epaLogoSvg(): string {
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="172" height="84" viewBox="0 0 210 105">'
+    + '<text x="104" y="13" font-size="10" font-family="Arial" text-anchor="middle" font-weight="bold">QUÍMICA A SERVIÇO DA VIDA</text>'
+    + '<ellipse cx="103" cy="56" rx="100" ry="31" fill="none" stroke="#666" stroke-width="2" transform="rotate(-12 103 56)"/>'
+    + '<ellipse cx="103" cy="56" rx="78" ry="33" fill="#444" stroke="#333"/>'
+    + '<text x="103" y="66" font-family="Arial" font-size="49" font-weight="300" fill="white" text-anchor="middle">epa</text>'
+    + '<text x="103" y="80" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">QUÍMICA</text>'
+    + '<text x="103" y="102" font-family="Arial" font-size="10" text-anchor="middle" font-weight="bold">DESDE 1961</text></svg>';
+}
+
 export function buildBatchPrintHtml(history: BatchHistory): string {
   const rows = buildTraceabilityRows(history).filter(row => row.result !== "");
   const batch = history.batch;
-  const status = batch.status === "closed" ? "FINALIZADO" : batch.completed ? "CONCLUÍDO" : "ABERTO";
+  const startedBy = actorFor(history, ["BATCH_OPENED"]);
+  const closedBy = actorFor(history, ["BATCH_FINALIZED", "BATCH_CLOSED", "MASTER_BATCH_CLOSED"]);
   const body = rows.map((row) => `
     <tr>
       <td>${esc(row.station)}</td>
@@ -135,44 +155,40 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
 <meta charset="utf-8">
 <title>PORTUS · Lote ${esc(batch.code)}</title>
 <style>
-  @page { size: A4 portrait; margin: 12mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; color: #111; margin: 0; font-size: 10.5pt; }
-  header { border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between; }
-  h1 { font-size: 15pt; margin: 0; text-align:right; }
-  .brand { font-size:25pt; font-weight:900; letter-spacing:-1.2px; }
-  .brand small { display:block; font-size:6pt; letter-spacing:1px; font-weight:normal; }
-  .identity { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin:15px 0; }
-  .product { flex:1; min-width:0; overflow-wrap:anywhere; }
-  .barcode { width:190px; text-align:center; flex-shrink:0; }
-  .barcode svg { width:100%; height:38px; display:block; }
-  .code { overflow-wrap:anywhere; padding-top:5px; font-weight:bold; }
-  .label { color:#555; font-size:8pt; text-transform:uppercase; display:block; margin-bottom:5px; }
-  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; }
-  .meta div { border: 1px solid #bbb; padding: 6px; min-height: 38px; }
-  .meta span { display: block; font-size: 8pt; color: #555; margin-bottom: 2px; text-transform: uppercase; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  th, td { border: 1px solid #aaa; padding: 5px 6px; vertical-align: top; word-wrap: break-word; }
-  th { background: #eee; text-align: left; font-size: 8.5pt; }
-  tr { break-inside: avoid; }
-  .mono { font-family: Consolas, monospace; }
-  footer { margin-top: 10px; font-size: 8pt; color: #555; }
+@page { size: A4 portrait; margin: 14mm 12mm 18mm; }
+* { box-sizing:border-box; }
+body { background:#fff; color:#111; margin:0; font:10pt Arial,Helvetica,sans-serif; }
+header { display:flex; align-items:center; justify-content:space-between; border-bottom:1.5px solid #111; padding-bottom:12px; margin-bottom:15px; min-height:90px; }
+h1 { margin:0; font-size:21pt; font-weight:800; }
+.identity { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); border:1px solid #bbb; align-items:center; padding:14px; margin-bottom:18px; }
+.product { min-width:0; padding-right:14px; font-size:13pt; overflow-wrap:anywhere; }
+.label { display:block; font-size:10pt; margin-bottom:10px; }
+.barcode { border-left:1px solid #aaa; padding-left:18px; text-align:center; min-width:0; }
+.barcode svg { width:100%; height:44px; display:block; }
+.code { font-size:12pt; margin-top:8px; overflow-wrap:anywhere; }
+table { width:100%; border-collapse:collapse; table-layout:fixed; }
+th,td { padding:12px 9px; border:1px solid #bbb; word-break:break-word; text-align:left; }
+th { background:#eee; font-size:10.5pt; font-weight:700; }
+tbody tr:nth-child(even) { background:#f1f1f1; }
+tr { break-inside:avoid; }
+.responsibles { border:1px solid #bbb; display:grid; grid-template-columns:1fr 1fr; padding:14px 0; margin-top:23px; }
+.responsibles > div { padding:0 16px; min-width:0; overflow-wrap:anywhere; }
+.responsibles > div+div { border-left:1px solid #999; }
+.responsibles span { display:block; margin-bottom:8px; }
+.responsibles strong { font-size:12pt; }
+.mono { font-family:Consolas,monospace; }
+footer { position:fixed; bottom:-11mm; left:0; right:0; display:flex; justify-content:space-between; font-size:9pt; border-top:1px solid #111; padding-top:8px; }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">PORTUS<small>CONTROLE INDUSTRIAL</small></div>
-  <h1>RELATÓRIO DE LOTE</h1>
+  <div>${epaLogoSvg()}</div>
+  <h1>RELATÓRIO DO LOTE</h1>
 </header>
 <section class="identity">
   <div class="product"><span class="label">Produto</span><strong>${esc(batch.productName)}</strong></div>
   <div class="barcode">${code39Svg(batch.code)}<div class="code">${esc(batch.code)}</div></div>
 </section>
-<div class="meta">
-  <div><span>Situação</span><strong>${status}</strong></div>
-  <div><span>Abertura</span><strong>${esc(formatDate(batch.openedAt))}</strong></div>
-  <div><span>Capturas</span><strong>${rows.length}</strong></div>
-</div>
 <table>
   <thead>
     <tr>
@@ -185,7 +201,11 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
   </thead>
   <tbody>${body || '<tr><td colspan="5">Nenhum registro.</td></tr>'}</tbody>
 </table>
-<footer>Documento gerado pelo PORTUS. Capturas em ordem cronológica.</footer>
+<section class="responsibles">
+  <div><span>Lote iniciado por:</span><strong>${esc(startedBy === "Não registrado" ? batch.operatorName : startedBy)}</strong></div>
+  <div><span>Lote finalizado por:</span><strong>${esc(batch.status === "closed" ? closedBy : "Ainda não finalizado")}</strong></div>
+</section>
+<footer><span>EPA • Relatório do lote</span><span>Relatório de rastreabilidade</span></footer>
 </body>
 </html>`;
 }
