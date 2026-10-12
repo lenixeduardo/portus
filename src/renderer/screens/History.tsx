@@ -203,7 +203,7 @@ export function History({ user }: { user: User }) {
                 {reopening ? "Reabrindo..." : "Reabrir lote"}
               </button>
             )}
-            <button onClick={handlePrint} disabled={printing} className="secondary">
+            <button onClick={handlePrint} disabled={printing} className="secondary" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <Printer size={15} aria-hidden="true" />
               {printing ? "Imprimindo..." : "Imprimir folha"}
             </button>
