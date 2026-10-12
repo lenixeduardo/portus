@@ -5,7 +5,7 @@ interface CentralProductRow {
   id: number | string;
   name: string;
   description: string | null;
-  created_by: number | string;
+  created_by: number | string | null;
   created_at: Date | string;
 }
 
@@ -14,7 +14,7 @@ function toProduct(row: CentralProductRow): Product {
     id: Number(row.id),
     name: row.name,
     description: row.description ?? undefined,
-    createdBy: Number(row.created_by),
+    createdBy: row.created_by == null ? undefined : Number(row.created_by),
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at
   };
 }

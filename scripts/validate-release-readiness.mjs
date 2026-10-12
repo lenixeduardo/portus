@@ -47,6 +47,7 @@ for (const path of [
   "database/migrations/013_central_catalog_user_metadata.sql",
   "database/migrations/014_station_profiles_audit_ledger.sql",
   "database/migrations/015_master_administrative_sector.sql",
+  "database/migrations/016_physical_user_deletion.sql",
   "database/cleanup-portus-test-data.ps1",
   "database/portus-utility-credentials.ps1",
   "database/portus-test-cleanup-dialog.ps1",

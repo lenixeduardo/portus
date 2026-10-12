@@ -45,11 +45,11 @@ describe("catálogo compartilhado entre servidor, produção e laboratório", ()
   });
 
   it("todos os usuários aparecem e são gerenciados pelo PostgreSQL", () => {
-    expect(userHandlers).toContain("listCentralUsers()");
-    expect(centralUsers).toContain("FROM users WHERE active");
+    expect(userHandlers).toContain("listCentralUsers(true)");
+    expect(centralUsers).toContain('includeInactive ? "" : " WHERE active"');
     expect(userHandlers).toContain("await createCentralUser(");
     expect(userHandlers).toContain("await updateCentralUserPassword(");
-    expect(userHandlers).toContain("await deactivateCentralUser(");
+    expect(userHandlers).toContain("await deleteCentralUser(");
     expect(auth).toContain("await centralQuery<CentralCredentialRow>");
     expect(auth).not.toContain('from "../db/users-repo"');
   });

@@ -13,6 +13,7 @@ type ModalState =
 
 export function UsersTab({ currentUser }: Props) {
   const [users, setUsers] = useState<User[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalState>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function UsersTab({ currentUser }: Props) {
   }, []);
 
   async function handleDelete(u: User) {
-    if (!confirm(`Excluir o usuário "${u.username}"?`)) return;
+    if (!confirm(`Excluir permanentemente o usuário "${u.username}" do banco central? O histórico dos lotes será preservado.`)) return;
     const res = await window.api.users.remove(u.id);
     if (!res.ok) {
       setError(res.error);
@@ -53,6 +54,7 @@ export function UsersTab({ currentUser }: Props) {
       <div className="page-actions">
         {error && <div className="alert">{error}</div>}
         <button onClick={() => setModal({ mode: "create" })}>+ Novo Usuário</button>
+        <label><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Mostrar usuários desativados</label>
       </div>
 
       <div className="card">
@@ -66,10 +68,11 @@ export function UsersTab({ currentUser }: Props) {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {users.filter(u => showInactive || u.active !== false).map((u) => (
               <tr key={u.id}>
                 <td>
                   <strong>{u.username}</strong>
+                  {u.active === false && <span className="chip" style={{ marginLeft: 8 }}>DESATIVADO</span>}
                   {u.username === currentUser.username && (
                     <span className="chip chip-blue" style={{ marginLeft: 8 }}>VOCÊ</span>
                   )}
@@ -87,7 +90,7 @@ export function UsersTab({ currentUser }: Props) {
                     </span>
                   ) : (
                     <>
-                      <button className="link" onClick={() => setModal({ mode: "password", user: u })}>
+                      <button className="link" disabled={u.active === false} onClick={() => setModal({ mode: "password", user: u })}>
                         Alterar senha
                       </button>
                       {u.username !== currentUser.username && (

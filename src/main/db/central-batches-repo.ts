@@ -11,7 +11,7 @@ export interface CentralBatchRow {
   opened_at: string | Date;
   closed_at: string | Date | null;
   closed_by: number | string | null;
-  created_by: number | string;
+  created_by: number | string | null;
   readings_count: string;
   production_readings_count: string;
   laboratory_readings_count: string;
@@ -57,7 +57,7 @@ export function toBatch(row: CentralBatchRow): BatchWithProduct {
     openedAt: toCentralTimestamp(row.opened_at),
     closedAt: row.closed_at ? toCentralTimestamp(row.closed_at) : undefined,
     closedBy: row.closed_by == null ? undefined : toCentralId(row.closed_by),
-    createdBy: toCentralId(row.created_by),
+    createdBy: row.created_by == null ? undefined : toCentralId(row.created_by),
     productName: row.product_name,
     operatorName: row.operator_name,
     readingsCount: Number(row.readings_count),
@@ -77,7 +77,7 @@ const SELECT_BATCH = `
   SELECT b.id, b.product_id, p.name AS product_name, b.code, b.status,
          b.stage, b.opened_at, b.closed_at, b.closed_by, b.created_by,
          b.production_closed, b.laboratory_closed, b.completed, b.completed_at, b.completed_by,
-         u.username AS operator_name,
+         COALESCE(u.username, 'Usuário excluído') AS operator_name,
          (SELECT COUNT(*) FROM readings r WHERE r.batch_id = b.id) AS readings_count,
          (SELECT COUNT(*)
             FROM readings r
@@ -121,7 +121,7 @@ const SELECT_BATCH = `
          ), '[]'::json) AS reading_previews
     FROM batches b
     JOIN products p ON p.id = b.product_id
-    JOIN users u ON u.id = b.created_by
+    LEFT JOIN users u ON u.id = b.created_by
 `;
 
 export async function listCentralOpenBatches(

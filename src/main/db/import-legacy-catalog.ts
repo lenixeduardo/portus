@@ -37,7 +37,7 @@ export async function importLegacyCatalogToCentral(): Promise<void> {
     const name = product.name.trim();
     const key = name.toLocaleLowerCase("pt-BR");
     const central = knownProducts.get(key);
-    const creator = getUser(product.createdBy) ?? users[0];
+    const creator = (product.createdBy == null ? null : getUser(product.createdBy)) ?? users[0];
     if (!creator) {
       throw new Error("Não existe usuário local para importar o catálogo de produtos.");
     }
