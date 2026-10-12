@@ -27,7 +27,9 @@
     "validate:release": "node scripts/validate-release-readiness.mjs && node scripts/check-postgres-only-runtime.mjs",
     "test": "vitest run --config vitest.config.ts --configLoader runner",
     "migrate:legacy": "node scripts/import-legacy-to-postgres.mjs",
-    "check:postgres-only": "node scripts/check-postgres-only-runtime.mjs"
+    "check:postgres-only": "node scripts/check-postgres-only-runtime.mjs",
+    "browser:install": "playwright-core install chromium",
+    "test:browser": "node --test tests/browser/dashboard.visual.test.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
