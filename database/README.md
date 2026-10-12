@@ -592,3 +592,41 @@ nem execução das funções críticas. O teste
 `003_concurrent_closure.mjs` cria conexões independentes de Produção e
 Laboratório, força a disputa pelo lock do mesmo lote e valida atomicidade,
 versão, histórico e idempotência em PostgreSQL real.
+
+### Migration 015: Master administrativo e captura por estação
+
+A migration `015_master_administrative_sector.sql` corrige contas existentes com
+`role = 'master'` para `sector_code = 'ADMIN'`, preservando IDs, senhas, permissões
+e históricos. Um trigger também normaliza cadastros/importações antigos.
+`ADMIN` classifica o usuário; as estações e sessões continuam sendo de Produção
+ou Laboratório.
+
+Atualize o aplicativo em todas as estações junto com as migrations. Encerre as
+capturas antes da atualização e faça login novamente depois dela. A versão nova
+resolve a captura do Master pelo setor configurado da máquina, sem a divergência
+entre o perfil administrativo e o setor operacional. Operadores continuam
+restritos ao setor do seu perfil; a estação precisa ter um setor configurado.
+Aplicar apenas o SQL não atualiza o comportamento de um executável antigo.
+
+O instalador de banco descobre a migration 015 automaticamente. A verificação
+SQL `database/tests/005_master_administrative_sector.sql` pode ser executada
+após a migration; ela usa rollback e não conserva dados de teste.
+
+### Limpar dados de teste no utilitario
+
+O botao **Limpar dados de teste** consulta os lotes do banco selecionado e abre
+uma previa com IDs, codigos, contagens de leituras/sessoes e capturas ativas.
+Nenhum lote e marcado automaticamente: o administrador seleciona explicitamente
+os lotes de teste e confirma a remocao no destino exibido.
+
+Antes de remover, o utilitario exige `pg_dump.exe` na pasta bin e cria um backup
+completo em `%LOCALAPPDATA%\PORTUS\backups`. Se o backup falhar, a limpeza
+nao comeca. Lotes com captura ativa sao bloqueados novamente dentro da
+transacao. A limpeza remove os lotes escolhidos, leituras, sessoes, historicos
+e referencias relacionadas; preserva usuarios (inclusive Master/admin),
+produtos, equipamentos e configuracoes. Uma entrada de auditoria registra a
+selecao e o caminho do backup. Arquivos CSV ja exportados nao sao apagados.
+
+Esta acao usa as credenciais administrativas preenchidas no utilitario;
+ela nao executa uma limpeza global nem infere testes pelo nome do registro.
+A janela WinForms deve ser validada no Windows antes de distribuir o pacote.

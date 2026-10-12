@@ -1,5 +1,6 @@
+import { DatabaseStatusBadge, type DatabaseStatus } from "./components/DatabaseStatusBadge";
 import React, { useEffect, useState } from "react";
-import { Database, Eye, Moon, RefreshCw, ScanLine, Sun } from "lucide-react";
+import { Eye, Moon, ScanLine, Sun } from "lucide-react";
 import "./styles.css";
 import { Login } from "./screens/Login";
 import { InitialSetup } from "./screens/InitialSetup";
@@ -26,7 +27,6 @@ const TITLES: Record<Route, string> = {
 const LAST_SEEN_VERSION_KEY = "portus:last-seen-version";
 const DATABASE_STATUS_INTERVAL_MS = 15_000;
 
-type DatabaseStatus = "checking" | "connected" | "disconnected" | "unconfigured";
 type Theme = "dark" | "light";
 const THEME_STORAGE_KEY = "portus:theme";
 
@@ -173,7 +173,7 @@ export function App() {
           <div className="topbar">
             <div className="topbar__spacer" aria-hidden="true" />
             <div className="topbar__telemetry">
-              <DatabaseStatusBadge status={databaseStatus} />
+              <DatabaseStatusBadge status={databaseStatus} user={user} />
               <div className="topbar__separator" aria-hidden="true" />
               <ViewStatus sectorCode={user.sectorCode} />
               <div className="topbar__separator" aria-hidden="true" />
@@ -223,32 +223,8 @@ export function App() {
   );
 }
 
-const DATABASE_STATUS_LABELS: Record<DatabaseStatus, string> = {
-  checking: "Verificando",
-  connected: "Conectado",
-  disconnected: "Desconectado",
-  unconfigured: "Não configurado",
-};
-
-function DatabaseStatusBadge({ status }: { status: DatabaseStatus }) {
-  const checking = status === "checking";
-
-  return (
-    <div
-      className={`database-status database-status--${status}`}
-      role="status"
-      aria-live="polite"
-      title="Status da conexão com o PostgreSQL central"
-    >
-      {checking ? <RefreshCw size={13} className="database-status__spinner" /> : <Database size={13} />}
-      <span className="database-status__dot" aria-hidden="true" />
-      <span><small>Banco de dados</small>{DATABASE_STATUS_LABELS[status]}</span>
-    </div>
-  );
-}
-
 function ViewStatus({ sectorCode }: { sectorCode: User["sectorCode"] }) {
-  const label = sectorCode === "LABORATORY" ? "Laboratório" : "Produção";
+  const label = sectorCode === "ADMIN" ? "Admin" : sectorCode === "LABORATORY" ? "Laboratório" : "Produção";
 
   return (
     <div className="view-status" role="status" title={`View ativa: ${label}`}>

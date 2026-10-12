@@ -13,7 +13,7 @@ interface CentralUserRow {
   username: string;
   display_name: string | null;
   role: string;
-  sector_code: "PRODUCTION" | "LABORATORY";
+  sector_code: "PRODUCTION" | "LABORATORY" | "ADMIN";
   laboratory_profile: "capture" | null;
   created_at: Date | string;
 }
@@ -69,7 +69,7 @@ export async function ensureCentralUserAccess(
       legacy?.passwordHash ?? "managed-by-portus",
       displayName,
       role,
-      user.sectorCode ?? "PRODUCTION",
+      user.role === "master" ? "ADMIN" : user.sectorCode ?? "PRODUCTION",
       user.laboratoryProfile ?? null,
       legacy?.barcodeValue ?? null
     ]
@@ -136,7 +136,7 @@ export async function createCentralUser(
   input: UserCreateInput,
   barcode?: string
 ): Promise<User> {
-  const sectorCode = input.sectorCode ?? "PRODUCTION";
+  const sectorCode = input.role === "master" ? "ADMIN" : input.sectorCode ?? "PRODUCTION";
   const role = input.role === "operator" && sectorCode === "LABORATORY"
     ? "laboratory" : (input.role ?? "operator");
   const hash = await bcrypt.hash(input.password, 10);

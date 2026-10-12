@@ -54,7 +54,7 @@ export async function listCentralCatalogUsers(): Promise<User[]> {
     displayName: row.display_name ?? undefined,
     role: row.role === "master" || row.role === "supervisor" || row.role === "admin"
       ? row.role : "operator",
-    sectorCode: row.role === "laboratory" ? "LABORATORY" : "PRODUCTION",
+    sectorCode: row.role === "master" ? "ADMIN" : row.role === "laboratory" ? "LABORATORY" : "PRODUCTION",
     laboratoryProfile: row.role === "laboratory" ? "capture" : undefined,
     createdAt: timestamp(row.created_at),
     centralOnly: true

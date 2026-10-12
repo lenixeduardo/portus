@@ -54,7 +54,7 @@ interface CentralCredentialRow {
   password_hash: string;
   display_name: string | null;
   role: string;
-  sector_code: "PRODUCTION" | "LABORATORY";
+  sector_code: "PRODUCTION" | "LABORATORY" | "ADMIN";
   laboratory_profile: "capture" | null;
   created_at: Date | string;
 }

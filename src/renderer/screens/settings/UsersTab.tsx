@@ -156,7 +156,7 @@ function CreateUserModal({ onClose, onSaved, canCreateMaster }: { onClose: () =>
       username,
       password,
       role: accessProfile === "master" ? "master" : accessProfile === "supervisor" ? "supervisor" : accessProfile === "admin" ? "admin" : "operator",
-      sectorCode: laboratory ? "LABORATORY" : "PRODUCTION",
+      sectorCode: accessProfile === "master" ? "ADMIN" : laboratory ? "LABORATORY" : "PRODUCTION",
       laboratoryProfile: laboratory ? "capture" : undefined
     });
     setSaving(false);

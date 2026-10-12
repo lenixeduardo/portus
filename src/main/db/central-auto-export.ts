@@ -1,3 +1,4 @@
+import { getUserOperationalSector } from "../../shared/user-sector";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { centralQuery } from "./central-connection";
@@ -13,7 +14,7 @@ export async function runCentralAutoExport(folder: string): Promise<{ exported: 
   let exported=0;
   mkdirSync(folder, { recursive: true });
   const master=await centralQuery<{
-    username: string; sector_code: "PRODUCTION" | "LABORATORY";
+    username: string; sector_code: "PRODUCTION" | "LABORATORY" | "ADMIN";
   }>(
     "SELECT username,sector_code FROM users WHERE role='master' AND active ORDER BY id LIMIT 1"
   );
@@ -28,7 +29,7 @@ export async function runCentralAutoExport(folder: string): Promise<{ exported: 
   );
   for(const row of result.rows){
     try{
-      const history=await getCentralBatchHistory(Number(row.id),operator.username,operator.sector_code);
+      const history=await getCentralBatchHistory(Number(row.id),operator.username,getUserOperationalSector({ sectorCode: operator.sector_code }));
       if(!history) throw new Error("Histórico central ausente.");
       const safeCode=row.code.replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,120);
       const path=join(folder,"lote-"+Number(row.id)+"-"+safeCode+".csv");

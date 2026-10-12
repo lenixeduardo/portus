@@ -46,6 +46,11 @@ for (const path of [
   "database/migrations/012_unified_batch_traceability.sql",
   "database/migrations/013_central_catalog_user_metadata.sql",
   "database/migrations/014_station_profiles_audit_ledger.sql",
+  "database/migrations/015_master_administrative_sector.sql",
+  "database/cleanup-portus-test-data.ps1",
+  "database/portus-test-cleanup-dialog.ps1",
+  "database/maintenance/preview-test-batches.sql",
+  "database/maintenance/cleanup-test-batches.sql",
   "scripts/import-legacy-to-postgres.mjs"
 ]) requireFile(path);
 
