@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Printer, RotateCcw } from "lucide-react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 import type { User } from "../../shared/types";
+import { canReopenFinalizedBatch } from "../../shared/batch-permissions";
+import { Modal } from "../components/Modal";
 
 export function History({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
@@ -11,6 +13,8 @@ export function History({ user }: { user: User }) {
   const [exporting, setExporting] = useState(false);
   const [reportMenuOpen, setReportMenuOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+  const [reopenJustification, setReopenJustification] = useState("");
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [centralMode, setCentralMode] = useState(false);
@@ -128,34 +132,53 @@ export function History({ user }: { user: User }) {
     }
   }
 
+  function openReopenDialog() {
+    if (!selectedId || !history || history.batch.status !== "closed" ||
+        !canReopenFinalizedBatch(user.role) || reopening) return;
+    setReopenJustification("");
+    setError(null);
+    setReopenDialogOpen(true);
+  }
+
   async function handleReopen() {
-    if (!selectedId || !history || history.batch.status !== "closed") return;
-    const justification = window.prompt(`Justificativa obrigatória para reabrir o lote "${history.batch.code}" (mínimo 10 caracteres):`);
-    if (justification === null) return;
-    if (justification.trim().length < 10 || justification.trim().length > 1000) {
+    if (!selectedId || !history || history.batch.status !== "closed" ||
+        !canReopenFinalizedBatch(user.role) || reopening) return;
+
+    const justification = reopenJustification.trim();
+    if (justification.length < 10 || justification.length > 1000) {
       setError("Informe uma justificativa entre 10 e 1000 caracteres para reabrir o lote.");
       return;
     }
-    if (!confirm(`Confirmar reabertura do lote "${history.batch.code}"?`)) return;
 
+    const batchId = Number(selectedId);
     setReopening(true);
     setError(null);
-    const res = await window.api.central.batches.reopen(Number(selectedId), justification.trim());
-    setReopening(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
 
-    const refreshed = await window.api.central.history.getBatch(Number(selectedId));
-    if (refreshed.ok) {
-      setHistory(refreshed.data);
-    } else {
-      setHistory((current) => current ? { ...current, batch: res.data } : current);
+    try {
+      const res = await window.api.central.batches.reopen(batchId, justification);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+
+      // O banco já confirmou a reabertura. Uma falha de atualização visual
+      // não deve ocultar essa confirmação nem produzir rejeição não tratada.
+      const refreshed = await window.api.central.history.getBatch(batchId).catch(() => null);
+      if (refreshed?.ok) {
+        setHistory(refreshed.data);
+      } else {
+        setHistory((current) => current ? { ...current, batch: res.data } : current);
+      }
+      setBatches((current) => current.map((batch) => batch.id === res.data.id ? res.data : batch));
+      setReopenDialogOpen(false);
+      setReopenJustification("");
+      setExportMsg("Lote reaberto. Novas análises podem ser registradas antes de uma nova conclusão e finalização.");
+      setTimeout(() => setExportMsg(null), 5000);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Não foi possível reabrir o lote.");
+    } finally {
+      setReopening(false);
     }
-    setBatches((current) => current.map((batch) => batch.id === res.data.id ? res.data : batch));
-    setExportMsg("Lote reaberto. Novas análises podem ser registradas antes de uma nova conclusão e finalização.");
-    setTimeout(() => setExportMsg(null), 5000);
   }
 
   async function handlePrint() {
@@ -168,7 +191,7 @@ export function History({ user }: { user: User }) {
   }
 
   const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
-  const canReopenBatch = user.role === "supervisor" || user.role === "master";
+  const canReopenBatch = canReopenFinalizedBatch(user.role);
 
   return (
     <>
@@ -198,7 +221,7 @@ export function History({ user }: { user: User }) {
         {history && (
           <div className="history-toolbar-actions">
             {canReopenBatch && centralMode && history.batch.status === "closed" && (
-              <button onClick={handleReopen} disabled={reopening} className="secondary history-reopen-btn">
+              <button type="button" onClick={openReopenDialog} disabled={reopening} className="secondary history-reopen-btn">
                 <RotateCcw size={15} aria-hidden="true" />
                 {reopening ? "Reabrindo..." : "Reabrir lote"}
               </button>
@@ -321,6 +344,45 @@ export function History({ user }: { user: User }) {
             </div>
           )}
         </>
+      )}
+
+      {reopenDialogOpen && history && (
+        <Modal
+          title="Reabrir lote finalizado"
+          width={520}
+          onClose={() => { if (!reopening) setReopenDialogOpen(false); }}
+          footer={
+            <>
+              <button type="button" className="secondary" disabled={reopening}
+                onClick={() => setReopenDialogOpen(false)}>Cancelar</button>
+              <button type="button"
+                disabled={reopening || reopenJustification.trim().length < 10 || reopenJustification.trim().length > 1000}
+                onClick={() => void handleReopen()}>
+                {reopening ? "Reabrindo..." : "Confirmar reabertura"}
+              </button>
+            </>
+          }
+        >
+          <p style={{ marginBottom: 16 }}>
+            Reabrir o lote <strong>#{history.batch.code}</strong> permite iniciar um novo ciclo de análises.
+            As leituras e o histórico anterior serão preservados.
+          </p>
+          <div className="field">
+            <label htmlFor="reopen-batch-reason">Justificativa obrigatória</label>
+            <textarea
+              id="reopen-batch-reason"
+              rows={4}
+              maxLength={1000}
+              autoFocus
+              value={reopenJustification}
+              onChange={(event) => { setReopenJustification(event.target.value); setError(null); }}
+              placeholder="Informe o motivo da reabertura (mínimo 10 caracteres)."
+              style={{ width: "100%", resize: "vertical" }}
+            />
+            <small className="muted">{reopenJustification.trim().length}/1000 caracteres (mínimo 10)</small>
+          </div>
+          {error && <div className="error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
+        </Modal>
       )}
     </>
   );
