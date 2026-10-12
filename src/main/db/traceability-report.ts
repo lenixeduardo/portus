@@ -50,6 +50,21 @@ function auditLabel(event: BatchAuditEvent): string | null {
   }
 }
 
+/** Padroniza nomes de equipamentos no relatório, ignorando acentos e grafias de pH. */
+export function reportEquipmentName(name: string): string {
+  const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const key = normalized.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const known: Record<string, string> = {
+    ESPECTROFOTOMETRO: "Espectrofotometro",
+    BALANCA: "Balanca",
+    VISCOSIMETRO: "Viscosimetro",
+    PHMETRO: "pHmetro",
+    REFRATOMETRO: "Refratometro",
+    RESERVA: "RESERVA"
+  };
+  return known[key] ?? normalized;
+}
+
 export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
   const rows: TraceRow[] = [];
 
@@ -72,7 +87,7 @@ export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
       rows.push({
         at: reading.capturedAt,
         sector: sectorLabel(session.sectorCode),
-        event: reading.equipmentName,
+        event: reportEquipmentName(reading.equipmentName),
         result: reading.valueParsed ?? reading.valueRaw,
         responsible: session.operatorName ?? session.operatorLogin ?? "—",
         login: session.operatorLogin ?? session.operatorName ?? "—",
