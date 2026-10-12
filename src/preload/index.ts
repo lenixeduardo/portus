@@ -80,7 +80,9 @@ const api: SerialReaderApi = {
     exportCsv: (batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>> =>
       ipcRenderer.invoke(IPC.historyExportCsv, { batchId, filters }),
     printBatch: (batchId: number): Promise<ServiceResult<true>> =>
-      ipcRenderer.invoke(IPC.historyPrintBatch, { batchId })
+      ipcRenderer.invoke(IPC.historyPrintBatch, { batchId }),
+    exportPdf: (batchId: number): Promise<ServiceResult<true>> =>
+      ipcRenderer.invoke(IPC.historyExportPdf, { batchId })
   },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGetAll),
