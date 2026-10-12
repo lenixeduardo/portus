@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { app } from "electron";
 import type { BatchAuditEvent, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 
 interface TraceRow {
@@ -124,8 +127,29 @@ function actorFor(history: BatchHistory, actions: string[]): string {
   return event.actorLogin && event.actorLogin !== name ? name + " (" + event.actorLogin + ")" : name;
 }
 
-/** EPA Química em versão monocromática autocontida. */
+/** Usa o asset oficial EPA Química no PDF e na pré-visualização.
+ *  A imagem é embutida como data URI para funcionar em data: URLs offline,
+ *  inclusive no aplicativo Electron empacotado.
+ */
 function epaLogoSvg(): string {
+  const paths = app.isPackaged
+    ? [join(process.resourcesPath, "branding", "epa-logo.png")]
+    : [join(process.cwd(), "assets", "branding", "epa-logo.png")];
+
+  for (const file of paths) {
+    try {
+      const bytes = readFileSync(file);
+      const src = `data:image/png;base64,${bytes.toString("base64")}`;
+      return `<img src="${src}" alt="EPA Química — Química a serviço da vida, desde 1961" width="172" height="129" style="display:block;width:172px;height:auto;max-height:90px;object-fit:contain;object-position:left center" />`;
+    } catch {
+      // Relatórios existentes continuam imprimíveis sem o novo asset.
+    }
+  }
+  return fallbackEpaLogoSvg();
+}
+
+/** Compatibilidade com instalações antigas que ainda não possuem o PNG. */
+function fallbackEpaLogoSvg(): string {
   return '<svg xmlns="http://www.w3.org/2000/svg" width="172" height="84" viewBox="0 0 210 105">'
     + '<text x="104" y="13" font-size="10" font-family="Arial" text-anchor="middle" font-weight="bold">QUÍMICA A SERVIÇO DA VIDA</text>'
     + '<ellipse cx="103" cy="56" rx="100" ry="31" fill="none" stroke="#666" stroke-width="2" transform="rotate(-12 103 56)"/>'
@@ -134,7 +158,6 @@ function epaLogoSvg(): string {
     + '<text x="103" y="80" font-family="Arial" font-size="11" font-weight="bold" fill="white" text-anchor="middle">QUÍMICA</text>'
     + '<text x="103" y="102" font-family="Arial" font-size="10" text-anchor="middle" font-weight="bold">DESDE 1961</text></svg>';
 }
-
 export function buildBatchPrintHtml(history: BatchHistory): string {
   const rows = buildTraceabilityRows(history).filter(row => row.result !== "");
   const batch = history.batch;
