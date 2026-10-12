@@ -55,6 +55,11 @@ export const closeBatchSchema = z.object({
 
 export type CloseBatchInput = z.infer<typeof closeBatchSchema>;
 
+export const administrativeBatchSchema = closeBatchSchema.extend({
+  justification: z.string().trim().min(10, "Justificativa obrigatória (mínimo de 10 caracteres).").max(1000, "Justificativa deve ter no máximo 1000 caracteres.")
+});
+export type AdministrativeBatchInput = z.infer<typeof administrativeBatchSchema>;
+
 /**
  * Validação para criar lote
  */

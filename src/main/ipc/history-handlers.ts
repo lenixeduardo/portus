@@ -1,5 +1,6 @@
 import { getUserOperationalSector } from "../../shared/user-sector";
 import { BrowserWindow, dialog, ipcMain } from "electron";
+import { writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { IPC, type ServiceResult, type BatchHistory, type BatchWithProduct } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
@@ -47,6 +48,31 @@ async function printTraceabilityHtml(html: string): Promise<void> {
   }
 }
 
+async function exportTraceabilityPdf(html: string, suggestedName: string): Promise<boolean> {
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: "Exportar relatório em PDF",
+    defaultPath: suggestedName,
+    filters: [{ name: "PDF", extensions: ["pdf"] }]
+  });
+  if (canceled || !filePath) return false;
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true, contextIsolation: true }
+  });
+  try {
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const pdf = await win.webContents.printToPDF({
+      printBackground: true,
+      pageSize: "A4",
+      margins: { marginType: "none" }
+    });
+    await writeFile(filePath, pdf);
+    return true;
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
+
 export function registerHistoryHandlers(): void {
   ipcMain.handle(
     IPC.batchesListAll,
@@ -83,6 +109,23 @@ export function registerHistoryHandlers(): void {
           return { ok: true, data: true };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Não foi possível imprimir a folha do lote." };
+        }
+      }
+    )
+  );
+
+  ipcMain.handle(
+    IPC.historyExportPdf,
+    compose([requireAuth, validateInput(getBatchHistorySchema)])(
+      async (_e, input: z.infer<typeof getBatchHistorySchema>): Promise<ServiceResult<true>> => {
+        try {
+          const history = await loadHistoryForCurrentUser(input.batchId);
+          if (!history) return { ok: false, error: "Lote não encontrado." };
+          const safeCode = history.batch.code.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80);
+          const saved = await exportTraceabilityPdf(buildBatchPrintHtml(history), `relatorio-lote-${safeCode}.pdf`);
+          return saved ? { ok: true, data: true } : { ok: false, error: "Exportação cancelada." };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao exportar o relatório PDF." };
         }
       }
     )

@@ -9,6 +9,7 @@ export function History({ user }: { user: User }) {
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [reportMenuOpen, setReportMenuOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +104,7 @@ export function History({ user }: { user: User }) {
     }))
   ), [filteredSessions, history]);
 
-  async function handleExport() {
+  async function handleExport(format: "xlsx" | "pdf") {
     if (!selectedId) return;
     setExporting(true);
     setExportMsg(null);
@@ -114,23 +115,32 @@ export function History({ user }: { user: User }) {
       endDate: filterEndDate || undefined
     };
 
-    const res = await window.api.history.exportCsv(Number(selectedId), filters);
+    setReportMenuOpen(false);
+    const res = format === "pdf"
+      ? await window.api.history.exportPdf(Number(selectedId))
+      : await window.api.history.exportCsv(Number(selectedId), filters);
     setExporting(false);
     if (!res.ok) {
       setError(res.error);
     } else {
-      setExportMsg("Arquivo Excel (.xlsx) exportado com sucesso.");
+      setExportMsg(format === "pdf" ? "Relatório PDF salvo com sucesso." : "Relatório Excel (.xlsx) salvo com sucesso.");
       setTimeout(() => setExportMsg(null), 4000);
     }
   }
 
   async function handleReopen() {
     if (!selectedId || !history || history.batch.status !== "closed") return;
-    if (!confirm(`Reabrir o lote "${history.batch.code}"? O lote voltará para Em andamento e novas análises poderão ser registradas.`)) return;
+    const justification = window.prompt(`Justificativa obrigatória para reabrir o lote "${history.batch.code}" (mínimo 10 caracteres):`);
+    if (justification === null) return;
+    if (justification.trim().length < 10 || justification.trim().length > 1000) {
+      setError("Informe uma justificativa entre 10 e 1000 caracteres para reabrir o lote.");
+      return;
+    }
+    if (!confirm(`Confirmar reabertura do lote "${history.batch.code}"?`)) return;
 
     setReopening(true);
     setError(null);
-    const res = await window.api.central.batches.reopen(Number(selectedId));
+    const res = await window.api.central.batches.reopen(Number(selectedId), justification.trim());
     setReopening(false);
     if (!res.ok) {
       setError(res.error);
@@ -175,8 +185,8 @@ export function History({ user }: { user: User }) {
                 className={`batch-picker-item${selectedId === b.id ? " batch-picker-item--selected" : ""}`}
                 onClick={() => setSelectedId(selectedId === b.id ? "" : b.id)}
               >
-                <span className="batch-picker-code">#{b.code}</span>
-                <span className="batch-picker-name">{b.productName}</span>
+                <span className="batch-picker-code" title={b.code}>#{b.code}</span>
+                <span className="batch-picker-name" title={b.productName}>{b.productName}</span>
                 <span className={`chip ${b.status === "closed" ? "chip-gray" : b.completed ? "chip-blue" : "chip-green"}`}>
                   {b.status === "closed" ? "FINALIZADO" : b.completed ? "CONCLUÍDO" : "ABERTO"}
                 </span>
@@ -197,9 +207,17 @@ export function History({ user }: { user: User }) {
               <Printer size={15} aria-hidden="true" />
               {printing ? "Imprimindo..." : "Imprimir folha"}
             </button>
-            <button onClick={handleExport} disabled={exporting} className="export-btn">
-              {exporting ? "Exportando..." : "⬇ Exportar Excel"}
-            </button>
+            <div className="report-export-actions">
+              <button type="button" onClick={() => setReportMenuOpen((value) => !value)} disabled={exporting} className="export-btn" aria-expanded={reportMenuOpen} aria-haspopup="menu">
+                {exporting ? "Exportando..." : "Exportar relatório"}
+              </button>
+              {reportMenuOpen && (
+                <div className="report-export-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => void handleExport("pdf")}>Salvar PDF (.pdf)</button>
+                  <button type="button" role="menuitem" onClick={() => void handleExport("xlsx")}>Salvar Excel (.xlsx)</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

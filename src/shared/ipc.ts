@@ -49,6 +49,7 @@ export const IPC = {
   historyGetBatch: "history:get-batch",
   historyExportCsv: "history:export-csv",
   historyPrintBatch: "history:print-batch",
+  historyExportPdf: "history:export-pdf",
   settingsSelectExportFolder: "settings:select-export-folder",
   settingsSelectBackupFolder: "settings:select-backup-folder",
   settingsBackupNow: "settings:backup-now",
@@ -346,6 +347,7 @@ export interface SerialReaderApi {
     getBatch(batchId: number): Promise<ServiceResult<BatchHistory>>;
     exportCsv(batchId: number, filters?: HistoryFilterInput): Promise<ServiceResult<true>>;
     printBatch(batchId: number): Promise<ServiceResult<true>>;
+    exportPdf(batchId: number): Promise<ServiceResult<true>>;
   };
   settings: {
     getAll(): Promise<AppSettings>;
@@ -394,9 +396,9 @@ export interface SerialReaderApi {
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;
       confirmLaboratory(id: number): Promise<ServiceResult<BatchWithProduct>>;
       setCompleted(id: number, completed: boolean): Promise<ServiceResult<BatchWithProduct>>;
-      finalize(id: number): Promise<ServiceResult<BatchWithProduct>>;
-      forceClose(id: number): Promise<ServiceResult<BatchWithProduct>>;
-      reopen(id: number): Promise<ServiceResult<BatchWithProduct>>;
+      finalize(id: number, justification: string): Promise<ServiceResult<BatchWithProduct>>;
+      forceClose(id: number, justification: string): Promise<ServiceResult<BatchWithProduct>>;
+      reopen(id: number, justification: string): Promise<ServiceResult<BatchWithProduct>>;
     };
     history: {
       getBatch(id: number): Promise<ServiceResult<BatchHistory>>;
