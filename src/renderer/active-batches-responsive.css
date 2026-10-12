@@ -347,11 +347,12 @@
   }
 }
 
-/* Truncamento apenas visual: o código completo permanece nos dados e relatórios. */
+/* Mostrar integralmente o código e o produto, mesmo em janelas menores. */
 .batch-row__title, .batch-row__title > div, .batch-row__identity { min-width: 0; }
 .batch-row__title .batch-code, .batch-row__title .batch-recipe {
-  display: block; max-width: 100%; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
+  display: block; max-width: 100%;
+  overflow: visible; text-overflow: clip;
+  white-space: normal; overflow-wrap: anywhere;
 }
 .batch-picker-item { min-width: 0; }
 .batch-picker-code, .batch-picker-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
