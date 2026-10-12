@@ -175,7 +175,7 @@ export function App() {
             <div className="topbar__telemetry">
               <DatabaseStatusBadge status={databaseStatus} user={user} />
               <div className="topbar__separator" aria-hidden="true" />
-              <ViewStatus sectorCode={user.sectorCode} />
+              <ViewStatus sectorCode={user.sectorCode} role={user.role} />
               <div className="topbar__separator" aria-hidden="true" />
               <div className="scanner-status" title="Status do leitor de código de barras">
                 <ScanLine size={16} />
@@ -223,8 +223,8 @@ export function App() {
   );
 }
 
-function ViewStatus({ sectorCode }: { sectorCode: User["sectorCode"] }) {
-  const label = sectorCode === "ADMIN" ? "Admin" : sectorCode === "LABORATORY" ? "Laboratório" : "Produção";
+function ViewStatus({ sectorCode, role }: { sectorCode: User["sectorCode"]; role?: User["role"] }) {
+  const label = role === "master" || role === "admin" || sectorCode === "ADMIN" ? "Admin" : sectorCode === "LABORATORY" ? "Laboratório" : "Produção";
 
   return (
     <div className="view-status" role="status" title={`View ativa: ${label}`}>
