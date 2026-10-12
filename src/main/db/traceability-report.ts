@@ -200,11 +200,11 @@ body { background:#fff; color:#111; margin:0; font:10pt Arial,Helvetica,sans-ser
 @media print { h1 { font-size:21pt; } }
 header { display:grid; grid-template-columns:172px minmax(0,1fr); align-items:center; gap:20px; border-bottom:1.5px solid #111; padding:0 24px 12px 0; margin-bottom:15px; min-height:90px; max-width:100%; }
 h1 { margin:0; min-width:0; padding:0; font-size:clamp(16pt, 2.7vw, 21pt); font-weight:800; text-align:right; overflow-wrap:normal; }
-.identity { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); border:1px solid #bbb; align-items:center; padding:14px; margin-bottom:18px; }
+.identity { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); border:1px solid #bbb; align-items:center; padding:14px; margin-bottom:18px; }
 .product { min-width:0; padding-right:14px; font-size:13pt; overflow-wrap:anywhere; }
 .label { display:block; font-size:10pt; margin-bottom:10px; }
-.barcode { border-left:1px solid #aaa; padding-left:18px; text-align:center; min-width:0; }
-.barcode svg { width:100%; height:44px; display:block; }
+.barcode { border-left:1px solid #aaa; padding:0 5px 0 14px; text-align:center; min-width:0; width:100%; }
+.barcode svg { width:100%; max-width:none; height:52px; display:block; }
 .code { font-size:12pt; margin-top:8px; overflow-wrap:anywhere; }
 table { width:100%; border-collapse:collapse; table-layout:fixed; }
 th,td { padding:12px 9px; border:1px solid #bbb; word-break:break-word; text-align:left; }
