@@ -72,3 +72,16 @@ async function saveCentralProduct(
 export async function deleteCentralProduct(id: number, username: string): Promise<void> {
   await centralQuery("SELECT portus_delete_product($1, $2)", [id, username]);
 }
+
+/** Código cadastrado do produto: exatamente os 12 dígitos iniciais da etiqueta. */
+export async function findCentralProductByBarcodePrefix(prefix: string): Promise<Product | null> {
+  if (!/^\d{12}$/.test(prefix)) throw new Error("Prefixo do produto inválido (12 dígitos).");
+  const products = await listCentralProducts();
+  const matched = products.filter(product =>
+    [product.description, product.name].some(value =>
+      typeof value === "string" && value.replace(/\D/g, "").slice(0, 12) === prefix
+    )
+  );
+  if (matched.length > 1) throw new Error("Código de produto duplicado no cadastro central. Solicite correção.");
+  return matched[0] ?? null;
+}
