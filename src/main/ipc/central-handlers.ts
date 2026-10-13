@@ -156,7 +156,7 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (!canSetBatchCompleted(user.role, getUserOperationalSector(user), input.completed)) {
-          return { ok: false, error: "Somente operadores podem concluir lotes; apenas o Laboratório pode desmarcar a conclusão." };
+          return { ok: false, error: "Somente operadores autorizados ou Master podem alterar a conclusão." };
         }
           try {
           return {
@@ -177,7 +177,7 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (!canFinalizeBatch(user.role, getUserOperationalSector(user))) {
-          return { ok: false, error: "Somente a credencial Laboratório pode finalizar o lote." };
+          return { ok: false, error: "Somente Laboratório ou Master pode finalizar o lote." };
         }
           try {
           return {
