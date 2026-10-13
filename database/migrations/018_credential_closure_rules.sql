@@ -14,10 +14,10 @@ DECLARE
 BEGIN
   SELECT role INTO v_role FROM users WHERE id = p_user_id AND active;
   SELECT code INTO v_sector FROM sectors WHERE id = p_sector_id AND active;
-  IF v_role <> 'operator' OR v_sector NOT IN ('PRODUCTION', 'LABORATORY') THEN
+  IF v_role IS NULL OR (v_role <> 'master' AND (v_role <> 'operator' OR v_sector NOT IN ('PRODUCTION', 'LABORATORY'))) THEN
     RAISE EXCEPTION 'Somente operadores de Produção e Laboratório alteram a conclusão' USING ERRCODE = '42501';
   END IF;
-  IF NOT p_completed AND v_sector <> 'LABORATORY' THEN
+  IF NOT p_completed AND v_sector <> 'LABORATORY' AND v_role <> 'master' THEN
     RAISE EXCEPTION 'Somente o Laboratório pode desmarcar Lote concluído' USING ERRCODE = '42501';
   END IF;
   PERFORM portus_assert_permission(p_user_id, p_application_id, p_sector_id, 'read');
@@ -53,8 +53,8 @@ DECLARE
 BEGIN
   SELECT role INTO v_role FROM users WHERE id = p_user_id AND active;
   SELECT code INTO v_sector FROM sectors WHERE id = p_sector_id AND active;
-  IF v_role <> 'operator' OR v_sector <> 'LABORATORY' THEN
-    RAISE EXCEPTION 'Somente a credencial Laboratório pode finalizar o lote' USING ERRCODE = '42501';
+  IF v_role IS NULL OR (v_role <> 'master' AND (v_role <> 'operator' OR v_sector <> 'LABORATORY')) THEN
+    RAISE EXCEPTION 'Somente Laboratório ou Master pode finalizar o lote' USING ERRCODE = '42501';
   END IF;
   PERFORM portus_assert_permission(p_user_id, p_application_id, p_sector_id, 'read');
   SELECT * INTO v_before FROM batches WHERE id = p_batch_id FOR UPDATE;
