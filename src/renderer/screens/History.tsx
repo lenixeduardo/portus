@@ -120,15 +120,20 @@ export function History({ user }: { user: User }) {
     };
 
     setReportMenuOpen(false);
-    const res = format === "pdf"
-      ? await window.api.history.exportPdf(Number(selectedId))
-      : await window.api.history.exportCsv(Number(selectedId), filters);
-    setExporting(false);
-    if (!res.ok) {
-      setError(res.error);
-    } else {
-      setExportMsg(format === "pdf" ? "Relatório PDF salvo com sucesso." : "Relatório Excel (.xlsx) salvo com sucesso.");
-      setTimeout(() => setExportMsg(null), 4000);
+    try {
+      const res = format === "pdf"
+        ? await window.api.history.exportPdf(Number(selectedId))
+        : await window.api.history.exportCsv(Number(selectedId), filters);
+      if (!res.ok) {
+        if (res.error !== "Exportação cancelada.") setError(res.error);
+      } else {
+        setExportMsg(format === "pdf" ? "Relatório PDF salvo com sucesso." : "Relatório Excel (.xlsx) salvo com sucesso.");
+        setTimeout(() => setExportMsg(null), 4000);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Falha ao exportar relatório.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -185,9 +190,14 @@ export function History({ user }: { user: User }) {
     if (!selectedId) return;
     setPrinting(true);
     setError(null);
-    const res = await window.api.history.printBatch(Number(selectedId));
-    setPrinting(false);
-    if (!res.ok) setError(res.error);
+    try {
+      const res = await window.api.history.printBatch(Number(selectedId));
+      if (!res.ok) setError(res.error);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Falha ao abrir a pré-visualização do relatório.");
+    } finally {
+      setPrinting(false);
+    }
   }
 
   const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
