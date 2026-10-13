@@ -216,6 +216,7 @@ export function History({ user }: { user: User }) {
               <button
                 key={b.id}
                 className={`batch-picker-item${selectedId === b.id ? " batch-picker-item--selected" : ""}`}
+                disabled={reopening}
                 onClick={() => setSelectedId(selectedId === b.id ? "" : b.id)}
               >
                 <span className="batch-picker-code" title={b.code}>#{b.code}</span>
