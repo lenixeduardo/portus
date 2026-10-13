@@ -24,17 +24,19 @@ function Save-PortusUtilityPassword(
     return
   }
   New-Item -ItemType Directory -Path (Split-Path $path -Parent) -Force | Out-Null
-  $secure = ConvertTo-SecureString $Password -AsPlainText -Force
   $temporary = "$path.$([Guid]::NewGuid().ToString('N')).tmp"
   $backup = "$temporary.backup"
+  $plain = [Text.Encoding]::UTF8.GetBytes($Password)
   try {
-    # Sem -Key: ConvertFrom-SecureString usa DPAPI no Windows.
-    $encrypted = ConvertFrom-SecureString $secure
-    [IO.File]::WriteAllText($temporary,$encrypted,[Text.UTF8Encoding]::new($false))
+    # Windows DPAPI scoped to the current Windows account; avoids PowerShell module autoload failures.
+    $encrypted = [Security.Cryptography.ProtectedData]::Protect(
+      $plain, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+    $payload = 'dpapi:' + [Convert]::ToBase64String($encrypted)
+    [IO.File]::WriteAllText($temporary, $payload, [Text.UTF8Encoding]::new($false))
     if (Test-Path -LiteralPath $path) { [IO.File]::Replace($temporary,$path,$backup) }
     else { [IO.File]::Move($temporary,$path) }
   } finally {
-    $secure.Dispose()
+    [Array]::Clear($plain, 0, $plain.Length)
     foreach ($file in @($temporary,$backup)) {
       if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
     }
@@ -47,7 +49,16 @@ function Read-PortusUtilityPassword(
 ) {
   $path = Get-PortusUtilityCredentialPath $DatabaseHost $Port $DatabaseName $AdminUser $CredentialRoot
   if (-not (Test-Path -LiteralPath $path)) { return '' }
-  $secure = ConvertTo-SecureString ([IO.File]::ReadAllText($path,[Text.Encoding]::UTF8))
+  $payload = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+  if ($payload.StartsWith('dpapi:')) {
+    $encrypted = [Convert]::FromBase64String($payload.Substring(6))
+    $plain = [Security.Cryptography.ProtectedData]::Unprotect(
+      $encrypted, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+    try { return [Text.Encoding]::UTF8.GetString($plain) }
+    finally { [Array]::Clear($plain, 0, $plain.Length) }
+  }
+  # Read legacy ConvertFrom-SecureString DPAPI files without forcing a credentials migration.
+  $secure = ConvertTo-SecureString $payload
   $pointer = [IntPtr]::Zero
   try {
     $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
