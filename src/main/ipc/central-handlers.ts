@@ -1,6 +1,7 @@
 import { getUserOperationalSector } from "../../shared/user-sector";
 import { canReopenFinalizedBatch, canSetBatchCompleted, canFinalizeBatch } from "../../shared/batch-permissions";
 import { ipcMain } from "electron";
+import { hostname } from "node:os";
 import { z } from "zod";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
 import { getCurrentUser } from "../auth/auth-service";
@@ -31,7 +32,17 @@ async function auditAdministrativeReason(userId: number, batchId: number, action
   await centralQuery(
     `INSERT INTO portus_audit_log (actor_user_id, station_code, action, resource_type, resource_id, details)
       VALUES ($1, $2, $3, 'batch', $4, jsonb_build_object('justification', $5))`,
-    [userId, "PORTUS", action, String(batchId), justification]
+    [userId, hostname(), action, String(batchId), justification]
+  );
+}
+
+
+// Registra a estação que executou o encerramento legado.
+async function auditClosingStation(userId: number, batchId: number): Promise<void> {
+  await centralQuery(
+    `INSERT INTO portus_audit_log (actor_user_id, station_code, action, resource_type, resource_id, details)
+     VALUES ($1, $2, 'BATCH_CLOSED', 'batch', $3, '{}'::jsonb)`,
+    [userId, hostname(), String(batchId)]
   );
 }
 
@@ -177,7 +188,9 @@ export function registerCentralHandlers(): void {
           return { ok: false, error: "Somente a visão Produção pode registrar esta confirmação." };
         }
         try {
-          return { ok: true, data: await confirmCentralProductionClose(input.id, user.username) };
+          const batch = await confirmCentralProductionClose(input.id, user.username);
+          if (batch.status === "closed") await auditClosingStation(user.id, input.id).catch(error => console.error("Falha ao registrar estação:", error));
+          return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao confirmar fechamento da Produção." };
         }
@@ -192,7 +205,9 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
           try {
-          return { ok: true, data: await confirmCentralLaboratoryClose(input.id, user.username) };
+          const batch = await confirmCentralLaboratoryClose(input.id, user.username);
+          if (batch.status === "closed") await auditClosingStation(user.id, input.id).catch(error => console.error("Falha ao registrar estação:", error));
+          return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao confirmar fechamento do Laboratório." };
         }

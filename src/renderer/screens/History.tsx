@@ -296,10 +296,11 @@ export function History({ user }: { user: User }) {
                 {history.auditEvents
                   .filter((event) => auditLabel(event.action))
                   .map((event) => (
-                    <div key={event.id} style={{ display: "grid", gridTemplateColumns: "170px 1fr 220px", gap: 12, alignItems: "center" }}>
+                    <div key={event.id} style={{ display: "grid", gridTemplateColumns: "170px 1fr 220px minmax(150px, 1fr)", gap: 12, alignItems: "center" }}>
                       <span className="mono muted">{formatDate(event.timestamp)}</span>
                       <strong>{auditLabel(event.action)}</strong>
                       <span>{event.actorName ?? event.actorLogin ?? "—"}{event.actorLogin && event.actorName !== event.actorLogin ? ` · ${event.actorLogin}` : ""}</span>
+                      <span className="mono muted">{["BATCH_FINALIZED", "BATCH_CLOSED", "MASTER_BATCH_CLOSED"].includes(event.action) ? (event.stationCode ? `Máquina: ${event.stationCode}` : "Máquina: não registrada") : ""}</span>
                     </div>
                   ))}
               </div>

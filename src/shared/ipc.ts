@@ -166,6 +166,7 @@ export interface ReadingRecord {
 
 export interface BatchAuditEvent {
   id: number;
+  stationCode?: string;
   action: string;
   timestamp: string;
   actorName?: string;
