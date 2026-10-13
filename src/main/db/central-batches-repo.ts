@@ -275,12 +275,13 @@ export async function forceCentralBatchClose(id: number, username: string): Prom
 export async function reopenCentralBatch(
   id: number,
   username: string,
-  sectorCode: "PRODUCTION" | "LABORATORY"
+  sectorCode: "PRODUCTION" | "LABORATORY",
+  justification: string
 ): Promise<BatchWithProduct> {
   const context = await resolveContext(username, sectorCode);
   const result = await centralQuery<{ id: number }>(
-    "SELECT id FROM master_reopen_batch($1, $2, $3, $4)",
-    [id, context.user_id, context.application_id, context.sector_id]
+    "SELECT id FROM master_reopen_batch($1, $2, $3, $4, $5)",
+    [id, context.user_id, context.application_id, context.sector_id, justification]
   );
   return reloadCentralBatch(result.rows[0]?.id ?? id);
 }
