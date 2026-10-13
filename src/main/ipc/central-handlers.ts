@@ -1,5 +1,5 @@
 import { getUserOperationalSector } from "../../shared/user-sector";
-import { canReopenFinalizedBatch } from "../../shared/batch-permissions";
+import { canReopenFinalizedBatch, canSetBatchCompleted, canFinalizeBatch } from "../../shared/batch-permissions";
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type BatchInput, type BatchWithProduct, type ServiceResult } from "../../shared/ipc";
@@ -131,8 +131,8 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number; completed: boolean }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
-        if (user.role === "supervisor") {
-          return { ok: false, error: "Supervisor não altera a conclusão operacional do lote." };
+        if (!canSetBatchCompleted(user.role, getUserOperationalSector(user), input.completed)) {
+          return { ok: false, error: "Somente operadores podem concluir lotes; apenas o Laboratório pode desmarcar a conclusão." };
         }
           try {
           return {
@@ -152,8 +152,8 @@ export function registerCentralHandlers(): void {
       async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
-        if (user.role !== "supervisor" && user.role !== "master") {
-          return { ok: false, error: "Somente Supervisor ou Master podem finalizar o lote." };
+        if (!canFinalizeBatch(user.role, getUserOperationalSector(user))) {
+          return { ok: false, error: "Somente a credencial Laboratório pode finalizar o lote." };
         }
           try {
           return {
@@ -225,10 +225,10 @@ export function registerCentralHandlers(): void {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (!canReopenFinalizedBatch(user.role)) {
-          return { ok: false, error: "Somente Admin, Supervisor ou Master podem reabrir um lote finalizado." };
+          return { ok: false, error: "Somente Supervisor ou Master podem reabrir um lote finalizado." };
         }
           try {
-          const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user));
+          const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user), input.justification);
           await auditAdministrativeReason(user.id, input.id, "BATCH_REOPENED", input.justification);
           return { ok: true, data: batch };
         } catch (error) {
