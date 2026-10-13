@@ -1,4 +1,6 @@
 # Senha PostgreSQL do utilitario, protegida por DPAPI do usuario Windows.
+# Windows PowerShell 5.1 loads ProtectedData from System.Security on demand.
+Add-Type -AssemblyName System.Security -ErrorAction Stop
 function Get-PortusUtilityCredentialPath(
   [string]$DatabaseHost, [string]$Port, [string]$DatabaseName,
   [string]$AdminUser, [string]$CredentialRoot = ''
