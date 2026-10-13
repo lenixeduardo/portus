@@ -36,15 +36,14 @@ export interface CentralCaptureBatchState {
   status: "open" | "closed";
   productionClosed: boolean;
   laboratoryClosed: boolean;
+  completed: boolean;
 }
 
 export function isSectorCaptureClosed(
   _batch: CentralCaptureBatchState,
   _sectorCode: "PRODUCTION" | "LABORATORY"
 ): boolean {
-  // Regra legada: confirmações setoriais não bloqueiam mais leituras.
-  // O lote único aceita capturas enquanto status=open.
-  return false;
+  return _batch.status !== "open" || (_sectorCode === "PRODUCTION" && _batch.completed);
 }
 
 export async function getCentralBatchById(batchId: number): Promise<CentralCaptureBatchState | null> {
@@ -53,8 +52,9 @@ export async function getCentralBatchById(batchId: number): Promise<CentralCaptu
     status: "open" | "closed";
     production_closed: boolean;
     laboratory_closed: boolean;
+    completed: boolean;
   }>(
-    "SELECT id, status, production_closed, laboratory_closed FROM batches WHERE id = $1",
+    "SELECT id, status, production_closed, laboratory_closed, completed FROM batches WHERE id = $1",
     [batchId]
   );
   const row = result.rows[0];
@@ -62,7 +62,8 @@ export async function getCentralBatchById(batchId: number): Promise<CentralCaptu
     id: row.id,
     status: row.status,
     productionClosed: row.production_closed,
-    laboratoryClosed: row.laboratory_closed
+    laboratoryClosed: row.laboratory_closed,
+    completed: row.completed
   } : null;
 }
 
@@ -103,11 +104,12 @@ export async function createCentralCaptureSession(
        FROM batches b
       WHERE b.id = $1
         AND b.status = 'open'
+        AND (NOT b.completed OR $2 <> (SELECT id FROM sectors WHERE code = 'PRODUCTION'))
      RETURNING id, batch_id, started_at, ended_at, timeout_seconds, status`,
     [batchId, context.sector_id, stationId, context.application_id, context.user_id, timeoutSeconds]
   );
   const row = result.rows[0];
-  if (!row) throw new Error("O lote não está aberto para novas leituras.");
+  if (!row) throw new Error("Lote concluído ou finalizado: novas leituras da Produção estão bloqueadas.");
   return {
     id: row.id,
     batchId: row.batch_id,
