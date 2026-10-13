@@ -82,7 +82,7 @@ export function registerBatchesHandlers(): void {
       async (_e, input: CloseBatchInput): Promise<ServiceResult<true>> => {
         const user = current();
         if (!canFinalizeBatch(user.role, getUserOperationalSector(user))) {
-          return { ok: false, error: "Somente a credencial Laboratório pode finalizar lotes." };
+          return { ok: false, error: "Somente Laboratório ou Master pode finalizar lotes." };
         }
         try {
           await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user));
