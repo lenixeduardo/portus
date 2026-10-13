@@ -6,8 +6,7 @@ import { IPC, type ServiceResult, type BatchHistory, type BatchWithProduct } fro
 import { getCurrentUser } from "../auth/auth-service";
 import { getCentralBatchHistory } from "../db/central-history-repo";
 import { listCentralAllBatches } from "../db/central-batches-repo";
-import { buildCsvContent } from "../db/central-report-content";
-import { writeFormattedXlsx } from "../db/excel-report";
+import { writeBatchReportXlsx } from "../db/excel-report";
 import { buildBatchPrintHtml } from "../db/traceability-report";
 import { compose, requireAuth, validateInput } from "./middleware";
 
@@ -226,7 +225,7 @@ export function registerHistoryHandlers(): void {
         if (canceled || !filePath) return { ok: false, error: "Exportação cancelada." };
 
         try {
-          writeFormattedXlsx(filePath, buildCsvContent(history));
+          writeBatchReportXlsx(filePath, history);
           return { ok: true, data: true };
         } catch (err) {
           return { ok: false, error: `Erro ao salvar arquivo: ${String(err)}` };

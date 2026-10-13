@@ -26,3 +26,9 @@ nsis:
   installerHeaderIcon: build/icon.ico
   include: build/installer.nsh
   runAfterFinish: true
+
+extraResources:
+  - from: assets/branding
+    to: branding
+    filter:
+      - "**/*"
