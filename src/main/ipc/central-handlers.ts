@@ -23,7 +23,7 @@ import {
   reopenCentralBatch,
   setCentralBatchCompleted
 } from "../db/central-batches-repo";
-import { getCentralProduct } from "../db/central-products-repo";
+import { getCentralProduct, findCentralProductByBarcodePrefix } from "../db/central-products-repo";
 import { getCentralBatchHistory } from "../db/central-history-repo";
 import { administrativeBatchSchema, closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
@@ -124,9 +124,21 @@ export function registerCentralHandlers(): void {
           if (user.role === "supervisor") {
           return { ok: false, error: "Supervisor não abre lotes operacionais." };
         }
-        const product = await getCentralProduct(input.productId);
-        if (!product) return { ok: false, error: "Produto não encontrado no catálogo PostgreSQL." };
         try {
+          const scanned = input.barcodeValue?.trim();
+          let product = await getCentralProduct(input.productId);
+          if (scanned) {
+            const digits = scanned.replace(/\\D/g, "");
+            if (!/^\\d{16}$/.test(digits)) {
+              return { ok: false, error: "Etiqueta inválida: esperado código de produto (12 dígitos) e lote (4 dígitos)." };
+            }
+            const identified = await findCentralProductByBarcodePrefix(digits.slice(0, 12));
+            if (!identified) return { ok: false, error: "Produto não localizado pelo código de barras. Solicite o cadastro do código no catálogo central." };
+            if (product?.id !== identified.id) {
+              return { ok: false, error: "Produto divergente do código lido. A criação foi bloqueada." };
+            }
+          }
+          if (!product) return { ok: false, error: "Produto não encontrado no catálogo PostgreSQL." };
           const code = input.code?.trim() || `CENTRAL-${Date.now()}`;
           return { ok: true, data: await openCentralBatch(product.name, product.description, code, user.username, getUserOperationalSector(user)) };
         } catch (error) {
