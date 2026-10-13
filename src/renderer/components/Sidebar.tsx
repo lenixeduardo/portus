@@ -38,7 +38,7 @@ export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: 
             return (
               <a
                 key={item.key}
-                href="#"
+                href="#" role="button"
                 className={current === item.key ? "active" : ""}
                 onClick={(e) => {
                   e.preventDefault();

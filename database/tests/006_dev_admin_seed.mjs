@@ -19,7 +19,7 @@ try {
   const admin = accounts.rows[0];
   assert.equal(admin.username, "admin");
   assert.equal(admin.role, "master");
-  assert.equal(admin.sector_code, "PRODUCTION");
+  assert.equal(admin.sector_code, "ADMIN");
   assert.equal(admin.active, true);
   assert.notEqual(admin.password_hash, "admin", "Senha não pode ser armazenada em texto puro");
   assert.match(admin.password_hash, /^\$2[ab]\$12\$/);

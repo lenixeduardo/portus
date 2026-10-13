@@ -157,7 +157,7 @@ Escopo: execução das verificações existentes e revisão de interface/IPC/cap
 ## Backlog / Ideias
 - [ ] Auto-update via `electron-updater`
 - [x] Backup automático do SQLite
-- [ ] Relatório PDF do lote
+- [x] Relatório PDF do lote (exportação PDF e pré-visualização de impressão implementadas em `src/main/ipc/history-handlers.ts`)
 - [x] Tema escuro industrial
 - [x] Tema claro opcional
 - [x] Integração com leitor de código de barras para código de lote
