@@ -116,11 +116,21 @@ export async function getCentralBatchHistory(
     actor_name: string | null;
     actor_login: string | null;
     sector_code: "PRODUCTION" | "LABORATORY" | null;
+    station_code: string | null;
   }>(
     `SELECT bh.id, bh.action, bh.created_at,
             COALESCE(u.display_name, u.username) AS actor_name,
             u.username AS actor_login,
-            s.code AS sector_code
+            s.code AS sector_code,
+            (SELECT al.station_code FROM portus_audit_log al
+              WHERE al.resource_type = 'batch'
+                AND al.resource_id = bh.batch_id::text
+                AND al.actor_user_id = bh.user_id
+                AND al.action = bh.action
+                AND al.created_at BETWEEN bh.created_at - INTERVAL '5 seconds'
+                                      AND bh.created_at + INTERVAL '2 minutes'
+              ORDER BY ABS(EXTRACT(EPOCH FROM (al.created_at - bh.created_at)))
+              LIMIT 1) AS station_code
        FROM batch_history bh
        LEFT JOIN users u ON u.id = bh.user_id
        LEFT JOIN sectors s ON s.id = bh.sector_id
@@ -135,7 +145,8 @@ export async function getCentralBatchHistory(
     timestamp: toCentralTimestamp(row.created_at),
     actorName: row.actor_name ?? undefined,
     actorLogin: row.actor_login ?? undefined,
-    sectorCode: row.sector_code ?? undefined
+    sectorCode: row.sector_code ?? undefined,
+    stationCode: row.station_code ?? undefined
   }));
 
   return { batch, sessions: Array.from(sessions.values()), auditEvents };
