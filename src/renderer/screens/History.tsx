@@ -300,7 +300,7 @@ export function History({ user }: { user: User }) {
                       <span className="mono muted">{formatDate(event.timestamp)}</span>
                       <strong>{auditLabel(event.action)}</strong>
                       <span>{event.actorName ?? event.actorLogin ?? "—"}{event.actorLogin && event.actorName !== event.actorLogin ? ` · ${event.actorLogin}` : ""}</span>
-                      <span className="mono muted">{event.stationCode ? `Máquina: ${event.stationCode}` : "Máquina: não registrada"}</span>
+                      <span className="mono muted">{["BATCH_FINALIZED", "BATCH_CLOSED", "MASTER_BATCH_CLOSED"].includes(event.action) ? (event.stationCode ? `Máquina: ${event.stationCode}` : "Máquina: não registrada") : ""}</span>
                     </div>
                   ))}
               </div>
