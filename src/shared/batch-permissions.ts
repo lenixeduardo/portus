@@ -7,10 +7,10 @@ export function canReopenFinalizedBatch(role: UserRole): boolean {
 
 /** Operadores concluem lotes; somente Laboratório pode revogar a conclusão. */
 export function canSetBatchCompleted(role: UserRole, sector: string, completed: boolean): boolean {
-  return role === "operator" &&
+  return role === "master" || (role === "operator" &&
     (sector === "PRODUCTION" || sector === "LABORATORY") &&
-    (completed || sector === "LABORATORY");
+    (completed || sector === "LABORATORY"));
 }
 export function canFinalizeBatch(role: UserRole, sector: string): boolean {
-  return role === "operator" && sector === "LABORATORY";
+  return role === "master" || (role === "operator" && sector === "LABORATORY");
 }
