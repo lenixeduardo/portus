@@ -29,7 +29,7 @@ describe("finalização supervisionada de lote", () => {
   });
 
   it("usa a finalização supervisionada no dashboard", () => {
-    expect(dashboard).toContain("window.api.central.batches.finalize(b.id)");
+    expect(dashboard).toContain("window.api.central.batches.finalize(b.id, justification)");
     expect(dashboard).toContain("Lote concluído");
     expect(dashboard).not.toContain("window.api.central.batches.forceClose(b.id)");
   });

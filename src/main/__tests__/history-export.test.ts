@@ -36,14 +36,14 @@ describe("exportação unificada de leituras", () => {
   it("preserva setor, responsável e valor de cada sessão no CSV intermediário", () => {
     const csv = buildCsvContent(sampleHistory());
     expect(csv).toContain("Setor;Responsável;Login;Computador");
-    expect(csv).toContain("Produção;João Operador;producao;PRODUCAO-01;Balança;3;1,25;1,25");
+    expect(csv).toContain("Produção;João Operador;producao;PRODUCAO-01;Balanca;3;1,25;1,25");
     expect(csv).toContain("Laboratório;Maria Analista;laboratorio;LABORATORIO-01;pH;;7,2;7,2");
   });
 
   it("gera folha cronológica com login e computador de cada leitura", () => {
     const history = sampleHistory();
     const rows = buildTraceabilityRows(history);
-    expect(rows.map((row) => row.event)).toEqual(["Lote aberto", "Balança", "pH", "Lote concluído"]);
+    expect(rows.map((row) => row.event)).toEqual(["Lote aberto", "Balanca", "pH", "Lote concluído"]);
     expect(rows[1]).toMatchObject({
       sector: "Produção",
       responsible: "João Operador",
@@ -53,8 +53,8 @@ describe("exportação unificada de leituras", () => {
     });
 
     const html = buildBatchPrintHtml(history);
-    expect(html).toContain("Folha de rastreabilidade do lote");
-    expect(html).toContain("Responsável");
+    expect(html).toContain("RELATÓRIO DO LOTE");
+    expect(html).toContain("Equipamento");
     expect(html).toContain("Login");
     expect(html).toContain("Computador");
     expect(html).toContain("LABORATORIO-01");

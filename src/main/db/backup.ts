@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
-import { execFile } from "node:child_process";
+import { execFile, type ExecFileException } from "node:child_process";
 import { findPostgresBin } from "../setup/initial-setup-service";
 import { getCentralDatabaseUrl } from "./central-connection";
 import { join } from "node:path";
@@ -51,7 +51,8 @@ async function performBackup(
     // Mesmo duas operações terminadas no mesmo milissegundo têm destinos distintos.
     lastBackupTimestamp = Math.max(Date.now(), lastBackupTimestamp + 1);
     backupPath = join(backupFolder, `${BACKUP_PREFIX}${localTimestamp(new Date(lastBackupTimestamp))}${BACKUP_SUFFIX}`);
-    await new Promise<void>((resolve, reject) => execFile(executable, ["--format=custom", "--no-owner", "--no-acl", "--file", backupPath], {
+    const dumpPath: string = backupPath;
+    await new Promise<void>((resolve, reject) => execFile(executable, ["--format=custom", "--no-owner", "--no-acl", "--file", dumpPath], {
       env: {
         ...process.env,
         PGHOST: database.hostname,
@@ -62,7 +63,7 @@ async function performBackup(
       },
       timeout: 120000,
       windowsHide: true
-    }, error => error ? reject(error) : resolve()));
+    }, (error: ExecFileException | null) => error ? reject(error) : resolve()));
   } catch (err) {
     // Um dump interrompido nunca participa da retenção nem parece um backup válido.
     if (backupPath && existsSync(backupPath)) {

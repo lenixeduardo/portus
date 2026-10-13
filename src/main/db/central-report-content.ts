@@ -1,4 +1,5 @@
 import type { BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
+import { reportEquipmentName } from "./traceability-report";
 
 const reportDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -33,7 +34,7 @@ export function buildCsvContent(history: BatchHistory): string {
       lines.push(
         [batch.code, batch.productName, batch.operatorName, formatExcelDate(batch.openedAt),
           sessionNum, formatExcelDate(session.startedAt), formatExcelDate(session.endedAt), session.status,
-          sectorLabel(session.sectorCode), session.operatorName ?? "", session.operatorLogin ?? "", session.stationCode ?? "", r.equipmentName,
+          sectorLabel(session.sectorCode), session.operatorName ?? "", session.operatorLogin ?? "", session.stationCode ?? "", reportEquipmentName(r.equipmentName),
           r.slotIndex >= 0 ? r.slotIndex + 1 : "", r.valueRaw, formatExcelDecimal(r.valueParsed), formatExcelDate(r.capturedAt)]
           .map(csvCell).join(";")
       );

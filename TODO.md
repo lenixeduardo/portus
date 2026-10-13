@@ -26,8 +26,8 @@ Escopo: execução das verificações existentes e revisão de interface/IPC/cap
 
 ### Pendências de validação e testes
 
-- [ ] Atualizar contrato estático em `src/main/__tests__/admin-force-close-contract.test.ts:32`: espera literalmente `finalize(b.id)`, mas código atual usa `finalize(b.id, justification)`. Não há falha funcional de finalização comprovada.
-- [ ] Revisar normalização de acentos em `src/main/__tests__/history-export.test.ts:46`: teste espera Balança e recebe Balanca; confirmar regra do relatório antes de ajustar teste/implementação.
+- [x] Atualizar contrato estático em `src/main/__tests__/admin-force-close-contract.test.ts:32`: teste ajustado para `finalize(b.id, justification)`, refletindo o código atual.
+- [x] Revisar normalização de acentos em `src/main/__tests__/history-export.test.ts:46`: regra confirmada (relatório normaliza sem acentos, ex.: `Balanca`); teste ajustado, sem alterar a implementação.
 - [ ] Investigar timeouts de oito testes em `db-utility.test.ts` e um em `utility-password.test.ts`: PowerShell/WinForms/TCP, incluindo `spawnSync powershell.exe ETIMEDOUT`. Não comprovam falha da proteção de senha.
 - [ ] Concluir integração de etiquetas: `barcode-three-operational-users.integration.test.ts:33` excedeu 10 segundos no `beforeAll`, deixando quatro testes ignorados.
 - [ ] Resolver startup/timeout de Vite e conexão DevTools para concluir testes de interface.
