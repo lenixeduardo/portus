@@ -87,7 +87,7 @@ export function startModbusPolling(
     buffer = Buffer.alloc(0);
 
     try {
-      const { registers } = parseReadRegistersResponse(frame, fn);
+      const { registers } = parseReadRegistersResponse(frame, fn, equipment.modbusUnitId);
       const decoded = decodeRegisters(registers, equipment.modbusRegisterDecode);
       let finalValue = decoded;
 

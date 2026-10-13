@@ -1,5 +1,39 @@
 # PORTUS — TODO
 
+## Auditoria funcional com agentes — 12/10/2026
+
+Escopo: execução das verificações existentes e revisão de interface/IPC/captura. Nenhuma falha foi corrigida. P1 = integridade da captura; P2 = funcionamento; P3 = documentação. Inspeção estática e provas isoladas estão identificadas abaixo; não equivalem à homologação completa.
+
+### Falhas encontradas
+
+- [ ] **P1 — Respeitar parada após primeira leitura serial.** `src/main/serial/capture-service.ts:283,299,456`: `drainBuffer` continua após concluir o slot e `handleLine` não bloqueia slots concluídos. Prova isolada do agente com funções compiladas e persistência simulada: `stopAfterFirstReading=true`, buffer `10\n20\n` -> duas gravações, `10` e `20`. Aceite: uma única gravação, inclusive com várias linhas no mesmo chunk.
+- [ ] **P1 — Validar endereço da resposta Modbus.** `src/main/serial/modbus-poller.ts:90` / `modbus-frame.ts:75`: CRC/função são validados, mas não o `modbusUnitId`. Prova executada pelo agente e pelo principal: `appendCrc(Buffer.from([2,3,2,0,42]))` é aceito por `parseReadRegistersResponse(frame,3)` como registrador 42; o poller não compara endereço. Aceite: consulta ao nó 1 rejeita resposta do nó 2 sem persistir leitura.
+- [ ] **P1 — Recuperar equipamento após falha temporária de COM.** `src/main/serial/capture-service.ts:863`: falhas de abertura gravam `enabled:false` no cadastro central. Por inspeção: desconectar/ocupar a porta, esgotar tentativas e reconectar mantém o equipamento fora das capturas seguintes até reativação manual. Aceite: falha de conexão não altera habilitação persistente e próxima captura tenta a porta recuperada.
+- [ ] **P2 — Aplicar limite ao buffer serial.** `src/main/serial/capture-service.ts:33,737,804`: `BUFFER_LIMIT_BYTES` é declarado, mas os listeners acumulam dados sem limite. Por inspeção: delimitador LF e fluxo apenas com CR acumulam todo o conteúdo durante a sessão; cleanup pode tratá-lo como uma leitura única. Aceite: memória limitada, diagnóstico de overflow e descarte seguro de payload inválido.
+- [ ] **P2 — Ignorar respostas antigas no histórico.** `src/renderer/screens/History.tsx:45,68`: efeito sem cancelamento/verificação da seleção. Por inspeção: selecionar A e depois B; A respondendo por último sobrescreve a tela, mas exportação/impressão usam B. Desmarcar antes da resposta também faz histórico antigo reaparecer. Aceite: troca rápida/desmarcação não exibe lote anterior; rejeições liberam o estado de carregamento.
+- [ ] **P2 — Agendar rotinas após o primeiro setup do servidor.** `src/main/index.ts:166` / `src/main/ipc/setup-handlers.ts:146,191`: backup/exportação só são agendados na inicialização com conexão já configurada. Por inspeção: concluir assistente em instalação nova e manter app aberto deixa rotinas inativas até reiniciar. Aceite: setup bem-sucedido agenda ambas uma única vez na sessão atual.
+- [ ] **P2 — Fazer backup sem bloquear o processo principal.** `src/main/db/backup.ts:40,49`: `pg_dump` via `execFileSync`, timeout 120 segundos. Por inspeção: backup lento bloqueia IPC e processamento serial durante execução. Aceite: backup assíncrono permite interação e captura simultâneas e trata erros/timeout.
+- [ ] **P3 — Corrigir comando de execução estática no guia.** `docs/RUNNING.md:36,85` recomenda `npm run electron` para HTML estático, mas o script define `ELECTRON_DEV=1`; `src/main/index.ts:62,129` carrega localhost:5173. Sem Vite, tenta URL indisponível. Aceite: guia recomenda `npm run start` para bundle estático e instruções funcionam sem Vite.
+
+### Resultados de execução
+
+- `npm run typecheck`: passou, código 0.
+- `npm run build`: passou, código 0; 1.830 módulos no build do renderer.
+- `npm run validate:release`: passou, código 0; assets/migrations/instaladores e 45 módulos runtime PostgreSQL-only validados.
+- `npm test`: código 1; 204 aprovados, 11 falhas, 4 ignorados; 30 arquivos passaram e 5 falharam.
+- `npm run test:browser`: código 1, 2 falhas no hook; Vite não respondeu em 45 segundos durante reotimização. A página não foi verificada; não é prova de defeito visual.
+- Electron: tentativa isolada com perfil temporário iniciou main em produção e informou caminho do preload; conexão Playwright/DevTools expirou em 45 segundos. Interface completa não validada. Processo iniciado pela auditoria encerrado.
+
+### Pendências de validação e testes
+
+- [ ] Atualizar contrato estático em `src/main/__tests__/admin-force-close-contract.test.ts:32`: espera literalmente `finalize(b.id)`, mas código atual usa `finalize(b.id, justification)`. Não há falha funcional de finalização comprovada.
+- [ ] Revisar normalização de acentos em `src/main/__tests__/history-export.test.ts:46`: teste espera Balança e recebe Balanca; confirmar regra do relatório antes de ajustar teste/implementação.
+- [ ] Investigar timeouts de oito testes em `db-utility.test.ts` e um em `utility-password.test.ts`: PowerShell/WinForms/TCP, incluindo `spawnSync powershell.exe ETIMEDOUT`. Não comprovam falha da proteção de senha.
+- [ ] Concluir integração de etiquetas: `barcode-three-operational-users.integration.test.ts:33` excedeu 10 segundos no `beforeAll`, deixando quatro testes ignorados.
+- [ ] Resolver startup/timeout de Vite e conexão DevTools para concluir testes de interface.
+- [ ] Homologar os cenários com PostgreSQL de teste e equipamentos/portas virtuais. As provas serial isoladas não usaram hardware nem gravaram dados no banco.
+
+
 > Lista persistente de tarefas. Atualizar marcando `[x]` ao concluir cada item.
 > Ver `CLAUDE.md` para o contexto completo do produto.
 

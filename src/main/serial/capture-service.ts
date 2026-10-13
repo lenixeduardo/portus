@@ -1,6 +1,6 @@
 import { BrowserWindow } from "electron";
 import { SerialPort } from "serialport";
-import { listCentralEquipments, updateCentralEquipment } from "../db/central-equipments-repo";
+import { listCentralEquipments } from "../db/central-equipments-repo";
 import type { StationIdentity } from "../db/settings-repo";
 import { getCentralCaptureTimeoutSeconds, getCentralStationIdentity } from "../db/central-station-settings-repo";
 import { insertCaptureErrorLog } from "../db/capture-error-logs-repo";
@@ -45,6 +45,8 @@ interface ActiveSlot {
   regexInvalid: boolean;
   // Acumula bytes recebidos até encontrar o delimitador de linha.
   buffer: string;
+  discardingOverflow?: boolean;
+  closing?: boolean;
   // Registra quantas tentativas de abertura foram feitas (para logging)
   openAttempts: number;
   // Registra se este slot usou fallback para porta reserva
@@ -233,7 +235,7 @@ function handleLine(slot: ActiveSlot, line: string): void {
   const raw = line.trim();
   const sid = sessionId;
   const bid = batchId;
-  if (!raw || sid === null || bid === null) return;
+  if (!raw || sid === null || bid === null || slot.status === "completed") return;
 
   slot.linesReceived++;
 
@@ -301,8 +303,40 @@ function drainBuffer(slot: ActiveSlot): void {
   while ((idx = slot.buffer.indexOf(slot.delimiter)) >= 0) {
     const line = slot.buffer.slice(0, idx);
     slot.buffer = slot.buffer.slice(idx + slot.delimiter.length);
-    handleLine(slot, line);
+    if (slot.discardingOverflow) {
+      slot.discardingOverflow = false;
+    } else if (line.length > BUFFER_LIMIT_BYTES) {
+      logBufferOverflow(slot);
+    } else {
+      handleLine(slot, line);
+    }
+    if (slot.status === "completed") {
+      slot.buffer = "";
+      return;
+    }
   }
+  // Keep a delimiter prefix so CRLF split between chunks can resynchronize.
+  let prefix = "";
+  for (let length = slot.delimiter.length - 1; length > 0; length--) {
+    const candidate = slot.delimiter.slice(0, length);
+    if (slot.buffer.endsWith(candidate)) { prefix = candidate; break; }
+  }
+  if (!slot.discardingOverflow && slot.buffer.length - prefix.length > BUFFER_LIMIT_BYTES) {
+    logBufferOverflow(slot);
+    slot.discardingOverflow = true;
+  }
+  if (slot.discardingOverflow) slot.buffer = prefix;
+}
+
+function logBufferOverflow(slot: ActiveSlot): void {
+  logCaptureError({ slot, code: "serial_buffer_overflow", message: `Linha serial excedeu o limite de ${BUFFER_LIMIT_BYTES} bytes e foi descartada.`, context: { limitBytes: BUFFER_LIMIT_BYTES } });
+}
+
+function consumeSerialData(slot: ActiveSlot, chunk: Buffer): void {
+  if (sessionId === null || cleanupInFlight || slot.closing || slot.status === "completed") return;
+  // latin1 preserves bytes one-to-one, so string length is the byte length.
+  slot.buffer += chunk.toString("latin1");
+  drainBuffer(slot);
 }
 
 function cleanup(reason: "completed" | "cancelled"): Promise<CaptureCleanupResult> {
@@ -321,6 +355,7 @@ async function performCleanup(reason: "completed" | "cancelled"): Promise<Captur
 
   // Interrompe pollers Modbus antes de qualquer flush/fechamento de porta.
   slots.forEach((slot) => {
+    slot.closing = true;
     if (slot.modbusStop) {
       slot.modbusStop();
       slot.modbusStop = undefined;
@@ -332,7 +367,7 @@ async function performCleanup(reason: "completed" | "cancelled"): Promise<Captur
   slots.forEach((slot) => {
     const tail = slot.buffer;
     slot.buffer = "";
-    if (tail.trim()) handleLine(slot, tail);
+    if (!slot.discardingOverflow && slot.status !== "completed" && tail.trim()) handleLine(slot, tail);
   });
 
   // Cancela todos os debounces pendentes antes de fechar
@@ -731,11 +766,7 @@ export async function startCapture(
     // não registramos o listener passivo aqui.
     if (!isModbus) {
       port.on("data", (chunk: Buffer) => {
-        if (sessionId === null) return;
-        // latin1 mapeia cada byte 0-255 sem substituição — preserva exatamente o
-        // que o equipamento enviou, incluindo caracteres >127 (ex.: grau, unidades).
-        slot.buffer += chunk.toString("latin1");
-        drainBuffer(slot);
+        consumeSerialData(slot, chunk);
       });
     }
 
@@ -800,9 +831,7 @@ export async function startCapture(
             // apenas no modo passivo; no Modbus o poller cuida disso ao iniciar).
             if (!isModbus) {
               port.on("data", (chunk: Buffer) => {
-                if (sessionId === null) return;
-                slot.buffer += chunk.toString("latin1");
-                drainBuffer(slot);
+                consumeSerialData(slot, chunk);
               });
             }
 
@@ -851,25 +880,15 @@ export async function startCapture(
           startModbusForSlot(slot);
         }
       } else {
-        // Se falhar tudo, desabilita o equipamento no banco automaticamente
+        // COM availability is transient; keep the configured equipment enabled
+        // so the next capture can retry after the cable or driver recovers.
         logCaptureError({
           slot,
-          code: "equipment_disabled_after_open_failures",
-          message: `Desabilitando equipamento permanentemente por falhas consecutivas de abertura (slot ${eq.slotIndex}, id ${eq.id})`,
+          code: "serial_open_attempts_exhausted",
+          message: `Não foi possível abrir a porta nesta captura (slot ${eq.slotIndex}, id ${eq.id}).`,
           context: { portPath: eq.portPath, usedFallback: slot.usedFallback, originalPortPath: slot.originalPortPath }
         });
-        console.error(`[serial] Desabilitando equipamento permanentemente por falhas consecutivas de abertura (slot ${eq.slotIndex}, id ${eq.id})`);
-        try {
-          await updateCentralEquipment(eq.id, { enabled: false });
-        } catch (dbErr) {
-          logCaptureError({
-            slot,
-            code: "equipment_disable_failed",
-            message: `Erro ao desabilitar equipamento no banco: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`,
-            context: { equipmentId: eq.id }
-          });
-          console.error(`[serial] Erro ao desabilitar equipamento no banco:`, dbErr);
-        }
+        console.error(`[serial] Falha de abertura nesta captura (slot ${eq.slotIndex}, id ${eq.id}).`);
         slot.status = "error";
         initSlotEntry.status = "error";
         broadcast(IPC.captureSlotUpdate, { slotIndex: eq.slotIndex, status: "error" } satisfies SlotUpdateEvent);

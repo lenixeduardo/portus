@@ -33,10 +33,16 @@ Isso:
 
 ```bash
 npm run build       # Compila tudo
-npm run electron    # Abre Electron apontando para HTML estático
+npm run start       # Abre Electron apontando para HTML estático
 ```
 
 > ⚠️ Precisa compilar novamente a cada mudança no código
+
+`npm run start` usa `NODE_ENV=production` e carrega `dist/renderer/index.html`.
+Para esta execução, deixe `ELECTRON_DEV` sem valor no ambiente. No PowerShell,
+remova um valor herdado com `Remove-Item Env:ELECTRON_DEV -ErrorAction SilentlyContinue`.
+O comando `npm run electron` é um atalho de desenvolvimento e precisa do Vite
+em `http://localhost:5173`; `npm run dev` inicia os dois juntos.
 
 ---
 
@@ -82,7 +88,7 @@ npm run start       # Abre Electron com bundle pronto
 
 ```bash
 npm run build:renderer  # Garante que index.html está em dist/
-npm run electron        # Tenta carregar novamente
+npm run start           # Carrega o HTML estático novamente, sem Vite
 ```
 
 ### Port 5173 já está em uso

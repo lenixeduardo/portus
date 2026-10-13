@@ -10,6 +10,7 @@ import { ensureCentralUserAccess } from "../db/central-users-repo";
 import { getRuntimeStationCode, setCentralStationSetting } from "../db/central-station-settings-repo";
 import { detectPostgresServiceStatus, findPostgresBin, isInitialSetupCompleted, markInitialSetupComplete, runInitialSetup } from "../setup/initial-setup-service";
 import { validateInput } from "./middleware";
+import { startServerRoutines } from "../server-routines";
 
 const identifier = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,62}$/, "Use letras, números e _. O nome deve começar com uma letra.");
 const commonSetupSchema = z.object({
@@ -189,6 +190,7 @@ export function registerSetupHandlers(): void {
           return { ok: false, error: "O banco foi preparado, mas a conexão ou o esquema central não pôde ser validado." };
         }
         markInitialSetupComplete(input.installationMode);
+        await startServerRoutines();
         return { ok: true, data: await getStatus() };
       } catch (error) {
         return { ok: false, error: formatInitialSetupError(error, input, { stage, elapsedMs: Date.now() - startedAt }) };

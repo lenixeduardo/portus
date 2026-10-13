@@ -13,39 +13,9 @@ import { registerLogHandlers } from "./ipc/log-handlers";
 import { registerCentralHandlers } from "./ipc/central-handlers";
 import { registerSetupHandlers } from "./ipc/setup-handlers";
 import { registerUpdateHandlers } from "./ipc/update-handlers";
-import { runBackup } from "./db/backup";
-import { runCentralAutoExport } from "./db/central-auto-export";
-import { getCentralStationSetting } from "./db/central-station-settings-repo";
+import { startServerRoutines, stopServerRoutines } from "./server-routines";
 import { initLogger, logError } from "./logger";
 import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured } from "./db/central-connection";
-
-const DEFAULT_BACKUP_RETENTION = 10;
-const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
-
-function defaultBackupFolder(): string {
-  return join(app.getPath("documents"), "PORTUS", "backups");
-}
-
-async function performBackup(): Promise<void> {
-  const folder = (await getCentralStationSetting("auto_backup_folder")) || defaultBackupFolder();
-  const requested = Number((await getCentralStationSetting("auto_backup_retention")) || DEFAULT_BACKUP_RETENTION);
-  const retention = Number.isInteger(requested) && requested >= 1 && requested <= 100
-    ? requested : DEFAULT_BACKUP_RETENTION;
-  const result = runBackup(folder, retention);
-  if (result.backedUp) {
-    console.log(`[auto-backup] backup gerado em "${result.path}" (retenção: ${retention}).`);
-  }
-  if (result.errors.length > 0) {
-    console.error("[auto-backup] Erros:", result.errors.join("; "));
-  }
-}
-
-function scheduleNextBackup(): void {
-  setTimeout(() => {
-    void performBackup().catch(err => console.error("[auto-backup] PostgreSQL:", err));
-    scheduleNextBackup();
-  }, BACKUP_INTERVAL_MS);
-}
 
 initLogger(app.getPath("userData"));
 
@@ -66,26 +36,6 @@ console.log("[main] startup:", {
   isPackaged: app.isPackaged,
   isDev
 });
-
-async function exportCentralCompletedBatches(): Promise<void> {
-  const base = join(app.getPath("documents"), "PORTUS", "exportacoes");
-  const folder = (await getCentralStationSetting("auto_export_folder")) || base;
-  const result = await runCentralAutoExport(folder);
-  if (result.exported) console.log("[central-export] "+result.exported+" lote(s) exportado(s).");
-  for (const error of result.errors) console.error("[central-export] "+error);
-}
-
-function scheduleNextMidnightCentralExport(): void {
-  const now = new Date();
-  const target = new Date(now);
-  target.setDate(target.getDate()+1);
-  target.setHours(0,0,0,0);
-  setTimeout(() => {
-    void exportCentralCompletedBatches()
-      .catch(error => console.error("[central-export] PostgreSQL indisponível:",error));
-    scheduleNextMidnightCentralExport();
-  }, target.getTime()-now.getTime());
-}
 
 function createWindow() {
   const preloadPath = join(app.getAppPath(), "dist/preload/index.js");
@@ -163,22 +113,11 @@ app.whenReady().then(async () => {
   registerCentralHandlers();
   registerSetupHandlers();
   registerUpdateHandlers();
-  if (isCentralDatabaseConfigured()) {
-    try {
-      const server = (await getCentralStationSetting("installation_mode")) === "server";
-      if (server || process.env.PORTUS_SERVER_BACKUP === "1") {
-        void performBackup().catch(err => console.error("[auto-backup] Falha PostgreSQL:", err));
-        scheduleNextBackup();
-      }
-      if (server || process.env.PORTUS_SERVER_AUTO_EXPORT === "1") {
-        scheduleNextMidnightCentralExport();
-      }
-    } catch (error) {
-      console.error("[central-db] rotinas do servidor não agendadas:", error);
-    }
-  }
+  await startServerRoutines().catch(error => console.error("[central-db] rotinas do servidor não agendadas:", error));
   createWindow();
 });
+
+app.on("before-quit", stopServerRoutines);
 
 app.on("window-all-closed", () => {
   void closeCentralDatabase();

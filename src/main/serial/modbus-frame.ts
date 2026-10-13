@@ -72,9 +72,12 @@ export class ModbusException extends Error {
 
 // Faz parsing de uma resposta de leitura de registradores já completa.
 // Lança ModbusException para respostas de erro do escravo e Error para frames inválidos.
-export function parseReadRegistersResponse(frame: Buffer, fn: ModbusFunction): ModbusResponse {
+export function parseReadRegistersResponse(frame: Buffer, fn: ModbusFunction, expectedUnitId?: number): ModbusResponse {
   if (!isValidCrc(frame)) {
     throw new Error("CRC Modbus inválido.");
+  }
+  if (expectedUnitId !== undefined && frame[0] !== expectedUnitId) {
+    throw new Error(`Endereço Modbus inesperado: ${frame[0]} (esperado ${expectedUnitId}).`);
   }
   const functionCode = frame.readUInt8(1);
   if (functionCode === (fn | 0x80)) {

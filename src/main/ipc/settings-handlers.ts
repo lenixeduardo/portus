@@ -62,7 +62,7 @@ export function registerSettingsHandlers(): void {
       }
       const folder = DEFAULT_BACKUP_FOLDER();
       const retention = DEFAULT_BACKUP_RETENTION;
-      const result = runBackup(folder, retention);
+      const result = await runBackup(folder, retention);
       if (!result.backedUp || !result.path) {
         return { ok: false, error: result.errors.join("; ") || "Falha desconhecida ao gerar o backup." };
       }

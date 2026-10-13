@@ -29,7 +29,7 @@
     "migrate:legacy": "node scripts/import-legacy-to-postgres.mjs",
     "check:postgres-only": "node scripts/check-postgres-only-runtime.mjs",
     "browser:install": "playwright-core install chromium",
-    "test:browser": "node --test tests/browser/dashboard.visual.test.mjs"
+    "test:browser": "node --test tests/browser/dashboard.visual.test.mjs tests/browser/history.async.test.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
