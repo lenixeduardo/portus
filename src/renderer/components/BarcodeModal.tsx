@@ -19,21 +19,12 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   const [result, setResult] = useState<BarcodeScanResult | null>(null);
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [lotCode, setLotCode] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
+  const [matchedProduct, setMatchedProduct] = useState<Product | null>(null);
   const [productId, setProductId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (centralMode) {
-      window.api.products.list().then((items) => {
-        if (!mountedRef.current) return;
-        setProducts(items);
-        setProductId((current) => current ?? items[0]?.id ?? null);
-      }).catch(() => {
-        if (mountedRef.current) setError("Não foi possível carregar os produtos cadastrados.");
-      });
-    }
     if (initialBarcode) {
       scan(initialBarcode);
     } else {
@@ -59,12 +50,28 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
           setPendingBarcode(null);
           return;
         }
-        const suffix = original.slice(-4);
-        if (!/^\d{4}$/.test(suffix)) {
-          setError("O código lido deve terminar com quatro dígitos numéricos.");
+        const digits = original.replace(/\D/g, "");
+        if (!/^\d{16}$/.test(digits)) {
+          setError("Etiqueta inválida: informe os 12 dígitos do produto e os 4 dígitos do lote.");
           return;
         }
-        setLotCode(suffix);
+        const prefix = digits.slice(0, 12);
+        const products = await window.api.products.list();
+        if (!mountedRef.current) return;
+        const matches = products.filter(product =>
+          [product.description, product.name].some(value =>
+            typeof value === "string" && value.replace(/\D/g, "").slice(0, 12) === prefix
+          )
+        );
+        if (matches.length !== 1) {
+          setError(matches.length === 0
+            ? "Produto não identificado pelo código " + prefix + ". Verifique o cadastro central."
+            : "Há mais de um produto associado ao código " + prefix + ". Corrija o cadastro central.");
+          return;
+        }
+        setMatchedProduct(matches[0]);
+        setProductId(matches[0].id);
+        setLotCode(digits.slice(-4));
         setPendingBarcode(original);
         return;
       } catch {
@@ -90,14 +97,14 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       setError("O número do lote deve conter exatamente quatro dígitos.");
       return;
     }
-    if (productId === null) { setError("Selecione um produto."); return; }
+    if (productId === null || !matchedProduct) { setError("Produto não identificado pelo código de barras."); return; }
     setLoading(true);
     setError(null);
     try {
       const existing = await window.api.central.batches.findByCode(code);
       if (!mountedRef.current) return;
       if (existing) { setError("O lote " + code + " já existe."); return; }
-      const created = await window.api.central.batches.create({ productId, code });
+      const created = await window.api.central.batches.create({ productId, code, barcodeValue: pendingBarcode });
       if (!mountedRef.current) return;
       if (!created.ok) { setError(created.error); return; }
       setPendingBarcode(null);
@@ -160,10 +167,8 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
             <small className="muted">Sugestão: os quatro últimos dígitos de {pendingBarcode}.</small>
           </div>
           <div className="field">
-            <label>Produto</label>
-            <select value={productId ?? ""} onChange={(event) => setProductId(Number(event.target.value))}>
-              {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
-            </select>
+            <label>Produto identificado</label>
+            <strong>{matchedProduct?.name}</strong>
           </div>
           {error && <div className="error">{error}</div>}
         </div>
@@ -187,22 +192,6 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
               Posicione o cursor aqui e use o leitor. O código é enviado automaticamente ao pressionar Enter.
             </small>
           </div>
-          {centralMode && (
-            <div className="field">
-              <label>Produto do lote</label>
-              <select
-                value={productId ?? ""}
-                onChange={(event) => setProductId(Number(event.target.value))}
-                disabled={loading || products.length === 0}
-              >
-                {products.length === 0 && <option value="">Nenhum produto cadastrado</option>}
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>{product.name}</option>
-                ))}
-              </select>
-              <small className="muted">Usado somente quando o código ainda não possui um lote aberto.</small>
-            </div>
-          )}
           {error && <div className="error">{error}</div>}
           <button type="submit" style={{ display: "none" }} />
         </form>
