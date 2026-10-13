@@ -128,10 +128,11 @@ export function registerCentralHandlers(): void {
           const scanned = input.barcodeValue?.trim();
           let product = await getCentralProduct(input.productId);
           if (scanned) {
-            const digits = scanned.replace(/\\D/g, "");
-            if (!/^\\d{16}$/.test(digits)) {
+            const digits = scanned.replace(/\D/g, "");
+            if (!/^\d{16}$/.test(digits)) {
               return { ok: false, error: "Etiqueta inválida: esperado código de produto (12 dígitos) e lote (4 dígitos)." };
             }
+            if (input.code !== digits.slice(-4)) return { ok: false, error: "Número do lote diferente dos quatro últimos dígitos lidos." };
             const identified = await findCentralProductByBarcodePrefix(digits.slice(0, 12));
             if (!identified) return { ok: false, error: "Produto não localizado pelo código de barras. Solicite o cadastro do código no catálogo central." };
             if (product?.id !== identified.id) {
