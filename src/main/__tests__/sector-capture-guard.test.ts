@@ -7,6 +7,7 @@ function batch(overrides: Partial<CentralCaptureBatchState> = {}): CentralCaptur
     status: "open",
     productionClosed: false,
     laboratoryClosed: false,
+    completed: false,
     ...overrides
   };
 }
@@ -23,5 +24,18 @@ describe("lote único compartilhado entre setores", () => {
   it("mantém as flags antigas sem usá-las como trava de captura", () => {
     expect(isSectorCaptureClosed(batch({ productionClosed: true, laboratoryClosed: true }), "PRODUCTION")).toBe(false);
     expect(isSectorCaptureClosed(batch({ productionClosed: true, laboratoryClosed: true }), "LABORATORY")).toBe(false);
+  });
+});
+
+describe("bloqueio de leituras após conclusão", () => {
+  it("bloqueia Produção quando concluído", () => {
+    expect(isSectorCaptureClosed(batch({ completed: true }), "PRODUCTION")).toBe(true);
+  });
+  it("permite ao Laboratório continuar leituras enquanto não finalizado", () => {
+    expect(isSectorCaptureClosed(batch({ completed: true }), "LABORATORY")).toBe(false);
+  });
+  it("bloqueia ambos os setores após finalização", () => {
+    expect(isSectorCaptureClosed(batch({ status: "closed" }), "PRODUCTION")).toBe(true);
+    expect(isSectorCaptureClosed(batch({ status: "closed" }), "LABORATORY")).toBe(true);
   });
 });
