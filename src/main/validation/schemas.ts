@@ -65,7 +65,8 @@ export type AdministrativeBatchInput = z.infer<typeof administrativeBatchSchema>
  */
 export const createBatchSchema = z.object({
   productId: z.number().positive("ID do produto deve ser um número positivo"),
-  code: z.string().optional()
+  code: z.string().optional(),
+  barcodeValue: z.string().optional()
 });
 
 export type CreateBatchInput = z.infer<typeof createBatchSchema>;
