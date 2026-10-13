@@ -222,6 +222,7 @@ export interface ProductInput {
 export interface BatchInput {
   productId: number;
   code?: string;
+  barcodeValue?: string;
 }
 
 export interface BatchWithProduct extends Batch {
