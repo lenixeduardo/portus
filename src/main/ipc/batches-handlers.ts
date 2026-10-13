@@ -1,4 +1,5 @@
 import { getUserOperationalSector } from "../../shared/user-sector";
+import { canFinalizeBatch } from "../../shared/batch-permissions";
 import { randomUUID } from "node:crypto";
 import { ipcMain } from "electron";
 import {
@@ -80,8 +81,8 @@ export function registerBatchesHandlers(): void {
     compose([requireAuth, validateInput(closeBatchSchema)])(
       async (_e, input: CloseBatchInput): Promise<ServiceResult<true>> => {
         const user = current();
-        if (user.role !== "master" && user.role !== "supervisor") {
-          return { ok: false, error: "Somente Supervisor ou Master podem finalizar lotes." };
+        if (!canFinalizeBatch(user.role, getUserOperationalSector(user))) {
+          return { ok: false, error: "Somente a credencial Laboratório pode finalizar lotes." };
         }
         try {
           await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user));
