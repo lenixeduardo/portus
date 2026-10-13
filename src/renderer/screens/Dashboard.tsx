@@ -1,3 +1,4 @@
+import { canSetBatchCompleted, canFinalizeBatch } from "../../shared/batch-permissions";
 import { useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
@@ -103,8 +104,8 @@ export function Dashboard({
   const isAdmin = user.role === "admin" || user.role === "master";
   const isMaster = user.role === "master";
   const isSupervisor = user.role === "supervisor";
-  const canFinalize = isSupervisor || isMaster;
-  const canMarkCompleted = !isSupervisor;
+  const canFinalize = canFinalizeBatch(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION");
+  const canMarkCompleted = canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", true);
   const canCapture = !isSupervisor && (!isLaboratory || canCaptureLaboratory(user));
   const requiresCentral = centralRequired || centralConfigured || isLaboratory;
 
@@ -502,9 +503,10 @@ export function Dashboard({
               batch={b}
               isCapturing={captureBatchId === b.id}
               canFinalize={canFinalize && Boolean(b.completed)}
-              canMarkCompleted={canMarkCompleted}
+              canMarkCompleted={canMarkCompleted && (!b.completed || canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", false))}
               centralMode={requiresCentral}
               canCapture={canCapture}
+              canCaptureCompleted={isLaboratory}
               onCompletedChange={(completed) => void handleCompletedChange(b, completed)}
               onClose={() => handleClose(b)}
               onCapture={() => void handleStartCapture(b)}
@@ -606,6 +608,7 @@ function BatchRow({
   canMarkCompleted,
   centralMode,
   canCapture,
+  canCaptureCompleted,
   onCompletedChange,
   onClose,
   onCapture,
@@ -617,6 +620,7 @@ function BatchRow({
   canMarkCompleted: boolean;
   centralMode: boolean;
   canCapture: boolean;
+  canCaptureCompleted: boolean;
   onCompletedChange: (completed: boolean) => void;
   onClose: () => void;
   onCapture: () => void;
@@ -703,7 +707,7 @@ function BatchRow({
           Imprimir
         </button>
 
-        {canCapture && !batch.completed && (
+        {canCapture && (!batch.completed || canCaptureCompleted) && (
           <button className="batch-finalize" onClick={onCapture} disabled={isCapturing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <ScanBarcode className="batch-finalize__icon" size={17} strokeWidth={1.8} aria-hidden="true" />
             {isCapturing ? "Leitura em andamento" : "Iniciar leitura"}
