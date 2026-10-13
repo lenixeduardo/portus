@@ -44,10 +44,12 @@ export function History({ user }: { user: User }) {
     setFilterStartDate("");
     setFilterEndDate("");
 
+    let active = true;
     if (!selectedId) {
       setHistory(null);
       setError(null);
-      return;
+      setLoading(false);
+      return () => { active = false; };
     }
     setLoading(true);
     setError(null);
@@ -55,14 +57,19 @@ export function History({ user }: { user: User }) {
     const historyRequest = centralMode
       ? window.api.central.history.getBatch(Number(selectedId))
       : window.api.history.getBatch(Number(selectedId));
-    historyRequest.then((res) => {
-      setLoading(false);
+    void historyRequest.then((res) => {
+      if (!active) return;
       if (!res.ok) {
         setError(res.error);
         return;
       }
       setHistory(res.data);
+    }).catch((error: unknown) => {
+      if (active) setError(error instanceof Error ? error.message : "Falha ao consultar histórico.");
+    }).finally(() => {
+      if (active) setLoading(false);
     });
+    return () => { active = false; };
   }, [selectedId, centralMode]);
 
   const uniqueEquipments = useMemo(() => {
