@@ -50,3 +50,17 @@ a conexão. O teste chama `confirm_production_close` e
 A fixture usa aplicação, usuário, produto e lote exclusivos e é removida ao
 final, inclusive quando uma asserção falha. A saída esperada começa com
 `Stage 1 concurrent closure test OK`.
+
+### Regressão da finalização pelo laboratório
+
+`008_laboratory_finalization.sql` valida a conclusão obrigatória, o fechamento pelo
+operador do laboratório e a repetição sem duplicar o histórico. Executar somente
+em banco de teste migrado; os dados de teste são revertidos.
+
+Para também verificar todas as migrations desde uma base vazia e executar o SQL
+real de auditoria do handler, use o runner isolado (não acessa banco externo):
+
+```sh
+npm install --prefix /tmp/portus-db-tests --ignore-scripts @electric-sql/pglite
+PORTUS_TEST_PGLITE_MODULE=/tmp/portus-db-tests/node_modules/@electric-sql/pglite/dist/index.js node database/tests/008_laboratory_finalization.mjs
+```

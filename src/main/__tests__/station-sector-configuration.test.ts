@@ -44,7 +44,6 @@ describe("configuração obrigatória do setor físico da estação", () => {
     expect(db).toContain('settings.station_sector_code?.trim().toUpperCase()');
     expect(db).toContain("Configurações > Captura");
     expect(handlers).toContain("requireAdmin");
-    expect(capture).toContain("stationIdentity.sectorCode !== sectorCode");
-    expect(capture).toContain("O setor do computador difere do perfil operacional do usuário.");
+    expect(capture).toContain("stationIdentity = await getCentralStationIdentity()");
   });
 });

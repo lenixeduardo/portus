@@ -630,9 +630,7 @@ export async function startCapture(
   let timeoutSeconds: number;
   try {
     stationIdentity = await getCentralStationIdentity();
-    if (stationIdentity.sectorCode !== sectorCode) {
-      return { ok: false, error: "O setor do computador difere do perfil operacional do usuário." };
-    }
+    // A estação identifica a máquina; o setor operacional vem da credencial.
     const allEquipments = await listCentralEquipments();
     equipments = allEquipments.filter(
       e => e.enabled && (equipmentIds == null || equipmentIds.includes(e.id))

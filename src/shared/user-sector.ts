@@ -10,9 +10,10 @@ export function resolveCaptureSector(
   stationSector: OperationalSector
 ): OperationalSector {
   if (user.role === "master") return stationSector;
+  // Operadores seguem a própria credencial, independentemente da máquina.
   const userSector = getUserOperationalSector(user);
-  if (user.sectorCode === "ADMIN" || userSector !== stationSector) {
-    throw new Error("O setor do computador difere do perfil operacional do usuário.");
+  if (user.sectorCode === "ADMIN") {
+    throw new Error("O perfil administrativo não possui setor operacional de captura.");
   }
   return userSector;
 }

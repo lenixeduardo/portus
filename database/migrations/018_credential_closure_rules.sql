@@ -161,23 +161,23 @@ END; $$;
 -- Rotas legadas não podem contornar a conclusão e a finalização do laboratório.
 CREATE OR REPLACE FUNCTION admin_close_batch(
   p_batch_id BIGINT, p_user_id BIGINT, p_application_id BIGINT, p_sector_id BIGINT
-) RETURNS batches LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+) RETURNS batches LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   RAISE EXCEPTION 'Fechamento administrativo legado desativado. Utilize o fluxo do Laboratório' USING ERRCODE = '42501';
-END; $;
+END; $$;
 
 CREATE OR REPLACE FUNCTION confirm_production_close(
   p_batch_id BIGINT, p_user_id BIGINT, p_application_id BIGINT, p_sector_id BIGINT
-) RETURNS batches LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+) RETURNS batches LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   RAISE EXCEPTION 'Confirmação setorial legada desativada. Utilize Lote concluído' USING ERRCODE = '42501';
-END; $;
+END; $$;
 
 CREATE OR REPLACE FUNCTION confirm_laboratory_close(
   p_batch_id BIGINT, p_user_id BIGINT, p_application_id BIGINT, p_sector_id BIGINT
-) RETURNS batches LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+) RETURNS batches LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   RAISE EXCEPTION 'Confirmação setorial legada desativada. Utilize Finalizar lote' USING ERRCODE = '42501';
-END; $;
+END; $$;
 
 COMMIT;

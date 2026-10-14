@@ -31,7 +31,7 @@ import { compose, requireAuth, validateInput } from "./middleware";
 async function auditAdministrativeReason(userId: number, batchId: number, action: string, justification: string): Promise<void> {
   await centralQuery(
     `INSERT INTO portus_audit_log (actor_user_id, station_code, action, resource_type, resource_id, details)
-      VALUES ($1, $2, $3, 'batch', $4, jsonb_build_object('justification', $5))`,
+      VALUES ($1, $2, $3, 'batch', $4, jsonb_build_object('justification', $5::text))`,
     [userId, hostname(), action, String(batchId), justification]
   );
 }
