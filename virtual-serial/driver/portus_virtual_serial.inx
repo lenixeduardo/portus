@@ -1,0 +1,60 @@
+; EXPERIMENTAL WDK INSTALL TEMPLATE — NOT READY FOR INSTALLATION.
+; Does not expose COM ports or implement serial IOCTLs.
+[Version]
+Signature="$Windows NT$"
+Class=Ports
+ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318}
+Provider=%ProviderName%
+CatalogFile=portus_virtual_serial.cat
+DriverVer=10/13/2026,0.1.0.0
+PnpLockdown=1
+
+[Manufacturer]
+%ProviderName%=Models,NTamd64.10.0...22000
+
+[Models.NTamd64.10.0...22000]
+%DeviceName%=Portus_Install,ROOT\PORTUSVCOMDEV
+
+[DestinationDirs]
+DefaultDestDir=13
+
+[SourceDisksNames]
+1=%DiskName%
+
+[SourceDisksFiles]
+portusvserial.dll=1
+
+[Portus_Install.NT]
+CopyFiles=DriverCopy
+Include=WUDFRD.inf
+Needs=WUDFRD.NT
+
+[Portus_Install.NT.HW]
+AddReg=Portus_Type
+Include=WUDFRD.inf
+Needs=WUDFRD.NT.HW
+
+[Portus_Install.NT.Services]
+Include=WUDFRD.inf
+Needs=WUDFRD.NT.Services
+
+[Portus_Install.NT.Wdf]
+UmdfService=PortusVirtualSerial,Portus_Umdf
+UmdfServiceOrder=PortusVirtualSerial
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfFsContextUsePolicy=CannotUseFsContexts
+
+[Portus_Umdf]
+UmdfLibraryVersion=$UMDFVERSION$
+ServiceBinary=%13%\portusvserial.dll
+
+[Portus_Type]
+HKR,,DeviceType,0x10001,0x0000001b
+
+[DriverCopy]
+portusvserial.dll
+
+[Strings]
+ProviderName="PORTUS Development"
+DeviceName="PORTUS Virtual Serial Experimental Device"
+DiskName="PORTUS Virtual Serial Development Package"
