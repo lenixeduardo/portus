@@ -13,8 +13,8 @@ PnpLockdown=1
 %Manufacturer%=Models,NTamd64.10.0...19041
 
 [Models.NTamd64.10.0...19041]
-%PortA%=InstallA, ROOT\PORTUS_VCOM_A
-%PortB%=InstallB, ROOT\PORTUS_VCOM_B
+%PortA%=InstallA, ROOT\LABSERIAL_VCOM_A
+%PortB%=InstallB, ROOT\LABSERIAL_VCOM_B
 
 [DestinationDirs]
 DefaultDestDir=13
