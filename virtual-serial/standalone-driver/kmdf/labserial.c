@@ -38,25 +38,18 @@ EVT_WDF_IO_QUEUE_IO_READ LabEvtRead;
 EVT_WDF_IO_QUEUE_IO_WRITE LabEvtWrite;
 EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL LabEvtIoctl;
 
+#include "../core/labserial_ring.h"
+
+/* Uses the same platform-neutral FIFO tested in user mode.
+ * All accesses in this driver must hold g_mutex. */
 static ULONG LabPop(LAB_PORT* port, PUCHAR output, ULONG count) {
-    ULONG n = min(count, port->used);
-    ULONG i;
-    for (i = 0; i < n; i++) {
-        output[i] = port->buffer[port->head];
-        port->head = (port->head + 1) % LAB_RING_CAPACITY;
-    }
-    port->used -= n;
-    return n;
+    return (ULONG)LabRingPop(port->buffer, LAB_RING_CAPACITY,
+                            &port->head, &port->used, output, count);
 }
 
 static ULONG LabPush(LAB_PORT* port, const UCHAR* input, ULONG count) {
-    ULONG n = min(count, LAB_RING_CAPACITY - port->used);
-    ULONG i;
-    for (i = 0; i < n; i++) {
-        port->buffer[(port->head + port->used + i) % LAB_RING_CAPACITY] = input[i];
-    }
-    port->used += n;
-    return n;
+    return (ULONG)LabRingPush(port->buffer, LAB_RING_CAPACITY,
+                             port->head, &port->used, input, count);
 }
 
 // Reads queue when no bytes are available. Framework owns cancellation of queued requests.
