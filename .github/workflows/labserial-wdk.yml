@@ -38,8 +38,10 @@ jobs:
               $found[0].DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
             }
           }
-      - name: Add MSBuild
+      - name: Add 64-bit MSBuild
         uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
       - name: Compile KMDF experimental driver
         shell: pwsh
         run: |
