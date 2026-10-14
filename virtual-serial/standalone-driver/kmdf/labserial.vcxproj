@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8AF0E548-0643-4E11-8A84-331F90C12B87}</ProjectGuid>
+    <RootNamespace>LabSerial</RootNamespace>
+    <KMDF_VERSION_MAJOR>1</KMDF_VERSION_MAJOR>
+    <Configuration Condition="'$(Configuration)'==''">Debug</Configuration>
+    <Platform Condition="'$(Platform)'==''">x64</Platform>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Driver</ConfigurationType><DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Windows Driver</DriverTargetPlatform>
+    <TargetVersion>Windows10</TargetVersion>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset><UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Driver</ConfigurationType><DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Windows Driver</DriverTargetPlatform>
+    <TargetVersion>Windows10</TargetVersion>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset><UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <TargetName>labserial</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError></ClCompile>
+    <DriverSign><FileDigestAlgorithm>sha256</FileDigestAlgorithm></DriverSign>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="labserial.c" />
+    <Inf Include="labserial.inx" />
+    <FilesToPackage Include="$(TargetPath)" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
