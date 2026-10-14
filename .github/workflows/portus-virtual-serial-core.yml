@@ -30,13 +30,26 @@ jobs:
         run: cmake --build virtual-serial/build --config Release
       - name: Test C++ core
         run: ctest --test-dir virtual-serial/build -C Release --output-on-failure
-  test-simulator:
-    name: Python simulator unit tests
+
+  test-python:
+    name: Python simulator and release gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Test protocol fixtures
-        run: python -m unittest discover -s virtual-serial/simulator -p 'test_*.py' -v
+      - name: Unit tests
+        run: |
+          python -m unittest discover -s virtual-serial/simulator -p 'test_*.py' -v
+          python -m unittest discover -s virtual-serial/tests -p 'test_release_gate.py' -v
+      - name: Release must be blocked without evidence
+        shell: bash
+        run: |
+          set +e
+          python virtual-serial/scripts/release_gate.py --manifest virtual-serial/release/release-evidence.example.json > gate.json
+          code=$?
+          set -e
+          cat gate.json
+          test "$code" -eq 1
+          python -c "import json; x=json.load(open('gate.json')); assert x['ready_for_human_review'] is False and len(x['blockers']) >= 12"
