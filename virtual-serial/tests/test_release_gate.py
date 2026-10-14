@@ -29,6 +29,21 @@ class TestReleaseGate(unittest.TestCase):
             self.assertEqual(validate({"checks":checks, "artifacts":artifacts},root), [])
             artifacts["inf"]["sha256"] = "0"*64
             self.assertIn("SHA-256 incorreto: inf",validate({"checks":checks,"artifacts":artifacts},root))
+    def test_kmdf_requires_sys_artifact(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root/"proof.txt").write_text("approved", encoding="utf8")
+            checks = {key: {"status": "passed", "report": "proof.txt"} for key in REQUIRED_CHECKS}
+            artifacts = {}
+            for key, name in (("driver", "labserial.sys"), ("inf", "labserial.inf"), ("catalog", "labserial.cat")):
+                payload = (key + "artifact").encode()
+                (root/name).write_bytes(payload)
+                artifacts[key] = {"path": name, "sha256": hashlib.sha256(payload).hexdigest()}
+            data = {"driver_model": "KMDF", "checks": checks, "artifacts": artifacts}
+            self.assertEqual(validate(data, root), [])
+            artifacts["driver"]["path"] = "labserial.dll"
+            self.assertIn("Caminho invalido: driver", validate(data, root))
+
     def test_prevent_directory_traversal(self):
         with tempfile.TemporaryDirectory() as td:
             checks = {key:{"status":"passed","report":"../bad"} for key in REQUIRED_CHECKS}
