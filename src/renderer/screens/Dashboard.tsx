@@ -93,6 +93,9 @@ export function Dashboard({
   const [captureEquipmentIds, setCaptureEquipmentIds] = useState<number[] | null>(null);
   const [simulatedCapture, setSimulatedCapture] = useState(false);
   const [selectionBatch, setSelectionBatch] = useState<BatchWithProduct | null>(null);
+  const [closingBatch, setClosingBatch] = useState(false);
+  const closingBatchRef = useRef(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
@@ -303,21 +306,33 @@ export function Dashboard({
   }
 
   function handleClose(b: BatchWithProduct) {
+    setCloseError(null);
     setConfirmBatch(b);
   }
 
   async function handleConfirmClose(justification: string) {
-    if (!confirmBatch) return;
+    if (!confirmBatch || closingBatchRef.current) return;
     const b = confirmBatch;
-    setConfirmBatch(null);
-    const res = requiresCentral
-      ? await window.api.central.batches.finalize(b.id, justification)
-      : await window.api.batches.close(b.id);
-    if (!res.ok) {
-      setScannerError(res.error);
-      return;
+    closingBatchRef.current = true;
+    setClosingBatch(true);
+    setCloseError(null);
+    try {
+      const res = requiresCentral
+        ? await window.api.central.batches.finalize(b.id, justification)
+        : await window.api.batches.close(b.id);
+      if (!res.ok) {
+        setCloseError(res.error);
+        return;
+      }
+      setConfirmBatch(null);
+      await reload();
+    } catch (error) {
+      setCloseError(error instanceof Error ? error.message : "Não foi possível finalizar o lote. Tente novamente.");
+      reportDashboardError("finalize", error);
+    } finally {
+      closingBatchRef.current = false;
+      setClosingBatch(false);
     }
-    await reload();
   }
 
   async function handleCompletedChange(batch: BatchWithProduct, completed: boolean) {
@@ -532,7 +547,9 @@ export function Dashboard({
           centralMode={requiresCentral}
           adminOverride={canFinalize}
           confirmationSector={isLaboratory ? "LABORATORY" : "PRODUCTION"}
-          onClose={() => setConfirmBatch(null)}
+          pending={closingBatch}
+          error={closeError}
+          onClose={() => { if (!closingBatchRef.current) setConfirmBatch(null); }}
           onConfirm={handleConfirmClose}
         />
       )}
@@ -770,12 +787,16 @@ function getStageLabel(batch: BatchWithProduct): string {
 
 function ConfirmCloseModal({
   batch,
+  pending,
+  error,
   onClose,
   onConfirm
 }: {
   batch: BatchWithProduct;
   centralMode: boolean;
   adminOverride: boolean;
+  pending: boolean;
+  error: string | null;
   confirmationSector: "PRODUCTION" | "LABORATORY";
   onClose: () => void;
   onConfirm: (justification: string) => void;
@@ -788,18 +809,19 @@ function ConfirmCloseModal({
       onClose={onClose}
       footer={
         <>
-          <button className="secondary" onClick={onClose}>Cancelar</button>
-          <button disabled={!valid} onClick={() => onConfirm(justification.trim())}>Finalizar lote</button>
+          <button className="secondary" disabled={pending} onClick={onClose}>Cancelar</button>
+          <button disabled={!valid || pending} onClick={() => onConfirm(justification.trim())}>{pending ? "Finalizando…" : "Finalizar lote"}</button>
         </>
       }
     >
+      {error && <p role="alert">{error}</p>}
       <p>Finalizar o lote <strong>{batch.code}</strong>?</p>
       <p className="muted" style={{ fontSize: 13 }}>
         O lote já está marcado como concluído. A finalização será registrada no histórico e novas leituras exigirão reabertura por Supervisor ou Master.
       </p>
       <div className="field">
         <label htmlFor="batch-close-justification">Justificativa obrigatória</label>
-        <textarea id="batch-close-justification" value={justification} onChange={(event) => setJustification(event.target.value)} required minLength={10} maxLength={1000} rows={3} placeholder="Explique o motivo da finalização (mínimo 10 caracteres)." />
+        <textarea id="batch-close-justification" disabled={pending} value={justification} onChange={(event) => setJustification(event.target.value)} required minLength={10} maxLength={1000} rows={3} placeholder="Explique o motivo da finalização (mínimo 10 caracteres)." />
       </div>
     </Modal>
   );

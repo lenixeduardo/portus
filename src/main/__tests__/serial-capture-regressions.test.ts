@@ -34,6 +34,12 @@ function values() { return vi.mocked(insertCentralReading).mock.calls.map(([inpu
 describe('serial capture recovery', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); state.ports = []; state.events = []; state.failPaths.clear(); state.equipments = [equipment()]; vi.spyOn(console, 'error').mockImplementation(() => undefined); });
   afterEach(async () => { if (isActive()) await cancelCapture(); vi.useRealTimers(); vi.restoreAllMocks(); });
+  it('captures laboratory readings on a production station under the laboratory sector', async () => {
+    expect((await startCapture(7, [1], 'lab', 'LABORATORY')).ok).toBe(true);
+    send('10\n');
+    await completeCapture();
+    expect(vi.mocked(insertCentralReading).mock.calls[0][0]).toMatchObject({ username: 'lab', sectorCode: 'LABORATORY', valueRaw: '10' });
+  });
   it('records only the first line of a combined chunk for stopAfterFirstReading', async () => {
     state.equipments = [equipment({ stopAfterFirstReading: true })]; await begin();
     send('10\n20\n30'); await completeCapture();
