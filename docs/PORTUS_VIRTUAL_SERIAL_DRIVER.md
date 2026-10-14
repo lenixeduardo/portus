@@ -2,7 +2,7 @@
 
 **Data:** 2026-10-13  
 **Escopo:** driver Windows independente como produto LabSerial, reutilizável por PORTUS ou qualquer software serial; fase 3 reformulada.  
-**Status:** núcleo C++17 testado; protótipo LabSerial KMDF versionado, mas ainda **não compilado no WDK nem instalável**. O scaffold UMDF2 antigo é obsoleto.
+**Status:** núcleo C++17 testado; protótipo LabSerial KMDF compilado em WDK x64 (GitHub Actions), mas ainda **não instalado nem comprovado funcional em VM Windows**. O scaffold UMDF2 antigo é obsoleto.
 
 ## Objetivo
 
@@ -81,7 +81,8 @@ O adaptador legado `portus_umdf.cpp` (não utilizado pelo LabSerial) declara `Dr
 - [x] Criar `virtual-serial/standalone-driver/kmdf/labserial.c`, `labserial.inx` e `labserial.vcxproj`.
 - [x] Criar ferramenta independente `LabSerial.ps1` para status e smoke de duas COM.
 - [x] Adicionar verificações estruturais ao CI.
-- [ ] Compilar KMDF em Windows com WDK e validar INF e assinatura.
+- [x] Compilar KMDF em Windows com WDK x64 e gerar SYS/CAT de teste.
+- [ ] Validar INF e assinatura adequada em ambiente Windows de homologação.
 - [ ] Fazer os dois dispositivos aparecerem como portas COM disponíveis.
 - [ ] Comprovar A↔B sem PORTUS, usando LabSerial CLI e SerialTool.
 - [ ] Finalizar controle de fluxo, `WaitCommEvent`, timeouts e remoção PnP.
