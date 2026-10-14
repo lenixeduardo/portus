@@ -145,7 +145,7 @@ VOID LabEvtWrite(WDFQUEUE queue, WDFREQUEST request, size_t length) {
     }
     ExReleaseFastMutex(&g_mutex);
     if (transferred == 0) {
-        WdfRequestComplete(request, STATUS_DEVICE_NOT_READY);
+        WdfRequestComplete(request, STATUS_BUFFER_OVERFLOW);
         return;
     }
     WdfRequestCompleteWithInformation(request, STATUS_SUCCESS, transferred);
@@ -270,6 +270,19 @@ VOID LabEvtCleanup(WDFOBJECT object) {
     g_port[ctx->side].used = 0;
     g_port[ctx->side].head = 0;
     ExReleaseFastMutex(&g_mutex);
+    {
+        WDFKEY key = NULL;
+        NTSTATUS mapStatus;
+        DECLARE_CONST_UNICODE_STRING(mapName, L"SERIALCOMM");
+        DECLARE_CONST_UNICODE_STRING(mapA, L"\\Device\\LabSerialA");
+        DECLARE_CONST_UNICODE_STRING(mapB, L"\\Device\\LabSerialB");
+        mapStatus = WdfDeviceOpenDevicemapKey(device, &mapName, KEY_SET_VALUE,
+                        WDF_NO_OBJECT_ATTRIBUTES, &key);
+        if (NT_SUCCESS(mapStatus)) {
+            (VOID)WdfRegistryRemoveValue(key, ctx->side == 0 ? &mapA : &mapB);
+            WdfRegistryClose(key);
+        }
+    }
 }
 
 NTSTATUS LabEvtDeviceAdd(WDFDRIVER driver, PWDFDEVICE_INIT init) {
@@ -281,6 +294,10 @@ NTSTATUS LabEvtDeviceAdd(WDFDRIVER driver, PWDFDEVICE_INIT init) {
     WDFQUEUE queue = NULL, manual = NULL;
     WDF_OBJECT_ATTRIBUTES attributes;
     WDF_IO_QUEUE_CONFIG config;
+    WDFKEY mapKey = NULL;
+    DECLARE_CONST_UNICODE_STRING(mapName, L"SERIALCOMM");
+    DECLARE_CONST_UNICODE_STRING(mappedA, L"COM210");
+    DECLARE_CONST_UNICODE_STRING(mappedB, L"COM211");
     DECLARE_CONST_UNICODE_STRING(nameA, L"\\Device\\LabSerialA");
     DECLARE_CONST_UNICODE_STRING(nameB, L"\\Device\\LabSerialB");
     DECLARE_CONST_UNICODE_STRING(linkA, L"\\DosDevices\\COM210");
@@ -290,9 +307,15 @@ NTSTATUS LabEvtDeviceAdd(WDFDRIVER driver, PWDFDEVICE_INIT init) {
     status = WdfFdoInitQueryProperty(init, DevicePropertyHardwareID,
         sizeof(hardwareIds), hardwareIds, &actualSize);
     if (!NT_SUCCESS(status)) return status;
-    if (wcsstr(hardwareIds, L"PORTUS_VCOM_A") != NULL) side = 0;
-    else if (wcsstr(hardwareIds, L"PORTUS_VCOM_B") != NULL) side = 1;
-    else return STATUS_NOT_SUPPORTED;
+    {
+        UNICODE_STRING actual, expectedA, expectedB;
+        RtlInitUnicodeString(&actual, hardwareIds);
+        RtlInitUnicodeString(&expectedA, L"ROOT\\PORTUS_VCOM_A");
+        RtlInitUnicodeString(&expectedB, L"ROOT\\PORTUS_VCOM_B");
+        if (RtlEqualUnicodeString(&actual, &expectedA, TRUE)) side = 0;
+        else if (RtlEqualUnicodeString(&actual, &expectedB, TRUE)) side = 1;
+        else return STATUS_NOT_SUPPORTED;
+    }
 
     WdfDeviceInitSetDeviceType(init, FILE_DEVICE_SERIAL_PORT);
     WdfDeviceInitSetIoType(init, WdfDeviceIoBuffered);
@@ -338,6 +361,16 @@ NTSTATUS LabEvtDeviceAdd(WDFDRIVER driver, PWDFDEVICE_INIT init) {
         g_port[side].waitMask = 0;
     }
     ExReleaseFastMutex(&g_mutex);
+    if (!NT_SUCCESS(status)) return status;
+
+    // Legacy serial enumeration map for tooling that enumerates SERIALCOMM.
+    status = WdfDeviceOpenDevicemapKey(device, &mapName, KEY_SET_VALUE,
+                                      WDF_NO_OBJECT_ATTRIBUTES, &mapKey);
+    if (!NT_SUCCESS(status)) return status;
+    status = WdfRegistryAssignUnicodeString(mapKey,
+                 side == 0 ? &nameA : &nameB,
+                 side == 0 ? &mappedA : &mappedB);
+    WdfRegistryClose(mapKey);
     return status;
 }
 
