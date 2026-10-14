@@ -38,7 +38,12 @@ def validate(data, root: Path):
     if not isinstance(artifacts, dict):
         problems.append("Artefatos assinados ausentes.")
         return problems
-    for name, extension in (("driver", ".dll"), ("inf", ".inf"), ("catalog", ".cat")):
+    driver_model = str(data.get("driver_model", "UMDF2")).upper()
+    if driver_model not in ("UMDF2", "KMDF"):
+        problems.append("driver_model invalido; esperado UMDF2 ou KMDF.")
+        return problems
+    driver_ext = ".sys" if driver_model == "KMDF" else ".dll"
+    for name, extension in (("driver", driver_ext), ("inf", ".inf"), ("catalog", ".cat")):
         item = artifacts.get(name)
         if not isinstance(item, dict):
             problems.append(f"Artefato ausente: {name}")
