@@ -9,7 +9,7 @@ Driver **autônomo**, sem dependência do executável, código Electron, Node.js
 ### Organização
 
 - `kmdf/labserial.c`: protótipo de driver nativo KMDF; dois dispositivos root enumerated com estado partilhado no próprio driver; leitura/escrita Win32, buffers e um subconjunto de IOCTLs seriais.
-- `kmdf/labserial.inx`: proposta de pacote de driver com dispositivos `ROOT\\PORTUS_VCOM_A` e `ROOT\\PORTUS_VCOM_B`, nomes fixos temporários `COM210` e `COM211`.
+- `kmdf/labserial.inx`: proposta de pacote de driver com dispositivos `ROOT\\LABSERIAL_VCOM_A` e `ROOT\\LABSERIAL_VCOM_B`, nomes fixos temporários `COM210` e `COM211`.
 - `kmdf/labserial.vcxproj`: projeto MSBuild/WDK.
 - `tools/LabSerial.ps1`: utilitário independente para listar portas e testar transmissão nas duas direções. Não cria portas nem instala drivers.
 - `tests/test_layout.py`: checagens estruturais, **não substituem compilação nem teste nativo**.
