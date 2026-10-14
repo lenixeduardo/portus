@@ -5,7 +5,7 @@
 - [x] Núcleo C++17 e contratos de comunicação serial e timeouts.
 - [x] Protótipo de callbacks KMDF `ReadFile` e `WriteFile` com encaminhamento entre dois endpoints.
 - [x] Protótipo de IOCTLs básicos para baud, line control, timeout, wait mask, commstatus e purge.
-- [ ] Compilar no WDK, corrigir erros e obter um binário Windows válido.
+- [x] Compilar no WDK 28000.2526, corrigir erros e gerar SYS/CAT de teste x64 no GitHub Actions.
 - [ ] Completar os IOCTLs que faltam: handshake, modem signals, WaitCommEvent e timeouts reais.
 - [ ] Testar cancelamento, PnP e concorrência com Driver Verifier em VM.
 
@@ -18,11 +18,12 @@
 - [x] Projeto Visual Studio/WDK separado e arquivo INX/INF experimental.
 - [x] CLI PowerShell autônomo para status e smoke bidirecional.
 - [x] Testes estáticos de estrutura e CI.
-- [ ] Compilar, assinar para testes, validar INF e enumerar duas portas no Windows.
+- [x] Compilar e gerar assinatura de teste via GitHub Actions (WDK x64).
+- [ ] Validar INF separadamente e enumerar duas portas COM numa VM Windows.
 - [ ] Testar no Windows com o CLI LabSerial e SerialTool, **sem executar PORTUS**.
 - [ ] Corrigir defeitos observados em VMs Windows 10 e 11.
 - [ ] Definir política de instalação/desinstalação e licenciamento próprio.
 
-**Estado comprovado:** código e ferramentas versionados; driver Windows ainda sem compilação WDK e sem teste de instalação. Não há prova de duas COM reais operacionais.
+**Estado comprovado:** código e ferramentas versionados; driver Windows compilado em WDK, mas ainda sem instalação nem teste funcional das portas. Não há prova de duas COM reais operacionais.
 
 Arquitetura detalhada: [docs/PHASE_3_STANDALONE.md](docs/PHASE_3_STANDALONE.md).
