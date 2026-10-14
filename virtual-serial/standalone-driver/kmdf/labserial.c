@@ -167,7 +167,6 @@ VOID LabEvtIoctl(WDFQUEUE queue, WDFREQUEST request,
     NTSTATUS status = STATUS_NOT_SUPPORTED;
     PVOID input = NULL;
     PVOID output = NULL;
-    ULONG value = 0;
     size_t information = 0;
     UNREFERENCED_PARAMETER(outputLength);
     UNREFERENCED_PARAMETER(inputLength);
