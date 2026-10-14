@@ -1,12 +1,12 @@
 # PORTUS Virtual Serial Driver
 
 **Data:** 2026-10-13  
-**Escopo:** driver Windows independente para PORTUS; fase 1 iniciada.  
-**Status:** motor C++17 compilado e testado localmente; adaptador UMDF2 experimental **não compilado/instalável**.
+**Escopo:** driver Windows independente como produto LabSerial, reutilizável por PORTUS ou qualquer software serial; fase 3 reformulada.  
+**Status:** núcleo C++17 testado; protótipo LabSerial KMDF versionado, mas ainda **não compilado no WDK nem instalável**. O scaffold UMDF2 antigo é obsoleto.
 
 ## Objetivo
 
-Criar um driver Windows próprio que disponibilize pares de portas seriais virtuais, permitindo ao PORTUS usar uma extremidade e ao SerialTool ou simulador Python usar a outra. Não utilizar código, bibliotecas, binários, instaladores, mecanismos de implementação específicos ou arquivos derivados do com0com.
+Criar o produto independente **LabSerial**, um driver Windows nativo que disponibiliza pares seriais virtuais para **quaisquer dois aplicativos Windows**, sem precisar instalar ou executar PORTUS. Este será apenas um dos possíveis consumidores. Não utilizar código, bibliotecas, binários, instaladores, mecanismos de implementação específicos ou arquivos derivados do com0com.
 
 A análise prévia do com0com foi utilizada **exclusivamente como levantamento de requisitos de comportamento**. O desenvolvimento toma como referência a documentação pública das APIs Win32/WDK e testes independentes.
 
@@ -30,10 +30,10 @@ O repositório PORTUS utiliza `serialport` em seu processo Electron principal. E
 
 ## Decisão técnica e ressalva
 
-- **Primeira hipótese:** C++/UMDF 2, com WDK/Windows SDK em versões correspondentes.
+- **Decisão nova (Fase 3):** driver standalone em C/KMDF, projeto WDK independente, com dois devnodes root e buffers no mesmo serviço. O código do adaptador UMDF2 permanece só como histórico experimental.
 - **Motivo:** menor exposição a falhas em modo kernel para o primeiro protótipo.
 - **Ressalva crítica:** o exemplo oficial Microsoft VirtualSerial2 demonstra uma **porta serial virtual simples**; não confirma que duas instâncias tenham automaticamente estado compartilhado nem que funcionem como par.
-- **Decisão pendente:** planejar dois dispositivos PnP e o meio de pareamento explícito. Se UMDF 2 não atender, avaliar uma arquitetura própria baseada em KMDF e enumerador de barramento, mantendo a independência de com0com.
+- **Validação pendente:** compilação WDK, aprovação de INF/InfVerif, enumeração PnP real de duas COM, serial IOCTLs completos e teste em VM Windows. Os dois dispositivos KMDF são uma implementação proposta ainda não homologada.
 
 ## Componentes do repositório
 
@@ -51,7 +51,7 @@ virtual-serial/
 
 O motor `SerialPair` implementa dois buffers RX circulares e independentes, com capacidade configurável. Uma escrita por A entrega bytes a B e vice-versa. Preserva FIFO, incluindo `0x00` e outros bytes binários, e possui mutex para concorrência. Se a fila de destino estiver cheia, aceita parcialmente ou retorna zero; **não há descarte silencioso**. A operação não bloqueia nem implementa timeout — tais controles são responsabilidade do adaptador Windows futuro.
 
-O adaptador `portus_umdf.cpp` declara `DriverEntry`, registro de dispositivo experimental e fila WDF, porém completa operações `read`/`write` com `STATUS_NOT_IMPLEMENTED`. Sua interface GUID é **privada**, não registra COM funcional. O arquivo INX é **template experimental**, não pacote instalável.
+O adaptador legado `portus_umdf.cpp` (não utilizado pelo LabSerial) declara `DriverEntry`, registro de dispositivo experimental e fila WDF, porém completa operações `read`/`write` com `STATUS_NOT_IMPLEMENTED`. Sua interface GUID é **privada**, não registra COM funcional. O arquivo INX é **template experimental**, não pacote instalável.
 
 ## Plano por fases
 
@@ -75,11 +75,19 @@ O adaptador `portus_umdf.cpp` declara `DriverEntry`, registro de dispositivo exp
 - [ ] Eventos seriais e controle de fluxo (RTS/CTS, DTR/DSR, XON/XOFF).
 - [ ] Testes de buffers lotados e comunicação concorrente.
 
-### Fase 3 — Integração PORTUS
+### Fase 3 — LabSerial independente (requisito alterado)
 
-- [ ] Gerenciador de portas virtuais separado dos equipamentos reais.
-- [ ] Painel de simulação e logs.
-- [ ] Simuladores Python para balança, pH-metro, viscosímetro, refratômetro e espectrofotômetro.
+- [x] Criar identidade própria, IDs e código KMDF separados do PORTUS.
+- [x] Criar `virtual-serial/standalone-driver/kmdf/labserial.c`, `labserial.inx` e `labserial.vcxproj`.
+- [x] Criar ferramenta independente `LabSerial.ps1` para status e smoke de duas COM.
+- [x] Adicionar verificações estruturais ao CI.
+- [ ] Compilar KMDF em Windows com WDK e validar INF e assinatura.
+- [ ] Fazer os dois dispositivos aparecerem como portas COM disponíveis.
+- [ ] Comprovar A↔B sem PORTUS, usando LabSerial CLI e SerialTool.
+- [ ] Finalizar controle de fluxo, `WaitCommEvent`, timeouts e remoção PnP.
+- [ ] Distribuição e instalação próprias, sem vínculo ao instalador PORTUS.
+
+Mais informações: [Fase 3 standalone](../virtual-serial/docs/PHASE_3_STANDALONE.md).
 
 ### Fase 4 — Qualidade e distribuição
 
