@@ -43,6 +43,8 @@ jobs:
         run: |
           python -m unittest discover -s virtual-serial/simulator -p 'test_*.py' -v
           python -m unittest discover -s virtual-serial/tests -p 'test_release_gate.py' -v
+      - name: Standalone LabSerial package structure
+        run: python -m unittest discover -s virtual-serial/standalone-driver/tests -p 'test_*.py' -v
       - name: Release must be blocked without evidence
         shell: bash
         run: |
