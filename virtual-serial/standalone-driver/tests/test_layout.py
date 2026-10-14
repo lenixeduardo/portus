@@ -34,10 +34,19 @@ class StandaloneLayout(unittest.TestCase):
                   '#include "com0com', '#include <com0com')
         for dependency in banned:
             self.assertNotIn(dependency, code)
+    def test_kernel_fifo_reuses_user_mode_tested_source(self):
+        source = C_SOURCE.read_text(encoding="utf-8")
+        test = (ROOT / "tests" / "ring_tests.c").read_text(encoding="utf-8")
+        shared = (ROOT / "core" / "labserial_ring.h").read_text(encoding="utf-8")
+        self.assertIn('#include "../core/labserial_ring.h"', source)
+        self.assertIn('#include "../core/labserial_ring.h"', test)
+        self.assertIn("LabRingPush", shared)
+        self.assertIn("LabRingPop", shared)
+
     def test_no_distribution_flag(self):
         doc = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("NÃO INSTALAR EM PRODUÇÃO", doc)
-        self.assertIn("Não compilado no WDK", doc)
+        self.assertIn("Compilação WDK x64 de teste aprovada", doc)
 
 if __name__ == "__main__":
     unittest.main()
