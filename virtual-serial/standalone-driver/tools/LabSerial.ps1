@@ -51,7 +51,7 @@ function Assert-Transport($sender,$receiver,$payload) {
   while ($size -lt $bytes.Length) {
     $size += $receiver.Read($seen,$size,$bytes.Length-$size)
   }
-  if ([Convert]::ToHexString($bytes) -ne [Convert]::ToHexString($seen)) {
+  if ([BitConverter]::ToString($bytes) -ne [BitConverter]::ToString($seen)) {
     throw "Mismatched bytes: $($sender.PortName) -> $($receiver.PortName)"
   }
   Write-Host "PASS: $($sender.PortName) -> $($receiver.PortName)"
