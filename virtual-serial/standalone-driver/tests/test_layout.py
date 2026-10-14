@@ -25,7 +25,7 @@ class StandaloneLayout(unittest.TestCase):
                      "WdfRegistryAssignUnicodeString"):
             with self.subTest(text=text):
                 self.assertIn(text, source)
-        for text in ("ROOT\\PORTUS_VCOM_A", "ROOT\\PORTUS_VCOM_B",
+        for text in ("ROOT\\LABSERIAL_VCOM_A", "ROOT\\LABSERIAL_VCOM_B",
                      "Class=Ports", "KmdfService"):
             self.assertIn(text, inf)
     def test_no_application_or_original_com0com_dependency(self):
