@@ -17,24 +17,25 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: virtual-serial/standalone-driver/packages
+          key: labserial-wdk-nuget-28000-2526-x64-v1
       - name: Restore official WDK NuGet packages
         shell: pwsh
         run: nuget restore .\virtual-serial\standalone-driver\packages.config -PackagesDirectory .\virtual-serial\standalone-driver\packages
-      - name: Locate WDK executables
+      - name: Locate x64 WDK executables
         shell: pwsh
         run: |
           $root = ".\\virtual-serial\\standalone-driver\\packages"
-          $stampinf = @(Get-ChildItem -LiteralPath $root -Recurse -Filter stampinf.exe -File -ErrorAction SilentlyContinue | Select-Object -First 1)
-          if ($stampinf.Count -eq 0) {
-            throw "WDK package restored, but stampinf.exe was not found under $root"
-          }
-          $tools = @("stampinf.exe", "inf2cat.exe", "infverif.exe", "signtool.exe")
-          foreach ($exe in $tools) {
-            $found = @(Get-ChildItem -LiteralPath $root -Recurse -Filter $exe -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+          foreach ($exe in @("stampinf.exe", "inf2cat.exe", "infverif.exe", "signtool.exe")) {
+            $found = @(Get-ChildItem -LiteralPath $root -Recurse -Filter $exe -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -match '[\\\\/]x64[\\\\/]' } |
+              Select-Object -First 1)
+            if ($exe -eq "stampinf.exe" -and $found.Count -eq 0) { throw "x64 stampinf.exe not found" }
             if ($found.Count -gt 0) {
-              $directory = $found[0].DirectoryName
-              Write-Host "Found $exe at $directory"
-              $directory | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+              Write-Host "Found $exe at $($found[0].FullName)"
+              $found[0].DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
             }
           }
       - name: Add MSBuild
