@@ -19,6 +19,9 @@ typedef struct _LAB_PORT {
     ULONG baudRate;
     SERIAL_LINE_CONTROL line;
     SERIAL_TIMEOUTS timeouts;
+    SERIAL_CHARS chars;
+    SERIAL_HANDFLOW handflow;
+    ULONG modemControl;
     ULONG waitMask;
     BOOLEAN active;
 } LAB_PORT;
@@ -242,6 +245,67 @@ VOID LabEvtIoctl(WDFQUEUE queue, WDFREQUEST request,
             information = sizeof(*result);
         }
         break;
+    case IOCTL_SERIAL_GET_CHARS:
+        status = LabReadIoctlOutput(request, &output, sizeof(SERIAL_CHARS));
+        if (NT_SUCCESS(status)) {
+            ExAcquireFastMutex(&g_mutex); *(SERIAL_CHARS*)output = port->chars; ExReleaseFastMutex(&g_mutex);
+            information = sizeof(SERIAL_CHARS);
+        }
+        break;
+    case IOCTL_SERIAL_SET_CHARS:
+        status = LabReadIoctlInput(request, &input, sizeof(SERIAL_CHARS));
+        if (NT_SUCCESS(status)) {
+            ExAcquireFastMutex(&g_mutex); port->chars = *(SERIAL_CHARS*)input; ExReleaseFastMutex(&g_mutex);
+        }
+        break;
+    case IOCTL_SERIAL_GET_HANDFLOW:
+        status = LabReadIoctlOutput(request, &output, sizeof(SERIAL_HANDFLOW));
+        if (NT_SUCCESS(status)) {
+            ExAcquireFastMutex(&g_mutex); *(SERIAL_HANDFLOW*)output = port->handflow; ExReleaseFastMutex(&g_mutex);
+            information = sizeof(SERIAL_HANDFLOW);
+        }
+        break;
+    case IOCTL_SERIAL_SET_HANDFLOW:
+        status = LabReadIoctlInput(request, &input, sizeof(SERIAL_HANDFLOW));
+        if (NT_SUCCESS(status)) {
+            // Active hardware/software handshakes are not emulated yet.
+            SERIAL_HANDFLOW candidate = *(SERIAL_HANDFLOW*)input;
+            if ((candidate.ControlHandShake & SERIAL_CTS_HANDSHAKE) ||
+                (candidate.FlowReplace & SERIAL_AUTO_TRANSMIT) ||
+                (candidate.FlowReplace & SERIAL_AUTO_RECEIVE)) {
+                status = STATUS_NOT_SUPPORTED;
+            } else {
+                ExAcquireFastMutex(&g_mutex); port->handflow = candidate; ExReleaseFastMutex(&g_mutex);
+            }
+        }
+        break;
+    case IOCTL_SERIAL_GET_MODEMSTATUS:
+        status = LabReadIoctlOutput(request, &output, sizeof(ULONG));
+        if (NT_SUCCESS(status)) {
+            // Virtual cable presents connected modem-state at MVP.
+            *(ULONG*)output = 0x000000B0;
+            information = sizeof(ULONG);
+        }
+        break;
+    case IOCTL_SERIAL_SET_DTR:
+    case IOCTL_SERIAL_CLEAR_DTR:
+    case IOCTL_SERIAL_SET_RTS:
+    case IOCTL_SERIAL_CLEAR_RTS:
+        ExAcquireFastMutex(&g_mutex);
+        if (code == IOCTL_SERIAL_SET_DTR) port->modemControl |= 0x01;
+        if (code == IOCTL_SERIAL_CLEAR_DTR) port->modemControl &= ~0x01UL;
+        if (code == IOCTL_SERIAL_SET_RTS) port->modemControl |= 0x02;
+        if (code == IOCTL_SERIAL_CLEAR_RTS) port->modemControl &= ~0x02UL;
+        ExReleaseFastMutex(&g_mutex);
+        status = STATUS_SUCCESS;
+        break;
+    case IOCTL_SERIAL_GET_DTRRTS:
+        status = LabReadIoctlOutput(request, &output, sizeof(ULONG));
+        if (NT_SUCCESS(status)) {
+            ExAcquireFastMutex(&g_mutex); *(ULONG*)output = port->modemControl; ExReleaseFastMutex(&g_mutex);
+            information = sizeof(ULONG);
+        }
+        break;
     case IOCTL_SERIAL_PURGE:
         status = LabReadIoctlInput(request, &input, sizeof(ULONG));
         if (NT_SUCCESS(status)) {
@@ -358,6 +422,11 @@ NTSTATUS LabEvtDeviceAdd(WDFDRIVER driver, PWDFDEVICE_INIT init) {
         g_port[side].line.StopBits = 0;
         RtlZeroMemory(&g_port[side].timeouts, sizeof(SERIAL_TIMEOUTS));
         g_port[side].waitMask = 0;
+        RtlZeroMemory(&g_port[side].handflow, sizeof(SERIAL_HANDFLOW));
+        RtlZeroMemory(&g_port[side].chars, sizeof(SERIAL_CHARS));
+        g_port[side].chars.XonChar = 0x11;
+        g_port[side].chars.XoffChar = 0x13;
+        g_port[side].modemControl = 0;
     }
     ExReleaseFastMutex(&g_mutex);
     if (!NT_SUCCESS(status)) return status;
