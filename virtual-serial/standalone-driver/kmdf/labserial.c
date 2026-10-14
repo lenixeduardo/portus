@@ -288,14 +288,14 @@ VOID LabEvtIoctl(WDFQUEUE queue, WDFREQUEST request,
         }
         break;
     case IOCTL_SERIAL_SET_DTR:
-    case IOCTL_SERIAL_CLEAR_DTR:
+    case IOCTL_SERIAL_CLR_DTR:
     case IOCTL_SERIAL_SET_RTS:
-    case IOCTL_SERIAL_CLEAR_RTS:
+    case IOCTL_SERIAL_CLR_RTS:
         ExAcquireFastMutex(&g_mutex);
         if (code == IOCTL_SERIAL_SET_DTR) port->modemControl |= 0x01;
-        if (code == IOCTL_SERIAL_CLEAR_DTR) port->modemControl &= ~0x01UL;
+        if (code == IOCTL_SERIAL_CLR_DTR) port->modemControl &= ~0x01UL;
         if (code == IOCTL_SERIAL_SET_RTS) port->modemControl |= 0x02;
-        if (code == IOCTL_SERIAL_CLEAR_RTS) port->modemControl &= ~0x02UL;
+        if (code == IOCTL_SERIAL_CLR_RTS) port->modemControl &= ~0x02UL;
         ExReleaseFastMutex(&g_mutex);
         status = STATUS_SUCCESS;
         break;
