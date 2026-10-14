@@ -30,7 +30,8 @@ Artefatos no repositório:
 - [x] Implementar um protótipo de KMDF com pares de dispositivos de PnP e ligação em memória.
 - [x] Preparar projeto MSBuild WDK, INF com dois IDs e CLI independente.
 - [x] Manter a base do PORTUS e seu instalador sem mudanças.
-- [ ] Compilar KMDF no WDK x64 sem erros e aprovar análise estática.
+- [x] Compilar KMDF no WDK x64: GitHub Actions run 38508552952, geração de SYS/INF/CAT de teste aprovada.
+- [ ] Executar validação de análise estática aprofundada, Driver Verifier e InfVerif independente com logs arquivados.
 - [ ] Corrigir e aprovar INF/InfVerif/Inf2Cat.
 - [ ] Criar e enumerar duas portas COM no Windows, sem conflitos.
 - [ ] Testar leitura/escrita bidirecional com SerialTool e CLI.
@@ -48,4 +49,4 @@ Após o LabSerial estar homologado, o PORTUS poderá abrir uma das portas via se
 
 ## Resultado verificado e limites
 
-Os testes já confirmados anteriormente cobrem **somente** núcleo C++ em host não-Windows e o release-gate. Os novos arquivos KMDF foram escritos e versionados, **não foram compilados, instalados nem executados em VM**. Não está correto chamar o driver de pronto ou funcional em Windows neste momento.
+Os testes já confirmados anteriormente cobrem **somente** núcleo C++ em host não-Windows e o release-gate. Os arquivos KMDF foram escritos e compilados com WDK 28000.2526 no GitHub Actions, com SYS e catálogo assinados para teste. **Não houve instalação nem execução em VM**. Não está correto chamar o driver de pronto ou funcional em Windows neste momento.
