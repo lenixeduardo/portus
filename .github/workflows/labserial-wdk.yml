@@ -20,6 +20,23 @@ jobs:
       - name: Restore official WDK NuGet packages
         shell: pwsh
         run: nuget restore .\virtual-serial\standalone-driver\packages.config -PackagesDirectory .\virtual-serial\standalone-driver\packages
+      - name: Locate WDK executables
+        shell: pwsh
+        run: |
+          $root = ".\\virtual-serial\\standalone-driver\\packages"
+          $stampinf = @(Get-ChildItem -LiteralPath $root -Recurse -Filter stampinf.exe -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+          if ($stampinf.Count -eq 0) {
+            throw "WDK package restored, but stampinf.exe was not found under $root"
+          }
+          $tools = @("stampinf.exe", "inf2cat.exe", "infverif.exe", "signtool.exe")
+          foreach ($exe in $tools) {
+            $found = @(Get-ChildItem -LiteralPath $root -Recurse -Filter $exe -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+            if ($found.Count -gt 0) {
+              $directory = $found[0].DirectoryName
+              Write-Host "Found $exe at $directory"
+              $directory | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+            }
+          }
       - name: Add MSBuild
         uses: microsoft/setup-msbuild@v2
       - name: Compile KMDF experimental driver
