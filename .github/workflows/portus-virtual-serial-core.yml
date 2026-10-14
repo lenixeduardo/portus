@@ -1,0 +1,32 @@
+name: PORTUS Virtual Serial core
+
+on:
+  pull_request:
+    paths:
+      - "virtual-serial/**"
+      - ".github/workflows/portus-virtual-serial-core.yml"
+  push:
+    branches: [main]
+    paths:
+      - "virtual-serial/**"
+      - ".github/workflows/portus-virtual-serial-core.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-core:
+    name: C++ core / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: cmake -S virtual-serial -B virtual-serial/build -DCMAKE_BUILD_TYPE=Release
+      - name: Build C++ core
+        run: cmake --build virtual-serial/build --config Release
+      - name: Run serial unit tests
+        run: ctest --test-dir virtual-serial/build -C Release --output-on-failure
