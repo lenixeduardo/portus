@@ -310,8 +310,8 @@ NTSTATUS LabEvtDeviceAdd(WDFDRIVER driver, PWDFDEVICE_INIT init) {
     {
         UNICODE_STRING actual, expectedA, expectedB;
         RtlInitUnicodeString(&actual, hardwareIds);
-        RtlInitUnicodeString(&expectedA, L"ROOT\\PORTUS_VCOM_A");
-        RtlInitUnicodeString(&expectedB, L"ROOT\\PORTUS_VCOM_B");
+        RtlInitUnicodeString(&expectedA, L"ROOT\\LABSERIAL_VCOM_A");
+        RtlInitUnicodeString(&expectedB, L"ROOT\\LABSERIAL_VCOM_B");
         if (RtlEqualUnicodeString(&actual, &expectedA, TRUE)) side = 0;
         else if (RtlEqualUnicodeString(&actual, &expectedB, TRUE)) side = 1;
         else return STATUS_NOT_SUPPORTED;
