@@ -21,7 +21,7 @@ Na raiz do repositório:
 .\virtual-serial\standalone-driver\tools\LabSerial.ps1 -Action status
 ```
 
-### Compilação Windows (requer VS + WDK, não foi executada)
+### Compilação Windows (executada e aprovada no GitHub Actions x64 Debug/Release)
 
 Instalar Windows SDK/WDK da mesma versão e Visual Studio C++ correspondente. Abrir **Developer PowerShell for VS**:
 
@@ -42,12 +42,20 @@ O operador deve verificar antes, no Gerenciador de Dispositivos, que ambas são 
 ### Limitações deste protótipo
 
 1. Dois root devnodes não são criados pelo script/driver; instalar e enumerar ambos requer pacote WDK, assinatura e procedimento específico em VM.
-2. Leitura/escrita básica entre dois buffers está **codificada, mas sem teste de compilação ou comportamento Windows**.
-3. Handshake XON/XOFF, RTS/CTS, WaitCommEvent, timeouts exatos e DTR/DSR ainda não implementados.
+2. Leitura/escrita entre buffers está **compilada com WDK e seu algoritmo FIFO é testado no espaço de usuário**; comportamento com driver carregado no Windows **ainda não foi testado**.
+3. IOCTLs básicos de controle foram adicionados; handshake XON/XOFF, RTS/CTS completos, WaitCommEvent, timeouts reais e propagação de sinais ainda não foram homologados.
 4. Nomes COM210 e COM211 são experimentais, fixos e exigem preflight para colisões.
 5. O `PortName` e `SERIALCOMM` precisarão ser comprovados em Windows com o SerialTool.
 6. A instalação de drivers de kernel exige assinatura adequada; não contornar políticas de segurança.
 7. Suporte PnP, remoção durante I/O, referências a filas e cancelamento precisam de stress test/Driver Verifier.
+
+## Testes automatizados existentes
+
+A pipeline `PORTUS Virtual Serial groundwork` compila os testes do FIFO **utilizado diretamente pelo KMDF** e do núcleo C++ em Linux/Windows, Debug/Release, repetindo o CTest três vezes. Também roda uma build separada com AddressSanitizer/UndefinedBehaviorSanitizer no Linux, e os testes Python.
+
+A pipeline `LabSerial WDK experimental compile` compila KMDF x64 Debug/Release, valida o INF com `InfVerif /w /v`, confere arquivos SYS/INF/CAT e a presença de certificado de **teste**, gera hashes SHA-256 e publica artefatos marcados `test-only`.
+
+Os testes **não carregam ou instalam** um driver de kernel, não testam enumeração PnP nem COM210↔COM211. [Matriz e resultados](CI_VALIDATION.md).
 
 ## Critério objetivo de 'funcionando'
 
