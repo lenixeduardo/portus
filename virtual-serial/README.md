@@ -1,15 +1,29 @@
-# PORTUS Virtual Serial Driver — Fase 1
+# LabSerial — driver virtual independente / PORTUS serial core
 
-Camada C++17 independente do Windows e sem código com0com: dois endpoints, buffers RX circulares, sincronização e transferência binária. **Não é driver COM instalável ainda.** Uma camada WDK/UMDF 2 experimental está em `driver/`.
+O novo **LabSerial** é um driver Windows independente (protótipo em `standalone-driver/`), planejado para conectar dois aplicativos via um par de portas COM. Não depende do PORTUS, do Electron, do Node.js nem do simulador Python.
 
-Testar o núcleo:
+**NÃO INSTALAR EM PRODUÇÃO:** o KMDF ainda não foi compilado no WDK, não foi assinado nem executado em Windows. Os arquivos de driver são fontes experimentais.
+
+## Dois componentes separados
+
+1. `standalone-driver/` — driver nativo LabSerial, INF, projeto WDK e CLI independente de inspeção/teste.
+2. `core/` e `simulator/` — núcleo C++17 e simulador Python já existentes, usados como ferramentas de desenvolvimento. Não são carregados nem exigidos pelo driver LabSerial.
+
+## Testes que podem ser feitos sem instalar driver
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build --output-on-failure
+cmake -S virtual-serial -B virtual-serial/build
+cmake --build virtual-serial/build
+ctest --test-dir virtual-serial/build --output-on-failure
+python -m unittest discover -s virtual-serial/standalone-driver/tests -p 'test_*.py' -v
 ```
 
-Especificação e pendências: [docs/PORTUS_VIRTUAL_SERIAL_DRIVER.md](docs/PORTUS_VIRTUAL_SERIAL_DRIVER.md).
+### PowerShell Windows — somente diagnóstico
 
-**Isolamento:** a captura serial Electron existente e o instalador do PORTUS permanecem inalterados. Não instale o INX experimental.
+```powershell
+.\virtual-serial\standalone-driver\tools\LabSerial.ps1 -Action status
+```
+
+A opção `-Action test` somente deve ser usada numa VM descartável, após o driver estar compilado, assinado e instalado com duas portas reais.
+
+Especificação: [docs/PHASE_3_STANDALONE.md](docs/PHASE_3_STANDALONE.md). A integração com o PORTUS é opcional e posterior.
