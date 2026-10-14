@@ -1,6 +1,6 @@
 # LabSerial — Windows Virtual COM Driver (independente)
 
-**NÃO INSTALAR EM PRODUÇÃO. Não compilado no WDK e não validado em Windows.**
+**NÃO INSTALAR EM PRODUÇÃO. Compilação WDK x64 de teste aprovada; ainda não foi instalado nem validado em VM Windows.**
 
 ## Objetivo
 
