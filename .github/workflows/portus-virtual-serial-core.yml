@@ -1,4 +1,4 @@
-name: PORTUS Virtual Serial core
+name: PORTUS Virtual Serial groundwork
 
 on:
   pull_request:
@@ -28,5 +28,15 @@ jobs:
         run: cmake -S virtual-serial -B virtual-serial/build -DCMAKE_BUILD_TYPE=Release
       - name: Build C++ core
         run: cmake --build virtual-serial/build --config Release
-      - name: Run serial unit tests
+      - name: Test C++ core
         run: ctest --test-dir virtual-serial/build -C Release --output-on-failure
+  test-simulator:
+    name: Python simulator unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test protocol fixtures
+        run: python -m unittest discover -s virtual-serial/simulator -p 'test_*.py' -v
