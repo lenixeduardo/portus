@@ -4,8 +4,8 @@
 // No dependency on the PORTUS application or on its Node/TypeScript runtime.
 #include <ntddk.h>
 #include <wdf.h>
-#include <ntddser.h>
 #include <initguid.h>
+#include <ntddser.h>
 
 #define LAB_RING_CAPACITY 4096
 #define LAB_ENDPOINT_COUNT 2
