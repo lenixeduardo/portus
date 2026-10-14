@@ -12,9 +12,13 @@ permissions:
 
 jobs:
   compile-kmdf:
-    name: WDK compile (no install)
+    name: KMDF x64 / ${{ matrix.configuration }} / INF and signature checks (no install)
     runs-on: windows-2025-vs2026
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -24,13 +28,13 @@ jobs:
       - name: Restore official WDK NuGet packages
         shell: pwsh
         run: nuget restore .\virtual-serial\standalone-driver\packages.config -PackagesDirectory .\virtual-serial\standalone-driver\packages
-      - name: Locate x64 WDK executables
+      - name: Locate native x64 WDK tools
         shell: pwsh
         run: |
-          $root = ".\\virtual-serial\\standalone-driver\\packages"
+          $root = ".\virtual-serial\standalone-driver\packages"
           foreach ($exe in @("stampinf.exe", "inf2cat.exe", "infverif.exe", "signtool.exe")) {
             $found = @(Get-ChildItem -LiteralPath $root -Recurse -Filter $exe -File -ErrorAction SilentlyContinue |
-              Where-Object { $_.FullName -match '[\\\\/]x64[\\\\/]' } |
+              Where-Object { $_.FullName -match '[\\/]x64[\\/]' } |
               Select-Object -First 1)
             if ($exe -eq "stampinf.exe" -and $found.Count -eq 0) { throw "x64 stampinf.exe not found" }
             if ($found.Count -gt 0) {
@@ -42,16 +46,62 @@ jobs:
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: x64
-      - name: Compile KMDF experimental driver
+      - name: Build KMDF Windows driver (no loading or installation)
         shell: pwsh
         run: |
-          msbuild .\virtual-serial\standalone-driver\kmdf\labserial.vcxproj /m /p:Configuration=Debug /p:Platform=x64 /v:minimal
-      - name: Save diagnostic build log and generated files
-        if: always()
+          msbuild .\virtual-serial\standalone-driver\kmdf\labserial.vcxproj /m /p:Configuration=${{ matrix.configuration }} /p:Platform=x64 /v:minimal
+          if ($LASTEXITCODE -ne 0) { throw "WDK build failed" }
+      - name: Verify INF, SYS and test catalog
+        shell: pwsh
+        run: |
+          $base = "virtual-serial/standalone-driver/kmdf/x64/${{ matrix.configuration }}"
+          $sys = Join-Path $base "labserial.sys"
+          $inf = Join-Path $base "labserial.inf"
+          $cat = Join-Path $base "labserial/labserial.cat"
+          foreach ($file in @($sys, $inf, $cat)) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing generated file: $file" }
+            if ((Get-Item -LiteralPath $file).Length -le 0) { throw "Empty generated file: $file" }
+          }
+          $body = Get-Content -Raw -LiteralPath $inf
+          foreach ($id in @("ROOT\LABSERIAL_VCOM_A", "ROOT\LABSERIAL_VCOM_B")) {
+            if (-not $body.Contains($id)) { throw "INF missing hardware ID: $id" }
+          }
+          & infverif.exe /w /v $inf
+          if ($LASTEXITCODE -ne 0) { throw "InfVerif /w rejected generated INF" }
+          $signature = Get-AuthenticodeSignature -LiteralPath $sys
+          if ($null -eq $signature.SignerCertificate) { throw "Driver SYS has no signing certificate" }
+          Write-Host "TEST certificate: $($signature.SignerCertificate.Subject)"
+          Write-Host "Signature status: $($signature.Status) (not proof of production trust)"
+          $output = "labserial-test-package/${{ matrix.configuration }}"
+          New-Item -ItemType Directory -Path $output -Force | Out-Null
+          foreach ($file in @($sys, $inf, $cat)) { Copy-Item -LiteralPath $file -Destination $output }
+          $manifest = [ordered]@{
+            product = "LabSerial"
+            architecture = "x64"
+            configuration = "${{ matrix.configuration }}"
+            driver_model = "KMDF"
+            driver_installed = $false
+            kernel_runtime_tested = $false
+            intended_for_production = $false
+            sha256 = [ordered]@{
+              sys = (Get-FileHash -Algorithm SHA256 -LiteralPath $sys).Hash
+              inf = (Get-FileHash -Algorithm SHA256 -LiteralPath $inf).Hash
+              cat = (Get-FileHash -Algorithm SHA256 -LiteralPath $cat).Hash
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Out-File -LiteralPath (Join-Path $output "checksums.json") -Encoding utf8
+      - name: Archive test-only package
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: labserial-wdk-experimental
-          path: |
-            virtual-serial/standalone-driver/kmdf/x64/**
-            virtual-serial/standalone-driver/kmdf/Debug/**
+          name: labserial-wdk-${{ matrix.configuration }}-x64-test-only
+          path: labserial-test-package/${{ matrix.configuration }}/*
+          retention-days: 7
+      - name: Archive diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labserial-wdk-${{ matrix.configuration }}-diagnostics
+          path: virtual-serial/standalone-driver/kmdf/x64/${{ matrix.configuration }}/**
           retention-days: 3
+          if-no-files-found: ignore
