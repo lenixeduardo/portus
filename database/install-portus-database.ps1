@@ -180,6 +180,7 @@ $$;
   $grantSql = @'
 GRANT USAGE ON SCHEMA public TO :"app_user";
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO :"app_user";
+GRANT INSERT ON TABLE portus_audit_log TO :"app_user";
 GRANT INSERT, UPDATE ON TABLE capture_sessions TO :"app_user";
 GRANT INSERT, UPDATE ON TABLE users, user_sector_permissions, application_sector_permissions TO :"app_user";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"app_user";
