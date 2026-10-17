@@ -80,6 +80,19 @@ jobs:
           }
           $checks | ConvertTo-Json -Depth 8 | Out-File (Join-Path $output 'build-manifest.json') -Encoding utf8
           Compress-Archive -Path "$output/*" -DestinationPath "LabSerial-Setup-Portable-Windows-x64-Experimental.zip" -Force
+      - name: Smoke-test WinForms layout and read-only inventory on Windows runner
+        run: |
+          $exe = "virtual-serial/standalone-driver/manager/publish/LabSerial.Setup.exe"
+          & $exe --selftest
+          $code = $LASTEXITCODE
+          $report = Join-Path $env:TEMP 'LabSerial-Setup-selftest.txt'
+          if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report }
+          if ($code -ne 0 -or -not (Test-Path -LiteralPath $report)) {
+            throw "GUI selftest failed with exit $code"
+          }
+          if (-not ((Get-Content -LiteralPath $report -Raw).StartsWith('PASS:'))) {
+            throw 'GUI selftest result is not PASS'
+          }
       - name: Build experimental Inno Setup installer
         run: |
           $iscc = @(
