@@ -49,6 +49,7 @@ internal sealed class MainForm : Form
     internal MainForm()
     {
         Text = "LabSerial Setup";
+        Icon = LabSerialBrand.MakeIcon();
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1030, 810);
         MinimumSize = new Size(940, 690);
@@ -467,6 +468,11 @@ internal sealed class MainForm : Form
         }
         catch (Exception e)
         {
+            // Fail closed: a stale successful inventory must never enable any COM I/O.
+            _snapshot = null;
+            _pairs.Items.Clear();
+            UpdateProperties();
+            _summary.Text = "Falha de inventário: testes bloqueados até nova verificação.";
             _state.Text = "Falha no inventário";
             _connection.Text = "Não verificado";
             WriteLog("ERRO AO INVENTARIAR: " + e.Message);
