@@ -8,12 +8,7 @@ if errorlevel 1 (
   echo ERRO: nao foi possivel abrir a pasta do pacote.
   exit /b 2
 )
-if /I "%~1"=="/check" (
-  call :CHECK_PACKAGE
-  set "rc=%errorlevel%"
-  popd
-  exit /b %rc%
-)
+if /I "%~1"=="/check" goto CHECK_ONLY
 call :CHECK_PACKAGE
 if errorlevel 1 (
   echo.
@@ -150,6 +145,15 @@ exit /b %errorlevel%
 :CHECK_PACKAGE
 powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; try { $m=Get-Content -LiteralPath 'checksums.json' -Raw | ConvertFrom-Json; if($m.product -ne 'LabSerial' -or $m.architecture -ne 'x64' -or $m.intended_for_production -ne $false){throw 'Manifesto invalido'}; $files=@{'sys'='labserial.sys';'inf'='labserial.inf';'cat'='labserial.cat';'cer'='labserial-test.cer'}; foreach($key in $files.Keys){$f=$files[$key]; if((Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash -ne $m.sha256.$key){throw ('SHA-256 invalido: '+$f)}}; if(-not $m.scripts_sha256){throw 'Manifesto sem hashes dos scripts'}; foreach($p in $m.scripts_sha256.PSObject.Properties){if((Get-FileHash -LiteralPath $p.Name -Algorithm SHA256).Hash -ne [string]$p.Value){throw ('SHA-256 invalido: '+$p.Name)}}; Write-Host 'Integridade do pacote LabSerial verificada.';exit 0 }catch{Write-Host ('BLOQUEADO: '+$_.Exception.Message);exit 8}"
 exit /b %errorlevel%
+
+:CHECK_ONLY
+call :CHECK_PACKAGE
+if errorlevel 1 (
+  popd
+  exit /b 8
+)
+popd
+exit /b 0
 
 :HELP
 echo LabSerial - instalador guiado de teste; execucao permitida apenas em PC sobressalente.
