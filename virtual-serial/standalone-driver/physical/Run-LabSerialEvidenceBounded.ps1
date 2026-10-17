@@ -77,10 +77,10 @@ $runDirectory = Join-Path $root "Sessao-$sessionId"
 New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
 Write-Host "Pasta de evidencias desta execucao: $runDirectory"
 
-$args = '-NoProfile -NonInteractive -File "' + $script + '" -RunTransfer ' +
+$childArguments = '-NoProfile -NonInteractive -File "' + $script + '" -RunTransfer ' +
   '-ConfirmDedicatedNonProductionPC -ConfirmPortsAreLabSerial -OutputDirectory "' + $runDirectory + '"'
 
-$exitCode = Invoke-LabSerialChild $args 75000
+$exitCode = Invoke-LabSerialChild $childArguments 75000
 if ($exitCode -ne 0) {
   throw "Processo de teste retornou $exitCode. Evidencias: $runDirectory"
 }
