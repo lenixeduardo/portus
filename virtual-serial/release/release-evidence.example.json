@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "release": "experimental-NOT-FOR-DISTRIBUTION",
+  "checks": {
+    "wdk_build_windows_x64": {
+      "status": "pending",
+      "report": ""
+    },
+    "infverif": {
+      "status": "pending",
+      "report": ""
+    },
+    "inf2cat": {
+      "status": "pending",
+      "report": ""
+    },
+    "pnp_two_ports": {
+      "status": "pending",
+      "report": ""
+    },
+    "serial_win32_api": {
+      "status": "pending",
+      "report": ""
+    },
+    "e2e_bidirectional": {
+      "status": "pending",
+      "report": ""
+    },
+    "windows_10_x64": {
+      "status": "pending",
+      "report": ""
+    },
+    "windows_11_x64": {
+      "status": "pending",
+      "report": ""
+    },
+    "reboot_persistence": {
+      "status": "pending",
+      "report": ""
+    },
+    "uninstall_rollback": {
+      "status": "pending",
+      "report": ""
+    },
+    "windows_signature_validation": {
+      "status": "pending",
+      "report": ""
+    },
+    "owner_approval": {
+      "status": "pending",
+      "report": ""
+    }
+  },
+  "artifacts": {
+    "driver": {
+      "path": "portusvserial.dll",
+      "sha256": ""
+    },
+    "inf": {
+      "path": "portusvserial.inf",
+      "sha256": ""
+    },
+    "catalog": {
+      "path": "portusvserial.cat",
+      "sha256": ""
+    }
+  }
+}
