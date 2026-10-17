@@ -222,4 +222,5 @@ try {
   Write-Host "Relatorio JSON: $jsonPath"
   Write-Host "Relatorio TXT:  $textPath"
 }
-if ($report.Result -eq 'FAIL') { exit 1 }
+if ($report.Result -eq 'PASS' -or $report.Result -eq 'INVENTORY_ONLY') { exit 0 }
+exit 1
