@@ -57,6 +57,19 @@ class StandaloneLayout(unittest.TestCase):
         self.assertIn("ROOT\\LABSERIAL_VCOM_A", diagnostics)
         self.assertIn("ROOT\\LABSERIAL_VCOM_B", diagnostics)
 
+    def test_serialport_open_compatibility_ioctls(self):
+        source = C_SOURCE.read_text(encoding="utf-8")
+        self.assertIn("case IOCTL_SERIAL_GET_PROPERTIES:", source)
+        self.assertIn("sizeof(SERIAL_COMMPROP)", source)
+        self.assertIn("props->MaxBaud = 4000000;", source)
+        self.assertIn("props->ServiceMask = SERIAL_SP_SERIALCOMM;", source)
+        self.assertIn("case IOCTL_SERIAL_SET_QUEUE_SIZE:", source)
+        self.assertIn("sizeof(SERIAL_QUEUE_SIZE)", source)
+        self.assertIn("requested->InSize <= LAB_RING_CAPACITY", source)
+        self.assertIn("requested->OutSize <= LAB_RING_CAPACITY", source)
+        self.assertNotIn("SERIAL_PCF_TOTALTIMEOUTS", source)
+        self.assertNotIn("SERIAL_PCF_INTTIMEOUTS", source)
+
     def test_no_distribution_flag(self):
         doc = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("NÃO INSTALAR EM PRODUÇÃO", doc)
