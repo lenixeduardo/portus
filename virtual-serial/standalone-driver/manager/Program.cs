@@ -37,6 +37,8 @@ internal static class Program
             throw new InvalidOperationException("Footer extends beyond form client bounds");
         var list = descendants.OfType<ListView>().FirstOrDefault()
             ?? throw new InvalidOperationException("Pair grid is missing");
+        if (list.Scrollable)
+            throw new InvalidOperationException("Unexpected scrollbars may obscure the single fixed COM pair");
         int visibleColumns = list.Columns.Cast<ColumnHeader>().Sum(c => c.Width);
         if (visibleColumns > list.ClientSize.Width - 12)
             throw new InvalidOperationException("Horizontal pair-grid scrollbar would occlude rows at " + form.Size);
