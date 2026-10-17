@@ -34,3 +34,13 @@ A pipeline Windows compila WinForms e o instalador, faz smoke de inicialização
 A nota final de fidelidade ainda depende de captura da v0.1.1 aberta no Windows do operador, comparada ao mockup original. **Não atribuir 9,5/10 automaticamente por compilar ou fazer screenshot da CI.**
 
 A integração funcional Win32 6/6, .NET 4/4 e perfil 2/2 foi comprovada **na versão anterior v0.1.0**. A revisão v0.1.1 preserva os invocadores e scripts, mas requer regressão curta no computador físico após atualização da interface.
+
+## Ajustes posteriores voltados à meta de fidelidade 9,8/10 (GUI v0.1.2)
+
+- Janela adaptada ao espaço útil real do monitor e status bar mantida dentro da área de trabalho.
+- Mais altura para Configurações do Par em resoluções compactas; os três checkboxes e o modo de emulação não podem ser cortados.
+- Toolbar com glyphs GDI+ desenhados localmente (Adicionar, Remover, Propriedades, Atualizar, Aplicar e botões de diagnóstico), nomes dos testes condensados em laptops sem esconder Console.
+- Indicador LED verde para estado `Ativo` desenhado mesmo na linha selecionada em azul, sem usar um caractere de texto que muda de cor na seleção.
+- Descrição de porta em até duas linhas e nomes/identidades reais verificados, sem inventar data de criação ou novas portas.
+- As duas capturas de CI (padrão e compacta 940x650) são evidência verificável: teste falha se rodapé, opções, toolbar ou a linha da tabela forem encobertos.
+- A nota final de 9,8/10 será confirmada apenas com comparação da GUI instalada no monitor físico; a CI não possui o driver, então mostra o status indisponível.
