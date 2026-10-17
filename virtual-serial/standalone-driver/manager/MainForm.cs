@@ -449,7 +449,7 @@ internal sealed class MainForm : Form
         _state.Spring = true;
         _state.TextAlign = ContentAlignment.MiddleLeft;
         _state.Text = "LabSerial Virtual Serial Port Driver (Experimental)";
-        _deviceManager.Text = "Gerenciador de Dispositivos...";
+        _deviceManager.Text = "Abrir Gerenciador de Dispositivos...";
         _deviceManager.ToolTipText = "Abrir o Gerenciador de Dispositivos do Windows";
         _deviceManager.IsLink = true;
         _deviceManager.LinkColor = AccentBlue;
@@ -460,6 +460,12 @@ internal sealed class MainForm : Form
         strip.Items.Add(_state);
         strip.Items.Add(_connection);
         strip.Items.Add(_deviceManager);
+        strip.SizeChanged += (_, _) =>
+        {
+            // On narrow laptops prioritize the working Device Manager action;
+            // the COM mapping remains visible in the list/table and its tooltip.
+            _connection.Visible = strip.ClientSize.Width >= 1020;
+        };
         return strip;
     }
 
