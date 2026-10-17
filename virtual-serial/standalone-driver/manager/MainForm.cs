@@ -163,6 +163,9 @@ internal sealed class MainForm : Form
             _btnProfile.Text = compact ? "Perfil" : "Testar Perfil";
             _btnWin32.Text = compact ? "Win32" : "Testar Win32";
             _btnNet.Text = compact ? ".NET" : "Testar .NET";
+            bool tight = toolbar.ClientSize.Width < 1030;
+            foreach (var b in new[] { _btnProfile, _btnWin32, _btnNet })
+                b.DisplayStyle = tight ? ToolStripItemDisplayStyle.Image : ToolStripItemDisplayStyle.ImageAndText;
         };
         _btnProfile.ToolTipText = "Testar Perfil — teste SerialPort na velocidade selecionada";
         _btnWin32.ToolTipText = "Testar Win32 — 6 quadros de transmissão";
