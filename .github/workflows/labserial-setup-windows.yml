@@ -115,6 +115,9 @@ jobs:
             throw 'Visual screenshot not captured'
           }
           Copy-Item -LiteralPath $capture -Destination 'LabSerial-Setup-selftest.png' -Force
+          $compact = Join-Path $env:TEMP 'LabSerial-Setup-selftest-compact.png'
+          if (-not (Test-Path -LiteralPath $compact -PathType Leaf)) { throw 'Compact layout screenshot missing' }
+          Copy-Item -LiteralPath $compact -Destination 'LabSerial-Setup-selftest-compact.png' -Force
           Copy-Item -LiteralPath $report -Destination 'LabSerial-Setup-selftest.txt' -Force
       - name: Build experimental Inno Setup installer
         run: |
@@ -143,6 +146,7 @@ jobs:
           path: |
             LabSerial-Setup-Portable-Windows-x64-Experimental.zip
             LabSerial-Setup-selftest.png
+            LabSerial-Setup-selftest-compact.png
             LabSerial-Setup-selftest.txt
             virtual-serial/standalone-driver/manager/dist/LabSerial-Setup-Windows-x64-Experimental.exe
           if-no-files-found: error
