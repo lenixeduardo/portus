@@ -123,8 +123,10 @@ jobs:
           # Fail-closed check in CI host that has no LabSerial PnP devices.
           if ("${{ matrix.configuration }}" -eq "Release") {
             $noDevicePath = Join-Path $env:RUNNER_TEMP 'labserial-empty-windows-evidence'
-            & powershell.exe -NoProfile -File (Join-Path $output 'Evidence-LabSerialTransfer.ps1') -OutputDirectory $noDevicePath
-            if ($LASTEXITCODE -ne 1) { throw 'CI host unexpectedly accepted COM without LabSerial PnP verification.' }
+            $probePath = (Resolve-Path (Join-Path $output 'Evidence-LabSerialTransfer.ps1')).Path
+            $args = '-NoProfile -File "' + $probePath + '" -OutputDirectory "' + $noDevicePath + '"'
+            $process = Start-Process -FilePath 'powershell.exe' -ArgumentList $args -Wait -PassThru -NoNewWindow
+            if ($process.ExitCode -ne 1) { throw "Expected fail-closed exit 1; got $($process.ExitCode)." }
             $evidence = @(Get-ChildItem -LiteralPath $noDevicePath -Filter *.json -File)
             if ($evidence.Count -ne 1) { throw 'Expected exactly one negative evidence JSON' }
             $negative = Get-Content -LiteralPath $evidence[0].FullName -Raw | ConvertFrom-Json
