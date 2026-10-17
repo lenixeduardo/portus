@@ -34,7 +34,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="labserial.c" />
-    <Inf Include="labserial.inx" />
+    <Inf Include="labserial.inx">
+      <!-- StampInf otherwise replaces DriverVer with a build-time clock value. -->
+      <SpecifyDriverVerDirectiveDate>true</SpecifyDriverVerDirectiveDate>
+      <DateStamp>10/17/2026</DateStamp>
+      <SpecifyDriverDirectiveVersion>true</SpecifyDriverDirectiveVersion>
+      <TimeStamp>0.1.1.0</TimeStamp>
+    </Inf>
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
