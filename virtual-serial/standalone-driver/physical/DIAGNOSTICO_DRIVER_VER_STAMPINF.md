@@ -72,3 +72,15 @@ O pacote candidato anteriormente fornecido possui INF `DriverVer = 10/17/2026,7.
 O manifesto do artefato declara certificado de teste SHA-1 thumbprint `F6B7536F32961561E01F540E58E6D0938D82F5BA`; o certificado público incluído no ZIP é **autoassinado** (CN `WDKTestCert runneradmin,134366953847180556`) e foi emitido em `2026-10-17T07:23:04Z`. A confiança deste certificado no PC físico **não está confirmada**. O comando do operador `Get-AuthenticodeSignature labserial.sys` retornou `UnknownError` com certificado presente, exigindo inspeção de cadeia/SignTool antes de qualquer atualização.
 
 **Status:** backup positivo e integridade de bytes da build candidata confirmados; confiança/autorização do certificado de teste NÃO confirmada; atualização de driver NÃO executada. O arquivo INF dessa build apresenta numeração baseada em horário, não a versão fixa pretendida.
+
+## Assinatura do pacote candidato verificada no Windows físico
+
+O operador importou conscientemente o certificado autoassinado de teste correspondente ao candidato, thumbprint `F6B7536F32961561E01F540E58E6D0938D82F5BA`, para o repositório Windows de confiança de sua máquina de laboratório, após confirmação interativa do PowerShell. Reexecutou:
+
+```text
+Get-AuthenticodeSignature "$p\labserial.sys" | Format-List Status,StatusMessage
+Status        : Valid
+StatusMessage : Assinatura verificada.
+```
+
+**Interpretação:** assinatura Authenticode do `.sys` candidato aceita pela máquina de laboratório. Não demonstra que o dispositivo foi atualizado; até evidência contrária os dispositivos A/B continuam associados ao `oem65.inf` de 14/10/2026. Não representa assinatura Microsoft de distribuição. O backup anterior foi exportado via `pnputil /export-driver oem65.inf` com êxito. Próximo passo conservador: comparar certificado de catálogo, depois **somente adicionar ao DriverStore, sem `/install`**, conferir ranking PnP das duas instâncias ROOT\\DEVGEN; instalar apenas com plano de rollback e confirmação do ambiente dedicado. A atualização deve evitar DevGen, remoção dos devnodes, `/force`, alteração de BCD ou reinicialização automática.
