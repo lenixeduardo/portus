@@ -82,10 +82,27 @@ jobs:
           Compress-Archive -Path "$output/*" -DestinationPath "LabSerial-Setup-Portable-Windows-x64-Experimental.zip" -Force
       - name: Smoke-test WinForms layout and read-only inventory on Windows runner
         run: |
-          $exe = "virtual-serial/standalone-driver/manager/publish/LabSerial.Setup.exe"
-          & $exe --selftest
-          $code = $LASTEXITCODE
+          # WinExe GUI subsystem launches nonblocking from PowerShell with no LASTEXITCODE.
+          # Use an explicit Process watchdog and query the completed exit code.
+          $exe = (Resolve-Path "virtual-serial/standalone-driver/manager/publish/LabSerial.Setup.exe").Path
           $report = Join-Path $env:TEMP 'LabSerial-Setup-selftest.txt'
+          Remove-Item -LiteralPath $report -ErrorAction SilentlyContinue
+          $psi = [System.Diagnostics.ProcessStartInfo]::new()
+          $psi.FileName = $exe
+          $psi.Arguments = '--selftest'
+          $psi.UseShellExecute = $false
+          $psi.CreateNoWindow = $true
+          $child = [System.Diagnostics.Process]::new()
+          $child.StartInfo = $psi
+          try {
+            if (-not $child.Start()) { throw 'Unable to launch GUI selftest process' }
+            if (-not $child.WaitForExit(30000)) {
+              try { $child.Kill(); [void]$child.WaitForExit(1000) } catch {}
+              throw 'GUI selftest exceeded 30 seconds'
+            }
+            $child.Refresh()
+            $code = [int]$child.ExitCode
+          } finally { $child.Dispose() }
           if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report }
           if ($code -ne 0 -or -not (Test-Path -LiteralPath $report)) {
             throw "GUI selftest failed with exit $code"
