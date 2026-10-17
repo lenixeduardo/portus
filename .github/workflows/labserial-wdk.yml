@@ -105,6 +105,11 @@ jobs:
             if ($errors.Count -gt 0) { throw "PowerShell syntax invalid in $src : $($errors[0].Message)" }
             Copy-Item -LiteralPath $src -Destination $output
           }
+          # Windows PowerShell 5.1 regression: native child process exit 0/7/timeout.
+          # The previous Start-Process/PassThru watchdog incorrectly returned an
+          # empty ExitCode after the first real 6/6 successful COM transfer.
+          & powershell.exe -NoProfile -File (Join-Path $physical 'Run-LabSerialEvidenceBounded.ps1') -SelfTest
+          if ($LASTEXITCODE -ne 0) { throw 'Regression: evidence watchdog exit-code self-test failed' }
           $native = Join-Path $physical 'LabSerialNativeProbe.cs'
           Add-Type -Path (Resolve-Path $native).Path -ErrorAction Stop
           if (-not ('LabSerialNativeProbe' -as [type])) { throw 'Native COM probe type not loaded' }
