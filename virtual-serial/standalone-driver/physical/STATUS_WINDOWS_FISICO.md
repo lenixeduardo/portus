@@ -24,3 +24,15 @@ Evidências originais da transmissão e diagnóstico:
 - [Falha em SerialPort.Open() e correção candidata](./DIAGNOSTICO_SERIALPORT_OPEN_2026-10-17.md)
 
 **PR Draft e instalação exclusivamente experimental.**
+
+
+## Atualização de driver no host físico — 17/10/2026, relatório do operador
+
+Após exportar com êxito o driver anterior `oem65.inf` para `Documents\LabSerial-Backup-oem65`, verificar assinatura Authenticode `Valid` do pacote de teste e adicioná-lo ao DriverStore, o operador executou `pnputil /add-driver ... /install`. O Windows informou instalação do pacote nas **duas instâncias já existentes**:
+
+- A: `ROOT\DEVGEN\{92205F30-ECF7-DF4F-BB04-D1B13C89502E}`
+- B: `ROOT\DEVGEN\{CAF11815-BCE7-EA4E-90F6-F3C2758EB0F8}`
+
+A consulta posterior `Win32_PnPSignedDriver` retornou **`InfName=oem66.inf` e `DriverVersion=7.23.0.659` para ambos os dispositivos**, confirmando a vinculação PnP da versão candidata construída em 17/10/2026. O valor de versão é um carimbo do WDK, não a versão semântica 0.1.1.0 esperada. Não houve novo DevGen nem duplicação declarada de instâncias.
+
+**Estado de testes pós-atualização:** ainda NÃO foram enviados `Get-PnpDevice Status`, novo smoke Win32 6/6, nem resultado de `System.IO.Ports.SerialPort.Open()` com o pacote `oem66.inf`. Compatibilidade .NET continua **PENDENTE DE TESTE PÓS-INSTALAÇÃO**, não pode ser marcada PASS. Não afirmar que a imagem KMDF foi efetivamente testada em execução apenas pelo `InfName`.
