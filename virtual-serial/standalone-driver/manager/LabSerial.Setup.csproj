@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <AssemblyName>LabSerial.Setup</AssemblyName>
     <RootNamespace>LabSerial.Setup</RootNamespace>
-    <ApplicationIcon>labserial.ico</ApplicationIcon>
     <Version>0.1.0</Version>
     <Authors>LabSerial Development</Authors>
     <Description>Experimental LabSerial Windows device and diagnostics manager</Description>
@@ -19,5 +18,6 @@
     <Content Include="..\physical\Run-LabSerialEvidenceBounded.ps1" Link="Scripts\Run-LabSerialEvidenceBounded.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="..\physical\Evidence-LabSerialTransfer.ps1" Link="Scripts\Evidence-LabSerialTransfer.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="..\physical\LabSerialNativeProbe.cs" Link="Scripts\LabSerialNativeProbe.cs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Run-LabSerialProfileProbe.ps1" Link="Scripts\Run-LabSerialProfileProbe.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>
