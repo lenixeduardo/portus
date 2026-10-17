@@ -20,7 +20,7 @@ internal static class LabSerialUiArt
         {
             case "✚":
                 using (var tile = new SolidBrush(Color.FromArgb(64, 170, 59)))
-                    g.FillRoundedRectangle(tile, new Rectangle(3, 3, 22, 22), 4);
+                    g.FillRectangle(tile, new Rectangle(3, 3, 22, 22));
                 using (var white = new Pen(Color.White, 3.2f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
                 { g.DrawLine(white, 14, 8, 14, 20); g.DrawLine(white, 8, 14, 20, 14); }
                 break;
