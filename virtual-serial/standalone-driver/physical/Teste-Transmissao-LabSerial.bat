@@ -39,10 +39,19 @@ if errorlevel 2 goto END
 choice /C SN /N /M "HardwareIds e servico LabSerial, COM210/COM211 confirmados? [S/N] "
 if errorlevel 2 goto END
 powershell.exe -NoProfile -File "%CD%\Run-LabSerialEvidenceBounded.ps1" -ConfirmDedicatedNonProductionPC -ConfirmPortsAreLabSerial
+if errorlevel 1 goto REAL_FAIL
 echo.
-echo Verifique o resultado real em Documentos\LabSerial-Evidencias.
+echo SUCESSO confirmado pelo supervisor e JSON desta sessao.
+echo Verifique o relatorio em Documentos\LabSerial-Evidencias.
 pause
 goto END
+
+:REAL_FAIL
+echo.
+echo FALHA: verifique o relatorio JSON/TXT. Nao declare transmissao aprovada sem seis quadros PASS.
+pause
+popd
+exit /b 1
 
 :MISSING
 echo ERRO: arquivos do teste ausentes na mesma pasta do BAT.
