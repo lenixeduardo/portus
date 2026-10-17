@@ -158,22 +158,27 @@ internal sealed class MainForm : Form
 
         toolbar.SizeChanged += (_, _) =>
         {
-            // Full action names on wide displays, concise accessible labels on laptops.
-            bool compact = toolbar.ClientSize.Width < 1090;
+            int available = toolbar.ClientSize.Width;
+            // Keep test captions visible on the actual 1000–1100 px classic
+            // Windows app. At genuinely narrow widths, icon-only diagnostic
+            // actions still have complete descriptive tooltips.
+            bool compact = available < 1090;
+            _btnAdd.Text = compact ? "Adicionar" : "Adicionar Par";
+            _btnRemove.Text = compact ? "Remover" : "Remover Par";
             _btnProfile.Text = compact ? "Perfil" : "Testar Perfil";
             _btnWin32.Text = compact ? "Win32" : "Testar Win32";
             _btnNet.Text = compact ? ".NET" : "Testar .NET";
-            bool tight = toolbar.ClientSize.Width < 1030;
+            bool narrow = available < 985;
             foreach (var b in new[] { _btnProfile, _btnWin32, _btnNet })
-                b.DisplayStyle = tight ? ToolStripItemDisplayStyle.Image : ToolStripItemDisplayStyle.ImageAndText;
+                b.DisplayStyle = narrow ? ToolStripItemDisplayStyle.Image :
+                    ToolStripItemDisplayStyle.ImageAndText;
         };
         _btnProfile.ToolTipText = "Testar Perfil — teste SerialPort na velocidade selecionada";
         _btnWin32.ToolTipText = "Testar Win32 — 6 quadros de transmissão";
         _btnNet.ToolTipText = "Testar .NET — 4 quadros a 9600/115200 baud";
         toolbar.Items.AddRange(new ToolStripItem[] {
-            _btnAdd, new ToolStripSeparator(), _btnRemove, new ToolStripSeparator(),
-            _btnProperties, new ToolStripSeparator(), refresh, new ToolStripSeparator(),
-            _btnApply, new ToolStripSeparator(), _btnProfile, _btnWin32, _btnNet,
+            _btnAdd, _btnRemove, _btnProperties, refresh, _btnApply,
+            new ToolStripSeparator(), _btnProfile, _btnWin32, _btnNet,
             new ToolStripSeparator(), ToolButton("Console", "▣", Ink, (_, _) => ShowConsole())
         });
         return toolbar;
@@ -823,7 +828,7 @@ internal sealed class MainForm : Form
     private void ShowAbout()
     {
         MessageBox.Show(this,
-            "LabSerial Setup v0.1.3\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
+            "LabSerial Setup v0.1.4\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
             "Interface de gerenciamento e diagnóstico do par fixo COM210 ↔ COM211.\r\n" +
             "Faz verificação rigorosa dos dispositivos LabSerial antes de permitir testes.\r\n" +
             "Não instala drivers, não cria pares PnP e não altera configurações globais.\r\n" +
