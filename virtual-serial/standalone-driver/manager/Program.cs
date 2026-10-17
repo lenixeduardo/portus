@@ -35,13 +35,28 @@ internal static class Program
         if (footer.RectangleToScreen(footer.ClientRectangle).Bottom >
             form.RectangleToScreen(form.ClientRectangle).Bottom)
             throw new InvalidOperationException("Footer extends beyond form client bounds");
-        var list = descendants.OfType<ListView>().FirstOrDefault()
+        var grid = descendants.OfType<DataGridView>().FirstOrDefault()
             ?? throw new InvalidOperationException("Pair grid is missing");
-        if (list.Scrollable)
-            throw new InvalidOperationException("Unexpected scrollbars may obscure the single fixed COM pair");
-        int visibleColumns = list.Columns.Cast<ColumnHeader>().Sum(c => c.Width);
-        if (visibleColumns > list.ClientSize.Width - 12)
-            throw new InvalidOperationException("Horizontal pair-grid scrollbar would occlude rows at " + form.Size);
+        if (grid.ScrollBars != ScrollBars.None)
+            throw new InvalidOperationException("Pair grid must never show vertical/horizontal scrollbars");
+        if (grid.Columns.Count != 6)
+            throw new InvalidOperationException("Pair grid must retain all six mockup columns");
+        int totalWidth = grid.Columns.Cast<DataGridViewColumn>().Sum(c => c.Width);
+        if (totalWidth > grid.ClientSize.Width - 2)
+            throw new InvalidOperationException(
+                $"Columns exceed available width: {totalWidth} vs {grid.ClientSize.Width} at {form.Size}");
+        foreach (DataGridViewColumn col in grid.Columns)
+        {
+            Rectangle bounds = grid.GetCellDisplayRectangle(col.Index, -1, true);
+            if (bounds.Width < col.MinimumWidth - 3 || bounds.Right > grid.ClientRectangle.Right)
+                throw new InvalidOperationException("Header is clipped: " + col.HeaderText + " at " + form.Size);
+        }
+        if (grid.Rows.Count > 0)
+        {
+            var row = grid.GetCellDisplayRectangle(0, 0, true);
+            if (row.Height < grid.Rows[0].Height - 2 || row.Bottom > grid.ClientRectangle.Bottom)
+                throw new InvalidOperationException("Active pair first row is clipped at " + form.Size);
+        }
         var toolbar = descendants.OfType<ToolStrip>().FirstOrDefault(t =>
             t.Items.Cast<ToolStripItem>().Any(x => x.Text == "Console"))
             ?? throw new InvalidOperationException("Classic toolbar not found");
