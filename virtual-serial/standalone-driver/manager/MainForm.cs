@@ -522,18 +522,71 @@ internal sealed class MainForm : Form
         if (_busy) return;
         if (_snapshot?.Ready != true)
         {
-            MessageBox.Show(this, "Não há um par LabSerial verificado. Atualize o inventário. O aplicativo não cria dispositivos PnP.",
+            MessageBox.Show(this, "O par LabSerial ainda não foi identificado com segurança. Atualize o inventário.",
                 "Adicionar par existente", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        if (_showPair)
+
+        using var form = new Form
         {
-            MessageBox.Show(this, "O único par suportado (COM210 ↔ COM211) já está na lista. A criação dinâmica de novos pares não é suportada pelo driver.",
-                "LabSerial", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
+            Text = "LabSerial — Adicionar Par de Portas", StartPosition = FormStartPosition.CenterParent,
+            ClientSize = new Size(465, 475), MinimumSize = new Size(465, 475),
+            FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
+            BackColor = Surface, Font = new Font("Segoe UI", 9f)
+        };
+        var title = new Label
+        {
+            Text = "Adicionar Par de Portas", Location = new Point(18, 15),
+            AutoSize = true, Font = new Font("Segoe UI", 12f, FontStyle.Bold)
+        };
+        form.Controls.Add(title);
+
+        var pair = new GroupBox { Text = "Números das Portas", Location = new Point(18, 52), Size = new Size(427, 101) };
+        var aPort = new ComboBox { Location = new Point(19, 43), Width = 158, DropDownStyle = ComboBoxStyle.DropDownList, Enabled = false };
+        aPort.Items.Add("COM210"); aPort.SelectedIndex = 0;
+        var bPort = new ComboBox { Location = new Point(248, 43), Width = 158, DropDownStyle = ComboBoxStyle.DropDownList, Enabled = false };
+        bPort.Items.Add("COM211"); bPort.SelectedIndex = 0;
+        pair.Controls.Add(new Label { Text = "Porta A:", Location = new Point(19, 23), AutoSize = true });
+        pair.Controls.Add(new Label { Text = "Porta B:", Location = new Point(248, 23), AutoSize = true });
+        pair.Controls.Add(new Label { Text = "↔", Location = new Point(200, 43), AutoSize = true, Font = new Font("Segoe UI", 13, FontStyle.Bold) });
+        pair.Controls.AddRange(new Control[] { aPort, bPort });
+        form.Controls.Add(pair);
+
+        var names = new GroupBox { Text = "Nomes Amigáveis (somente leitura)", Location = new Point(18, 167), Size = new Size(427, 95) };
+        names.Controls.Add(new Label { Text = "LabSerial A", Location = new Point(20, 29), AutoSize = true });
+        names.Controls.Add(new Label { Text = "LabSerial B", Location = new Point(247, 29), AutoSize = true });
+        names.Controls.Add(new TextBox { Text = "LabSerial A", ReadOnly = true, BackColor = Color.White, Location = new Point(20, 50), Width = 170 });
+        names.Controls.Add(new TextBox { Text = "LabSerial B", ReadOnly = true, BackColor = Color.White, Location = new Point(247, 50), Width = 160 });
+        form.Controls.Add(names);
+
+        var mode = new GroupBox { Text = "Modo de Emulação", Location = new Point(18, 275), Size = new Size(427, 60) };
+        var fixedMode = new ComboBox { Location = new Point(18, 24), Width = 379, Enabled = false, DropDownStyle = ComboBoxStyle.DropDownList };
+        fixedMode.Items.Add("Null-modem pair (conexão cruzada)"); fixedMode.SelectedIndex = 0;
+        mode.Controls.Add(fixedMode);
+        form.Controls.Add(mode);
+
+        var note = new Label
+        {
+            Location = new Point(22, 344), Size = new Size(419, 60),
+            Text = _showPair
+                ? "COM210 ↔ COM211 já está visível. O driver não oferece criação dinâmica de novos pares."
+                : "O par COM210 ↔ COM211 já existe no Windows; esta operação só o restaura à lista visual.",
+            ForeColor = Muted
+        };
+        form.Controls.Add(note);
+        var confirm = new Button
+        {
+            Text = "Exibir par existente", Location = new Point(198, 419), Size = new Size(145, 31),
+            DialogResult = DialogResult.OK, Enabled = !_showPair
+        };
+        var cancel = new Button { Text = "Cancelar", Location = new Point(353, 419), Size = new Size(92, 31), DialogResult = DialogResult.Cancel };
+        form.Controls.AddRange(new Control[] { confirm, cancel });
+        form.AcceptButton = confirm;
+        form.CancelButton = cancel;
+        if (form.ShowDialog(this) != DialogResult.OK || _showPair) return;
+
         _showPair = true;
-        WriteLog("Par existente restaurado à lista de gerenciamento; PnP não alterado.");
+        WriteLog("Par existente restaurado à lista. Nenhum dispositivo PnP alterado.");
         _ = RefreshInventoryAsync();
     }
 
@@ -548,7 +601,7 @@ internal sealed class MainForm : Form
         _showPair = false;
         _pairs.Items.Clear();
         _summary.Text = "Par oculto apenas nesta sessão. Clique Adicionar Par para restaurar.";
-        _properties.Text = "Nenhum par na lista.";
+        foreach (var field in _ports.Concat(_names).Concat(_hardwareIds).Concat(_descriptions)) field.Text = "";
         WriteLog("Par removido da lista visual. Nenhuma alteração no Windows.");
         UpdateButtons();
     }
