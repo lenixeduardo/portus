@@ -63,6 +63,20 @@ internal static class Program
         var console = toolbar.Items.Cast<ToolStripItem>().First(x => x.Text == "Console");
         if (console.Placement != ToolStripItemPlacement.Main)
             throw new InvalidOperationException("Console toolbar button overflowed at " + form.Size);
+        if (toolbar.ClientSize.Width >= 985)
+        {
+            foreach (string label in new[] { "Perfil", "Win32", ".NET" })
+            {
+                var item = toolbar.Items.Cast<ToolStripItem>()
+                    .FirstOrDefault(i => string.Equals(i.Text, label, StringComparison.Ordinal) ||
+                                         string.Equals(i.Text, "Testar " + label, StringComparison.Ordinal))
+                    ?? throw new InvalidOperationException("Diagnostic toolbar label missing: " + label);
+                if (item.Placement != ToolStripItemPlacement.Main ||
+                    (item is ToolStripButton button &&
+                     button.DisplayStyle != ToolStripItemDisplayStyle.ImageAndText))
+                    throw new InvalidOperationException("Diagnostic button has hidden label: " + label);
+            }
+        }
         using var image = new Bitmap(form.Width, form.Height);
         form.DrawToBitmap(image, new Rectangle(Point.Empty, form.Size));
         image.Save(Path.Combine(Path.GetTempPath(), filename), ImageFormat.Png);
