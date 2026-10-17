@@ -71,7 +71,7 @@ if(-not $admin) { throw 'Abra PowerShell como Administrador.' }
 $csharp=Join-Path $PSScriptRoot 'LabSerialFriendlyName.cs'
 if(-not ('LabSerialFriendlyName' -as [type])) { Add-Type -Path $csharp -ErrorAction Stop }
 if(-not $PSCmdlet.ShouldProcess($env:COMPUTERNAME,'RESTAURAR os dois FriendlyNames PnP LabSerial')) { exit 0 }
-foreach($entry in $targets | Where-Object { $_.CurrentName -cne $_.RestoreName }) {
+foreach($entry in @($targets | Where-Object { $_.CurrentName -cne $_.RestoreName })) {
  [LabSerialFriendlyName]::SetName($entry.InstanceId,$entry.RestoreName)
  Write-Host "RESTAURADO: $($entry.HardwareId) => $($entry.RestoreName)"
 }
