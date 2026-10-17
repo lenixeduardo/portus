@@ -39,3 +39,26 @@ sc.exe qc LabSerial
 A consulta não reinicia serviço, não atualiza driver, não muda COM210/COM211 e não instala pacote. Para identificação conclusiva do build em execução, avaliar o hash do arquivo binário do driver **atualmente utilizado** e comparar com hashes dos artefatos de compilação conhecidos; os nomes INF podem ser diferentes do caminho de imagem realmente em uso, e binário em disco não garante que a imagem carregada esteja atualizada sem reinicialização.
 
 **Pendências**: compatibilidade `System.IO.Ports.SerialPort.Open()` segue FAIL em campo; novo `GET_PROPERTIES`/filas 0.1.1.0 ainda sem validação real. Testes Win32 6/6 continuam comprovados no host. PR permanece Draft.
+
+## Confirmação posterior do operador — INF e serviço realmente instalados
+
+Consulta somente leitura executada no Windows físico:
+
+```text
+(Select-String -LiteralPath "$env:windir\INF\oem65.inf" -Pattern '^\s*DriverVer\s*=').Line
+DriverVer = 10/14/2026,5.20.56.923
+
+sc.exe qc LabSerial
+[SC] QueryServiceConfig ÊXITO
+TIPO : KERNEL_DRIVER
+TIPO_DE_INÍCIO : DEMAND_START
+NOME_DO_CAMINHO_BINÁRIO : \SystemRoot\System32\DriverStore\FileRepository\labserial.inf_amd64_5af65e96e1978c9b\labserial.sys
+```
+
+Isso elimina a ambiguidade do **pacote INF instalado**: `oem65.inf` contém carimbo de **14/10/2026**, anterior ao fonte da correção `.NET` (`GET_PROPERTIES`/`SET_QUEUE_SIZE`, 17/10/2026). Os dois dispositivos PnP referenciam o mesmo `oem65.inf`. Assim, a execução `.NET` ainda testou o **pacote anterior**, não a correção do dia 17. O INF e o caminho do serviço foram conferidos; o hash do `.sys` carregado não foi auditado de forma independente.
+
+**Proibição operacional:** não executar DevGen novamente; as instâncias PnP A/B já existem. Não considerar a extração do ZIP como instalação. Primeiro preservar driver em uso, confirmar assinatura/certificado e garantir rollback, só então cogitar `pnputil /add-driver ... /install` com supervisão.
+
+## Estado da pipeline de versão fixada
+
+A compilação WDK anterior à tentativa de fixar metadata StampInf passou em Debug/Release (run `39013388736`), mas o INF emitido usa numeração de carimbo horário. A nova configuração com data/versão explícitas no MSBuild e verificação do INF final foi commitada; **não há execução WDK bem-sucedida confirmada para essa alteração** no momento deste registro. Não oferecer como pacote validado até a pipeline produzir o INF correto.
