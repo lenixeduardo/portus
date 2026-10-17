@@ -35,6 +35,11 @@ internal static class Program
         if (footer.RectangleToScreen(footer.ClientRectangle).Bottom >
             form.RectangleToScreen(form.ClientRectangle).Bottom)
             throw new InvalidOperationException("Footer extends beyond form client bounds");
+        var list = descendants.OfType<ListView>().FirstOrDefault()
+            ?? throw new InvalidOperationException("Pair grid is missing");
+        int visibleColumns = list.Columns.Cast<ColumnHeader>().Sum(c => c.Width);
+        if (visibleColumns > list.ClientSize.Width - 12)
+            throw new InvalidOperationException("Horizontal pair-grid scrollbar would occlude rows at " + form.Size);
         var toolbar = descendants.OfType<ToolStrip>().FirstOrDefault(t =>
             t.Items.Cast<ToolStripItem>().Any(x => x.Text == "Console"))
             ?? throw new InvalidOperationException("Classic toolbar not found");
