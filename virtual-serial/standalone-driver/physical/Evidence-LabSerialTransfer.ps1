@@ -129,7 +129,8 @@ try {
     if (-not ($ConfirmDedicatedNonProductionPC -and $ConfirmPortsAreLabSerial)) {
       throw 'Recusado: confirme PC sobressalente nao produtivo com recuperacao e a identidade LabSerial das duas portas.'
     }
-    if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
       throw 'Para o primeiro teste, abra PowerShell como Administrador no PC de laboratório.'
     }
     $guid = [Guid]::NewGuid().ToString('N')
