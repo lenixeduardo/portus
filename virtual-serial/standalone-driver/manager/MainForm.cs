@@ -178,14 +178,14 @@ internal sealed class MainForm : Form
     {
         var split = new SplitContainer
         {
-            Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, BackColor = Surface,
+            Dock = DockStyle.Fill, Size = new Size(900, 560), Orientation = Orientation.Horizontal, BackColor = Surface,
             SplitterWidth = 6, Panel1MinSize = 250, Panel2MinSize = 120
         };
-        split.SplitterDistance = 405;
+        split.SplitterDistance = 370;
 
         var upper = new SplitContainer
         {
-            Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterWidth = 6,
+            Dock = DockStyle.Fill, Size = new Size(900, 370), Orientation = Orientation.Vertical, SplitterWidth = 6,
             Panel1MinSize = 350, Panel2MinSize = 220, BackColor = Surface,
             SplitterDistance = 605
         };
