@@ -89,7 +89,7 @@ jobs:
           Remove-Item -LiteralPath $report -ErrorAction SilentlyContinue
           $psi = [System.Diagnostics.ProcessStartInfo]::new()
           $psi.FileName = $exe
-          $psi.Arguments = '--selftest'
+          $psi.Arguments = '--selftest --capture'
           $psi.UseShellExecute = $false
           $psi.CreateNoWindow = $true
           $child = [System.Diagnostics.Process]::new()
@@ -110,6 +110,12 @@ jobs:
           if (-not ((Get-Content -LiteralPath $report -Raw).StartsWith('PASS:'))) {
             throw 'GUI selftest result is not PASS'
           }
+          $capture = Join-Path $env:TEMP 'LabSerial-Setup-selftest.png'
+          if (-not (Test-Path -LiteralPath $capture -PathType Leaf)) {
+            throw 'Visual screenshot not captured'
+          }
+          Copy-Item -LiteralPath $capture -Destination 'LabSerial-Setup-selftest.png' -Force
+          Copy-Item -LiteralPath $report -Destination 'LabSerial-Setup-selftest.txt' -Force
       - name: Build experimental Inno Setup installer
         run: |
           $iscc = @(
@@ -136,6 +142,8 @@ jobs:
           name: labserial-setup-winforms-windows-x64-test-only
           path: |
             LabSerial-Setup-Portable-Windows-x64-Experimental.zip
+            LabSerial-Setup-selftest.png
+            LabSerial-Setup-selftest.txt
             virtual-serial/standalone-driver/manager/dist/LabSerial-Setup-Windows-x64-Experimental.exe
           if-no-files-found: error
           retention-days: 15
