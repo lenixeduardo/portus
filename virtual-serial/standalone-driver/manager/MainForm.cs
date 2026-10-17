@@ -267,7 +267,7 @@ internal sealed class MainForm : Form
         _pairs.Resize += (_, _) =>
         {
             if (_pairs.Columns.Count != 6) return;
-            int width = Math.Max(620, _pairs.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 2);
+            int width = Math.Max(540, _pairs.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 28);
             int[] weights = { 7, 14, 14, 16, 26, 23 };
             for (int i = 0; i < weights.Length; i++) _pairs.Columns[i].Width = width * weights[i] / 100;
         };
@@ -388,8 +388,8 @@ internal sealed class MainForm : Form
         };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 53));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 47));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var top = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = false, WrapContents = false };
         var emulationLabel = new Label
         {
