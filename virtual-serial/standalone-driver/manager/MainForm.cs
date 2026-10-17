@@ -300,17 +300,18 @@ internal sealed class MainForm : Form
         _pairs.CellPainting += (_, e) =>
         {
             if (e.RowIndex < 0 || e.ColumnIndex != 3) return;
+            if (e.Graphics is not Graphics graphics) return;
             string label = e.Value?.ToString() ?? "";
             if (!string.Equals(label, "Ativo", StringComparison.Ordinal)) return;
             e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
             int dot = 10, x = e.CellBounds.X + 10;
             int y = e.CellBounds.Y + (e.CellBounds.Height - dot) / 2;
             using (var green = new SolidBrush(Color.FromArgb(36, 177, 72)))
-                e.Graphics.FillEllipse(green, x, y, dot, dot);
+                graphics.FillEllipse(green, x, y, dot, dot);
             var textRect = new Rectangle(x + dot + 7, e.CellBounds.Y,
                 Math.Max(1, e.CellBounds.Width - dot - 18), e.CellBounds.Height);
             Color textColor = _pairs.Rows[e.RowIndex].Selected ? Color.White : Ink;
-            TextRenderer.DrawText(e.Graphics, label, _pairs.Font, textRect, textColor,
+            TextRenderer.DrawText(graphics, label, _pairs.Font, textRect, textColor,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
                 TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
             e.Handled = true;
