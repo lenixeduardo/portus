@@ -168,6 +168,49 @@ VOID LabEvtIoctl(WDFQUEUE queue, WDFREQUEST request,
     UNREFERENCED_PARAMETER(inputLength);
 
     switch (code) {
+    case IOCTL_SERIAL_GET_PROPERTIES:
+        // Required by GetCommProperties / .NET Framework SerialStream.Open.
+        // Report only capabilities this experimental virtual pair implements.
+        // Do NOT advertise true serial timeouts, XON/XOFF or RTS/CTS flow control.
+        status = LabReadIoctlOutput(request, &output, sizeof(SERIAL_COMMPROP));
+        if (NT_SUCCESS(status)) {
+            SERIAL_COMMPROP* props = (SERIAL_COMMPROP*)output;
+            RtlZeroMemory(props, sizeof(*props));
+            props->PacketLength = (USHORT)sizeof(*props);
+            props->PacketVersion = 2;
+            props->ServiceMask = SERIAL_SP_SERIALCOMM;
+            props->MaxTxQueue = LAB_RING_CAPACITY;
+            props->MaxRxQueue = LAB_RING_CAPACITY;
+            props->MaxBaud = 4000000;
+            props->ProvSubType = SERIAL_SP_RS232;
+            props->ProvCapabilities = SERIAL_PCF_DTRDSR | SERIAL_PCF_CD;
+            props->SettableParams = SERIAL_SP_BAUD | SERIAL_SP_DATABITS |
+                                    SERIAL_SP_PARITY | SERIAL_SP_STOPBITS;
+            props->SettableBaud = SERIAL_BAUD_9600 | SERIAL_BAUD_115200 |
+                                  SERIAL_BAUD_USER;
+            props->SettableData = SERIAL_DATABITS_5 | SERIAL_DATABITS_6 |
+                                  SERIAL_DATABITS_7 | SERIAL_DATABITS_8;
+            props->SettableStopParity = SERIAL_STOPBITS_10 | SERIAL_STOPBITS_15 |
+                                        SERIAL_STOPBITS_20 | SERIAL_PARITY_NONE |
+                                        SERIAL_PARITY_ODD | SERIAL_PARITY_EVEN |
+                                        SERIAL_PARITY_MARK | SERIAL_PARITY_SPACE;
+            props->CurrentTxQueue = LAB_RING_CAPACITY;
+            props->CurrentRxQueue = LAB_RING_CAPACITY;
+            information = sizeof(*props);
+        }
+        break;
+    case IOCTL_SERIAL_SET_QUEUE_SIZE:
+        // SetupComm / SerialPort.SetBufferSizes may request capacity <= 4096.
+        // Fixed-size FIFO cannot resize. Reject larger requests rather than
+        // falsely promising a queue size that is not available.
+        status = LabReadIoctlInput(request, &input, sizeof(SERIAL_QUEUE_SIZE));
+        if (NT_SUCCESS(status)) {
+            SERIAL_QUEUE_SIZE* requested = (SERIAL_QUEUE_SIZE*)input;
+            status = (requested->InSize <= LAB_RING_CAPACITY &&
+                      requested->OutSize <= LAB_RING_CAPACITY)
+                     ? STATUS_SUCCESS : STATUS_NOT_SUPPORTED;
+        }
+        break;
     case IOCTL_SERIAL_SET_BAUD_RATE:
         status = LabReadIoctlInput(request, &input, sizeof(SERIAL_BAUD_RATE));
         if (NT_SUCCESS(status)) {
