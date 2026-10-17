@@ -26,6 +26,7 @@ internal sealed class MainForm : Form
     private readonly TextBox[] _hardwareIds = { new(), new() };
     private readonly TextBox[] _descriptions = { new(), new() };
     private readonly ToolStripStatusLabel _deviceManager = new();
+    private readonly ToolStripStatusLabel _pairCount = new();
     private readonly ToolStripStatusLabel _state = new();
     private readonly ToolStripStatusLabel _connection = new();
     private readonly Label _summary = new();
@@ -51,8 +52,8 @@ internal sealed class MainForm : Form
         Text = "LabSerial Setup";
         Icon = LabSerialBrand.MakeIcon();
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1030, 810);
-        MinimumSize = new Size(940, 690);
+        ClientSize = new Size(1000, 695);
+        MinimumSize = new Size(855, 605);
         Font = new Font("Segoe UI", 9.2f);
         BackColor = Surface;
         ForeColor = Ink;
@@ -63,7 +64,7 @@ internal sealed class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
 
         var menu = BuildMenu();
         MainMenuStrip = menu;
@@ -73,8 +74,20 @@ internal sealed class MainForm : Form
         layout.Controls.Add(BuildStatus(), 0, 3);
 
         Controls.Add(layout);
-        Shown += async (_, _) => await RefreshInventoryAsync();
+        Shown += async (_, _) => { FitWindowToWorkArea(); await RefreshInventoryAsync(); };
         FormClosing += (_, _) => _activeTest?.Cancel();
+    }
+
+    private void FitWindowToWorkArea()
+    {
+        // Fit the ENTIRE form inside the usable monitor rectangle, including
+        // taskbar/125–150% display scaling. Keep footer and diagnostics visible.
+        var work = Screen.FromControl(this).WorkingArea;
+        int w = Math.Min(Math.Max(MinimumSize.Width, Width), Math.Max(1, work.Width - 24));
+        int h = Math.Min(Math.Max(MinimumSize.Height, Height), Math.Max(1, work.Height - 22));
+        Size = new Size(w, h);
+        Location = new Point(work.Left + Math.Max(0, (work.Width - Width) / 2),
+                             work.Top + Math.Max(0, (work.Height - Height) / 2));
     }
 
     private MenuStrip BuildMenu()
@@ -124,7 +137,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill, BackColor = Surface, ForeColor = Ink,
             GripStyle = ToolStripGripStyle.Hidden, RenderMode = ToolStripRenderMode.System,
             Padding = new Padding(14, 6, 10, 6),
-            ImageScalingSize = new Size(21, 21)
+            ImageScalingSize = new Size(27, 27)
         };
 
         _btnAdd = ToolButton("Adicionar Par", "✚", Color.ForestGreen, (_, _) => AddPair());
@@ -154,23 +167,14 @@ internal sealed class MainForm : Form
 
     private static ToolStripButton ToolButton(string caption, string glyph, Color glyphColor, EventHandler onClick)
     {
-        var bitmap = new Bitmap(22, 22);
-        using (var g = Graphics.FromImage(bitmap))
-        using (var brush = new SolidBrush(glyphColor))
-        using (var font = new Font("Segoe UI Symbol", 15f, FontStyle.Bold, GraphicsUnit.Pixel))
-        {
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            g.Clear(Color.Transparent);
-            g.DrawString(glyph, font, brush, -1, -2);
-        }
+        var bitmap = LabSerialUiArt.Icon(glyph, glyphColor);
         var button = new ToolStripButton(caption)
         {
             Image = bitmap, DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
             ImageScaling = ToolStripItemImageScaling.None,
             TextImageRelation = TextImageRelation.ImageBeforeText,
             AutoSize = true, Margin = new Padding(3, 0, 3, 0),
-            Padding = new Padding(3, 3, 3, 3)
+            Padding = new Padding(4, 3, 4, 3)
         };
         button.Click += onClick;
         return button;
@@ -225,7 +229,8 @@ internal sealed class MainForm : Form
         _pairs.Font = new Font("Segoe UI", 9.4f);
         _pairs.View = View.Details;
         _pairs.FullRowSelect = true;
-        _pairs.GridLines = true;
+        _pairs.GridLines = false;
+        LabSerialUiArt.InstallClassicPairRenderer(_pairs);
         _pairs.MultiSelect = false;
         _pairs.HideSelection = false;
         _pairs.BackColor = Color.White;
@@ -416,17 +421,19 @@ internal sealed class MainForm : Form
     private Control BuildStatus()
     {
         var strip = new StatusStrip { Dock = DockStyle.Fill, SizingGrip = false, BackColor = Surface };
-        var count = new ToolStripStatusLabel("1 par configurado") { BorderSides = ToolStripStatusLabelBorderSides.Right };
+        _pairCount.Text = "1 par configurado";
+        _pairCount.BorderSides = ToolStripStatusLabelBorderSides.Right;
         _state.Spring = true;
         _state.TextAlign = ContentAlignment.MiddleLeft;
         _state.Text = "LabSerial Virtual Serial Port Driver (Experimental)";
-        _deviceManager.Text = "Abrir Gerenciador de Dispositivos...";
+        _deviceManager.Text = "Gerenciador de Dispositivos...";
+        _deviceManager.ToolTipText = "Abrir o Gerenciador de Dispositivos do Windows";
         _deviceManager.IsLink = true;
         _deviceManager.LinkColor = AccentBlue;
         _deviceManager.Click += (_, _) =>
             Process.Start(new ProcessStartInfo("devmgmt.msc") { UseShellExecute = true });
-        _connection.Text = "COM210 ↔ COM211 | não verificado";
-        strip.Items.Add(count);
+        _connection.Text = "COM210 ↔ COM211 | aguardando";
+        strip.Items.Add(_pairCount);
         strip.Items.Add(_state);
         strip.Items.Add(_connection);
         strip.Items.Add(_deviceManager);
@@ -449,15 +456,15 @@ internal sealed class MainForm : Form
                     var s = _snapshot;
                     var item = new ListViewItem(new[] {
                         "0", "COM210", "COM211",
-                        s.Ready ? "● Ativo" : "Verificação pendente",
+                        s.Ready ? "Ativo" : "Verificação pendente",
                         "LabSerial (Experimental)", "Não disponível"
                     }) { Tag = s, ForeColor = s.Ready ? Ink : Accent };
                     _pairs.Items.Add(item);
                     item.Selected = true;
-                    _pairs.Focus();
                 }
             }
             finally { _pairs.EndUpdate(); }
+            _pairCount.Text = _showPair ? "1 par configurado" : "0 pares configurados";
             _summary.Text = _snapshot.Ready
                 ? "Par COM210 ↔ COM211 reconhecido. Nenhum outro dispositivo será aberto."
                 : "Identidade ou estado não confirmado. Testes bloqueados.";
@@ -472,6 +479,7 @@ internal sealed class MainForm : Form
             _snapshot = null;
             _pairs.Items.Clear();
             UpdateProperties();
+            _pairCount.Text = "0 pares confirmados";
             _summary.Text = "Falha de inventário: testes bloqueados até nova verificação.";
             _state.Text = "Falha no inventário";
             _connection.Text = "Não verificado";
@@ -600,6 +608,7 @@ internal sealed class MainForm : Form
             != DialogResult.Yes) return;
         _showPair = false;
         _pairs.Items.Clear();
+        _pairCount.Text = "0 pares configurados";
         _summary.Text = "Par oculto apenas nesta sessão. Clique Adicionar Par para restaurar.";
         foreach (var field in _ports.Concat(_names).Concat(_hardwareIds).Concat(_descriptions)) field.Text = "";
         WriteLog("Par removido da lista visual. Nenhuma alteração no Windows.");
