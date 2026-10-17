@@ -156,6 +156,17 @@ internal sealed class MainForm : Form
         _btnRemove.ToolTipText = "Remover da lista visual, sem excluir portas ou drivers.";
         _btnApply.ToolTipText = "Aplicar somente o perfil local de testes.";
 
+        toolbar.SizeChanged += (_, _) =>
+        {
+            // Full action names on wide displays, concise accessible labels on laptops.
+            bool compact = toolbar.ClientSize.Width < 1090;
+            _btnProfile.Text = compact ? "Perfil" : "Testar Perfil";
+            _btnWin32.Text = compact ? "Win32" : "Testar Win32";
+            _btnNet.Text = compact ? ".NET" : "Testar .NET";
+        };
+        _btnProfile.ToolTipText = "Testar Perfil — teste SerialPort na velocidade selecionada";
+        _btnWin32.ToolTipText = "Testar Win32 — 6 quadros de transmissão";
+        _btnNet.ToolTipText = "Testar .NET — 4 quadros a 9600/115200 baud";
         toolbar.Items.AddRange(new ToolStripItem[] {
             _btnAdd, new ToolStripSeparator(), _btnRemove, new ToolStripSeparator(),
             _btnProperties, new ToolStripSeparator(), refresh, new ToolStripSeparator(),
@@ -214,9 +225,17 @@ internal sealed class MainForm : Form
             Padding = new Padding(10, 8, 10, 7), Margin = Padding.Empty
         };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 54));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 21));
+        // Responsive distribution: taller work areas can show more of the list/log;
+        // on shorter desktops prioritize a fully visible settings group.
+        content.SizeChanged += (_, _) =>
+        {
+            bool taller = content.ClientSize.Height >= 660;
+            float[] split = taller ? new float[] { 28f, 48f, 24f } : new float[] { 25f, 54f, 21f };
+            for (int i = 0; i < split.Length; i++) content.RowStyles[i].Height = split[i];
+        };
 
         var pairGroup = new GroupBox
         {
