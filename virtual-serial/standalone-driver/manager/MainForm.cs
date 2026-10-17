@@ -18,7 +18,7 @@ internal sealed class MainForm : Form
     private static readonly Color Surface = Color.FromArgb(240, 240, 240);
     private static readonly Color AccentBlue = Color.FromArgb(0, 120, 215);
 
-    private readonly ListView _pairs = new();
+    private readonly DataGridView _pairs = new();
     private readonly TextBox _properties = new();
     private readonly RichTextBox _events = new();
     private readonly TextBox[] _ports = { new(), new() };
@@ -247,35 +247,76 @@ internal sealed class MainForm : Form
             Padding = new Padding(9, 9, 9, 6)
         };
         var pairPanel = new Panel { Dock = DockStyle.Fill };
+        // Exactly one installed pair: use a fixed, non-scrollable DataGridView.
+        // Its Fill columns adapt to the ACTUAL viewport on every DPI/resize,
+        // rather than ListView's native horizontal scrollbar calculations.
         _pairs.Dock = DockStyle.Fill;
-        _pairs.Font = new Font("Segoe UI", 9.4f);
-        _pairs.View = View.Details;
-        // Only one fixed pair exists in this KMDF build; native scrollbars can
-        // obscure its only row on short laptop viewports.
-        _pairs.Scrollable = false;
-        _pairs.FullRowSelect = true;
-        _pairs.GridLines = false;
-        LabSerialUiArt.InstallClassicPairRenderer(_pairs);
+        _pairs.Font = new Font("Segoe UI", 9.2f);
+        _pairs.ReadOnly = true;
+        _pairs.AutoGenerateColumns = false;
+        _pairs.AllowUserToAddRows = false;
+        _pairs.AllowUserToDeleteRows = false;
+        _pairs.AllowUserToResizeRows = false;
+        _pairs.AllowUserToResizeColumns = false;
+        _pairs.RowHeadersVisible = false;
         _pairs.MultiSelect = false;
-        _pairs.HideSelection = false;
-        _pairs.BackColor = Color.White;
-        _pairs.ForeColor = Ink;
-        _pairs.HeaderStyle = ColumnHeaderStyle.Nonclickable;
-        _pairs.Columns.Add("#", 50);
-        _pairs.Columns.Add("Porta A", 135);
-        _pairs.Columns.Add("Porta B", 135);
-        _pairs.Columns.Add("Status", 145);
-        _pairs.Columns.Add("Driver", 245);
-        _pairs.Columns.Add("Criado em", 190);
-        _pairs.Resize += (_, _) =>
+        _pairs.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        _pairs.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _pairs.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
+        _pairs.ScrollBars = ScrollBars.None;
+        _pairs.BackgroundColor = Color.White;
+        _pairs.BorderStyle = BorderStyle.FixedSingle;
+        _pairs.GridColor = Color.FromArgb(231, 231, 231);
+        _pairs.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        _pairs.ColumnHeadersHeight = 27;
+        _pairs.RowTemplate.Height = 25;
+        _pairs.EnableHeadersVisualStyles = false;
+        _pairs.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 248, 248);
+        _pairs.ColumnHeadersDefaultCellStyle.ForeColor = Ink;
+        _pairs.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(248, 248, 248);
+        _pairs.DefaultCellStyle.BackColor = Color.White;
+        _pairs.DefaultCellStyle.ForeColor = Ink;
+        _pairs.DefaultCellStyle.SelectionBackColor = SystemColors.Highlight;
+        _pairs.DefaultCellStyle.SelectionForeColor = SystemColors.HighlightText;
+        _pairs.DefaultCellStyle.Padding = new Padding(5, 1, 4, 1);
+        _pairs.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(251, 251, 251);
+
+        foreach (var spec in new (string Header, string Name, float Weight, int MinWidth)[] {
+            ("#", "Index", 7f, 28),
+            ("Porta A", "PortA", 14f, 72),
+            ("Porta B", "PortB", 14f, 72),
+            ("Status", "Status", 16f, 74),
+            ("Driver", "Driver", 26f, 133),
+            ("Criado em", "CreatedAt", 23f, 101)
+        })
         {
-            if (_pairs.Columns.Count != 6) return;
-            int width = Math.Max(540, _pairs.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 28);
-            int[] weights = { 7, 14, 14, 16, 26, 23 };
-            for (int i = 0; i < weights.Length; i++) _pairs.Columns[i].Width = width * weights[i] / 100;
+            _pairs.Columns.Add(new DataGridViewTextBoxColumn {
+                HeaderText = spec.Header, Name = spec.Name,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                FillWeight = spec.Weight, MinimumWidth = spec.MinWidth,
+                SortMode = DataGridViewColumnSortMode.NotSortable
+            });
+        }
+        _pairs.CellPainting += (_, e) =>
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != 3) return;
+            string label = e.Value?.ToString() ?? "";
+            if (!string.Equals(label, "Ativo", StringComparison.Ordinal)) return;
+            e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+            int dot = 10, x = e.CellBounds.X + 10;
+            int y = e.CellBounds.Y + (e.CellBounds.Height - dot) / 2;
+            using (var green = new SolidBrush(Color.FromArgb(36, 177, 72)))
+                e.Graphics.FillEllipse(green, x, y, dot, dot);
+            var textRect = new Rectangle(x + dot + 7, e.CellBounds.Y,
+                Math.Max(1, e.CellBounds.Width - dot - 18), e.CellBounds.Height);
+            Color textColor = _pairs.Rows[e.RowIndex].Selected ? Color.White : Ink;
+            TextRenderer.DrawText(e.Graphics, label, _pairs.Font, textRect, textColor,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
+                TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+            e.Handled = true;
         };
-        _pairs.SelectedIndexChanged += (_, _) => UpdateButtons();
-        _pairs.DoubleClick += (_, _) => OpenProperties();
+        _pairs.SelectionChanged += (_, _) => UpdateButtons();
+        _pairs.CellDoubleClick += (_, _) => OpenProperties();
 
         _summary.Dock = DockStyle.Bottom;
         _summary.Height = 25;
@@ -479,23 +520,21 @@ internal sealed class MainForm : Form
         try
         {
             _snapshot = await Task.Run(LabSerialInventory.Read);
-            _pairs.BeginUpdate();
+            _pairs.SuspendLayout();
             try
             {
-                _pairs.Items.Clear();
+                _pairs.Rows.Clear();
                 if (_showPair)
                 {
                     var s = _snapshot;
-                    var item = new ListViewItem(new[] {
-                        "0", "COM210", "COM211",
+                    int row = _pairs.Rows.Add("0", "COM210", "COM211",
                         s.Ready ? "Ativo" : "Verificação pendente",
-                        "LabSerial (Experimental)", "Não disponível"
-                    }) { Tag = s, ForeColor = s.Ready ? Ink : Accent };
-                    _pairs.Items.Add(item);
-                    item.Selected = true;
+                        "LabSerial (Experimental)", "Não disponível");
+                    _pairs.Rows[row].Tag = s;
+                    _pairs.Rows[row].Selected = true;
                 }
             }
-            finally { _pairs.EndUpdate(); }
+            finally { _pairs.ResumeLayout(); }
             _pairCount.Text = _showPair ? "1 par configurado" : "0 pares configurados";
             _summary.Text = _snapshot.Ready
                 ? "Par COM210 ↔ COM211 reconhecido. Nenhum outro dispositivo será aberto."
@@ -509,7 +548,7 @@ internal sealed class MainForm : Form
         {
             // Fail closed: a stale successful inventory must never enable any COM I/O.
             _snapshot = null;
-            _pairs.Items.Clear();
+            _pairs.Rows.Clear();
             UpdateProperties();
             _pairCount.Text = "0 pares confirmados";
             _summary.Text = "Falha de inventário: testes bloqueados até nova verificação.";
@@ -546,7 +585,7 @@ internal sealed class MainForm : Form
 
     private void UpdateButtons()
     {
-        bool visible = _showPair && _pairs.Items.Count > 0;
+        bool visible = _showPair && _pairs.Rows.Count > 0;
         bool ready = visible && _snapshot?.Ready == true;
         _btnAdd.Enabled = !_busy && _snapshot?.Ready == true;
         _btnRemove.Enabled = !_busy && visible;
@@ -639,7 +678,7 @@ internal sealed class MainForm : Form
             "Remover da lista (não desinstala)", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
             != DialogResult.Yes) return;
         _showPair = false;
-        _pairs.Items.Clear();
+        _pairs.Rows.Clear();
         _pairCount.Text = "0 pares configurados";
         _summary.Text = "Par oculto apenas nesta sessão. Clique Adicionar Par para restaurar.";
         foreach (var field in _ports.Concat(_names).Concat(_hardwareIds).Concat(_descriptions)) field.Text = "";
