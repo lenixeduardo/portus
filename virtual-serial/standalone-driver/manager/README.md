@@ -43,3 +43,10 @@ Com o LabSerial vinculado ao INF de teste `oem66.inf`, o usuário executou os bo
 **12/12 PASS, sem divergências relatadas.** Evidências JSON/TXT permaneceram na pasta local `Documentos\LabSerial-Evidencias` no host; ver detalhes e os caminhos completos em [STATUS_WINDOWS_FISICO.md](../physical/STATUS_WINDOWS_FISICO.md).
 
 **Avaliação visual independente (usuário, screenshot real vs. mockup): 4,5/10**, sem conformidade com a hierarquia aprovada. Próxima versão deve restaurar toolbar com ícones, tabela full-width, propriedades em dois painéis A/B, opções de configuração e log clássico, sem inventar capacidades de criação dinâmica que o driver ainda não possui.
+
+
+## Revisão de fidelidade v0.1.1 (17/10/2026)
+
+Recriação **não reinterpretada** do [mockup claro original](DESIGN_FIDELITY_CLASSIC.md), após avaliação de 4,5/10 da v0.1.0. A nova interface contém tabela de pares em toda a largura, toolbar com ícones, propriedades Porta A/B em colunas paralelas, painel de configurações com opções suportadas/indisponíveis explícitas, log clássico branco com cores semânticas, status de rodapé, modal de adicionar par existente e marca vermelha. A integração com scripts reais foi preservada. A versão WinForms instalada anteriormente v0.1.0 passou 12/12 quadros; **a nova interface v0.1.1 ainda exige teste breve do operador**.
+
+O runner Windows em GitHub Actions gera captura PNG de revisão visual no artefato junto com instalador e ZIP portátil. A captura em CI, que não possui driver, é somente validação de layout; o PnP e os botões de comunicação no host físico deverão ser revalidados após atualizar a GUI. A nota final de fidelidade ainda depende de nova captura do operador.
