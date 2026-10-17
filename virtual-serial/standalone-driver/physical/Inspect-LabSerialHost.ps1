@@ -50,8 +50,12 @@ try {
 }
 try {
   $ports = @([System.IO.Ports.SerialPort]::GetPortNames())
-  $pnp = @(Get-PnpDevice -ErrorAction Stop | Where-Object {
-    $_.InstanceId -like 'ROOT\LABSERIAL_VCOM_A\*' -or $_.InstanceId -like 'ROOT\LABSERIAL_VCOM_B\*'
+  # DevGen uses ROOT\DEV\... as the InstanceId. Inspect HardwareIds instead.
+  $pnp = @(Get-PnpDevice -Class Ports -ErrorAction Stop | Where-Object {
+    $dev = $_
+    $hw = Get-PnpDeviceProperty -InstanceId $dev.InstanceId -KeyName 'DEVPKEY_Device_HardwareIds' -ErrorAction SilentlyContinue
+    $ids = if ($null -eq $hw) { @() } else { @($hw.Data) }
+    ($ids -contains 'ROOT\LABSERIAL_VCOM_A') -or ($ids -contains 'ROOT\LABSERIAL_VCOM_B')
   })
   $state.PortCollision = if (($ports -contains 'COM210') -or ($ports -contains 'COM211') -or $pnp.Count -gt 0) {'Yes'} else {'No'}
   if ($state.PortCollision -eq 'Yes') { $blockers.Add('COM210/COM211 ou devnodes LabSerial ja existem. Nao duplicar dispositivos.') }
