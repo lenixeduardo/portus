@@ -74,3 +74,31 @@ Arquivos originais gerados no computador físico (ainda não anexados ao projeto
 **Marco atingido:** compatibilidade funcional BÁSICA com System.IO.Ports.SerialPort e transporte Win32 comprovados em Windows físico, após atualização do pacote oem66.inf. O erro anterior em SerialPort.Open() foi superado no teste.
 
 **Não significa pronto para produção:** testar aplicativos seriais de terceiros/SerialTool, outros handshakes/paridades, timeouts reais, WaitCommEvent, carga prolongada, reinicialização, cancelamento, PnP, Driver Verifier e assinatura de distribuição. PR permanece Draft.
+
+## LabSerial Setup WinForms validado em Windows físico — 17/10/2026 06:06–06:07
+
+**Execução real a partir dos botões da interface instalada** (não apenas PowerShell avulso), conforme log completo enviado pelo operador. Inventário exibiu `Par operacional / identidade confirmada`, COM210/COM211 e ambos os PnP corretos. Foram aprovados os **três fluxos acionáveis**, total **12/12 quadros, 0 divergência/erros**:
+
+| Operação na GUI | Prova de execução | Resultado |
+|---|---|---|
+| Testar Win32 | 6 quadros: ASCII 49 B por sentido, binário 16 B por sentido e 512 B por sentido; 1154 bytes | **6/6 PASS**, `exit 0` |
+| Testar .NET | `System.IO.Ports.SerialPort.Open()` em ambas as portas, 9600 e 115200 baud, 8N1, `Handshake.None`; 4 quadros | **4/4 PASS**, `exit 0` |
+| Testar Perfil | Perfil selecionado 9600 baud, 8N1, `Handshake.None`; ASCII COM210→COM211 (47 B) e binário COM211→COM210 (16 B) | **2/2 PASS**, `exit 0` |
+
+Trechos literais de conclusão da interface:
+
+```text
+[06:06:35] RESULTADO Win32 — 6 quadros: PASS (exit 0).
+[06:06:50] RESULTADO .NET — 4 quadros: PASS (exit 0).
+[06:07:06] RESULTADO Perfil selecionado: PASS (exit 0).
+```
+
+Os supervisores emitiram `PASS FINAL` e os relatórios locais, incluindo:
+
+- Win32 JSON: `C:\Users\uzinh\Documents\LabSerial-Evidencias\Sessao-20261017-060619-229-2327c94e\LabSerial-Transmissao-20261017-060620-236.json`
+- .NET JSON: `C:\Users\uzinh\Documents\LabSerial-Evidencias\Compat-20261017-060644-288-eaabce7e\LabSerial-SerialPort-20261017-060644-874.json`
+- Perfil JSON: `C:\Users\uzinh\Documents\LabSerial-Evidencias\Perfil-20261017-060702-026.json`
+
+**Marco do gerenciador:** a interface nativa WinForms foi realmente aberta no Windows do operador, identificou o driver existente e executou com sucesso as três operações de comunicação implementadas; os resultados são evidências de campo relatadas pelo operador. Os JSON originais não foram anexados aqui, apenas as saídas de console.
+
+**Limites ainda pendentes:** fidelidade visual ao mockup clássico avaliada em 4,5/10 na inspeção de tela enviada (a implementação é funcional, porém layout diferente); `Adicionar/Remover Par` apenas manipulam a lista de pares fixos, não dispositivos PnP; ainda sem stress prolongado, reboot/replug, cancelamento, WaitCommEvent, testes de apps terceiros, assinatura Microsoft ou homologação para produção.
