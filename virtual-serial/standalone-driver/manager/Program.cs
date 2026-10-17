@@ -9,6 +9,43 @@ namespace LabSerial.Setup;
 
 internal static class Program
 {
+    private static System.Collections.Generic.IEnumerable<Control> Descendants(Control parent)
+    {
+        foreach (Control child in parent.Controls)
+        {
+            yield return child;
+            foreach (Control inner in Descendants(child)) yield return inner;
+        }
+    }
+
+    private static void Capture(Form form, string filename)
+    {
+        Control[] descendants = Descendants(form).ToArray();
+        var settings = descendants.OfType<GroupBox>().FirstOrDefault(g => g.Text == "Configurações do Par")
+            ?? throw new InvalidOperationException("Settings group missing from classic layout");
+        var bottomLimit = settings.RectangleToScreen(settings.ClientRectangle).Bottom;
+        foreach (var checkbox in Descendants(settings).OfType<CheckBox>())
+        {
+            if (checkbox.RectangleToScreen(checkbox.ClientRectangle).Bottom > bottomLimit - 1)
+                throw new InvalidOperationException(
+                    "Settings checkbox clipped by viewport: " + checkbox.Text + " at " + form.Size);
+        }
+        var footer = descendants.OfType<StatusStrip>().FirstOrDefault()
+            ?? throw new InvalidOperationException("Classic footer status bar missing");
+        if (footer.RectangleToScreen(footer.ClientRectangle).Bottom >
+            form.RectangleToScreen(form.ClientRectangle).Bottom)
+            throw new InvalidOperationException("Footer extends beyond form client bounds");
+        var toolbar = descendants.OfType<ToolStrip>().FirstOrDefault(t =>
+            t.Items.Cast<ToolStripItem>().Any(x => x.Text == "Console"))
+            ?? throw new InvalidOperationException("Classic toolbar not found");
+        var console = toolbar.Items.Cast<ToolStripItem>().First(x => x.Text == "Console");
+        if (console.Placement != ToolStripItemPlacement.Main)
+            throw new InvalidOperationException("Console toolbar button overflowed at " + form.Size);
+        using var image = new Bitmap(form.Width, form.Height);
+        form.DrawToBitmap(image, new Rectangle(Point.Empty, form.Size));
+        image.Save(Path.Combine(Path.GetTempPath(), filename), ImageFormat.Png);
+    }
+
     [STAThread]
     private static void Main(string[] args)
     {
@@ -34,9 +71,13 @@ internal static class Program
                     Application.DoEvents();
                     System.Threading.Thread.Sleep(250);
                     Application.DoEvents();
-                    using var capture = new Bitmap(form.Width, form.Height);
-                    form.DrawToBitmap(capture, new Rectangle(Point.Empty, form.Size));
-                    capture.Save(Path.Combine(Path.GetTempPath(), "LabSerial-Setup-selftest.png"), ImageFormat.Png);
+                    Capture(form, "LabSerial-Setup-selftest.png");
+                    // Additional constrained notebook layout under 1024px wide.
+                    form.Size = new Size(940, 650);
+                    Application.DoEvents();
+                    form.PerformLayout();
+                    Application.DoEvents();
+                    Capture(form, "LabSerial-Setup-selftest-compact.png");
                     form.Hide();
                 }
                 var current = LabSerialInventory.Read();
