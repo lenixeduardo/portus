@@ -43,6 +43,20 @@ class StandaloneLayout(unittest.TestCase):
         self.assertIn("LabRingPush", shared)
         self.assertIn("LabRingPop", shared)
 
+    def test_devgen_root_dev_instance_id_handled_by_hardware_ids(self):
+        physical = ROOT / "physical"
+        smoke = (physical / "Test-LabSerialPorts.ps1").read_text(encoding="utf-8")
+        preflight = (physical / "Inspect-LabSerialHost.ps1").read_text(encoding="utf-8")
+        diagnostics = (physical / "Inspect-LabSerialPorts.ps1").read_text(encoding="utf-8")
+        for script in (smoke, preflight, diagnostics):
+            self.assertIn("DEVPKEY_Device_HardwareIds", script)
+        self.assertIn("DEVPKEY_Device_Service", smoke)
+        self.assertIn("QueryDosDevice", smoke)
+        self.assertNotIn("InstanceId -like 'ROOT\\LABSERIAL_VCOM_A\\*'", smoke)
+        self.assertNotIn("InstanceId -like 'ROOT\\LABSERIAL_VCOM_B\\*'", smoke)
+        self.assertIn("ROOT\\LABSERIAL_VCOM_A", diagnostics)
+        self.assertIn("ROOT\\LABSERIAL_VCOM_B", diagnostics)
+
     def test_no_distribution_flag(self):
         doc = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("NÃO INSTALAR EM PRODUÇÃO", doc)
