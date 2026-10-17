@@ -1,5 +1,5 @@
 #define AppName "LabSerial Setup"
-#define AppVersion "0.1.0"
+#define AppVersion "0.1.1"
 #define AppExeName "LabSerial.Setup.exe"
 [Setup]
 AppId={{D4C39022-EC70-4A9D-AEB4-FBEEFC572C5A}
