@@ -228,15 +228,15 @@ internal sealed class MainForm : Form
             Padding = new Padding(10, 8, 10, 7), Margin = Padding.Empty
         };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 54));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 21));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 24));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 18));
         // Responsive distribution: taller work areas can show more of the list/log;
         // on shorter desktops prioritize a fully visible settings group.
         content.SizeChanged += (_, _) =>
         {
             bool taller = content.ClientSize.Height >= 660;
-            float[] split = taller ? new float[] { 28f, 48f, 24f } : new float[] { 25f, 54f, 21f };
+            float[] split = taller ? new float[] { 28f, 49f, 23f } : new float[] { 24f, 58f, 18f };
             for (int i = 0; i < split.Length; i++) content.RowStyles[i].Height = split[i];
         };
 
@@ -296,8 +296,8 @@ internal sealed class MainForm : Form
             Padding = Padding.Empty, Margin = Padding.Empty
         };
         detailLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        detailLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
-        detailLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
+        detailLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 59));
+        detailLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 41));
         var endpoints = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
         endpoints.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         endpoints.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
