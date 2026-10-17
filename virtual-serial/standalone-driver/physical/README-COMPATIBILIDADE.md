@@ -14,6 +14,7 @@ Após a instalação de laboratório, a comunicação Win32 básica COM210 ↔ C
   - `LabSerial Virtual Serial Port A (EXPERIMENTAL) (COM210)`
   - `LabSerial Virtual Serial Port B (EXPERIMENTAL) (COM211)`
 - Antes da mudança, salva arquivo de backup em `Documentos\LabSerial-Evidencias\LabSerial-FriendlyName-Backup-*.json`, contendo os nomes anteriores e IDs exatos.
+- Restauração opcional: execute `Restore-LabSerialNames.ps1 -BackupPath "CAMINHO_DO_BACKUP.json"` para **prévia**, e somente em laboratório use `-Apply -ConfirmDedicatedNonProductionPC -ConfirmRecoveryAndConsoleAccess` para restaurar exatamente os nomes originais. O script verifica o host, os IDs, o serviço e o PortName antes de modificar qualquer propriedade.
 - Altera **apenas** o nome amigável PnP; não modifica número de porta, mapeamento real, INF, serviço de driver ou dispositivo com0com. Exige autorização explícita do administrador e pergunta de confirmação.
 - O nome PnP pode ser redefinido pelo instalador da classe Ports durante reinstalações ou atualizações. Essa correção serve à instalação atual e precisa ser testada novamente após PnP/reboot. A resolução definitiva no fluxo de instalação deverá ser revisitada na próxima versão.
 
