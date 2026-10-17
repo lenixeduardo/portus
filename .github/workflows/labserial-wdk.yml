@@ -88,8 +88,12 @@ jobs:
             'Inspect-LabSerialHost.ps1',
             'Inspect-LabSerialPorts.ps1',
             'Install-LabSerialTest.ps1',
+            'Trust-LabSerialTestCertificate.ps1',
             'Test-LabSerialPorts.ps1',
-            'Remove-LabSerialTest.ps1'
+            'Remove-LabSerialTest.ps1',
+            'Run-LabSerialSmokeBounded.ps1',
+            'Run-LabSerialEvidenceBounded.ps1',
+            'Evidence-LabSerialTransfer.ps1'
           )
           foreach ($script in $scripts) {
             $src = Join-Path $physical $script
@@ -101,7 +105,31 @@ jobs:
             if ($errors.Count -gt 0) { throw "PowerShell syntax invalid in $src : $($errors[0].Message)" }
             Copy-Item -LiteralPath $src -Destination $output
           }
-          Copy-Item -LiteralPath (Join-Path $physical 'README-PHYSICAL-TEST.txt') -Destination $output
+          $native = Join-Path $physical 'LabSerialNativeProbe.cs'
+          Add-Type -Path (Resolve-Path $native).Path -ErrorAction Stop
+          if (-not ('LabSerialNativeProbe' -as [type])) { throw 'Native COM probe type not loaded' }
+          Copy-Item -LiteralPath $native -Destination $output
+          $extras = @('README-PHYSICAL-TEST.txt', 'LabSerial-Instalador-Teste.bat',
+            'Teste-Transmissao-LabSerial.bat')
+          foreach ($name in $extras) {
+            $src = Join-Path $physical $name
+            if (-not (Test-Path -LiteralPath $src -PathType Leaf)) { throw "Required file missing: $src" }
+            Copy-Item -LiteralPath $src -Destination $output
+          }
+          $scriptHash = [ordered]@{}
+          foreach ($name in ($scripts + @('LabSerialNativeProbe.cs') + $extras)) {
+            $scriptHash[$name] = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $output $name)).Hash
+          }
+          # Fail-closed check in CI host that has no LabSerial PnP devices.
+          if ("${{ matrix.configuration }}" -eq "Release") {
+            $noDevicePath = Join-Path $env:RUNNER_TEMP 'labserial-empty-windows-evidence'
+            & powershell.exe -NoProfile -File (Join-Path $output 'Evidence-LabSerialTransfer.ps1') -OutputDirectory $noDevicePath
+            if ($LASTEXITCODE -ne 1) { throw 'CI host unexpectedly accepted COM without LabSerial PnP verification.' }
+            $evidence = @(Get-ChildItem -LiteralPath $noDevicePath -Filter *.json -File)
+            if ($evidence.Count -ne 1) { throw 'Expected exactly one negative evidence JSON' }
+            $negative = Get-Content -LiteralPath $evidence[0].FullName -Raw | ConvertFrom-Json
+            if ($negative.Result -ne 'FAIL' -or $negative.RequestedTransfer) { throw 'Fail-closed check failed.' }
+          }
           $manifest = [ordered]@{
             product = "LabSerial"
             architecture = "x64"
@@ -112,6 +140,7 @@ jobs:
             intended_for_production = $false
             physical_windows_loaded = $false
             release_approved = $false
+            scripts_sha256 = $scriptHash
             source_commit = "$env:GITHUB_SHA"
             test_signing_certificate_thumbprint = $roundTrip.Thumbprint
             sha256 = [ordered]@{
@@ -128,6 +157,17 @@ jobs:
         with:
           name: labserial-wdk-${{ matrix.configuration }}-x64-test-only
           path: labserial-test-package/${{ matrix.configuration }}/*
+          retention-days: 7
+      - name: Archive standalone evidence toolset (no driver installation)
+        if: success() && matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: labserial-transfer-evidence-tools
+          path: |
+            labserial-test-package/Release/Evidence-LabSerialTransfer.ps1
+            labserial-test-package/Release/LabSerialNativeProbe.cs
+            labserial-test-package/Release/Run-LabSerialEvidenceBounded.ps1
+            labserial-test-package/Release/Teste-Transmissao-LabSerial.bat
           retention-days: 7
       - name: Archive diagnostics on failure
         if: failure()
