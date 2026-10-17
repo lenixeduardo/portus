@@ -62,3 +62,13 @@ Isso elimina a ambiguidade do **pacote INF instalado**: `oem65.inf` contém cari
 ## Estado da pipeline de versão fixada
 
 A compilação WDK anterior à tentativa de fixar metadata StampInf passou em Debug/Release (run `39013388736`), mas o INF emitido usa numeração de carimbo horário. A nova configuração com data/versão explícitas no MSBuild e verificação do INF final foi commitada; **não há execução WDK bem-sucedida confirmada para essa alteração** no momento deste registro. Não oferecer como pacote validado até a pipeline produzir o INF correto.
+
+## Backup exportado e identidade do candidato — confirmação do operador
+
+Em 17/10/2026, o operador executou `pnputil.exe /export-driver oem65.inf "$env:USERPROFILE\Documents\LabSerial-Backup-oem65"`: **um pacote exportado, um sucesso**. Não houve instalação ou substituição de driver.
+
+O pacote candidato anteriormente fornecido possui INF `DriverVer = 10/17/2026,7.23.0.659` e hash SHA-256 do `labserial.sys` **`F11AC4E2BE92D83716F49BCB439B857EEC5FF22B9530D240E7C4770F6C731B69`**. Esse hash foi comparado diretamente com a extração íntegra do artefato Release GitHub Actions de run `39013388736` (artifact `12093822014`), coincidindo exatamente.
+
+O manifesto do artefato declara certificado de teste SHA-1 thumbprint `F6B7536F32961561E01F540E58E6D0938D82F5BA`; o certificado público incluído no ZIP é **autoassinado** (CN `WDKTestCert runneradmin,134366953847180556`) e foi emitido em `2026-10-17T07:23:04Z`. A confiança deste certificado no PC físico **não está confirmada**. O comando do operador `Get-AuthenticodeSignature labserial.sys` retornou `UnknownError` com certificado presente, exigindo inspeção de cadeia/SignTool antes de qualquer atualização.
+
+**Status:** backup positivo e integridade de bytes da build candidata confirmados; confiança/autorização do certificado de teste NÃO confirmada; atualização de driver NÃO executada. O arquivo INF dessa build apresenta numeração baseada em horário, não a versão fixa pretendida.
