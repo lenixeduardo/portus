@@ -93,7 +93,10 @@ jobs:
             'Remove-LabSerialTest.ps1',
             'Run-LabSerialSmokeBounded.ps1',
             'Run-LabSerialEvidenceBounded.ps1',
-            'Evidence-LabSerialTransfer.ps1'
+            'Evidence-LabSerialTransfer.ps1',
+            'Repair-LabSerialNames.ps1',
+            'Test-LabSerialSerialPort.ps1',
+            'Run-LabSerialCompatibilityBounded.ps1'
           )
           foreach ($script in $scripts) {
             $src = Join-Path $physical $script
@@ -114,15 +117,23 @@ jobs:
           Add-Type -Path (Resolve-Path $native).Path -ErrorAction Stop
           if (-not ('LabSerialNativeProbe' -as [type])) { throw 'Native COM probe type not loaded' }
           Copy-Item -LiteralPath $native -Destination $output
+          $friendly = Join-Path $physical 'LabSerialFriendlyName.cs'
+          Add-Type -Path (Resolve-Path $friendly).Path -ErrorAction Stop
+          if (-not ('LabSerialFriendlyName' -as [type])) { throw 'SetupAPI helper failed to compile' }
+          Copy-Item -LiteralPath $friendly -Destination $output
+          & powershell.exe -NoProfile -File (Join-Path $physical 'Run-LabSerialCompatibilityBounded.ps1') -SelfTest
+          if ($LASTEXITCODE -ne 0) { throw 'SerialPort compatibility syntax self-test failed' }
+
           $extras = @('README-PHYSICAL-TEST.txt', 'LabSerial-Instalador-Teste.bat',
-            'Teste-Transmissao-LabSerial.bat')
+            'Teste-Transmissao-LabSerial.bat',
+            'LabSerial-Compatibilidade-e-Nomes.bat', 'README-COMPATIBILIDADE.md')
           foreach ($name in $extras) {
             $src = Join-Path $physical $name
             if (-not (Test-Path -LiteralPath $src -PathType Leaf)) { throw "Required file missing: $src" }
             Copy-Item -LiteralPath $src -Destination $output
           }
           $scriptHash = [ordered]@{}
-          foreach ($name in ($scripts + @('LabSerialNativeProbe.cs') + $extras)) {
+          foreach ($name in ($scripts + @('LabSerialNativeProbe.cs','LabSerialFriendlyName.cs') + $extras)) {
             $scriptHash[$name] = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $output $name)).Hash
           }
           # Fail-closed check in CI host that has no LabSerial PnP devices.
@@ -137,6 +148,33 @@ jobs:
             $negative = Get-Content -LiteralPath $evidence[0].FullName -Raw | ConvertFrom-Json
             if ($negative.Result -ne 'FAIL' -or $negative.RequestedTransfer) { throw 'Fail-closed check failed.' }
           }
+          if ("${{ matrix.configuration }}" -eq "Release") {
+            $compatFolder = Join-Path $env:RUNNER_TEMP 'labserial-compat-negative'
+            $compatPath = (Resolve-Path (Join-Path $output 'Test-LabSerialSerialPort.ps1')).Path
+            $compatArgs = '-NoProfile -File "' + $compatPath + '" -OutputDirectory "' + $compatFolder + '"'
+            $compatProcess = Start-Process -FilePath 'powershell.exe' -ArgumentList $compatArgs -Wait -PassThru -NoNewWindow
+            if ($compatProcess.ExitCode -ne 1) { throw "Expected fail-closed .NET compatibility result 1, got $($compatProcess.ExitCode)" }
+            $compatReports = @(Get-ChildItem -LiteralPath $compatFolder -Filter 'LabSerial-SerialPort-*.json' -File)
+            if ($compatReports.Count -ne 1) { throw 'Negative .NET compatibility JSON not generated' }
+            $negativeCompat = Get-Content -Raw -LiteralPath $compatReports[0].FullName | ConvertFrom-Json
+            if ($negativeCompat.Status -ne 'FAIL' -or $negativeCompat.RunTests) { throw 'Negative .NET compatibility test accepted missing devices' }
+          }
+          $compatFiles = @('LabSerial-Compatibilidade-e-Nomes.bat',
+            'LabSerialFriendlyName.cs', 'LabSerialNativeProbe.cs',
+            'Repair-LabSerialNames.ps1', 'Test-LabSerialSerialPort.ps1',
+            'Run-LabSerialCompatibilityBounded.ps1', 'README-COMPATIBILIDADE.md')
+          $compatHashes = [ordered]@{}
+          foreach ($name in $compatFiles) {
+            $compatHashes[$name] = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $output $name)).Hash
+          }
+          $compatManifest = [ordered]@{
+            product = 'LabSerial'
+            purpose = 'compatibility-and-friendly-names'
+            production_approved = $false
+            commit = "$env:GITHUB_SHA"
+            files = $compatHashes
+          }
+          $compatManifest | ConvertTo-Json -Depth 6 | Out-File -LiteralPath (Join-Path $output 'LabSerial-Compat-Manifest.json') -Encoding utf8
           $manifest = [ordered]@{
             product = "LabSerial"
             architecture = "x64"
@@ -175,6 +213,21 @@ jobs:
             labserial-test-package/Release/LabSerialNativeProbe.cs
             labserial-test-package/Release/Run-LabSerialEvidenceBounded.ps1
             labserial-test-package/Release/Teste-Transmissao-LabSerial.bat
+          retention-days: 7
+      - name: Archive LabSerial .NET compatibility and PnP name-fix tools
+        if: success() && matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: labserial-compatibility-name-tools
+          path: |
+            labserial-test-package/Release/LabSerial-Compatibilidade-e-Nomes.bat
+            labserial-test-package/Release/LabSerial-Compat-Manifest.json
+            labserial-test-package/Release/LabSerialFriendlyName.cs
+            labserial-test-package/Release/LabSerialNativeProbe.cs
+            labserial-test-package/Release/Repair-LabSerialNames.ps1
+            labserial-test-package/Release/Test-LabSerialSerialPort.ps1
+            labserial-test-package/Release/Run-LabSerialCompatibilityBounded.ps1
+            labserial-test-package/Release/README-COMPATIBILIDADE.md
           retention-days: 7
       - name: Archive diagnostics on failure
         if: failure()
