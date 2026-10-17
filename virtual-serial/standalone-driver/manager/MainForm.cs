@@ -250,6 +250,9 @@ internal sealed class MainForm : Form
         _pairs.Dock = DockStyle.Fill;
         _pairs.Font = new Font("Segoe UI", 9.4f);
         _pairs.View = View.Details;
+        // Only one fixed pair exists in this KMDF build; native scrollbars can
+        // obscure its only row on short laptop viewports.
+        _pairs.Scrollable = false;
         _pairs.FullRowSelect = true;
         _pairs.GridLines = false;
         LabSerialUiArt.InstallClassicPairRenderer(_pairs);
