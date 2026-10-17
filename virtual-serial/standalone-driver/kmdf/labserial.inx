@@ -6,7 +6,7 @@ Class=Ports
 ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318}
 Provider=%Provider%
 CatalogFile=labserial.cat
-DriverVer=10/14/2026,0.1.0.0
+DriverVer=10/17/2026,0.1.1.0
 PnpLockdown=1
 
 [Manufacturer]
