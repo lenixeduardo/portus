@@ -69,8 +69,8 @@ try {
   $a.Open();$b.Open()
   [byte[]]$ascii=[Text.Encoding]::ASCII.GetBytes('LABSERIAL-'+$BaudRate+'-'+[Guid]::NewGuid().ToString('N'))
   [byte[]]$binary=@(0,1,2,3,10,13,17,19,127,128,254,255,0,255,85,170)
-  $results+=Case $a $b $ascii 'ASCII A-B'
-  $results+=Case $b $a $binary 'BINARY B-A'
+  $results += (Case $a $b $ascii 'ASCII A-B')
+  $results += (Case $b $a $binary 'BINARY B-A')
   $state='PASS'
  } finally {
   foreach($p in @($a,$b)) {$p.Dispose()}
