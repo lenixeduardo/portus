@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -25,6 +27,18 @@ internal static class Program
                 form.PerformLayout();
                 if (form.Controls.Count == 0)
                     throw new InvalidOperationException("Main form controls are missing");
+                if (args.Any(a => string.Equals(a, "--capture", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Render without kernel driver or COM I/O on the isolated Windows runner.
+                    form.Show();
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(250);
+                    Application.DoEvents();
+                    using var capture = new Bitmap(form.Width, form.Height);
+                    form.DrawToBitmap(capture, new Rectangle(Point.Empty, form.Size));
+                    capture.Save(Path.Combine(Path.GetTempPath(), "LabSerial-Setup-selftest.png"), ImageFormat.Png);
+                    form.Hide();
+                }
                 var current = LabSerialInventory.Read();
                 File.WriteAllText(report, "PASS: WinForms controls constructed and inventory completed.\r\n" +
                     "Driver identity verified: " + current.Ready + "\r\n" +
