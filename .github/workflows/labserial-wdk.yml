@@ -65,7 +65,10 @@ jobs:
           $body = Get-Content -Raw -LiteralPath $inf
           # StampInf can silently replace DriverVer with a build-clock version.
           # Fail the build if the shipping INF does not advertise our tested release.
-          if ($body -notmatch '(?im)^\s*DriverVer\s*=\s*10/17/2026\s*,\s*0\.1\.1\.0\s*
+          if (-not [regex]::IsMatch($body, '(?im)^\s*DriverVer\s*=\s*10/17/2026\s*,\s*0\.1\.1\.0\s*$')) {
+            $line = @($body -split '\r?\n' | Where-Object { $_ -match '^\s*DriverVer\s*=' }) -join '; '
+            throw "Stamped INF has unexpected DriverVer: $line (expected 10/17/2026,0.1.1.0)"
+          }
           foreach ($id in @("ROOT\LABSERIAL_VCOM_A", "ROOT\LABSERIAL_VCOM_B")) {
             if (-not $body.Contains($id)) { throw "INF missing hardware ID: $id" }
           }
