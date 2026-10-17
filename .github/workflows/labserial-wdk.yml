@@ -95,6 +95,7 @@ jobs:
             'Run-LabSerialEvidenceBounded.ps1',
             'Evidence-LabSerialTransfer.ps1',
             'Repair-LabSerialNames.ps1',
+            'Restore-LabSerialNames.ps1',
             'Test-LabSerialSerialPort.ps1',
             'Run-LabSerialCompatibilityBounded.ps1'
           )
@@ -161,7 +162,7 @@ jobs:
           }
           $compatFiles = @('LabSerial-Compatibilidade-e-Nomes.bat',
             'LabSerialFriendlyName.cs', 'LabSerialNativeProbe.cs',
-            'Repair-LabSerialNames.ps1', 'Test-LabSerialSerialPort.ps1',
+            'Repair-LabSerialNames.ps1', 'Restore-LabSerialNames.ps1', 'Test-LabSerialSerialPort.ps1',
             'Run-LabSerialCompatibilityBounded.ps1', 'README-COMPATIBILIDADE.md')
           $compatHashes = [ordered]@{}
           foreach ($name in $compatFiles) {
@@ -225,6 +226,7 @@ jobs:
             labserial-test-package/Release/LabSerialFriendlyName.cs
             labserial-test-package/Release/LabSerialNativeProbe.cs
             labserial-test-package/Release/Repair-LabSerialNames.ps1
+            labserial-test-package/Release/Restore-LabSerialNames.ps1
             labserial-test-package/Release/Test-LabSerialSerialPort.ps1
             labserial-test-package/Release/Run-LabSerialCompatibilityBounded.ps1
             labserial-test-package/Release/README-COMPATIBILIDADE.md
