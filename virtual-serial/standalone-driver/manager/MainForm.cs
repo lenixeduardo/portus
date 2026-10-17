@@ -689,7 +689,7 @@ internal sealed class MainForm : Form
     private void ShowAbout()
     {
         MessageBox.Show(this,
-            "LabSerial Setup v0.1.0\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
+            "LabSerial Setup v0.1.1\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
             "Interface de gerenciamento e diagnóstico do par fixo COM210 ↔ COM211.\r\n" +
             "Faz verificação rigorosa dos dispositivos LabSerial antes de permitir testes.\r\n" +
             "Não instala drivers, não cria pares PnP e não altera configurações globais.\r\n" +
