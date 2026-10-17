@@ -86,6 +86,7 @@ jobs:
           $physical = "virtual-serial/standalone-driver/physical"
           $scripts = @(
             'Inspect-LabSerialHost.ps1',
+            'Inspect-LabSerialPorts.ps1',
             'Install-LabSerialTest.ps1',
             'Test-LabSerialPorts.ps1',
             'Remove-LabSerialTest.ps1'
