@@ -351,7 +351,7 @@ internal sealed class MainForm : Form
         var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4 };
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (int n = 0; n < 4; n++) grid.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+        foreach (var percent in new float[] { 22, 22, 22, 34 }) grid.RowStyles.Add(new RowStyle(SizeType.Percent, percent));
         var fields = new[] { _ports[index], _names[index], _hardwareIds[index], _descriptions[index] };
         var labels = new[] { "Número da Porta:", "Nome Amigável:", "Hardware ID:", "Descrição:" };
         for (int row = 0; row < 4; row++)
@@ -364,6 +364,7 @@ internal sealed class MainForm : Form
             var field = fields[row];
             field.Dock = DockStyle.Fill;
             field.BorderStyle = BorderStyle.FixedSingle;
+            if (row == 3) { field.Multiline = true; field.WordWrap = true; }
             field.ReadOnly = true;
             field.BackColor = Color.White;
             field.ForeColor = Ink;
@@ -526,7 +527,7 @@ internal sealed class MainForm : Form
             _ports[n].Text = ep.Port;
             _names[n].Text = "LabSerial " + ep.Label;
             _hardwareIds[n].Text = ep.HardwareId;
-            _descriptions[n].Text = ep.FriendlyName;
+            _descriptions[n].Text = ep.FriendlyName.Replace(" (EXPERIMENTAL)", Environment.NewLine + "(EXPERIMENTAL)");
             var tooltip = new ToolTip();
             tooltip.SetToolTip(_descriptions[n], ep.FriendlyName);
             tooltip.SetToolTip(_hardwareIds[n], ep.HardwareId);
