@@ -163,7 +163,7 @@ describe.skipIf(process.env.PORTUS_QA_E2E !== "1")("Homologação real PORTUS: S
       const before = await getCentralBatchHistory(batchId, master.username, "PRODUCTION");
       expect(before?.sessions[0]?.readings[0]?.equipmentName).toBe(original!.name);
 
-      const newName = "Balança de Precisão QA";
+      const newName = "Balança de Precisão";
       const renamed = await updateCentralEquipment(equipId, { name: newName });
       expect(renamed?.name).toBe(newName);
       const after = await getCentralBatchHistory(batchId, master.username, "PRODUCTION");
