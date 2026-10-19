@@ -65,13 +65,16 @@ export async function getCentralBatchHistory(
             cu.username AS operator_login,
             s.code AS sector_code, st.code AS station_code, st.name AS station_name,
             r.id AS reading_id, r.value_raw,
-            r.value_parsed, r.captured_at, e.id AS equipment_id, e.name AS equipment_name
+            r.value_parsed, r.captured_at, e.id AS equipment_id,
+            COALESCE(NULLIF(trim(profile.config->>'name'), ''), e.name) AS equipment_name
        FROM capture_sessions cs
        LEFT JOIN users cu ON cu.id = cs.user_id
        LEFT JOIN sectors s ON s.id = cs.sector_id
        LEFT JOIN stations st ON st.id = cs.station_id
        LEFT JOIN readings r ON r.capture_session_id = cs.id
        LEFT JOIN equipments e ON e.id = r.equipment_id
+       LEFT JOIN portus_station_equipment_profiles profile
+         ON profile.equipment_id = e.id AND profile.station_code = st.code
       WHERE cs.batch_id = $1
       ORDER BY cs.started_at ASC, r.captured_at ASC`,
     [batchId]
