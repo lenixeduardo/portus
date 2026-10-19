@@ -107,13 +107,19 @@ const SELECT_BATCH = `
            SELECT json_agg(preview ORDER BY preview."capturedAt" DESC)
              FROM (
                SELECT COALESCE(s.code, 'PRODUCTION') AS "sectorCode",
-                      e.name AS "equipmentName",
+                      COALESCE(NULLIF(trim((
+                        SELECT p.config->>'name'
+                          FROM portus_station_equipment_profiles p
+                         WHERE p.equipment_id = e.id AND p.station_code = st.code
+                         ORDER BY p.updated_at DESC LIMIT 1
+                      )), ''), e.name) AS "equipmentName",
                       COALESCE(r.value_parsed, r.value_raw) AS value,
                       r.captured_at AS "capturedAt"
                  FROM readings r
                  JOIN capture_sessions cs ON cs.id = r.capture_session_id
                  LEFT JOIN sectors s ON s.id = cs.sector_id
                  JOIN equipments e ON e.id = r.equipment_id
+                 LEFT JOIN stations st ON st.id = cs.station_id
                 WHERE r.batch_id = b.id
                 ORDER BY r.captured_at DESC
                 LIMIT 8
