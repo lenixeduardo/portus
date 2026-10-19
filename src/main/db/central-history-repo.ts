@@ -73,8 +73,11 @@ export async function getCentralBatchHistory(
        LEFT JOIN stations st ON st.id = cs.station_id
        LEFT JOIN readings r ON r.capture_session_id = cs.id
        LEFT JOIN equipments e ON e.id = r.equipment_id
-       LEFT JOIN portus_station_equipment_profiles profile
-         ON profile.equipment_id = e.id AND profile.station_code = st.code
+       LEFT JOIN LATERAL (
+         SELECT config FROM portus_station_equipment_profiles
+          WHERE equipment_id = e.id AND station_code = st.code
+          ORDER BY updated_at DESC LIMIT 1
+       ) profile ON TRUE
       WHERE cs.batch_id = $1
       ORDER BY cs.started_at ASC, r.captured_at ASC`,
     [batchId]
