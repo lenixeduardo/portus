@@ -68,16 +68,16 @@ const fixtures = [
   }
 ];
 
-async function openDashboard(width, height) {
+async function openDashboard(width, height, role = "admin", sectorCode = "ADMIN") {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.addInitScript(({ appVersion, batches }) => {
+  await page.addInitScript(({ appVersion, batches, role, sectorCode }) => {
     localStorage.setItem("portus:last-seen-version", appVersion);
     localStorage.setItem("portus:theme", "dark");
     const user = {
       id: 1, username: "admin", displayName: "admin",
-      role: "admin", sectorCode: "ADMIN", active: true,
+      role, sectorCode, active: true,
       createdAt: "2026-10-01T12:00:00"
     };
     const status = { configured: true, available: true, required: true, mode: "central" };
@@ -96,7 +96,7 @@ async function openDashboard(width, height) {
       users: { findByBarcode: async () => null },
       log: { error: async () => {} }
     };
-  }, { appVersion: version, batches: fixtures });
+  }, { appVersion: version, batches: fixtures, role, sectorCode });
   await page.goto(baseURL, { waitUntil: "networkidle" });
   await page.locator(".batch-row").first().waitFor({ timeout: 15000 });
   return { page, errors };
@@ -145,6 +145,29 @@ for (const [label, width, height] of [
       assert.deepEqual(errors, [], "Erros não tratados no renderer");
       await page.screenshot({
         path: join(screenshotDir, `dashboard-${label}.png`),
+        fullPage: true,
+        animations: "disabled"
+      });
+    } finally {
+      await page.close();
+    }
+  });
+}
+
+for (const [sectorCode, sectorLabel] of [
+  ["PRODUCTION", "Produção"],
+  ["LABORATORY", "Laboratório"]
+]) {
+  test(`View do Supervisor não deve aparecer como ${sectorLabel}`, async () => {
+    const { page, errors } = await openDashboard(1440, 900, "supervisor", sectorCode);
+    try {
+      const view = page.locator(".view-status");
+      assert.equal(await view.getAttribute("title"), "View ativa: Supervisor");
+      assert.match(await view.textContent(), /View\s*Supervisor/);
+      assert.equal(await page.locator(".view-status").getAttribute("title"), "View ativa: Supervisor");
+      assert.deepEqual(errors, [], "Sem erros JavaScript na view do Supervisor");
+      await page.screenshot({
+        path: join(screenshotDir, `supervisor-view-${sectorCode.toLowerCase()}.png`),
         fullPage: true,
         animations: "disabled"
       });
