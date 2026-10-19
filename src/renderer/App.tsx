@@ -14,6 +14,7 @@ import { ReportErrorModal } from "./components/ReportErrorModal";
 import { UserBarcodeRegistration } from "./components/UserBarcodeRegistration";
 import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
+import { getUserViewLabel } from "./user-view-label";
 import type { AvailableUpdate, InitialSetupStatus } from "../shared/ipc";
 import { UpdateAvailableModal } from "./components/UpdateAvailableModal";
 
@@ -243,7 +244,7 @@ export function App() {
 }
 
 function ViewStatus({ sectorCode, role }: { sectorCode: User["sectorCode"]; role?: User["role"] }) {
-  const label = role === "master" || role === "admin" || sectorCode === "ADMIN" ? "Admin" : sectorCode === "LABORATORY" ? "Laboratório" : "Produção";
+  const label = getUserViewLabel(role, sectorCode);
 
   return (
     <div className="view-status" role="status" title={`View ativa: ${label}`}>
