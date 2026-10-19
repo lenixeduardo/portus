@@ -52,23 +52,8 @@ function auditLabel(event: BatchAuditEvent): string | null {
 
 /** Padroniza nomes de equipamentos no relatório, ignorando acentos e grafias de pH. */
 export function reportEquipmentName(name: string): string {
-  // Equipamentos legados podem chegar com UTF-8 interpretado como Windows-1252.
-  // Reconhecemos os nomes conhecidos mesmo quando a acentuacao foi corrompida.
-  const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  const key = normalized.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (key.startsWith("ESPECTROFOT")) return "Espectrofotometro";
-  if (key.startsWith("BALAN")) return "Balanca";
-  if (key.startsWith("VISCOS")) return "Viscosimetro";
-  if (key.startsWith("REFRAT")) return "Refratometro";
-  const known: Record<string, string> = {
-    ESPECTROFOTOMETRO: "Espectrofotometro",
-    BALANCA: "Balanca",
-    VISCOSIMETRO: "Viscosimetro",
-    PHMETRO: "pHmetro",
-    REFRATOMETRO: "Refratometro",
-    RESERVA: "RESERVA"
-  };
-  return known[key] ?? normalized;
+  // Preserva o nome atual cadastrado, inclusive nomes personalizados.
+  return name.trim();
 }
 
 export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
