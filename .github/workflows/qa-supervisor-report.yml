@@ -1,0 +1,71 @@
+name: QA Supervisor + relatório impresso
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/**'
+      - 'src/renderer/**'
+      - 'src/shared/**'
+      - 'database/migrations/**'
+      - 'database/seed/**'
+      - '.github/workflows/qa-supervisor-report.yml'
+  workflow_dispatch:
+
+jobs:
+  supervisor-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: portus
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: portus-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: portus
+      PGUSER: postgres
+      PGPASSWORD: portus-ci-password
+      PORTUS_DATABASE_URL: postgresql://postgres:portus-ci-password@127.0.0.1:5432/portus
+      PORTUS_STATION_CODE: QA-SUPERVISOR-REPORT
+      PORTUS_QA_E2E: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: PostgreSQL e extração de texto PDF
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client poppler-utils
+      - name: Aplicar migrations reais ao banco isolado
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in database/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+          psql -v ON_ERROR_STOP=1 -f database/seed/reference.sql >/dev/null
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Preparar Chromium de impressão
+        run: npx playwright-core install --with-deps chromium
+      - name: Testar Master, Supervisor, tela de login e PDF
+        run: npx vitest run --config vitest.config.ts --configLoader runner src/main/__tests__/supervisor-report-postgres.qa.test.ts
+      - name: Preservar evidências e relatório impresso
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portus-qa-supervisor-relatorio
+          path: test-results/qa-acceptance/
+          if-no-files-found: ignore
+          retention-days: 14
