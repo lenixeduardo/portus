@@ -51,7 +51,7 @@ describe("modelo Excel EPA no historico PORTUS", () => {
   it("mapeia somente oito campos conhecidos, sem inventar unidade/status/observacao", () => {
     const rows = excelReportRows(sample());
     expect(rows[0]).toEqual([
-      "DESKTOP-LAB", "lab", "Balanca", "=1+1", "", "",
+      "DESKTOP-LAB", "lab", "Balança", "=1+1", "", "",
       expect.any(String), ""
     ]);
     expect(rows[0]).toHaveLength(8);
@@ -69,7 +69,7 @@ describe("modelo Excel EPA no historico PORTUS", () => {
       expect(sheet).toContain("Observação");
       expect(sheet).toContain("DESKTOP-LAB");
       expect(sheet).toContain("Supervisor B");
-      expect(sheet).toContain("Balanca");
+      expect(sheet).toContain("Balança");
       expect(sheet).toContain("<mergeCell ref=\"A40:B40\"/>");
       expect(sheet).not.toContain("autoFilter");
       expect(sheet).not.toContain("Valor Numérico");

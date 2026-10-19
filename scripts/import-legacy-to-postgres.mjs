@@ -311,10 +311,11 @@ try {
       const inserted=await selectOne(
         "INSERT INTO batches(product_id,code,status,stage,opened_at,closed_at,created_by,closed_by,opened_source,closed_source) " +
         "VALUES($1,$2,$3,$4,$5::timestamptz,$6::timestamptz,$7,$8,$9,$10) RETURNING id",
-        [product,b.code,closed?"closed":"open",b.stage||"A",opened,
-         closed ? dateValue(b.closed_at)||opened : null,
-         creator,b.closed_by?userIds.get(Number(b.closed_by))||null:null,
-         station,closed?station:null]
+        // Importa primeiro como aberto: as regras atuais do banco bloqueiam
+        // leituras novas em lotes finalizados. O fechamento original e
+        // restaurado depois da importacao das leituras, na mesma transacao.
+        [product,b.code,"open",b.stage||"A",opened,
+         null,creator,null,station,null]
       );
       return inserted.id;
     });
@@ -359,6 +360,21 @@ try {
     });
   }
   originalCounts.readings=localReadings.length;
+
+  // Restaura o status e o momento do fechamento somente apos importar todas
+  // as leituras historicas, preservando as regras para leituras operacionais.
+  for (const legacyBatch of localBatches) {
+    if (legacyBatch.status !== "closed") continue;
+    const batchId=batchIds.get(Number(legacyBatch.id));
+    if (!batchId) throw new Error("Lote encerrado sem id central: " + legacyBatch.code);
+    const closedAt=dateValue(legacyBatch.closed_at)||dateValue(legacyBatch.opened_at)||new Date().toISOString();
+    const closedBy=legacyBatch.closed_by?userIds.get(Number(legacyBatch.closed_by))||null:null;
+    await pgClient.query(
+      "UPDATE batches SET status='closed',closed_at=$2::timestamptz,closed_by=$3,closed_source=$4 " +
+      "WHERE id=$1 AND status='open'",
+      [batchId,closedAt,closedBy,station]
+    );
+  }
 
   const localAudits=sourceRows("audit_log");
   for (const event of localAudits) {
