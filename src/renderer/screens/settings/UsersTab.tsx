@@ -15,6 +15,7 @@ export function UsersTab({ currentUser }: Props) {
   const [users, setUsers] = useState<User[]>([]);
   const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,14 +38,27 @@ export function UsersTab({ currentUser }: Props) {
   }, []);
 
   async function handleDelete(u: User) {
+    if (deletingUserId !== null) return;
     if (!confirm(`Excluir permanentemente o usuário "${u.username}" do banco central? O histórico dos lotes será preservado.`)) return;
-    const res = await window.api.users.remove(u.id);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
+    setDeletingUserId(u.id);
     setError(null);
-    reload();
+    try {
+      const res = await window.api.users.remove(u.id);
+      if (!res.ok) {
+        setError(res.error || "Não foi possível excluir o usuário.");
+        return;
+      }
+      // Confirme a exclusão na fonte central antes de atualizar a interface.
+      const refreshed = await window.api.users.list();
+      setUsers(refreshed);
+      if (refreshed.some(user => user.id === u.id)) {
+        setError("O banco central ainda retorna este usuário. A exclusão não foi confirmada; verifique as migrations do servidor.");
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Falha de comunicação com o banco central durante a exclusão.");
+    } finally {
+      setDeletingUserId(null);
+    }
   }
 
   if (loading) return <div className="muted">Carregando...</div>;
@@ -94,7 +108,7 @@ export function UsersTab({ currentUser }: Props) {
                         Alterar senha
                       </button>
                       {u.username !== currentUser.username && (
-                        <button className="link danger" onClick={() => handleDelete(u)}>Excluir</button>
+                        <button className="link danger" disabled={deletingUserId !== null} onClick={() => handleDelete(u)}>{deletingUserId === u.id ? "Excluindo..." : "Excluir"}</button>
                       )}
                     </>
                   )}
