@@ -13,7 +13,7 @@ function isAuthenticatedUser(value: unknown): value is User {
   const user = value as Partial<User>;
   return Number.isInteger(user.id)
     && typeof user.username === "string"
-    && (user.role === "master" || user.role === "admin" || user.role === "operator")
+    && (user.role === "master" || user.role === "admin" || user.role === "supervisor" || user.role === "operator")
     && typeof user.createdAt === "string";
 }
 
