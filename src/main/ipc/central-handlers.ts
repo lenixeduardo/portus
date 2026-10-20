@@ -28,6 +28,8 @@ import { getCentralBatchHistory } from "../db/central-history-repo";
 import { administrativeBatchSchema, closeBatchSchema, createBatchSchema } from "../validation/schemas";
 import { compose, requireAuth, validateInput } from "./middleware";
 
+const reopenBatchSchema = closeBatchSchema.extend({ justification: z.string().trim().max(1000).optional() });
+
 async function auditAdministrativeReason(userId: number, batchId: number, action: string, justification: string): Promise<void> {
   await centralQuery(
     `INSERT INTO portus_audit_log (actor_user_id, station_code, action, resource_type, resource_id, details)
@@ -248,16 +250,21 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesReopen,
-    compose([requireAuth, validateInput(administrativeBatchSchema)])(
-      async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
+    compose([requireAuth, validateInput(reopenBatchSchema)])(
+      async (_e, input: { id: number; justification?: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (!canReopenFinalizedBatch(user.role)) {
           return { ok: false, error: "Somente Supervisor ou Master podem reabrir um lote finalizado." };
         }
           try {
-          const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user), input.justification);
-          await auditAdministrativeReason(user.id, input.id, "BATCH_REOPENED", input.justification);
+          const justification = input.justification?.trim() ?? "";
+          if (user.role !== "master" && justification.length < 10) {
+            return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
+          }
+          const reason = justification || "Reabertura autorizada pelo Master";
+          const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user), reason);
+          await auditAdministrativeReason(user.id, input.id, "BATCH_REOPENED", reason);
           return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao reabrir lote." };
