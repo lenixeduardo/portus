@@ -1,10 +1,13 @@
 ﻿# PORTUS - utilitario visual PostgreSQL (Windows PowerShell 5.1).
 # Operacoes de gravacao exigem confirmacao. Limpeza exige selecao e backup.
 [CmdletBinding()]
-param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts,
+param([switch]$SmokeTest, [string]$CapturePath = '', [switch]$StrictFonts, [switch]$LaunchedFromPortus,
       [int]$ViewportWidth = 0, [int]$ViewportHeight = 0)
 
 $ErrorActionPreference = "Stop"
+# Keep startup diagnostics readable by the Electron launcher as well as the BAT.
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+try {
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -17,7 +20,6 @@ Add-Type -AssemblyName System.Drawing
 . (Join-Path $PSScriptRoot "portus-utility-credentials.ps1")
 
 # Erros de criacao da janela devem voltar ao terminal, nao parecer travamento.
-try {
 # Desktop interface based on the PORTUS database-utility mockup.
 . (Join-Path $PSScriptRoot "portus-test-cleanup-dialog.ps1")
 
@@ -934,6 +936,9 @@ $form.Add_Shown({
   $form.BringToFront()
   $form.Activate()
   $focusTimer.Start()
+  # Confirm the actual WinForms window, never merely the PowerShell process.
+  [Console]::Out.WriteLine("PORTUS_DB_UTILITY_READY")
+  [Console]::Out.Flush()
 })
 
 if ($SmokeTest -or $CapturePath) {
@@ -1067,7 +1072,7 @@ if ($SmokeTest -or $CapturePath) {
   $message = "Nao foi possivel abrir o utilitario PORTUS: " + $_.Exception.Message
   [Console]::Error.WriteLine($message)
   try {
-    if (-not $SmokeTest -and -not $CapturePath) {
+    if (-not $SmokeTest -and -not $CapturePath -and -not $LaunchedFromPortus) {
     [void][System.Windows.Forms.MessageBox]::Show($message,"Falha ao iniciar PORTUS",
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Error)
