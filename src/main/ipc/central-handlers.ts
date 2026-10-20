@@ -174,17 +174,20 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesFinalize,
-    compose([requireAuth, validateInput(administrativeBatchSchema)])(
-      async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
+    compose([requireAuth, validateInput(reopenBatchSchema)])(
+      async (_e, input: { id: number; justification?: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
         if (!canFinalizeBatch(user.role, getUserOperationalSector(user))) {
           return { ok: false, error: "Somente Laboratório ou Master pode finalizar o lote." };
         }
           try {
+          const justification = input.justification?.trim() ?? "";
+          if (user.role !== "master" && justification.length < 10) return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
+          const reason = justification || "Finalização autorizada pelo Master";
           return {
             ok: true,
-            data: await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user)).then(async batch => { await auditAdministrativeReason(user.id, input.id, "BATCH_FINALIZED", input.justification); return batch; })
+            data: await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user)).then(async batch => { await auditAdministrativeReason(user.id, input.id, "BATCH_FINALIZED", reason); return batch; })
           };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
@@ -232,14 +235,16 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesForceClose,
-    compose([requireAuth, validateInput(administrativeBatchSchema)])(
-      async (_e, input: { id: number; justification: string }): Promise<ServiceResult<BatchWithProduct>> => {
+    compose([requireAuth, validateInput(reopenBatchSchema)])(
+      async (_e, input: { id: number; justification?: string }): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
           if (user.role !== "supervisor" && user.role !== "master") return { ok: false, error: "Somente Supervisor ou Master podem finalizar o lote." };
         try {
           const batch = await forceCentralBatchClose(input.id, user.username);
-          await auditAdministrativeReason(user.id, input.id, "MASTER_BATCH_CLOSED", input.justification);
+          const justification = input.justification?.trim() ?? "";
+          if (user.role !== "master" && justification.length < 10) return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
+          await auditAdministrativeReason(user.id, input.id, "MASTER_BATCH_CLOSED", justification || "Finalização autorizada pelo Master");
           return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
