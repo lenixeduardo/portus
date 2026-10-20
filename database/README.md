@@ -656,3 +656,17 @@ para utilizar a nova exclusao; um executavel antigo continua desativando.
 
 O teste SQL `database/tests/007_physical_user_deletion.sql` verifica a remocao,
 a preservacao do historico e as restricoes de acesso, usando rollback.
+
+### Correção da permissão do Laboratório — migration 023
+
+Aplique as migrations pendentes pelo **PORTUS DB Utility → Aplicar migrations** no servidor PostgreSQL, usando a pasta `database` desta versão. A migration `023_laboratory_batch_permissions.sql` corrige a divergência entre o perfil `laboratory` gravado pelo cadastro e as funções de conclusão/finalização. Atualizar apenas o executável não substitui a execução desta migration no banco central.
+
+Após aplicar, entre como Laboratório e valide um lote aberto: marcar concluído, desmarcar concluído, marcar novamente e finalizar sem justificativa. A conclusão revogada libera novamente as leituras de Produção. Lotes já finalizados continuam exigindo reabertura por Supervisor/Master. Supervisor/Master também seguem a matriz aprovada para conclusão e finalização. Usuários, lotes e histórico existentes são preservados.
+
+Teste de regressão com a credencial real `laboratory`, perfil legado `operator`/Laboratório e demais perfis, executado com a role restrita do runtime em PostgreSQL isolado:
+
+```sh
+node database/tests/009_laboratory_batch_permissions.mjs
+```
+
+O teste usa as variáveis padrão `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` e `PGDATABASE`, pressupõe todas as migrations aplicadas e desfaz os fixtures ao terminar. Use banco de homologação.

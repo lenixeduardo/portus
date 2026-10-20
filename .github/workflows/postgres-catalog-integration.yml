@@ -117,3 +117,6 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f database/tests/008_supervisor_user_deletion.sql
+
+      - name: Validar permissões reais de conclusão e finalização do Laboratório
+        run: node database/tests/009_laboratory_batch_permissions.mjs
