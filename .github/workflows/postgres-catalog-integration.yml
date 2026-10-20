@@ -111,3 +111,9 @@ jobs:
           END;
           $$;
           SQL
+
+      - name: Validar exclusão real do usuário Supervisor e bloqueio de login
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/tests/008_supervisor_user_deletion.sql
