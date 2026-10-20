@@ -54,6 +54,11 @@ jobs:
             throw "DB Utility nao foi incluido no pacote Windows: $utility"
           }
           Write-Host "DB Utility presente no pacote Windows."
+          $output = & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File $utility -SmokeTest -LaunchedFromPortus 2>&1
+          $output | Write-Host
+          if ($LASTEXITCODE -ne 0 -or "$output" -notmatch "PORTUS_DB_UTILITY_READY" -or "$output" -notmatch "PORTUS_DB_UTILITY_SMOKE_OK") {
+            throw "DB Utility empacotado nao conseguiu abrir a janela WinForms."
+          }
 
       - name: Publicar instalável como artifact
         uses: actions/upload-artifact@v4

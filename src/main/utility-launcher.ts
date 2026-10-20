@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import type { Socket } from "node:net";
 import { app } from "electron";
 
 interface UtilityLocation {
@@ -16,7 +17,7 @@ export function getPortusDbUtilityScriptPath(location: UtilityLocation): string 
 }
 
 export function getPortusDbUtilityArguments(scriptPath: string): string[] {
-  return ["-NoLogo", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", scriptPath];
+  return ["-NoLogo", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-LaunchedFromPortus"];
 }
 
 /** Opens the separate Windows WinForms utility; never applies migrations by itself. */
@@ -38,13 +39,40 @@ export async function launchPortusDbUtility(): Promise<void> {
     const child = spawn("powershell.exe", getPortusDbUtilityArguments(scriptPath), {
       cwd: dirname(scriptPath),
       detached: true,
-      stdio: "ignore",
-      windowsHide: false
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true
     });
-    child.once("error", reject);
-    child.once("spawn", () => {
+    let settled = false;
+    let output = "";
+    let diagnostic = "";
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      // Drain the pipes without retaining the Electron process after startup.
+      (child.stdout as Socket | null)?.unref?.();
+      (child.stderr as Socket | null)?.unref?.();
       child.unref();
-      resolve();
+      if (error) reject(error);
+      else resolve();
+    };
+    const timeout = setTimeout(() => {
+      finish(new Error("O DB Utility não confirmou a abertura da janela no tempo esperado. " + diagnostic.trim()));
+      child.kill();
+    }, 30_000);
+    child.once("error", error => finish(error));
+    child.once("close", code => {
+      finish(new Error(`O DB Utility encerrou antes de abrir a janela (código ${code ?? "desconhecido"}). ${diagnostic.trim()}`));
+    });
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk: string) => {
+      if (settled) return;
+      output = (output + chunk).slice(-8192);
+      if (/(?:^|\n)PORTUS_DB_UTILITY_READY\r?\n/.test(output)) finish();
+    });
+    child.stderr?.on("data", (chunk: string) => {
+      if (!settled) diagnostic = (diagnostic + chunk).slice(-4096);
     });
   });
 }

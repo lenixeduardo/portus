@@ -489,6 +489,7 @@ describe("utilitario de banco PORTUS", () => {
       windowsHide: true
     });
     expect(result).toContain("PORTUS_DB_UTILITY_SMOKE_OK");
+    expect(result).toContain("PORTUS_DB_UTILITY_READY");
   }, 35_000);
 
   it.skipIf(process.platform !== "win32")("preserva rolagem em viewport 900x620 sem conectar ao banco", () => {
