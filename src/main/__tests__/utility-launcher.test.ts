@@ -37,6 +37,18 @@ describe("confirmacao de abertura da janela", () => {
     expect(child.unref).toHaveBeenCalledOnce();
   });
 
+  it("abre a janela sem o modo detached que encerra o host PowerShell no Windows", async () => {
+    mocks.spawn.mockImplementationOnce((_command, _args, options) => {
+      queueMicrotask(() => {
+        child.emit("spawn");
+        if (options.detached) child.emit("close", 0);
+        else child.stdout.write("PORTUS_DB_UTILITY_READY\r\n");
+      });
+      return child;
+    });
+    await expect(launchPortusDbUtility()).resolves.toBeUndefined();
+  });
+
   it("retorna o erro de inicializacao quando PowerShell fecha sem abrir janela", async () => {
     const result = launchPortusDbUtility();
     const rejected = expect(result).rejects.toThrow(/falha de inicializacao/);

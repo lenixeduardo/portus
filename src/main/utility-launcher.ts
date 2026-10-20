@@ -38,7 +38,9 @@ export async function launchPortusDbUtility(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn("powershell.exe", getPortusDbUtilityArguments(scriptPath), {
       cwd: dirname(scriptPath),
-      detached: true,
+      // DETACHED_PROCESS can make Windows PowerShell exit 0 before running -File.
+      // unref below is sufficient to release Electron's event-loop reference.
+      detached: false,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true
     });
