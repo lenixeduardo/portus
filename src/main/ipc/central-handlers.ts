@@ -123,9 +123,6 @@ export function registerCentralHandlers(): void {
       async (_e, input: BatchInput): Promise<ServiceResult<BatchWithProduct>> => {
         const user = getCurrentUser();
         if (!user || !isCentralDatabaseConfigured()) return unavailable();
-          if (user.role === "supervisor") {
-          return { ok: false, error: "Supervisor não abre lotes operacionais." };
-        }
         try {
           const scanned = input.barcodeValue?.trim();
           let product = await getCentralProduct(input.productId);
