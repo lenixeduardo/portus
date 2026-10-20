@@ -802,7 +802,7 @@ function ConfirmCloseModal({
   onConfirm: (justification: string) => void;
 }) {
   const [justification, setJustification] = useState("");
-  const valid = justification.trim().length >= 10;
+  const valid = justification.trim().length === 0 || justification.trim().length >= 10;
   return (
     <Modal
       title="Finalizar lote"
@@ -820,8 +820,8 @@ function ConfirmCloseModal({
         O lote já está marcado como concluído. A finalização será registrada no histórico e novas leituras exigirão reabertura por Supervisor ou Master.
       </p>
       <div className="field">
-        <label htmlFor="batch-close-justification">Justificativa obrigatória</label>
-        <textarea id="batch-close-justification" disabled={pending} value={justification} onChange={(event) => setJustification(event.target.value)} required minLength={10} maxLength={1000} rows={3} placeholder="Explique o motivo da finalização (mínimo 10 caracteres)." />
+        <label htmlFor="batch-close-justification">Justificativa (opcional)</label>
+        <textarea id="batch-close-justification" disabled={pending} value={justification} onChange={(event) => setJustification(event.target.value)} maxLength={1000} rows={3} placeholder="Motivo da finalização (opcional)." />
       </div>
     </Modal>
   );
