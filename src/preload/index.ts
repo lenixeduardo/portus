@@ -131,7 +131,8 @@ const api: SerialReaderApi = {
     onEnded: (cb) => subscribe<CaptureEndedEvent>(IPC.captureEnded, cb)
   },
   shell: {
-    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url })
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, { url }),
+    openDbUtility: (): Promise<ServiceResult<true>> => ipcRenderer.invoke(IPC.shellOpenDbUtility)
   },
   central: {
     status: (): Promise<import("../shared/ipc").CentralDatabaseStatus> => ipcRenderer.invoke(IPC.centralStatus),

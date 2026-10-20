@@ -46,6 +46,15 @@ jobs:
           # Build não assinado: sem certificado, evita prompts/erros de assinatura.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
+      - name: Verificar DB Utility empacotado no instalador
+        shell: pwsh
+        run: |
+          $utility = "release/win-unpacked/resources/database/portus-db-utility.ps1"
+          if (-not (Test-Path -LiteralPath $utility -PathType Leaf)) {
+            throw "DB Utility nao foi incluido no pacote Windows: $utility"
+          }
+          Write-Host "DB Utility presente no pacote Windows."
+
       - name: Publicar instalável como artifact
         uses: actions/upload-artifact@v4
         with:

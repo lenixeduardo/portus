@@ -1,7 +1,9 @@
 import { ipcMain, shell } from "electron";
 import { z } from "zod";
 import { IPC } from "../../shared/ipc";
-import { compose, requireAuth, validateInput } from "./middleware";
+import { compose, requireAdmin, requireAuth, validateInput } from "./middleware";
+import { launchPortusDbUtility } from "../utility-launcher";
+import type { ServiceResult } from "../../shared/ipc";
 
 const ALLOWED_PROTOCOLS = new Set(["https:", "http:"]);
 
@@ -20,6 +22,21 @@ const openExternalSchema = z.object({
 });
 
 export function registerShellHandlers() {
+  ipcMain.handle(
+    IPC.shellOpenDbUtility,
+    compose([requireAdmin])(async (): Promise<ServiceResult<true>> => {
+      try {
+        await launchPortusDbUtility();
+        return { ok: true, data: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Não foi possível abrir o PORTUS DB Utility."
+        };
+      }
+    })
+  );
+
   ipcMain.handle(
     IPC.shellOpenExternal,
     compose([requireAuth, validateInput(openExternalSchema)])(

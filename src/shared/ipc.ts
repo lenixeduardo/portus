@@ -54,6 +54,7 @@ export const IPC = {
   settingsSelectBackupFolder: "settings:select-backup-folder",
   settingsBackupNow: "settings:backup-now",
   shellOpenExternal: "shell:open-external",
+  shellOpenDbUtility: "shell:open-db-utility",
   logError: "log:error",
   logGetRecent: "log:get-recent",
   logSendReport: "log:send-report",
@@ -388,6 +389,7 @@ export interface SerialReaderApi {
   };
   shell: {
     openExternal(url: string): Promise<void>;
+    openDbUtility(): Promise<ServiceResult<true>>;
   };
   central: {
     status(): Promise<CentralDatabaseStatus>;
