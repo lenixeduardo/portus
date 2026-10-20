@@ -32,3 +32,7 @@ extraResources:
     to: branding
     filter:
       - "**/*"
+  - from: database
+    to: database
+    filter:
+      - "**/*"
