@@ -225,7 +225,7 @@ export function App() {
               <Dashboard user={user} onUnknownUserBarcode={setRequestedUserBarcode} />
             )}
             {route === "products" && <Products />}
-            {route === "settings" && (user.role === "admin" || user.role === "master") && <Settings currentUser={user} />}
+            {route === "settings" && (user.role === "admin" || user.role === "master" || user.role === "supervisor") && <Settings currentUser={user} />}
             {route === "history" && <History user={user} />}
           </div>
         </div>
