@@ -14,16 +14,17 @@ interface Props {
   onReportError: () => void;
 }
 
-const NAV: Array<{ key: Route; label: string; icon: React.ElementType; adminOnly?: boolean }> = [
+const NAV: Array<{ key: Route; label: string; icon: React.ElementType; masterOnly?: boolean; productsOnly?: boolean }> = [
   { key: "dashboard", label: "Lotes Ativos", icon: LayoutDashboard },
-  { key: "products", label: "Produtos", icon: Package, adminOnly: true },
+  { key: "products", label: "Produtos", icon: Package, productsOnly: true },
   { key: "history", label: "Histórico", icon: Clock },
-  { key: "settings", label: "Configurações", icon: Settings, adminOnly: true },
+  { key: "settings", label: "Configurações", icon: Settings, masterOnly: true },
 ];
 
 export function Sidebar({ user, current, onNavigate, onLogout, onReportError }: Props) {
   const visibleNav = NAV.filter((item) =>
-    !item.adminOnly || user.role === "admin" || user.role === "master"
+    (!item.masterOnly || user.role === "master") &&
+    (!item.productsOnly || user.role === "master" || user.role === "supervisor")
   );
 
   return (
