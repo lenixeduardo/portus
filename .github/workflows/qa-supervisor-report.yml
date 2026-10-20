@@ -61,6 +61,8 @@ jobs:
         run: npx playwright-core install --with-deps chromium
       - name: Testar Master, Supervisor, tela de login e PDF
         run: npx vitest run --config vitest.config.ts --configLoader runner src/main/__tests__/supervisor-report-postgres.qa.test.ts
+      - name: Validar exclusão real de Supervisor e bloqueio do login
+        run: npx vitest run --config vitest.config.ts --configLoader runner src/main/__tests__/delete-user-postgres.qa.test.ts
       - name: Preservar evidências e relatório impresso
         if: always()
         uses: actions/upload-artifact@v4

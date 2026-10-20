@@ -172,8 +172,20 @@ export async function updateCentralUserPassword(id: number, password: string): P
 }
 
 export async function deleteCentralUser(id: number, actorId: number): Promise<void> {
-  const result = await centralQuery<{ deleted: boolean }>(
-    "SELECT portus_delete_user($1,$2,$3) AS deleted", [id, actorId, getRuntimeStationCode()]
-  );
+  let result;
+  try {
+    result = await centralQuery<{ deleted: boolean }>(
+      "SELECT public.portus_delete_user($1::bigint,$2::bigint,$3::text) AS deleted",
+      [id, actorId, getRuntimeStationCode()]
+    );
+  } catch (error) {
+    if ((error as { code?: string }).code === "42883") {
+      throw new Error(
+        "O servidor PostgreSQL do PORTUS está sem a função de exclusão de usuários. " +
+        "Execute as migrations até a 022 no servidor central antes de tentar excluir novamente."
+      );
+    }
+    throw error;
+  }
   if (result.rows[0]?.deleted !== true) throw new Error("A exclusão não foi confirmada no PostgreSQL central.");
 }
