@@ -192,7 +192,9 @@ test("Master abre DB Utility a partir de Configurações sem executar migrations
     await page.getByRole("button", { name: "Configurações" }).click();
     await page.getByRole("button", { name: "Banco de dados" }).click();
     await page.getByRole("button", { name: "Abrir DB Utility" }).click();
-    await page.getByText("Abertura solicitada.").waitFor({ timeout: 10_000 });
+    const confirmation = page.getByRole("status");
+    await confirmation.waitFor({ timeout: 10_000 });
+    assert.equal(await confirmation.textContent(), "Janela do DB Utility aberta.");
     assert.equal(await page.evaluate(() => window.__dbUtilityOpens), 1);
     assert.equal(await page.getByText(/não executa migrations automaticamente/).count(), 1);
     assert.deepEqual(errors, [], "Sem erros JavaScript ao abrir utilitário");
