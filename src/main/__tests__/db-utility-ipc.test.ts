@@ -42,7 +42,7 @@ describe("autorizacao para abrir DB Utility", () => {
     registerShellHandlers();
   });
 
-  it.each(["master", "admin"] as const)("permite abertura ao perfil %s", async role => {
+  it.each(["master", "admin", "supervisor"] as const)("permite abertura ao perfil %s", async role => {
     state.role = role;
     const result = await state.routes.get(IPC.shellOpenDbUtility)!({});
     expect(result).toEqual({ ok: true, data: true });
@@ -50,7 +50,6 @@ describe("autorizacao para abrir DB Utility", () => {
   });
 
   it.each([
-    ["supervisor", "PRODUCTION"],
     ["operator", "PRODUCTION"]
   ] as const)("nega abertura ao perfil %s", async (role, sector) => {
     state.role = role;
