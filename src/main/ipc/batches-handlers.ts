@@ -53,9 +53,6 @@ export function registerBatchesHandlers(): void {
     compose([requireAuth, validateInput(createBatchSchema)])(
       async (_e, input: CreateBatchInput): Promise<ServiceResult<BatchWithProduct>> => {
         const user = current();
-        if (user.role === "supervisor") {
-          return { ok: false, error: "Supervisor não abre lotes operacionais." };
-        }
         try {
           const product = await getCentralProduct(input.productId);
           if (!product) return { ok: false, error: "Produto não encontrado no PostgreSQL." };
@@ -103,9 +100,6 @@ export function registerBatchesHandlers(): void {
     compose([requireAuth, validateInput(barcodeSchema)])(
       async (_e, input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>> => {
         const user = current();
-        if (user.role === "supervisor") {
-          return { ok: false, error: "Supervisor não inicia lotes." };
-        }
         try {
           const already = await findCentralBatchByCode(
             input.barcodeValue.trim(), user.username, getUserOperationalSector(user)
