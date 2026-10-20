@@ -84,7 +84,7 @@ export async function ensureCentralUserAccess(
   const isAdmin = user.role === "admin";
   const isSupervisor = user.role === "supervisor";
   const production = user.sectorCode !== "LABORATORY";
-  const laboratoryCapture = user.sectorCode === "LABORATORY" && user.laboratoryProfile === "capture";
+  const laboratoryCapture = user.sectorCode === "LABORATORY";
 
   await client.query(
     "INSERT INTO user_sector_permissions (user_id, sector_id, can_read, can_open, can_capture, can_move, " +
