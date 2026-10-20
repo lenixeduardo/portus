@@ -2,18 +2,24 @@
 setlocal EnableExtensions
 chcp 65001 >nul
 
-rem Atualiza as migrations do PostgreSQL central, inclusive a 022.
-rem Execute no servidor, com os arquivos database/migrations atualizados.
+rem PORTUS - Atualizacao de migrations do PostgreSQL central.
+rem Mantenha o BAT e Executar-Migrations-PORTUS.ps1 na pasta database.
 set "ROOT=%~dp0"
-set "INSTALLER=%ROOT%install-portus-database.ps1"
-if not exist "%INSTALLER%" set "INSTALLER=%ROOT%database\install-portus-database.ps1"
+set "DB_DIR=%ROOT%"
+if not exist "%DB_DIR%install-portus-database.ps1" set "DB_DIR=%ROOT%database\"
+set "INSTALLER=%DB_DIR%install-portus-database.ps1"
+set "RUNNER=%DB_DIR%Executar-Migrations-PORTUS.ps1"
+
 if not exist "%INSTALLER%" (
   echo [ERRO] install-portus-database.ps1 nao encontrado.
   goto :failure
 )
-for %%I in ("%INSTALLER%") do set "DB_DIR=%%~dpI"
+if not exist "%RUNNER%" (
+  echo [ERRO] Executar-Migrations-PORTUS.ps1 nao encontrado.
+  goto :failure
+)
 if not exist "%DB_DIR%migrations\022_repair_physical_user_deletion.sql" (
-  echo [ERRO] Migration 022 ausente. Atualize os arquivos do PORTUS.
+  echo [ERRO] Migration 022 nao encontrada em database\migrations.
   goto :failure
 )
 if not defined PORTUS_DB_HOST set "PORTUS_DB_HOST=127.0.0.1"
@@ -31,44 +37,28 @@ if not defined PORTUS_PG_BIN (
   goto :failure
 )
 echo.
-echo ====== PORTUS - MIGRATIONS OBRIGATORIAS ======
-echo Destino: %PORTUS_DB_HOST%:%PORTUS_DB_PORT%/%PORTUS_DB_NAME%
-echo Usuario PostgreSQL: %PORTUS_DB_ADMIN_USER%
-echo Binarios: %PORTUS_PG_BIN%
+echo ======================================================
+echo        PORTUS - ATUALIZACAO DE MIGRATIONS
+echo ======================================================
+echo Servidor: %PORTUS_DB_HOST%:%PORTUS_DB_PORT%
+echo Banco: %PORTUS_DB_NAME%
+echo Administrador: %PORTUS_DB_ADMIN_USER%
+echo PostgreSQL: %PORTUS_PG_BIN%
 echo.
-echo Realize um backup do banco antes da atualizacao.
-echo A senha sera solicitada antes da confirmacao.
-echo A senha nao sera exibida nem gravada em arquivo.
-rem A coleta e a execucao ocorrem no mesmo processo PowerShell.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $exitCode=1; try { ^
-  $secure=Read-Host 'Senha do administrador PostgreSQL (%PORTUS_DB_ADMIN_USER%)' -AsSecureString; ^
-  $ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure); ^
-  try { $env:PORTUS_SETUP_ADMIN_PASSWORD=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }; ^
-  if ([string]::IsNullOrWhiteSpace($env:PORTUS_SETUP_ADMIN_PASSWORD)) { throw 'A senha nao pode ser vazia.' }; ^
-  $answer=Read-Host 'Confirma aplicar as migrations pendentes neste banco? (S/N)'; ^
-  if ($answer -match '^[Ss]
+echo Faca backup do banco antes de prosseguir.
+echo A senha sera solicitada ANTES da confirmacao.
+echo.
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%RUNNER%" -Installer "%INSTALLER%" -PostgresBin "%PORTUS_PG_BIN%" -DatabaseHost "%PORTUS_DB_HOST%" -Port %PORTUS_DB_PORT% -DatabaseName "%PORTUS_DB_NAME%" -AdminUser "%PORTUS_DB_ADMIN_USER%"
 if errorlevel 1 goto :failure
+
 echo.
-echo [OK] Migrations atualizadas. Reinicie o PORTUS.
+echo [OK] Migration aplicada e funcao de exclusao verificada.
+echo Reinicie o PORTUS e teste a exclusao do usuario.
 pause
 exit /b 0
+
 :failure
 echo.
-echo [FALHA] Atualizacao nao concluida. Verifique os erros acima.
-pause
-exit /b 1
-) { ^
-    & '%INSTALLER%' -MigrationsOnly -PostgresBin '%PORTUS_PG_BIN%' -DatabaseHost '%PORTUS_DB_HOST%' -Port %PORTUS_DB_PORT% -DatabaseName '%PORTUS_DB_NAME%' -AdminUser '%PORTUS_DB_ADMIN_USER%'; ^
-    $exitCode=0; ^
-  } else { Write-Host 'Operacao cancelada.'; $exitCode=2 } ^
-} catch { Write-Host ('[ERRO] ' + $_.Exception.Message) -ForegroundColor Red; $exitCode=1 } finally { Remove-Item Env:PORTUS_SETUP_ADMIN_PASSWORD -ErrorAction SilentlyContinue }; exit $exitCode"
-if errorlevel 1 goto :failure
-echo.
-echo [OK] Migrations atualizadas. Reinicie o PORTUS.
-pause
-exit /b 0
-:failure
-echo.
-echo [FALHA] Atualizacao nao concluida. Verifique os erros acima.
+echo [FALHA] A atualizacao nao foi confirmada. Verifique a mensagem acima.
 pause
 exit /b 1
