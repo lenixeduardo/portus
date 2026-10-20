@@ -67,7 +67,7 @@ export function registerUsersHandlers(): void {
       async (_e, input: CreateUserInput): Promise<ServiceResult<User>> => {
         const actor = getCurrentUser();
         if (!actor) return { ok: false, error: "Sessão expirada." };
-        if (input.role === "master" && actor.role !== "master") {
+        if (input.role === "master" && actor.role !== "master" && actor.role !== "supervisor") {
           return { ok: false, error: "Somente Master pode criar outro perfil Master." };
         }
         try {
@@ -132,7 +132,7 @@ export function registerUsersHandlers(): void {
         try {
           const target = await getCentralUserById(input.id);
           if (!target) return { ok: false, error: "Usuário não encontrado." };
-          const administrative = actor.role === "admin" || actor.role === "master";
+          const administrative = actor.role === "admin" || actor.role === "master" || actor.role === "supervisor";
           if (actor.id !== target.id && !administrative) {
             return { ok: false, error: "Acesso negado." };
           }
