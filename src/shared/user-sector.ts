@@ -9,7 +9,7 @@ export function resolveCaptureSector(
   user: Pick<User, "role" | "sectorCode">,
   stationSector: OperationalSector
 ): OperationalSector {
-  if (user.role === "master") return stationSector;
+  if (user.role === "master" || user.role === "supervisor") return stationSector;
   // Operadores seguem a própria credencial, independentemente da máquina.
   const userSector = getUserOperationalSector(user);
   if (user.sectorCode === "ADMIN") {
