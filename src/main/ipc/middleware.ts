@@ -29,7 +29,7 @@ async function verifiedIdentity(requireAdministrator: boolean): Promise<void> {
     logout();
     throw new Error("Sessão revogada ou perfil alterado. Faça login novamente.");
   }
-  if (requireAdministrator && realRole !== "admin" && realRole !== "master") {
+  if (requireAdministrator && realRole !== "admin" && realRole !== "master" && realRole !== "supervisor") {
     throw new Error("Acesso negado.");
   }
   touchSession();
