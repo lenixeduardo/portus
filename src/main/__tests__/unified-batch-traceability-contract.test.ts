@@ -46,9 +46,9 @@ describe("contrato de rastreabilidade do lote único", () => {
     expect(historyRepo).toContain("auditEvents");
   });
 
-  it("bloqueia Supervisor de capturar e mantém Master fora desse bloqueio", () => {
-    expect(captureHandlers).toContain('user.role === "supervisor"');
-    expect(captureHandlers).toContain("Supervisor não realiza análises ou leituras.");
+  it("permite Supervisor e Master capturarem conforme matriz de permissões", () => {
+    expect(captureHandlers).not.toContain('user.role === "supervisor"');
+    expect(captureHandlers).not.toContain("Supervisor não realiza análises ou leituras.");
     expect(captureHandlers).not.toContain('user.role === "master") return { ok: false');
   });
 
