@@ -37,10 +37,31 @@ echo Usuario PostgreSQL: %PORTUS_DB_ADMIN_USER%
 echo Binarios: %PORTUS_PG_BIN%
 echo.
 echo Realize um backup do banco antes da atualizacao.
-echo A senha PostgreSQL sera solicitada de forma segura.
-choice /C SN /M "Confirma a atualizacao do banco indicado"
-if errorlevel 2 exit /b 2
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%INSTALLER%" -MigrationsOnly -PostgresBin "%PORTUS_PG_BIN%" -DatabaseHost "%PORTUS_DB_HOST%" -Port %PORTUS_DB_PORT% -DatabaseName "%PORTUS_DB_NAME%" -AdminUser "%PORTUS_DB_ADMIN_USER%"
+echo A senha sera solicitada antes da confirmacao.
+echo A senha nao sera exibida nem gravada em arquivo.
+rem A coleta e a execucao ocorrem no mesmo processo PowerShell.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $exitCode=1; try { ^
+  $secure=Read-Host 'Senha do administrador PostgreSQL (%PORTUS_DB_ADMIN_USER%)' -AsSecureString; ^
+  $ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure); ^
+  try { $env:PORTUS_SETUP_ADMIN_PASSWORD=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }; ^
+  if ([string]::IsNullOrWhiteSpace($env:PORTUS_SETUP_ADMIN_PASSWORD)) { throw 'A senha nao pode ser vazia.' }; ^
+  $answer=Read-Host 'Confirma aplicar as migrations pendentes neste banco? (S/N)'; ^
+  if ($answer -match '^[Ss]
+if errorlevel 1 goto :failure
+echo.
+echo [OK] Migrations atualizadas. Reinicie o PORTUS.
+pause
+exit /b 0
+:failure
+echo.
+echo [FALHA] Atualizacao nao concluida. Verifique os erros acima.
+pause
+exit /b 1
+) { ^
+    & '%INSTALLER%' -MigrationsOnly -PostgresBin '%PORTUS_PG_BIN%' -DatabaseHost '%PORTUS_DB_HOST%' -Port %PORTUS_DB_PORT% -DatabaseName '%PORTUS_DB_NAME%' -AdminUser '%PORTUS_DB_ADMIN_USER%'; ^
+    $exitCode=0; ^
+  } else { Write-Host 'Operacao cancelada.'; $exitCode=2 } ^
+} catch { Write-Host ('[ERRO] ' + $_.Exception.Message) -ForegroundColor Red; $exitCode=1 } finally { Remove-Item Env:PORTUS_SETUP_ADMIN_PASSWORD -ErrorAction SilentlyContinue }; exit $exitCode"
 if errorlevel 1 goto :failure
 echo.
 echo [OK] Migrations atualizadas. Reinicie o PORTUS.
