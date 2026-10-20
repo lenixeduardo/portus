@@ -49,6 +49,14 @@ describe("autorizacao para abrir DB Utility", () => {
     expect(state.launches).toBe(1);
   });
 
+  it("permite abertura ao supervisor no setor PRODUCTION", async () => {
+    state.role = "supervisor";
+    state.sector = "PRODUCTION";
+    const result = await state.routes.get(IPC.shellOpenDbUtility)!({});
+    expect(result).toEqual({ ok: true, data: true });
+    expect(state.launches).toBe(1);
+  });
+
   it.each([
     ["operator", "PRODUCTION"]
   ] as const)("nega abertura ao perfil %s", async (role, sector) => {
