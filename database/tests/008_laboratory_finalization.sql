@@ -7,7 +7,7 @@ BEGIN
   INSERT INTO applications(code,name) VALUES ('LAB_FINALIZE_QA','Laboratory QA') RETURNING id INTO a;
   INSERT INTO sectors(code,name) VALUES ('LABORATORY','Laboratório') ON CONFLICT(code) DO NOTHING;
   SELECT id INTO s FROM sectors WHERE code='LABORATORY';
-  INSERT INTO users(username,password_hash,role) VALUES ('lab_finalize_qa','test-only','operator') RETURNING id INTO u;
+  INSERT INTO users(username,password_hash,role,sector_code) VALUES ('lab_finalize_qa','test-only','laboratory','LABORATORY') RETURNING id INTO u;
   INSERT INTO user_sector_permissions(user_id,sector_id,can_read) VALUES(u,s,TRUE);
   INSERT INTO application_sector_permissions(application_id,sector_id,can_read) VALUES(a,s,TRUE);
   INSERT INTO products(name,created_by) VALUES('QA',u) RETURNING id INTO p;
