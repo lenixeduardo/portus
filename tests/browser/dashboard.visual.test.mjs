@@ -187,7 +187,7 @@ for (const [sectorCode, sectorLabel] of [
 }
 
 test("Master abre DB Utility a partir de Configurações sem executar migrations", async () => {
-  const { page, errors } = await openDashboard(1440, 900);
+  const { page, errors } = await openDashboard(1440, 900, "master", "ADMIN");
   try {
     await page.getByRole("button", { name: "Configurações" }).click();
     await page.getByRole("button", { name: "Banco de dados" }).click();
