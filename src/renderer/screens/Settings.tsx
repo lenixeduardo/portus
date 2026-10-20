@@ -3,8 +3,9 @@ import type { User } from "../../shared/types";
 import { CaptureSettingsTab } from "./settings/CaptureSettingsTab";
 import { EquipmentsTab } from "./settings/EquipmentsTab";
 import { UsersTab } from "./settings/UsersTab";
+import { DatabaseUtilityTab } from "./settings/DatabaseUtilityTab";
 
-type Tab = "capture" | "equipments" | "users";
+type Tab = "capture" | "equipments" | "users" | "database";
 
 interface Props {
   currentUser: User;
@@ -16,6 +17,7 @@ export function Settings({ currentUser }: Props) {
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: "capture", label: "Captura" },
     { key: "equipments", label: "Equipamentos" },
+    { key: "database", label: "Banco de dados" },
     ...(currentUser.role === "admin" || currentUser.role === "master" ? [{ key: "users" as Tab, label: "Usuários" }] : []),
   ];
 
@@ -36,6 +38,7 @@ export function Settings({ currentUser }: Props) {
       <div className="tab-panel">
         {tab === "capture" && <CaptureSettingsTab />}
         {tab === "equipments" && <EquipmentsTab />}
+        {tab === "database" && <DatabaseUtilityTab />}
         {tab === "users" && (currentUser.role === "admin" || currentUser.role === "master") && <UsersTab currentUser={currentUser} />}
       </div>
     </div>
