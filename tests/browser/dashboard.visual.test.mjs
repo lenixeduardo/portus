@@ -94,6 +94,15 @@ async function openDashboard(width, height, role = "admin", sectorCode = "ADMIN"
         batches: { listOpen: async () => batches }
       },
       users: { findByBarcode: async () => null },
+      settings: {
+        getAll: async () => ({ station_code: "TESTE", installation_mode: "client" })
+      },
+      shell: {
+        openDbUtility: async () => {
+          window.__dbUtilityOpens = (window.__dbUtilityOpens || 0) + 1;
+          return { ok: true, data: true };
+        }
+      },
       log: { error: async () => {} }
     };
   }, { appVersion: version, batches: fixtures, role, sectorCode });
@@ -176,3 +185,23 @@ for (const [sectorCode, sectorLabel] of [
     }
   });
 }
+
+test("Master abre DB Utility a partir de Configurações sem executar migrations", async () => {
+  const { page, errors } = await openDashboard(1440, 900);
+  try {
+    await page.getByRole("button", { name: "Configurações" }).click();
+    await page.getByRole("button", { name: "Banco de dados" }).click();
+    await page.getByRole("button", { name: "Abrir DB Utility" }).click();
+    await page.getByText("Abertura solicitada.").waitFor({ timeout: 10_000 });
+    assert.equal(await page.evaluate(() => window.__dbUtilityOpens), 1);
+    assert.equal(await page.getByText(/não executa migrations automaticamente/).count(), 1);
+    assert.deepEqual(errors, [], "Sem erros JavaScript ao abrir utilitário");
+    await page.screenshot({
+      path: join(screenshotDir, "db-utility-settings.png"),
+      fullPage: true,
+      animations: "disabled"
+    });
+  } finally {
+    await page.close();
+  }
+});
