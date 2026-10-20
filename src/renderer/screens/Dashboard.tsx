@@ -109,7 +109,7 @@ export function Dashboard({
   const isSupervisor = user.role === "supervisor";
   const canFinalize = canFinalizeBatch(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION");
   const canMarkCompleted = canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", true);
-  const canCapture = isMaster || (!isSupervisor && (!isLaboratory || canCaptureLaboratory(user)));
+  const canCapture = isMaster || isSupervisor || (!isLaboratory || canCaptureLaboratory(user));
   const requiresCentral = centralRequired || centralConfigured || isLaboratory;
 
   async function reload() {
@@ -407,7 +407,7 @@ export function Dashboard({
   return (
     <>
       <div className="dashboard-actions">
-        {!isSupervisor && (
+        {(
           <div className="dashboard-actions__buttons">
             <button
               className="secondary"
@@ -521,7 +521,7 @@ export function Dashboard({
               canMarkCompleted={canMarkCompleted && (!b.completed || canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", false))}
               centralMode={requiresCentral}
               canCapture={canCapture}
-              canCaptureCompleted={isLaboratory || isMaster}
+              canCaptureCompleted={isLaboratory || isMaster || isSupervisor}
               onCompletedChange={(completed) => void handleCompletedChange(b, completed)}
               onClose={() => handleClose(b)}
               onCapture={() => void handleStartCapture(b)}
