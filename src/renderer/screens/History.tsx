@@ -157,7 +157,7 @@ export function History({ user }: { user: User }) {
         !canReopenFinalizedBatch(user.role) || reopening) return;
 
     const justification = reopenJustification.trim();
-    if (justification.length < 10 || justification.length > 1000) {
+    if (justification.length > 1000 || (justification.length > 0 && justification.length < 10)) {
       setError("Informe uma justificativa entre 10 e 1000 caracteres para reabrir o lote.");
       return;
     }
@@ -375,7 +375,7 @@ export function History({ user }: { user: User }) {
               <button type="button" className="secondary" disabled={reopening}
                 onClick={() => setReopenDialogOpen(false)}>Cancelar</button>
               <button type="button"
-                disabled={reopening || reopenJustification.trim().length < 10 || reopenJustification.trim().length > 1000}
+                disabled={reopening || (reopenJustification.trim().length > 0 && reopenJustification.trim().length < 10) || reopenJustification.trim().length > 1000}
                 onClick={() => void handleReopen()}>
                 {reopening ? "Reabrindo..." : "Confirmar reabertura"}
               </button>
@@ -387,7 +387,7 @@ export function History({ user }: { user: User }) {
             As leituras e o histórico anterior serão preservados.
           </p>
           <div className="field">
-            <label htmlFor="reopen-batch-reason">Justificativa obrigatória</label>
+            <label htmlFor="reopen-batch-reason">Justificativa (opcional)</label>
             <textarea
               id="reopen-batch-reason"
               rows={4}
@@ -398,7 +398,7 @@ export function History({ user }: { user: User }) {
               placeholder="Informe o motivo da reabertura (mínimo 10 caracteres)."
               style={{ width: "100%", resize: "vertical" }}
             />
-            <small className="muted">{reopenJustification.trim().length}/1000 caracteres (mínimo 10)</small>
+            <small className="muted">{reopenJustification.trim().length}/1000 caracteres (opcional; se preenchida, mínimo 10)</small>
           </div>
           {error && <div className="error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
         </Modal>

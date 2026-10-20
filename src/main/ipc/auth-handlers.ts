@@ -21,7 +21,7 @@ export function registerAuthHandlers(): void {
           recordFailedLogin(req.username);
           return { ok: false, error: "Usuário ou senha inválidos." };
         }
-        await logAudit({ actorUserId: user.id, action: "auth.login", resourceType: "session" });
+        await logAudit({ actorUserId: user.id, action: "auth.login", resourceType: "session" }).catch(error => console.error("Falha na auditoria de login:", error));
         return { ok: true, user };
       } catch (error) {
         return { ok: false, error: error instanceof Error
@@ -38,7 +38,7 @@ export function registerAuthHandlers(): void {
         await checkCentralDatabase();
         const user = await loginByBarcode(req.barcodeValue);
         if (!user) return { ok: false, error: "Etiqueta não cadastrada." };
-        await logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" });
+        await logAudit({ actorUserId: user.id, action: "auth.login_barcode", resourceType: "session" }).catch(error => console.error("Falha na auditoria de login por etiqueta:", error));
         return { ok: true, user };
       } catch (error) {
         return { ok: false, error: error instanceof Error

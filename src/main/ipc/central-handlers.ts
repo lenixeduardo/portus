@@ -180,8 +180,8 @@ export function registerCentralHandlers(): void {
         }
           try {
           const justification = input.justification?.trim() ?? "";
-          if (user.role !== "master" && justification.length < 10) return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
-          const reason = justification || "Finalização autorizada pelo Master";
+          if (justification.length > 0 && justification.length < 10) return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
+          const reason = justification || "Finalização sem justificativa obrigatória";
           return {
             ok: true,
             data: await finalizeCentralBatch(input.id, user.username, getUserOperationalSector(user)).then(async batch => { await auditAdministrativeReason(user.id, input.id, "BATCH_FINALIZED", reason); return batch; })
@@ -240,8 +240,8 @@ export function registerCentralHandlers(): void {
         try {
           const batch = await forceCentralBatchClose(input.id, user.username);
           const justification = input.justification?.trim() ?? "";
-          if (user.role !== "master" && justification.length < 10) return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
-          await auditAdministrativeReason(user.id, input.id, "MASTER_BATCH_CLOSED", justification || "Finalização autorizada pelo Master");
+          if (justification.length > 0 && justification.length < 10) return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
+          await auditAdministrativeReason(user.id, input.id, "MASTER_BATCH_CLOSED", justification || "Finalização sem justificativa obrigatória");
           return { ok: true, data: batch };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Erro ao finalizar o lote." };
@@ -261,10 +261,10 @@ export function registerCentralHandlers(): void {
         }
           try {
           const justification = input.justification?.trim() ?? "";
-          if (user.role !== "master" && justification.length < 10) {
+          if (justification.length > 0 && justification.length < 10) {
             return { ok: false, error: "Justificativa obrigatória (mínimo de 10 caracteres)." };
           }
-          const reason = justification || "Reabertura autorizada pelo Master";
+          const reason = justification || "Reabertura sem justificativa obrigatória";
           const batch = await reopenCentralBatch(input.id, user.username, getUserOperationalSector(user), reason);
           await auditAdministrativeReason(user.id, input.id, "BATCH_REOPENED", reason);
           return { ok: true, data: batch };
