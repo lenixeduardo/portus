@@ -5,7 +5,7 @@ export function isLaboratoryUser(user: Pick<User, "sectorCode">): boolean {
 }
 
 export function canCaptureLaboratory(user: Pick<User, "sectorCode" | "laboratoryProfile">): boolean {
-  return isLaboratoryUser(user) && user.laboratoryProfile === "capture";
+  return isLaboratoryUser(user);
 }
 
 export function canCloseLaboratory(user: Pick<User, "sectorCode" | "laboratoryProfile">): boolean {
