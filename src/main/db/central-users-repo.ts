@@ -91,9 +91,9 @@ export async function ensureCentralUserAccess(
     "can_confirm_production, can_confirm_laboratory) " +
     "SELECT $1, s.id, " +
     "CASE WHEN $2 OR $3 OR $4 OR ($5 AND s.code = 'PRODUCTION') OR (NOT $5 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END, " +
-    "CASE WHEN $2 OR $3 OR ($5 AND s.code = 'PRODUCTION') OR ($6 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END, " +
-    "CASE WHEN $2 OR $3 OR ($5 AND s.code = 'PRODUCTION') OR ($6 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END, " +
-    "CASE WHEN $2 OR $3 OR ($5 AND s.code = 'PRODUCTION') THEN TRUE ELSE FALSE END, " +
+    "CASE WHEN $2 OR $3 OR $4 OR ($5 AND s.code = 'PRODUCTION') OR ($6 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END, " +
+    "CASE WHEN $2 OR $3 OR $4 OR ($5 AND s.code = 'PRODUCTION') OR ($6 AND s.code = 'LABORATORY') THEN TRUE ELSE FALSE END, " +
+    "CASE WHEN $2 OR $3 OR $4 OR ($5 AND s.code = 'PRODUCTION') THEN TRUE ELSE FALSE END, " +
     "FALSE, FALSE FROM sectors s WHERE s.code IN ('PRODUCTION', 'LABORATORY') " +
     "ON CONFLICT (user_id, sector_id) DO UPDATE SET " +
     "can_read = EXCLUDED.can_read, can_open = EXCLUDED.can_open, " +
