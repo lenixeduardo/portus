@@ -176,6 +176,29 @@ export function Dashboard({
     if (centralStatusResolved) reload();
   }, [centralAvailable, requiresCentral, centralStatusResolved]);
 
+  // Atualização silenciosa dos lotes entre estações, sem bloquear o scanner.
+  useEffect(() => {
+    if (!centralStatusResolved || (requiresCentral && !centralAvailable)) return;
+    let active = true;
+    let pending = false;
+    const sync = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        const list = requiresCentral
+          ? await window.api.central.batches.listOpen()
+          : await window.api.batches.listOpen();
+        if (active && Array.isArray(list)) setBatches(list);
+      } catch {
+        // Mantém os dados visíveis durante uma falha transitória.
+      } finally {
+        pending = false;
+      }
+    };
+    const timer = window.setInterval(() => { void sync(); }, 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [centralStatusResolved, centralAvailable, requiresCentral]);
+
   function clearScannerError() {
     if (scannerIdleTimer.current) clearTimeout(scannerIdleTimer.current);
     scannerIdleTimer.current = setTimeout(() => setScannerState({ phase: "idle" }), 4000);
