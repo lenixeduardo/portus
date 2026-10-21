@@ -84,7 +84,9 @@ try {
  record('zip-downloaded');
  let closed=false;app.once('close',()=>{closed=true;});
  await page.getByRole('button',{name:'Aplicar e reiniciar',exact:true}).click({noWaitAfter:true});
- await wait(()=>closed,'app closes after ZIP verification');
+ let preparationError;
+ await wait(async()=>{if(closed)return true;preparationError=await page.getByRole('alert').textContent({timeout:150}).catch(()=>null);return !!preparationError;},'app closes after ZIP verification');
+ if(preparationError)throw new Error(`Update preparation failed: ${preparationError}`);
  app=undefined;
  const sessions=await readdir(join(userData,'updates'));
  const downloadSession=join(userData,'updates',sessions[0]);
