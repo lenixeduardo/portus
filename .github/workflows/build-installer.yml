@@ -72,6 +72,7 @@ jobs:
           }
 
       - name: Validar atualização de arquivos sem executar instalador
+        timeout-minutes: 8
         run: node tests/windows/file-update.mjs
 
       - name: Preservar evidências da atualização de arquivos

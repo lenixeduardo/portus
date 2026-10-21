@@ -12,6 +12,7 @@ for (const key of Object.keys(process.env)) if (key.toLowerCase()==='psmodulepat
 process.env.PSModulePath=join(process.env.SystemRoot,'System32','WindowsPowerShell','v1.0','Modules');
 const evidence=resolve('test-results/file-update');
 await mkdir(evidence,{recursive:true});
+console.log('FILE_UPDATE_PHASE evidence-ready');
 const work=join(process.env.RUNNER_TEMP,'PORTUS Atualização de Arquivos');
 const installed=join(work,'Installed App');
 const targetRoot=join(work,'Target App');
@@ -20,10 +21,13 @@ await mkdir(work,{recursive:true});
 await cp(resolve('release/win-unpacked'),installed,{recursive:true});
 // Hosted runners run as admin. Model the ownership of a normal per-user installation.
 execFileSync('powershell.exe',['-NoProfile','-Command',"$acl=Get-Acl -LiteralPath $env:PORTUS_TEST_INSTALL; $acl.SetOwner([Security.Principal.WindowsIdentity]::GetCurrent().User); Set-Acl -LiteralPath $env:PORTUS_TEST_INSTALL -AclObject $acl"],{env:{...process.env,PORTUS_TEST_INSTALL:installed},stdio:'inherit'});
+console.log('FILE_UPDATE_PHASE installed-copy-ready');
 await cp(installed,targetRoot,{recursive:true});
 let target;
 const sourceArchive=join(targetRoot,'resources','app.asar');
+console.log('FILE_UPDATE_PHASE extracting-asar');
 extractAll(sourceArchive,unpacked);
+console.log('FILE_UPDATE_PHASE extracted-asar');
 const pkg=JSON.parse(await readFile(join(unpacked,'package.json'),'utf8'));
 const baseline=pkg.version;
 const parts=baseline.split('.').map(Number); parts[2]++; target=parts.join('.');
@@ -32,7 +36,9 @@ await writeFile(join(unpacked,'package.json'),JSON.stringify(pkg));
 await writeFile(join(unpacked,'dist','main','index.js'),`\nconsole.log('[PORTUS_FILE_UPDATE_TEST] ${target}');\nrequire('./logger').logInfo('updates:smoke','[PORTUS_FILE_UPDATE_TEST] ${target}');\n`,{flag:'a'});
 await rm(sourceArchive);
 await rm(`${sourceArchive}.unpacked`,{recursive:true,force:true});
+console.log('FILE_UPDATE_PHASE repacking-asar');
 await createPackageWithOptions(unpacked,sourceArchive,{unpack:'**/*.{node,dll}'});
+console.log('FILE_UPDATE_PHASE repacked-asar');
 const zip=join(work,`PORTUS-Update-${target}-x64.zip`);
 execFileSync(process.execPath,['scripts/package-update.mjs',targetRoot,target,zip],{stdio:'inherit'});
 const sha256=createHash('sha256').update(await readFile(zip)).digest('hex');
@@ -41,12 +47,15 @@ const release={tag_name:`v${target}`,draft:false,prerelease:false,assets:[{name:
 const executable=join(installed,'Portus.exe');
 const executableHash=createHash('sha256').update(await readFile(executable)).digest('hex');
 await writeFile(join(installed,'client-preserve.txt'),'client data stays');
+console.log('FILE_UPDATE_PHASE zip-ready');
 let app;
 const events=[];
 const record=(step,details={})=>{events.push({step,...details});console.log(JSON.stringify(events.at(-1)));};
 async function wait(check,description,timeout=180000){const end=Date.now()+timeout;while(Date.now()<end){try {if(await check())return;}catch{} await new Promise(r=>setTimeout(r,1000));}throw new Error(`Timeout: ${description}`);}
 try {
+ console.log('FILE_UPDATE_PHASE launching-app');
  app=await _electron.launch({executablePath:executable,timeout:90000,env:{...process.env,NODE_ENV:'production'}});
+ console.log('FILE_UPDATE_PHASE app-launched');
  await app.evaluate(({net},{release,url,zip})=>{
   const fs=require('node:fs');
   net.fetch=async(input)=>{
@@ -97,4 +106,9 @@ try {
 } catch(error){
  try {for(const dir of await readdir(join(installed,'.portus-update-work'))){for(const name of ['apply.log','failed']){try{await cp(join(installed,'.portus-update-work',dir,name),join(evidence,`${dir}-${name}`));}catch{}}}}catch{}
  await writeFile(join(evidence,'result.json'),JSON.stringify({passed:false,error:error.stack,events},null,2));throw error;}
-finally{await app?.close().catch(()=>{});}
+finally{
+ if(app){
+  await Promise.race([app.close().catch(()=>{}),new Promise(resolve=>{const timer=setTimeout(resolve,10000);timer.unref();})]);
+  try{execFileSync('taskkill',['/F','/IM','Portus.exe'],{stdio:'ignore'});}catch{}
+ }
+}
