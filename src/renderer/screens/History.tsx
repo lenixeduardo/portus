@@ -74,6 +74,37 @@ export function History({ user }: { user: User }) {
     return () => { active = false; };
   }, [selectedId, centralMode]);
 
+  // Sincroniza listagem e lote selecionado sem redefinir filtros ou seleção.
+  useEffect(() => {
+    let active = true;
+    let pending = false;
+    const sync = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        const status = await window.api.central.status();
+        const requiresCentral = status.required || status.configured || user.sectorCode === "LABORATORY";
+        if (requiresCentral && !status.available) return;
+        const list = requiresCentral
+          ? await window.api.central.batches.listAll()
+          : await window.api.batches.listAll();
+        if (active && Array.isArray(list)) setBatches(list);
+        if (selectedId) {
+          const result = requiresCentral
+            ? await window.api.central.history.getBatch(Number(selectedId))
+            : await window.api.history.getBatch(Number(selectedId));
+          if (active && result.ok) setHistory(result.data);
+        }
+      } catch {
+        // Preserva os dados existentes até a conexão voltar.
+      } finally {
+        pending = false;
+      }
+    };
+    const timer = window.setInterval(() => { void sync(); }, 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selectedId, user.sectorCode]);
+
   const uniqueEquipments = useMemo(() => {
     if (!history) return [];
     const eqMap = new Map<number, string>();
