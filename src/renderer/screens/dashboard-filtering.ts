@@ -53,7 +53,7 @@ export function batchMatchesOpenedDate(value: string | Date | null | undefined, 
 export function batchMatchesCode(code: string, query: string): boolean {
   const term = query.trim();
   if (!term) return true;
-  if (/^\d{1,4}$/.test(term)) return code.replace(/\D/g, "").endsWith(term);
+  if (/^\d{1,4}$/.test(term)) return code.replace(/\D/g, "").slice(-4).endsWith(term);
   return code.toLocaleLowerCase("pt-BR").includes(term.toLocaleLowerCase("pt-BR"));
 }
 
