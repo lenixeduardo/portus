@@ -52,6 +52,7 @@ const executableHash=createHash('sha256').update(await readFile(executable)).dig
 await writeFile(join(installed,'client-preserve.txt'),'client data stays');
 console.log('FILE_UPDATE_PHASE zip-ready');
 let app;
+let userData;
 const events=[];
 const record=(step,details={})=>{events.push({step,...details});console.log(JSON.stringify(events.at(-1)));};
 async function wait(check,description,timeout=180000){const end=Date.now()+timeout;while(Date.now()<end){try {if(await check())return;}catch{} await new Promise(r=>setTimeout(r,1000));}throw new Error(`Timeout: ${description}`);}
@@ -75,7 +76,7 @@ try {
  await page.getByRole('heading',{name:'Atualização disponível',exact:true}).waitFor({timeout:90000});
  await page.screenshot({path:join(evidence,'01-file-package-offered.png')});
  record('offered',{baseline,target,transport:'intercepted-unpublished-release'});
- const userData=await app.evaluate(({app})=>app.getPath('userData'));
+ userData=await app.evaluate(({app})=>app.getPath('userData'));
  await writeFile(join(userData,'update-test-settings.json'),'preserved settings');
  await page.getByRole('button',{name:'Baixar atualização',exact:true}).click();
  await page.getByRole('button',{name:'Aplicar e reiniciar',exact:true}).waitFor({timeout:180000});
@@ -107,6 +108,11 @@ try {
  record('reopened-new-version',{target});
  await writeFile(join(evidence,'result.json'),JSON.stringify({passed:true,events},null,2));
 } catch(error){
+ try{if(app)await (await app.firstWindow({timeout:10000})).screenshot({path:join(evidence,'failure.png')});}catch{}
+ if(userData){
+  try{const date=new Date().toISOString().slice(0,10);await cp(join(userData,'logs',`portus-${date}.log`),join(evidence,'portus.log'));}catch{}
+  try{for(const download of await readdir(join(userData,'updates'))){const root=join(userData,'updates',download);for(const attempt of (await readdir(root)).filter(n=>n.startsWith('apply-'))){try{await cp(join(root,attempt,'bootstrap.log'),join(evidence,`${attempt}-bootstrap.log`));}catch{}}}}catch{}
+ }
  try {for(const dir of await readdir(join(installed,'.portus-update-work'))){for(const name of ['apply.log','failed']){try{await cp(join(installed,'.portus-update-work',dir,name),join(evidence,`${dir}-${name}`));}catch{}}}}catch{}
  await writeFile(join(evidence,'result.json'),JSON.stringify({passed:false,error:error.stack,events},null,2));throw error;}
 finally{
