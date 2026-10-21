@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { batchMatchesCode } from "./dashboard-filtering";
 import { Printer, RotateCcw } from "lucide-react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 import type { User } from "../../shared/types";
@@ -8,6 +9,7 @@ import { Modal } from "../components/Modal";
 export function History({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
+  const [batchCodeQuery, setBatchCodeQuery] = useState("");
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -209,17 +211,25 @@ export function History({ user }: { user: User }) {
 
   const isAnyFilterActive = !!(filterEquipment || filterStartDate || filterEndDate);
   const canReopenBatch = canReopenFinalizedBatch(user.role);
+  const matchingBatches = batches.filter((batch) => batchMatchesCode(batch.code, batchCodeQuery));
 
   return (
     <>
       <div className="history-toolbar">
         <div className="batch-picker">
+          <label htmlFor="history-batch-code-search">Buscar lote</label>
+          <input id="history-batch-code-search" type="search" value={batchCodeQuery}
+            onChange={(event) => setBatchCodeQuery(event.target.value)}
+            placeholder="4 últimos dígitos ou código completo"
+            aria-label="Buscar lote no histórico pelos quatro últimos dígitos ou código completo" />
           {batches.length === 0 ? (
             <div className="batch-picker-item" style={{ color: "var(--text-faint)", cursor: "default" }}>
               Nenhum lote cadastrado
             </div>
           ) : (
-            batches.map((b) => (
+            matchingBatches.length === 0 ? (
+              <div className="batch-picker-item">Nenhum lote corresponde à busca.</div>
+            ) : matchingBatches.map((b) => (
               <button
                 key={b.id}
                 className={`batch-picker-item${selectedId === b.id ? " batch-picker-item--selected" : ""}`}
