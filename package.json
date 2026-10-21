@@ -1,6 +1,6 @@
 {
   "name": "portus",
-  "version": "0.1.26",
+  "version": "0.1.35",
   "description": "PORTUS — Desktop app para leitura de equipamentos via porta serial, vinculada a receitas e lotes.",
   "main": "dist/main/index.js",
   "author": "",
@@ -15,7 +15,7 @@
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build --configLoader runner",
     "start": "cross-env NODE_ENV=production electron .",
-    "prepackage": "npm run validate:release && npm version patch --no-git-tag-version",
+    "prepackage": "npm run validate:release",
     "package": "npm run build && node scripts/prepare-portus-migration-runtime.mjs && electron-builder --publish never && node scripts/copy-installer-to-root.mjs",
     "rebuild": "electron-builder install-app-deps",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
@@ -25,11 +25,11 @@
     "test:postgres:concurrency": "node database/tests/003_concurrent_closure.mjs",
     "package:database-installer": "node scripts/package-database-installer.mjs",
     "validate:release": "node scripts/validate-release-readiness.mjs && node scripts/check-postgres-only-runtime.mjs",
-    "test": "vitest run --config vitest.config.ts --configLoader runner",
+    "test": "node --test scripts/tests/release-version.test.mjs && vitest run --config vitest.config.ts --configLoader runner",
     "migrate:legacy": "node scripts/import-legacy-to-postgres.mjs",
     "check:postgres-only": "node scripts/check-postgres-only-runtime.mjs",
     "browser:install": "playwright-core install chromium",
-    "test:browser": "node --test tests/browser/dashboard.visual.test.mjs tests/browser/history.async.test.mjs tests/browser/dashboard.finalization.test.mjs"
+    "test:browser": "node --test tests/browser/dashboard.visual.test.mjs tests/browser/history.async.test.mjs tests/browser/dashboard.finalization.test.mjs tests/browser/updates.test.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",

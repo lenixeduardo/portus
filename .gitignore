@@ -14,3 +14,5 @@ database/migration-runtime/
 # Playwright screenshots and traces
 test-results/
 playwright-report/
+
+release-version.json

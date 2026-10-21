@@ -7,11 +7,12 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+  workflow_dispatch:
 
 # Cancela builds antigos do mesmo PR quando novos commits chegam.
 concurrency:
   group: build-installer-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:
@@ -25,8 +26,14 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
+
+      - name: Definir versão única para publicação da main
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: node scripts/prepare-release-version.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Instalar dependências
         run: npm ci
@@ -68,5 +75,17 @@ jobs:
             release/*.exe
             release/*.exe.blockmap
             release/latest.yml
+            release-version.json
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: Publicar atualização validada
+    needs: package
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      artifact_name: portus-installer-main-${{ github.sha }}

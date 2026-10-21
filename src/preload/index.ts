@@ -40,7 +40,9 @@ function subscribe<T>(channel: string, cb: (data: T) => void): Unsubscribe {
 const api: SerialReaderApi = {
   updates: {
     check: () => ipcRenderer.invoke(IPC.updatesCheck),
-    download: () => ipcRenderer.invoke(IPC.updatesDownload)
+    download: () => ipcRenderer.invoke(IPC.updatesDownload),
+    install: () => ipcRenderer.invoke(IPC.updatesInstall),
+    onProgress: (cb) => subscribe(IPC.updatesProgress, cb)
   },
   auth: {
     login: (req: LoginRequest): Promise<LoginResult> => ipcRenderer.invoke(IPC.authLogin, req),

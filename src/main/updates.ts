@@ -1,3 +1,4 @@
+import { logWarn } from "./logger";
 import type { AvailableUpdate } from "../shared/ipc";
 
 const RELEASE_API = "https://api.github.com/repos/lenixeduardo/portus/releases/latest";
@@ -33,9 +34,13 @@ export async function checkForUpdate(currentVersion: string, request: (url: stri
       headers: { Accept: "application/vnd.github+json", "User-Agent": "PORTUS" },
       signal: AbortSignal.timeout(8000), cache: "no-store"
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      logWarn("updates:check", `Canal de atualização indisponível: HTTP ${response.status}. A consulta será repetida.`);
+      return null;
+    }
     return selectUpdate(currentVersion, await response.json());
   } catch {
+    logWarn("updates:check", "Falha de rede ao consultar atualizações. A consulta será repetida.");
     // An unavailable update service must never prevent operational use.
     return null;
   }

@@ -12,6 +12,8 @@ import type {
 export const IPC = {
   updatesCheck: "updates:check",
   updatesDownload: "updates:download",
+  updatesInstall: "updates:install",
+  updatesProgress: "updates:progress",
   authLogin: "auth:login",
   authLoginBarcode: "auth:login-barcode",
   authLogout: "auth:logout",
@@ -318,10 +320,17 @@ export interface CaptureInjectReadingInput {
   rawValue: string;
 }
 
+export interface UpdateDownloadProgress {
+  receivedBytes: number;
+  totalBytes: number;
+}
+
 export interface SerialReaderApi {
   updates: {
     check(): Promise<AvailableUpdate | null>;
     download(): Promise<ServiceResult<true>>;
+    install(): Promise<ServiceResult<true>>;
+    onProgress(cb: (progress: UpdateDownloadProgress) => void): Unsubscribe;
   };
   auth: {
     login(req: LoginRequest): Promise<LoginResult>;
