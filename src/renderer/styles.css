@@ -1745,3 +1745,113 @@ button.secondary:hover { background: var(--surface-raised); }
 *::-webkit-scrollbar-track { background: var(--bg); }
 *::-webkit-scrollbar-thumb { background: var(--border-strong); border: 3px solid var(--bg); border-radius: 8px; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--portus-aqua-500); outline-offset: 2px; }
+
+
+/* Dashboard batch filters: aligned responsive layout */
+.batch-list-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.batch-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.batch-list-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: end;
+  width: 100%;
+  min-width: 0;
+}
+
+.batch-list-filter {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+.batch-list-filter > label {
+  display: block;
+  margin: 0;
+  color: var(--text-faint);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+}
+
+.batch-list-filter > input,
+.batch-list-filter > select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: 12px 'IBM Plex Mono', monospace;
+  line-height: normal;
+}
+
+.batch-list-filter > input:focus,
+.batch-list-filter > select:focus {
+  outline: 2px solid var(--portus-aqua-500);
+  outline-offset: 1px;
+  border-color: var(--portus-aqua-500);
+}
+
+.batch-list-filter > input[type="date"] {
+  color-scheme: dark;
+}
+
+.batch-list-filter > input::placeholder {
+  color: var(--text-faint);
+}
+
+.batch-filter-clear {
+  min-height: 40px;
+  height: 40px;
+  width: fit-content;
+  justify-self: start;
+  align-self: end;
+  white-space: nowrap;
+}
+
+.batch-list-summary {
+  align-self: flex-end;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (min-width: 1450px) {
+  .batch-list-filters {
+    grid-template-columns: minmax(210px, 1.25fr) minmax(190px, 1fr) minmax(170px, .9fr) minmax(220px, 1.1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .batch-list-filters { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .batch-filter-tab { flex: 1 1 auto; }
+  .batch-filter-clear { width: 100%; }
+}
