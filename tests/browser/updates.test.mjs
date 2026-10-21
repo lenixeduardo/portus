@@ -54,7 +54,7 @@ test('download interno mantém modal, mostra progresso e oferece instalação na
     assert.equal(await page.getByRole('button',{name:'Baixando atualização…'}).isDisabled(),true);
     assert.equal(page.context().pages().length,1);
     await page.evaluate(()=>window.finishDownload({ok:true,data:true}));
-    const install=page.getByRole('button',{name:'Instalar e reiniciar',exact:true});
+    const install=page.getByRole('button',{name:'Aplicar e reiniciar',exact:true});
     await install.click();
     await page.getByRole('alert').filter({hasText:'captura em andamento'}).waitFor();
     await install.click();

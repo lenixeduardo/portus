@@ -9,7 +9,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: APP_VERSION,
     items: [
-      "O PORTUS verifica novas versões na abertura e oferece o download do instalador oficial.",
+      "O PORTUS verifica novas versões na abertura e baixa pacotes de arquivos para aplicar a nova versão na pasta atual.",
       "Adicionada a visão Laboratório com perfis separados de Captura e Fechamento.",
       "Os lotes centrais agora exibem separadamente as confirmações da Produção e do Laboratório.",
       "Sessões centrais de captura agora registram o usuário e o setor responsáveis.",

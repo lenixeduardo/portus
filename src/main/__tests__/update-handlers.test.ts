@@ -8,26 +8,22 @@ vi.mock("electron", () => ({
     state.attempts++;
     if (state.offline) throw new Error("offline");
     return new Response(JSON.stringify({ tag_name: "v0.1.35", draft: false, prerelease: false,
-      assets: [{ name: "PORTUS-Setup-0.1.35-x64.exe", browser_download_url: "https://github.com/lenixeduardo/portus/releases/download/v0.1.35/PORTUS-Setup-0.1.35-x64.exe" }] }));
+      assets: [{ name: "PORTUS-Update-0.1.35-x64.zip", digest: `sha256:${"a".repeat(64)}`, browser_download_url: "https://github.com/lenixeduardo/portus/releases/download/v0.1.35/PORTUS-Update-0.1.35-x64.zip" }] }));
   } }, shell: { openExternal: state.external }
 }));
-vi.mock("../update-download", () => ({ downloadUpdate: async () => { state.downloads++; return "/downloads/PORTUS-Setup-0.1.35-x64.exe"; } }));
+vi.mock("../update-download", () => ({ downloadUpdate: async () => { state.downloads++; return "/downloads/PORTUS-Update-0.1.35-x64.zip"; } }));
 vi.mock("../serial/capture-service", () => ({ isActive: () => state.capture }));
-vi.mock("node:fs/promises", () => ({ access: async () => {} }));
-vi.mock("node:child_process", async () => {
-  const { EventEmitter } = await import("node:events");
-  return { spawn: (...args: any[]) => {
-    state.spawn(...args);
-    const child = Object.assign(new EventEmitter(), { unref: vi.fn() });
-    queueMicrotask(() => { if (state.spawnFails) child.emit("error", new Error("acesso negado")); else child.emit("spawn"); });
-    return child;
-  } };
-});
+vi.mock("../update-apply", () => ({ startFileUpdate: async (...args: any[]) => {
+  state.spawn(...args);
+  if (state.spawnFails) throw new Error("acesso negado");
+  return async () => {};
+} }));
 import { registerUpdateHandlers } from "../ipc/update-handlers";
 const platform = Object.getOwnPropertyDescriptor(process, "platform")!;
 beforeEach(() => {
   Object.defineProperty(process, "platform", { value: "win32", configurable: true });
   state.routes.clear(); state.attempts = 0; state.downloads = 0; state.offline = true; state.external.mockClear(); state.capture = false; state.spawnFails = false; state.quit.mockClear(); state.spawn.mockClear();
+  Object.defineProperty(process, "resourcesPath", { value: "/resources", configurable: true });
   registerUpdateHandlers();
 });
 afterEach(() => Object.defineProperty(process, "platform", platform));
@@ -48,15 +44,15 @@ describe("IPC de atualização", () => {
 });
 
 const event = { sender: { isDestroyed: () => false, send: vi.fn() } };
-it("instala na pasta atual e encerra o app somente após iniciar o instalador", async () => {
+it("instala na pasta atual e encerra o app somente após preparar os arquivos", async () => {
   state.offline = false;
   await state.routes.get(IPC.updatesDownload)!(event);
   const executable = Object.getOwnPropertyDescriptor(process, "execPath")!;
   Object.defineProperty(process, "execPath", { value: "C:\\Program Files\\PORTUS\\Portus.exe", configurable: true });
   try {
     expect(await state.routes.get(IPC.updatesInstall)!()).toEqual({ ok: true, data: true });
-    expect(state.spawn.mock.calls[0][1]).toEqual(["/S", "--updated", "--force-run", "/D=C:\\Program Files\\PORTUS"]);
-    expect(state.spawn.mock.calls[0][2].windowsVerbatimArguments).toBe(true);
+    expect(state.spawn.mock.calls[0][0]).toMatch(/PORTUS-Update-.*\.zip$/);
+    expect(state.spawn.mock.calls[0][2]).toBe("C:\\Program Files\\PORTUS\\Portus.exe");
     await new Promise(resolve => setImmediate(resolve));
     expect(state.quit).toHaveBeenCalledOnce();
   } finally { Object.defineProperty(process, "execPath", executable); }
@@ -69,7 +65,7 @@ it("bloqueia instalação sem download ou durante captura", async () => {
   expect((await state.routes.get(IPC.updatesInstall)!()).error).toMatch(/captura/);
   expect(state.spawn).not.toHaveBeenCalled();
 });
-it("mantém o PORTUS aberto se não conseguir iniciar o instalador", async () => {
+it("mantém o PORTUS aberto se não conseguir preparar os arquivos", async () => {
   state.offline = false;
   await state.routes.get(IPC.updatesDownload)!(event);
   state.spawnFails = true;

@@ -27,7 +27,7 @@ export function UpdateAvailableModal({ update, onClose }: { update: AvailableUpd
       const result = await window.api.updates.install();
       if (result.ok) setInstalling(true);
       else setError(result.error);
-    } catch { setError("Não foi possível iniciar a instalação. Tente novamente."); }
+    } catch { setError("Não foi possível aplicar a atualização. Tente novamente."); }
     finally { setBusy(false); }
   }
   const percent = progress?.totalBytes ? Math.min(100, Math.floor(progress.receivedBytes / progress.totalBytes * 100)) : undefined;
@@ -36,17 +36,17 @@ export function UpdateAvailableModal({ update, onClose }: { update: AvailableUpd
     <Modal title="Atualização disponível" onClose={close} width={520} footer={<>
       <button className="secondary" onClick={close} disabled={busy || installing}>Agora não</button>
       {downloaded
-        ? <button onClick={() => void install()} disabled={busy || installing}>{busy || installing ? "Iniciando instalação…" : "Instalar e reiniciar"}</button>
+        ? <button onClick={() => void install()} disabled={busy || installing}>{busy || installing ? "Preparando atualização…" : "Aplicar e reiniciar"}</button>
         : <button onClick={() => void download()} disabled={busy}><Download size={16} /> {busy ? "Baixando atualização…" : "Baixar atualização"}</button>}
     </>}>
       <p>Versão instalada: <strong>{update.currentVersion}</strong><br />Nova versão: <strong>{update.version}</strong></p>
-      {!downloaded && <p>O instalador será salvo na pasta Downloads.</p>}
+      {!downloaded && <p>O PORTUS baixará os arquivos da nova versão e aplicará as mudanças na pasta atual.</p>}
       {busy && !downloaded && <div role="status" aria-live="polite">
         <progress aria-label="Download da atualização" max={100} value={percent} style={{ width: "100%" }} />
         <p>{percent === undefined ? "Baixando…" : `${percent}% baixado`}</p>
       </div>}
       {downloaded && <p role="status">Download concluído. Ao confirmar, o PORTUS será fechado e atualizado na pasta em que está instalado. Conclua suas leituras antes de continuar.</p>}
-      {installing && <p role="status">Fechando o PORTUS para instalar a atualização…</p>}
+      {installing && <p role="status">Fechando o PORTUS para aplicar os arquivos da nova versão…</p>}
       {error && <p role="alert">{error}</p>}
     </Modal>
   );

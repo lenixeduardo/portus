@@ -16,7 +16,7 @@
     "build:renderer": "vite build --configLoader runner",
     "start": "cross-env NODE_ENV=production electron .",
     "prepackage": "npm run validate:release",
-    "package": "npm run build && node scripts/prepare-portus-migration-runtime.mjs && electron-builder --publish never && node scripts/copy-installer-to-root.mjs",
+    "package": "npm run build && node scripts/prepare-portus-migration-runtime.mjs && electron-builder --publish never && node scripts/copy-installer-to-root.mjs && node scripts/package-update.mjs",
     "rebuild": "electron-builder install-app-deps",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "sim:build": "tsc -p tsconfig.tools.json",
@@ -94,6 +94,10 @@
       {
         "from": "assets/branding/epa-logo.png",
         "to": "branding/epa-logo.png"
+      },
+      {
+        "from": "build/portus-apply-update.ps1",
+        "to": "portus-apply-update.ps1"
       }
     ],
     "directories": {

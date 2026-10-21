@@ -81,6 +81,7 @@ export interface AvailableUpdate {
   currentVersion: string;
   version: string;
   downloadUrl: string;
+  sha256: string;
 }
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";

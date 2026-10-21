@@ -20,12 +20,14 @@ export function selectUpdate(currentVersion: string, data: unknown): AvailableUp
   const differing = published.findIndex((part, index) => part !== installed[index]);
   if (differing < 0 || published[differing] <= installed[differing]) return null;
   const version = published.join(".");
-  const name = `PORTUS-Setup-${version}-x64.exe`;
+  const name = `PORTUS-Update-${version}-x64.zip`;
   const url = `https://github.com/lenixeduardo/portus/releases/download/${release.tag_name}/${name}`;
-  if (!Array.isArray(release.assets) || !release.assets.some(asset =>
+  if (!Array.isArray(release.assets)) return null;
+  const asset = release.assets.find(asset =>
     asset && asset.name === name && asset.browser_download_url === url
-  )) return null;
-  return { currentVersion, version, downloadUrl: url };
+  );
+  if (!asset || typeof asset.digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(asset.digest)) return null;
+  return { currentVersion, version, downloadUrl: url, sha256: asset.digest.slice(7) };
 }
 
 export async function checkForUpdate(currentVersion: string, request: (url: string, init?: RequestInit) => Promise<Response> = fetch): Promise<AvailableUpdate | null> {

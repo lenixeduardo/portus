@@ -1,7 +1,7 @@
 import { app, ipcMain, net } from "electron";
-import { spawn } from "node:child_process";
-import { win32 } from "node:path";
-import { access } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
+import { startFileUpdate } from "../update-apply";
 import { IPC, type AvailableUpdate, type ServiceResult } from "../../shared/ipc";
 import { checkForUpdate } from "../updates";
 import { downloadUpdate } from "../update-download";
@@ -12,6 +12,7 @@ export function registerUpdateHandlers() {
   let checking: Promise<AvailableUpdate | null> | undefined;
   let downloading: Promise<ServiceResult<true>> | undefined;
   let downloadedPath: string | undefined;
+  let downloadedUpdate: AvailableUpdate | undefined;
   let installing = false;
   // Coalesce concurrent requests, but never cache a failed/no-release result forever.
   const check = (): Promise<AvailableUpdate | null> => {
@@ -21,17 +22,18 @@ export function registerUpdateHandlers() {
 
   ipcMain.handle(IPC.updatesCheck, () => check());
   ipcMain.handle(IPC.updatesDownload, (event): Promise<ServiceResult<true>> => {
-    if (installing) return Promise.resolve({ ok: false, error: "A atualização já está sendo instalada." });
+    if (installing) return Promise.resolve({ ok: false, error: "A atualização já está sendo aplicada." });
     if (downloading) return downloading;
     downloading = (async (): Promise<ServiceResult<true>> => {
       try {
         const update = await check();
         if (!update) return { ok: false, error: "Nenhuma atualização disponível. Confira a conexão e tente novamente." };
         downloadedPath = undefined;
-        downloadedPath = await downloadUpdate(update, app.getPath("downloads"), net.fetch.bind(net), progress => {
+        downloadedPath = await downloadUpdate(update, join(app.getPath("userData"), "updates", randomUUID()), net.fetch.bind(net), progress => {
           if (!event.sender.isDestroyed()) event.sender.send(IPC.updatesProgress, progress);
         });
-        logInfo("updates:download", `Instalador ${update.version} baixado com sucesso.`);
+        downloadedUpdate = update;
+        logInfo("updates:download", `Pacote ${update.version} baixado com sucesso.`);
         return { ok: true, data: true };
       } catch (error) {
         logError("updates:download", "Falha ao baixar atualização.", error);
@@ -42,27 +44,26 @@ export function registerUpdateHandlers() {
   });
 
   ipcMain.handle(IPC.updatesInstall, async (): Promise<ServiceResult<true>> => {
-    if (!app.isPackaged || process.platform !== "win32" || !downloadedPath || installing) {
-      return { ok: false, error: "Baixe a atualização antes de instalar." };
+    if (!app.isPackaged || process.platform !== "win32" || !downloadedPath || !downloadedUpdate || installing) {
+      return { ok: false, error: "Baixe a atualização antes de aplicar." };
     }
     if (isActive()) return { ok: false, error: "Conclua a captura em andamento antes de instalar a atualização." };
     try {
       installing = true;
-      await access(downloadedPath);
-      // NSIS requires /D last and unquoted, even for paths containing spaces.
-      const child = spawn(downloadedPath, ["/S", "--updated", "--force-run", `/D=${win32.dirname(process.execPath)}`], {
-        detached: true, stdio: "ignore", windowsHide: true, windowsVerbatimArguments: true
-      });
-      await new Promise<void>((resolve, reject) => { child.once("error", reject); child.once("spawn", resolve); });
-      child.unref();
-      logInfo("updates:install", "Instalador iniciado para atualizar a pasta atual do PORTUS.");
-      // The NSIS updater waits for PORTUS to close and relaunches it after installation.
+      const cancel = await startFileUpdate(downloadedPath, downloadedUpdate, process.execPath,
+        join(process.resourcesPath, "portus-apply-update.ps1"));
+      if (isActive()) {
+        await cancel();
+        installing = false;
+        return { ok: false, error: "Conclua a captura em andamento antes de aplicar a atualização." };
+      }
+      logInfo("updates:apply", "Pacote validado. Aplicando arquivos na pasta atual após encerrar o PORTUS.");
       setImmediate(() => app.quit());
       return { ok: true, data: true };
     } catch (error) {
       installing = false;
-      logError("updates:install", "Falha ao iniciar instalador.", error);
-      return { ok: false, error: "Não foi possível iniciar a instalação. Tente novamente." };
+      logError("updates:install", "Falha ao preparar atualização.", error);
+      return { ok: false, error: "Não foi possível aplicar a atualização. Tente novamente." };
     }
   });
 }

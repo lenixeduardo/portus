@@ -67,12 +67,24 @@ jobs:
             throw "DB Utility empacotado nao conseguiu abrir a janela WinForms."
           }
 
+      - name: Validar atualização de arquivos sem executar instalador
+        run: node tests/windows/file-update.mjs
+
+      - name: Preservar evidências da atualização de arquivos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portus-file-update-${{ github.run_id }}
+          path: test-results/file-update/
+          if-no-files-found: warn
+
       - name: Publicar instalável como artifact
         uses: actions/upload-artifact@v4
         with:
           name: portus-installer-${{ github.event.pull_request.number && format('pr{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}
           path: |
             release/*.exe
+            release/PORTUS-Update-*.zip
             release/*.exe.blockmap
             release/latest.yml
             release-version.json

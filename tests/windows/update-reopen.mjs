@@ -5,7 +5,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { _electron } from 'playwright-core';
-import { extractFile } from '@electron/asar';
+import { extractFile, uncache } from '@electron/asar';
 
 assert.equal(process.platform, 'win32', 'This acceptance test requires real Windows.');
 const evidence = resolve('test-results/windows-update');
@@ -41,8 +41,9 @@ async function waitFor(check, description, timeout = 180_000) {
 async function run(file, args) {
   await new Promise((resolve, reject) => {
     const child = spawn(file, args, { stdio: 'inherit', windowsVerbatimArguments: true });
-    child.once('error', reject);
-    child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Installer exit ${code}`)));
+    const timer = setTimeout(() => { child.kill(); reject(new Error('Baseline installer exceeded 180 seconds')); }, 180_000);
+    child.once('error', error => { clearTimeout(timer); reject(error); });
+    child.once('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`Installer exit ${code}`)); });
   });
 }
 async function launch() {
@@ -50,7 +51,10 @@ async function launch() {
     env: { ...process.env, NODE_ENV: 'production', ELECTRON_ENABLE_LOGGING: '1' } });
 }
 function installedVersion() {
-  return JSON.parse(extractFile(join(installDir,'resources','app.asar'), 'package.json').toString()).version;
+  const archive = join(installDir,'resources','app.asar');
+  // The installer replaces this same path; stale ASAR offsets must never be reused.
+  uncache(archive);
+  return JSON.parse(extractFile(archive, 'package.json').toString()).version;
 }
 let app;
 try {
@@ -85,7 +89,7 @@ try {
   await waitFor(() => installedVersion() === target, 'replacement of app.asar in the same directory');
   const newHash = createHash('sha256').update(await readFile(join(installDir,'resources','app.asar'))).digest('hex');
   assert.notEqual(newHash, oldHash, 'Installed application files must actually change.');
-  const main = extractFile(join(installDir,'resources','app.asar'), 'dist/main/index.js').toString();
+  const main = extractFile(join(installDir,'resources','app.asar'), join('dist','main','index.js')).toString();
   assert.ok(main.includes('[PORTUS_UPDATE_SMOKE]'), 'The new console.log must be in the installed application.');
   record('files-replaced', { version: installedVersion(), installDir, newHash });
   await waitFor(() => {
