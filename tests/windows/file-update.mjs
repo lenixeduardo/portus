@@ -6,6 +6,7 @@ import { cp, readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { finished } from 'node:stream/promises';
 assert.equal(process.platform,'win32');
 // Node launched by pwsh inherits its module path; children use Windows PowerShell 5.1.
 for (const key of Object.keys(process.env)) if (key.toLowerCase()==='psmodulepath') delete process.env[key];
@@ -37,7 +38,9 @@ await writeFile(join(unpacked,'dist','main','index.js'),`\nconsole.log('[PORTUS_
 await rm(sourceArchive);
 await rm(`${sourceArchive}.unpacked`,{recursive:true,force:true});
 console.log('FILE_UPDATE_PHASE repacking-asar');
-await createPackageWithOptions(unpacked,sourceArchive,{unpack:'**/*.{node,dll}'});
+const output=await createPackageWithOptions(unpacked,sourceArchive,{unpack:'**/*.{node,dll}'});
+// This ASAR version resolves with out.end(), before its Windows file handle closes.
+if(output && typeof output.on==='function') await finished(output);
 console.log('FILE_UPDATE_PHASE repacked-asar');
 const zip=join(work,`PORTUS-Update-${target}-x64.zip`);
 execFileSync(process.execPath,['scripts/package-update.mjs',targetRoot,target,zip],{stdio:'inherit'});
