@@ -40,7 +40,7 @@ async function flush(): Promise<void> {
   sending = true;
   try {
     // Keep SMTP entirely in Electron main; never expose credentials to renderer.
-    const nodemailer = require("nodemailer") as typeof import("nodemailer");
+    const nodemailer = require("nodemailer") as { createTransport: (options: Record<string, unknown>) => { sendMail: (message: Record<string, unknown>) => Promise<unknown>; close: () => void } };
     const port = Number(process.env.PORTUS_SMTP_PORT ?? "587");
     const transport = nodemailer.createTransport({
       host: process.env.PORTUS_SMTP_HOST,
