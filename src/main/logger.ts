@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { reportErrorByEmail } from "./error-email";
 
 let logsDir = "";
 
@@ -54,6 +55,7 @@ export function logError(source: string, message: string, errorOrStack?: unknown
     extra = String(errorOrStack);
   }
   logLine("ERROR", source, message, extra);
+  reportErrorByEmail(source, message, extra);
 }
 
 export function logWarn(source: string, message: string): void {
