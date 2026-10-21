@@ -2,9 +2,7 @@
 import { readdir, readFile, writeFile, lstat } from 'node:fs/promises';
 import { join, resolve, relative } from 'node:path';
 import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-const require = createRequire(import.meta.url);
 const root = resolve(process.argv[2] || 'release/win-unpacked');
 const version = process.argv[3] || JSON.parse(await readFile('package.json','utf8')).version;
 const files = [];
@@ -22,5 +20,5 @@ await walk(root);
 if (!files.some(f=>f.path === 'Portus.exe') || !files.some(f=>f.path === 'resources/app.asar')) throw new Error('Incomplete application');
 await writeFile(join(root,'.portus-update-manifest.json'),JSON.stringify({schema:1,version,files},null,2));
 const archive = resolve(process.argv[4] || `release/PORTUS-Update-${version}-x64.zip`);
-execFileSync(require('7zip-bin').path7za,['a','-tzip',archive,'.','-mx=5'],{cwd:root,stdio:'inherit'});
+execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',resolve('build/portus-package-update.ps1'),'-Source',root,'-Destination',archive],{stdio:'inherit'});
 console.log(`Update package: ${archive}`);
