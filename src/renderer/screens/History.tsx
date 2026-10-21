@@ -7,6 +7,7 @@ import { Modal } from "../components/Modal";
 
 export function History({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
+  const [batchSearch, setBatchSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [history, setHistory] = useState<BatchHistory | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,6 +72,8 @@ export function History({ user }: { user: User }) {
     });
     return () => { active = false; };
   }, [selectedId, centralMode]);
+
+  const matchingBatches = useMemo(() => batches.filter(batch => !batchSearch || batch.code.slice(-4).includes(batchSearch)), [batches, batchSearch]);
 
   const uniqueEquipments = useMemo(() => {
     if (!history) return [];
@@ -214,12 +217,16 @@ export function History({ user }: { user: User }) {
     <>
       <div className="history-toolbar">
         <div className="batch-picker">
+          <div className="field" style={{ padding: 8 }}>
+            <label htmlFor="history-batch-search">Buscar pelos 4 últimos dígitos do lote</label>
+            <input id="history-batch-search" inputMode="numeric" maxLength={4} value={batchSearch} onChange={event => setBatchSearch(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="Ex.: 1234" aria-label="Buscar lote no histórico pelos quatro últimos dígitos" />
+          </div>
           {batches.length === 0 ? (
             <div className="batch-picker-item" style={{ color: "var(--text-faint)", cursor: "default" }}>
               Nenhum lote cadastrado
             </div>
           ) : (
-            batches.map((b) => (
+            matchingBatches.map((b) => (
               <button
                 key={b.id}
                 className={`batch-picker-item${selectedId === b.id ? " batch-picker-item--selected" : ""}`}
