@@ -8,6 +8,7 @@ export interface ActiveBatchListFilters {
   productId: "ALL" | string;
   openedOn: string;
   sortDirection: BatchSortDirection;
+  codeQuery?: string;
 }
 
 export interface ProductFilterOption {
@@ -49,11 +50,19 @@ export function batchMatchesOpenedDate(value: string | Date | null | undefined, 
   return getBatchCalendarDate(value) === openedOn;
 }
 
+export function batchMatchesCode(code: string, query: string): boolean {
+  const term = query.trim();
+  if (!term) return true;
+  if (/^\d{1,4}$/.test(term)) return code.replace(/\D/g, "").endsWith(term);
+  return code.toLocaleLowerCase("pt-BR").includes(term.toLocaleLowerCase("pt-BR"));
+}
+
 export function filterAndSortActiveBatches(
   batches: BatchWithProduct[],
   filters: ActiveBatchListFilters
 ): BatchWithProduct[] {
   const filtered = batches.filter((batch) => {
+    if (!batchMatchesCode(batch.code, filters.codeQuery ?? "")) return false;
     if (filters.sector === "IN_PROGRESS" && batch.completed) return false;
     if (filters.sector === "COMPLETED" && !batch.completed) return false;
     if (filters.productId !== "ALL" && String(batch.productId) !== filters.productId) return false;
