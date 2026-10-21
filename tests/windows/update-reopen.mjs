@@ -89,7 +89,7 @@ try {
   await waitFor(() => installedVersion() === target, 'replacement of app.asar in the same directory');
   const newHash = createHash('sha256').update(await readFile(join(installDir,'resources','app.asar'))).digest('hex');
   assert.notEqual(newHash, oldHash, 'Installed application files must actually change.');
-  const main = extractFile(join(installDir,'resources','app.asar'), 'dist/main/index.js').toString();
+  const main = extractFile(join(installDir,'resources','app.asar'), join('dist','main','index.js')).toString();
   assert.ok(main.includes('[PORTUS_UPDATE_SMOKE]'), 'The new console.log must be in the installed application.');
   record('files-replaced', { version: installedVersion(), installDir, newHash });
   await waitFor(() => {
