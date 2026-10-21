@@ -101,6 +101,7 @@ export function Dashboard({
   const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
   const [productFilter, setProductFilter] = useState<"ALL" | string>("ALL");
   const [openedDateFilter, setOpenedDateFilter] = useState("");
+  const [batchCodeQuery, setBatchCodeQuery] = useState("");
   const [sortDirection, setSortDirection] = useState<BatchSortDirection>("DESC");
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLaboratory = isLaboratoryUser(user);
@@ -388,16 +389,18 @@ export function Dashboard({
     sector: batchFilter,
     productId: productFilter,
     openedOn: openedDateFilter,
+    codeQuery: batchCodeQuery,
     sortDirection
   });
   const inProgressCount = batches.filter((batch) => !batch.completed).length;
   const completedCount = batches.filter((batch) => batch.completed).length;
-  const filtersActive = batchFilter !== "ALL"
+  const filtersActive = batchCodeQuery.trim() !== "" || batchFilter !== "ALL"
     || productFilter !== "ALL"
     || openedDateFilter !== ""
     || sortDirection !== "DESC";
 
   function clearListFilters() {
+    setBatchCodeQuery("");
     setBatchFilter("ALL");
     setProductFilter("ALL");
     setOpenedDateFilter("");
@@ -448,6 +451,13 @@ export function Dashboard({
           </div>
 
           <div className="batch-list-filters">
+            <div className="batch-list-filter batch-list-filter--code">
+              <label htmlFor="batch-code-search">Número do lote</label>
+              <input id="batch-code-search" type="search" value={batchCodeQuery}
+                onChange={(event) => setBatchCodeQuery(event.target.value)}
+                placeholder="4 últimos dígitos ou código completo"
+                aria-label="Buscar lote pelos quatro últimos dígitos ou código completo" />
+            </div>
             <div className="batch-list-filter batch-list-filter--product">
               <label htmlFor="batch-product-filter">Produto</label>
               <select
