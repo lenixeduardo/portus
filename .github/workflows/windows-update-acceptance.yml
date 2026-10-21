@@ -1,0 +1,42 @@
+name: Windows — atualização real e reabertura
+
+on:
+  workflow_run:
+    workflows: ["Build instalável (Windows)"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-reopen:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event != 'pull_request' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Instalar 0.1.35, reabrir e atualizar pelo canal público
+        run: node tests/windows/update-reopen.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+      - name: Preservar capturas e resultado da atualização real
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portus-windows-update-acceptance
+          path: test-results/windows-update/
+          if-no-files-found: warn

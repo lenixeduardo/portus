@@ -14,10 +14,13 @@ import { registerCentralHandlers } from "./ipc/central-handlers";
 import { registerSetupHandlers } from "./ipc/setup-handlers";
 import { registerUpdateHandlers } from "./ipc/update-handlers";
 import { startServerRoutines, stopServerRoutines } from "./server-routines";
-import { initLogger, logError } from "./logger";
+import { initLogger, logError, logInfo } from "./logger";
 import { checkCentralDatabase, closeCentralDatabase, isCentralDatabaseConfigured } from "./db/central-connection";
 
 initLogger(app.getPath("userData"));
+const updateStartupMarker = `[PORTUS_UPDATE_SMOKE] versão carregada: ${app.getVersion()}`;
+console.log(updateStartupMarker);
+logInfo("updates:startup", updateStartupMarker);
 
 process.on("uncaughtException", (err) => {
   logError("main:uncaughtException", err.message, err);
