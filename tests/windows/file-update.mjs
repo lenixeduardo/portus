@@ -60,7 +60,7 @@ try {
  app=await _electron.launch({executablePath:executable,timeout:90000,env:{...process.env,NODE_ENV:'production'}});
  console.log('FILE_UPDATE_PHASE app-launched');
  await app.evaluate(({net},{release,url,zip})=>{
-  const fs=require('node:fs');
+  const fs=process.getBuiltinModule('fs');
   net.fetch=async(input)=>{
    const address=String(input);
    if(address.endsWith('/releases/latest'))return new Response(JSON.stringify(release));
