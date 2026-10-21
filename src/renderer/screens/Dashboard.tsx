@@ -99,6 +99,7 @@ export function Dashboard({
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
+  const [batchSearch, setBatchSearch] = useState("");
   const [productFilter, setProductFilter] = useState<"ALL" | string>("ALL");
   const [openedDateFilter, setOpenedDateFilter] = useState("");
   const [sortDirection, setSortDirection] = useState<BatchSortDirection>("DESC");
@@ -389,7 +390,7 @@ export function Dashboard({
     productId: productFilter,
     openedOn: openedDateFilter,
     sortDirection
-  });
+  }).filter(batch => !batchSearch || batch.code.slice(-4).includes(batchSearch));
   const inProgressCount = batches.filter((batch) => !batch.completed).length;
   const completedCount = batches.filter((batch) => batch.completed).length;
   const filtersActive = batchFilter !== "ALL"
@@ -441,6 +442,10 @@ export function Dashboard({
 
       {!loading && batches.length > 0 && (
         <div className="batch-list-controls" aria-label="Filtros de lote">
+          <div className="batch-list-filter">
+            <label htmlFor="dashboard-batch-search">Buscar pelos 4 últimos dígitos do lote</label>
+            <input id="dashboard-batch-search" type="text" inputMode="numeric" maxLength={4} value={batchSearch} onChange={event => setBatchSearch(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="Ex.: 1234" aria-label="Buscar lote pelos quatro últimos dígitos" />
+          </div>
           <div className="batch-filter-tabs" role="tablist" aria-label="Filtrar lotes por setor">
             <FilterTab label="Todos" count={batches.length} active={batchFilter === "ALL"} onClick={() => setBatchFilter("ALL")} />
             <FilterTab label="Em andamento" count={inProgressCount} active={batchFilter === "IN_PROGRESS"} onClick={() => setBatchFilter("IN_PROGRESS")} />
