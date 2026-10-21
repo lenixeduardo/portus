@@ -1,0 +1,30 @@
+name: PORTUS SMTP — teste manual
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smtp-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout da PR
+        uses: actions/checkout@v4
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Validar SMTP e enviar email de teste
+        env:
+          PORTUS_SMTP_HOST: ${{ secrets.PORTUS_SMTP_HOST }}
+          PORTUS_SMTP_PORT: ${{ secrets.PORTUS_SMTP_PORT }}
+          PORTUS_SMTP_USER: ${{ secrets.PORTUS_SMTP_USER }}
+          PORTUS_SMTP_PASSWORD: ${{ secrets.PORTUS_SMTP_PASSWORD }}
+          PORTUS_SMTP_FROM: ${{ secrets.PORTUS_SMTP_FROM }}
+        run: node scripts/test-smtp.mjs
