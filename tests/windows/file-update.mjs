@@ -7,6 +7,9 @@ import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 assert.equal(process.platform,'win32');
+// Node launched by pwsh inherits its module path; children use Windows PowerShell 5.1.
+for (const key of Object.keys(process.env)) if (key.toLowerCase()==='psmodulepath') delete process.env[key];
+process.env.PSModulePath=join(process.env.SystemRoot,'System32','WindowsPowerShell','v1.0','Modules');
 const evidence=resolve('test-results/file-update');
 await mkdir(evidence,{recursive:true});
 const work=join(process.env.RUNNER_TEMP,'PORTUS Atualização de Arquivos');

@@ -58,7 +58,7 @@ test('download interno mantém modal, mostra progresso e oferece instalação na
     await install.click();
     await page.getByRole('alert').filter({hasText:'captura em andamento'}).waitFor();
     await install.click();
-    await page.getByText('Fechando o PORTUS para instalar a atualização…',{exact:true}).waitFor();
+    await page.getByText('Fechando o PORTUS para aplicar os arquivos da nova versão…',{exact:true}).waitFor();
     assert.equal(await page.evaluate(()=>window.downloads),1);
     assert.equal(await page.evaluate(()=>window.installs),2);
     assert.equal(page.context().pages().length,1);

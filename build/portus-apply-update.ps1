@@ -1,5 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$ConfigPath, [switch]$Elevated)
 $ErrorActionPreference = 'Stop'
+# Electron may inherit a PowerShell 7 module path; this helper runs on Windows PowerShell 5.1.
+$env:PSModulePath = $PSHOME + '\Modules'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 # Installation is derived from this packaged helper, never from writable JSON.
