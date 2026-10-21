@@ -1,10 +1,15 @@
 param([Parameter(Mandatory=$true)][string]$ConfigPath, [switch]$Elevated)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
-$work = Split-Path -Parent $ConfigPath
+$config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+# Installation is derived from this packaged helper, never from writable JSON.
+$config | Add-Member -NotePropertyName installDir -NotePropertyValue (Split-Path -Parent $PSScriptRoot) -Force
+$config | Add-Member -NotePropertyName executable -NotePropertyValue (Join-Path $config.installDir 'Portus.exe') -Force
+if ($config.session -notmatch '^[a-f0-9-]{36}$') { throw 'Invalid session' }
+$requestDir = Split-Path -Parent $ConfigPath
+$work = Join-Path $config.installDir ('.portus-update-work\' + $config.session)
 $log = Join-Path $work 'apply.log'
-function Log([string]$Message) { Add-Content -LiteralPath $log -Value "$(Get-Date -Format o) $Message" -Encoding UTF8 }
+function Log([string]$Message) { if (-not (Test-Path -LiteralPath $work)) { return }; Add-Content -LiteralPath $log -Value "$(Get-Date -Format o) $Message" -Encoding UTF8 }
 function SafePath([string]$Root, [string]$Relative) {
   if ([string]::IsNullOrWhiteSpace($Relative) -or $Relative -match '(^[/\\]|:|(^|[/\\])\.\.([/\\]|$)|[\x00-\x1f])') { throw "Unsafe path: $Relative" }
   $base = [IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
@@ -19,7 +24,7 @@ function SafePath([string]$Root, [string]$Relative) {
   return $path
 }
 function ReadManifest([string]$Root) {
-  $data = Get-Content -LiteralPath (Join-Path $Root '.portus-update-manifest.json') -Raw | ConvertFrom-Json
+  $data = Get-Content -LiteralPath (Join-Path $Root '.portus-update-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
   if ($data.schema -ne 1 -or $data.version -notmatch '^\d+\.\d+\.\d+$' -or @($data.files).Count -lt 2) { throw 'Invalid manifest' }
   $seen = @{}
   foreach ($f in $data.files) {
@@ -50,6 +55,34 @@ try {
     Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -Verb RunAs -ArgumentList $arguments
     exit 0
   }
+  New-Item -ItemType Directory -Path $work -Force | Out-Null
+  $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  $owner = (Get-Acl -LiteralPath $config.installDir).Owner
+  $ownerSid = (New-Object Security.Principal.NTAccount($owner)).Translate([Security.Principal.SecurityIdentifier]).Value
+  $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  if ($Elevated -or ($isAdmin -and $ownerSid -ne $currentSid)) {
+    # Elevation never trusts a mutable config hash or mutable staging directory.
+    $acl = New-Object Security.AccessControl.DirectorySecurity
+    $acl.SetAccessRuleProtection($true,$false)
+    $admins = New-Object Security.Principal.SecurityIdentifier('S-1-5-32-544')
+    $system = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
+    $acl.SetOwner($admins)
+    foreach ($sid in @($admins,$system)) { $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow'))) }
+    # The unelevated app may read READY/completion; it may not write this staging directory.
+    $users = New-Object Security.Principal.SecurityIdentifier('S-1-5-32-545')
+    $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($users,'ReadAndExecute','ContainerInherit,ObjectInherit','None','Allow')))
+    Set-Acl -LiteralPath $work -AclObject $acl
+    if ($config.version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid version' }
+    $release = Invoke-RestMethod -Uri ("https://api.github.com/repos/lenixeduardo/portus/releases/tags/v" + $config.version) -Headers @{'User-Agent'='PORTUS'}
+    $assetName = 'PORTUS-Update-' + $config.version + '-x64.zip'
+    $expectedUrl = 'https://github.com/lenixeduardo/portus/releases/download/v' + $config.version + '/' + $assetName
+    $asset = $release.assets | Where-Object { $_.name -eq $assetName -and $_.browser_download_url -eq $expectedUrl -and $_.digest -match '^sha256:[a-f0-9]{64}$' }
+    if ($release.draft -or $release.prerelease -or -not $asset) { throw 'Untrusted update package' }
+    $config.sha256 = $asset.digest.Substring(7)
+    $protectedArchive = Join-Path $work 'package.zip'
+    Copy-Item -LiteralPath $config.archive -Destination $protectedArchive
+    $config.archive = $protectedArchive
+  }
   $stage = Join-Path $work 'stage'
   $backup = Join-Path $work 'backup'
   New-Item -ItemType Directory -Path $stage,$backup -Force | Out-Null
@@ -77,13 +110,13 @@ try {
   }
   $previous = $null
   if (Test-Path -LiteralPath (Join-Path $config.installDir '.portus-update-manifest.json')) { $previous = ReadManifest $config.installDir }
-  if (Test-Path -LiteralPath (Join-Path $work 'cancel')) { throw 'Update canceled' }
+  if (Test-Path -LiteralPath (Join-Path $requestDir 'cancel')) { throw 'Update canceled' }
   Log "READY version=$($manifest.version)"
   [IO.File]::WriteAllText((Join-Path $work 'ready'),'ready')
   # Wait for this exact PORTUS process, not a reused process id.
   $parent = Get-Process -Id $config.parentPid -ErrorAction SilentlyContinue
   if ($parent -and -not $parent.WaitForExit(120000)) { throw 'PORTUS did not close; update aborted' }
-  if (Test-Path -LiteralPath (Join-Path $work 'cancel')) { throw 'Update canceled' }
+  if (Test-Path -LiteralPath (Join-Path $requestDir 'cancel')) { throw 'Update canceled' }
   $closed = $true
   Start-Sleep -Milliseconds 1500
   $nextPaths = @{}
@@ -125,6 +158,6 @@ try {
     Log 'ROLLED_BACK'
   }
   if ($closed) { try { StartPortus } catch { Log "RESTART FAILED $_" } }
-  [IO.File]::WriteAllText((Join-Path $work 'failed'),"$_")
+  if (Test-Path -LiteralPath $work) { [IO.File]::WriteAllText((Join-Path $work 'failed'),"$_") }
   exit 1
 }
