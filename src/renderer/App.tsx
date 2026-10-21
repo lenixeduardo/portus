@@ -91,9 +91,21 @@ export function App() {
     const lastSeenVersion = window.localStorage.getItem(LAST_SEEN_VERSION_KEY);
     setShowReleaseNotes(lastSeenVersion !== APP_VERSION);
     let active = true;
-    void window.api.updates?.check().then((update) => {
-      if (active) setAvailableUpdate(update);
-    }).catch(() => {});
+    let foundUpdate = false;
+    const checkUpdates = () => {
+      if (foundUpdate) return;
+      void window.api.updates?.check().then(update => {
+        if (active && update) {
+          foundUpdate = true;
+          setAvailableUpdate(update);
+          window.clearInterval(updateTimer);
+          window.removeEventListener("online", checkUpdates);
+        }
+      }).catch(() => {});
+    };
+    const updateTimer = window.setInterval(checkUpdates, 60_000);
+    window.addEventListener("online", checkUpdates);
+    checkUpdates();
     Promise.all([window.api.auth.currentUser(), window.api.setup.status()]).then(([u, setup]) => {
       setUser(u);
       if ((setup.supported && !setup.setupCompleted) || !setup.configured) setInitialSetup(setup);
@@ -104,7 +116,11 @@ export function App() {
       setInitialSetup({ configured: false, available: false, required: true, mode: "central", supported: true, postgresBin: null, setupCompleted: false, stationCode: "DESCONHECIDA", postgresServiceStatus: "unavailable" });
       setBootstrapping(false);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+      window.clearInterval(updateTimer);
+      window.removeEventListener("online", checkUpdates);
+    };
   }, []);
 
   useEffect(() => {
