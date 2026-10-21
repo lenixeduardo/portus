@@ -67,6 +67,10 @@ jobs:
             throw "DB Utility empacotado nao conseguiu abrir a janela WinForms."
           }
 
+      - name: Validar restauração em falha e rejeição de caminhos inválidos
+        shell: pwsh
+        run: ./tests/windows/apply-package.ps1
+
       - name: Validar atualização de arquivos sem executar instalador
         run: node tests/windows/file-update.mjs
 

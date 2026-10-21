@@ -1,10 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { copyFile, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, win32 } from "node:path";
 import type { AvailableUpdate } from "../shared/ipc";
 
 export async function startFileUpdate(archive: string, update: AvailableUpdate, executable: string, script: string): Promise<() => Promise<void>> {
-  const directory = win32.dirname(archive);
+  const directory = join(win32.dirname(archive), `apply-${randomUUID()}`);
+  await mkdir(directory, { recursive: true });
   const helper = join(directory, "apply-update.ps1");
   const configPath = join(directory, "apply-config.json");
   await copyFile(script, helper);

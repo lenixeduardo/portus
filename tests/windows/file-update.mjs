@@ -68,7 +68,9 @@ try {
  await wait(()=>closed,'app closes after ZIP verification');
  app=undefined;
  const sessions=await readdir(join(userData,'updates'));
- const session=join(userData,'updates',sessions[0]);
+ const downloadSession=join(userData,'updates',sessions[0]);
+ const attempts=(await readdir(downloadSession)).filter(name=>name.startsWith('apply-'));
+ const session=join(downloadSession,attempts[0]);
  await wait(async()=>await readFile(join(session,'completed'),'utf8')===target,'files applied and restart launched');
  const log=await readFile(join(session,'apply.log'),'utf8');
  await writeFile(join(evidence,'apply.log'),log);
