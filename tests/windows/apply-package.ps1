@@ -57,3 +57,5 @@ $config | ConvertTo-Json | Set-Content -LiteralPath $badConfig -Encoding UTF8
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper -ConfigPath $badConfig
 if ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath (Join-Path $badStatus 'ready')) -or (Test-Path -LiteralPath (Join-Path $badSession 'outside.txt'))) { throw 'Unsafe ZIP was accepted' }
 Write-Host 'PORTUS_FILE_TRAVERSAL_REJECTED_OK'
+
+exit 0
