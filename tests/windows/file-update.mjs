@@ -15,6 +15,8 @@ const targetRoot=join(work,'Target App');
 const unpacked=join(work,'asar-source');
 await mkdir(work,{recursive:true});
 await cp(resolve('release/win-unpacked'),installed,{recursive:true});
+// Hosted runners run as admin. Model the ownership of a normal per-user installation.
+execFileSync('powershell.exe',['-NoProfile','-Command',"$acl=Get-Acl -LiteralPath $env:PORTUS_TEST_INSTALL; $acl.SetOwner([Security.Principal.WindowsIdentity]::GetCurrent().User); Set-Acl -LiteralPath $env:PORTUS_TEST_INSTALL -AclObject $acl"],{env:{...process.env,PORTUS_TEST_INSTALL:installed},stdio:'inherit'});
 await cp(installed,targetRoot,{recursive:true});
 let target;
 const sourceArchive=join(targetRoot,'resources','app.asar');
@@ -89,5 +91,7 @@ try {
  await (await app.firstWindow()).screenshot({path:join(evidence,'03-updated-app-open.png')});
  record('reopened-new-version',{target});
  await writeFile(join(evidence,'result.json'),JSON.stringify({passed:true,events},null,2));
-} catch(error){await writeFile(join(evidence,'result.json'),JSON.stringify({passed:false,error:error.stack,events},null,2));throw error;}
+} catch(error){
+ try {for(const dir of await readdir(join(installed,'.portus-update-work'))){for(const name of ['apply.log','failed']){try{await cp(join(installed,'.portus-update-work',dir,name),join(evidence,`${dir}-${name}`));}catch{}}}}catch{}
+ await writeFile(join(evidence,'result.json'),JSON.stringify({passed:false,error:error.stack,events},null,2));throw error;}
 finally{await app?.close().catch(()=>{});}

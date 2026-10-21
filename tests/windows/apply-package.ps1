@@ -6,6 +6,9 @@ $installed = Join-Path $root 'installed'
 $payload = Join-Path $root 'payload'
 $session = Join-Path $root 'session'
 New-Item -ItemType Directory -Path $installed,$payload,$session -Force | Out-Null
+$acl = Get-Acl -LiteralPath $installed
+$acl.SetOwner([Security.Principal.WindowsIdentity]::GetCurrent().User)
+Set-Acl -LiteralPath $installed -AclObject $acl
 function MakeManifest($path,$version) {
   $files = @('app.asar','Portus.exe') | ForEach-Object {
     $relative = if ($_ -eq 'app.asar') { 'resources/app.asar' } else { $_ }
@@ -32,6 +35,7 @@ $config | ConvertTo-Json | Set-Content -LiteralPath $configPath -Encoding UTF8
 $lock = [IO.File]::Open((Join-Path $installed 'Portus.exe'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::None)
 try {
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper -ConfigPath $configPath
+  Get-Content -LiteralPath (Join-Path $status 'apply.log') | Write-Host
   if ($LASTEXITCODE -eq 0) { throw 'Expected apply failure' }
 } finally { $lock.Dispose() }
 if ([IO.File]::ReadAllText((Join-Path $installed 'resources/app.asar')) -ne 'old app') { throw 'Rollback failed to restore app.asar' }

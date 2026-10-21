@@ -23,6 +23,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validar restauração em falha e rejeição de caminhos inválidos
+        shell: pwsh
+        run: ./tests/windows/apply-package.ps1
+
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
@@ -66,10 +70,6 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or "$output" -notmatch "PORTUS_DB_UTILITY_READY" -or "$output" -notmatch "PORTUS_DB_UTILITY_SMOKE_OK") {
             throw "DB Utility empacotado nao conseguiu abrir a janela WinForms."
           }
-
-      - name: Validar restauração em falha e rejeição de caminhos inválidos
-        shell: pwsh
-        run: ./tests/windows/apply-package.ps1
 
       - name: Validar atualização de arquivos sem executar instalador
         run: node tests/windows/file-update.mjs
