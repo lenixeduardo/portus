@@ -59,6 +59,7 @@ interface ActiveSlot {
   modbusStop?: () => void;
   sharedModbus?: boolean;
   readingAccepted?: boolean;
+  pendingViscometerSpindle?: string;
 }
 
 // Conecta um slot Modbus aos mesmos mecanismos de persistência/UI/log usados pelo
@@ -235,7 +236,22 @@ function scheduleUiBroadcast(slotIndex: number, event: SlotUpdateEvent): void {
 // Processa uma linha completa: parseia, grava (auditoria de TODAS as leituras)
 // e agenda a atualização visual. Cada leitura recebida na janela é persistida.
 function handleLine(slot: ActiveSlot, line: string): void {
-  const raw = line.trim();
+  let raw = line.trim();
+  const isMarteViscometer = /viscos[ií]metro/i.test(slot.equipment.name);
+  if (isMarteViscometer) {
+    if (/^(on|off)$/i.test(raw)) {
+      if (/^off$/i.test(raw)) slot.pendingViscometerSpindle = undefined;
+      return;
+    }
+    if (/^SP\s*:\s*\S+\s+\d+(?:[.,]\d+)?\s*RPM\s*$/i.test(raw)) {
+      slot.pendingViscometerSpindle = raw;
+      return;
+    }
+    if (!/^\d+(?:[.,]\d+)?\s*%\s*[+-]?\d+(?:[.,]\d+)?\s*cP$/i.test(raw)) return;
+    if (!slot.pendingViscometerSpindle) return;
+    raw = slot.pendingViscometerSpindle + " | " + raw;
+    slot.pendingViscometerSpindle = undefined;
+  }
   const sid = sessionId;
   const bid = batchId;
   if (!raw || sid === null || bid === null || slot.status === "completed" || (slot.equipment.singleReadingPerCapture && slot.readingAccepted)) return;
@@ -248,7 +264,9 @@ function handleLine(slot: ActiveSlot, line: string): void {
     console.log(`[serial] Primeira linha ignorada (slot ${eq.slotIndex}, skipFirstReading) raw="${raw}"`);
     return;
   }
-  const { parsed, failureReason } = parseReading(raw, slot.regex, slot.regexInvalid);
+  const { parsed, failureReason } = isMarteViscometer
+    ? { parsed: raw, failureReason: null }
+    : parseReading(raw, slot.regex, slot.regexInvalid);
 
   if (failureReason) {
     logCaptureError({
