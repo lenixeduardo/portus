@@ -500,7 +500,8 @@ function closeSlotAfterFirstReading(slotIndex: number): void {
     slot.modbusStop = undefined;
   }
 
-  if (!slot.sharedModbus) intentionallyClosing.add(slotIndex);
+  const otherUsers = [...slots.values()].some(other => other !== slot && other.port === slot.port && other.status !== "completed" && !other.closing);
+  if (!otherUsers) intentionallyClosing.add(slotIndex);
 
   const pending = uiDebounceTimers.get(slotIndex);
   if (pending) {
@@ -511,7 +512,7 @@ function closeSlotAfterFirstReading(slotIndex: number): void {
   slot.status = "completed";
   broadcast(IPC.captureSlotUpdate, { slotIndex, status: "completed" } satisfies SlotUpdateEvent);
 
-  if (slot.port.isOpen && !slot.sharedModbus) {
+  if (slot.port.isOpen && !otherUsers) {
     slot.port.close((err) => {
       if (err) {
         console.warn(`[serial] Erro ao fechar slot ${slotIndex} após 1ª leitura:`, err.message);
