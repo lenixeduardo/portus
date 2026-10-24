@@ -276,6 +276,7 @@ export interface EquipmentUpdateInput {
   lineDelimiter?: LineDelimiter;
   skipFirstReading?: boolean;
   stopAfterFirstReading?: boolean;
+  singleReadingPerCapture?: boolean;
   protocol?: EquipmentProtocol;
   modbusUnitId?: number;
   modbusFunction?: ModbusFunction;
