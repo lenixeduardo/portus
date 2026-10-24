@@ -70,6 +70,99 @@ describe('serial capture recovery', () => {
     ]);
     expect((await completeCapture()).ok).toBe(true);
   });
+  it('stores only one reading per equipment across distinct serial ports', async () => {
+    state.equipments = [
+      equipment({ id: 1, slotIndex: 1, portPath: 'COM1' }),
+      equipment({ id: 2, slotIndex: 2, portPath: 'COM2' })
+    ];
+    expect((await startCapture(7, [1, 2], 'qa')).ok).toBe(true);
+    send('10\\n11\\n', state.ports[0]);
+    send('20\\n21\\n', state.ports[1]);
+    expect(vi.mocked(insertCentralReading).mock.calls.map(([reading]) => [reading.equipmentId, reading.valueRaw])).toEqual([[1, '10'], [2, '20']]);
+  });
+  it('ignores repeated simulated readings and accepts a new reading in the next capture', async () => {
+    expect((await startCapture(7, [1], 'qa', 'PRODUCTION', true)).ok).toBe(true);
+    expect(injectManualReading(1, '10').ok).toBe(true);
+    expect(injectManualReading(1, '11').ok).toBe(true);
+    expect(values()).toEqual(['10']);
+    expect((await completeCapture()).ok).toBe(true);
+    expect((await startCapture(7, [1], 'qa', 'PRODUCTION', true)).ok).toBe(true);
+    expect(injectManualReading(1, '12').ok).toBe(true);
+    expect(values()).toEqual(['10', '12']);
+  });
+  it('does not consume the reading quota on an invalid parse', async () => {
+    state.equipments = [equipment({ parseRegex: '^VAL:(\\\\d+)
+    expect((await startCapture(7, [1], 'lab', 'LABORATORY')).ok).toBe(true);
+    send('10\n');
+    await completeCapture();
+    expect(vi.mocked(insertCentralReading).mock.calls[0][0]).toMatchObject({ username: 'lab', sectorCode: 'LABORATORY', valueRaw: '10' });
+  });
+  it('records only the first line of a combined chunk for stopAfterFirstReading', async () => {
+    state.equipments = [equipment({ stopAfterFirstReading: true })]; await begin();
+    send('10\n20\n30'); await completeCapture();
+    expect(values()).toEqual(['10']);
+  });
+  it('preserves normal lines and flushes a valid partial tail at completion', async () => {
+    state.equipments = [equipment({ lineDelimiter: 'crlf' })]; await begin();
+    send('10\r'); send('\n20\r\n30'); await completeCapture();
+    expect(values()).toEqual(['10']);
+  });
+  it('ignores bytes arriving while closing ports during cleanup', async () => {
+    await begin(); send('10'); state.ports[0].onClose = () => send('20\n');
+    await completeCapture(); expect(values()).toEqual(['10']);
+  });
+  it('accepts a line at the limit when CRLF arrives fragmented', async () => {
+    state.equipments = [equipment({ lineDelimiter: 'crlf' })]; await begin();
+    send('7'.repeat(102400) + '\r'); send('\n42\r\n');
+    expect(values().map(value => value.length)).toEqual([102400]);
+  });
+  it('skips the first line then stops after the first accepted line', async () => {
+    state.equipments = [equipment({ stopAfterFirstReading: true, skipFirstReading: true })]; await begin();
+    send('header\n42\n43\n'); send('44\n'); await completeCapture(); expect(values()).toEqual(['42']);
+  });
+  it('keeps equipment enabled after a temporary COM failure and recovers next capture', async () => {
+    state.failPaths.add('COM1'); const started = startCapture(7, [1], 'qa');
+    await vi.advanceTimersByTimeAsync(300); expect((await started).ok).toBe(true);
+    expect(getState().slots[0].status).toBe('error'); await cancelCapture();
+    state.failPaths.clear(); await begin(); send('42\n', state.ports.at(-1));
+    expect(values()).toEqual(['42']);
+  });
+  it('discards an overflowing unterminated line rather than flushing it as a reading', async () => {
+    await begin(); send('x'.repeat(102401)); send('123'); await completeCapture();
+    expect(values()).toEqual([]);
+    expect(vi.mocked(insertCaptureErrorLog).mock.calls.some(([input]) => input.code === 'serial_buffer_overflow')).toBe(true);
+  });
+  it('recovers after an overflow with a fragmented CRLF delimiter', async () => {
+    state.equipments = [equipment({ lineDelimiter: 'crlf' })]; await begin();
+    send('x'.repeat(102401) + '\r'); send('\n42\r'); send('\n');
+    expect(values()).toEqual(['42']);
+  });
+  it('rejects an oversized complete line and preserves subsequent valid lines', async () => {
+    await begin(); send('x'.repeat(102401) + '\n42\n');
+    expect(values()).toEqual(['42']);
+  });
+  it('keeps the passive listener working through reconnection', async () => {
+    await begin(); const port = state.ports[0]; port.isOpen = false; port.emit('close'); send('42\n', port);
+    expect(values()).toEqual(['42']); expect(getState().slots[0].status).toBe('receiving');
+  });
+  it('applies overflow recovery to a fallback port', async () => {
+    state.equipments.push(equipment({ id: 6, slotIndex: 6, name: 'Reserva', enabled: false, portPath: 'COM6' }));
+    state.failPaths.add('COM1'); const started = startCapture(7, [1], 'qa'); await vi.advanceTimersByTimeAsync(300); expect((await started).ok).toBe(true);
+    const fallback = state.ports.at(-1); expect(fallback.path).toBe('COM6');
+    send('x'.repeat(102401), fallback); send('\n42\n', fallback); expect(values()).toEqual(['42']);
+  });
+});
+ })];
+    await begin();
+    send('invalid\\nVAL:42\\nVAL:43\\n');
+    expect(values()).toEqual(['VAL:42']);
+  });
+  it('honors skip-first-reading before accepting one subsequent reading', async () => {
+    state.equipments = [equipment({ skipFirstReading: true })];
+    await begin();
+    send('header\\n42\\n43\\n');
+    expect(values()).toEqual(['42']);
+  });
   it('captures laboratory readings on a production station under the laboratory sector', async () => {
     expect((await startCapture(7, [1], 'lab', 'LABORATORY')).ok).toBe(true);
     send('10\n');
@@ -84,7 +177,7 @@ describe('serial capture recovery', () => {
   it('preserves normal lines and flushes a valid partial tail at completion', async () => {
     state.equipments = [equipment({ lineDelimiter: 'crlf' })]; await begin();
     send('10\r'); send('\n20\r\n30'); await completeCapture();
-    expect(values()).toEqual(['10', '20', '30']);
+    expect(values()).toEqual(['10']);
   });
   it('ignores bytes arriving while closing ports during cleanup', async () => {
     await begin(); send('10'); state.ports[0].onClose = () => send('20\n');
@@ -93,8 +186,7 @@ describe('serial capture recovery', () => {
   it('accepts a line at the limit when CRLF arrives fragmented', async () => {
     state.equipments = [equipment({ lineDelimiter: 'crlf' })]; await begin();
     send('7'.repeat(102400) + '\r'); send('\n42\r\n');
-    expect(values().map(value => value.length)).toEqual([102400, 2]);
-    expect(values()[1]).toBe('42');
+    expect(values().map(value => value.length)).toEqual([102400]);
   });
   it('skips the first line then stops after the first accepted line', async () => {
     state.equipments = [equipment({ stopAfterFirstReading: true, skipFirstReading: true })]; await begin();
