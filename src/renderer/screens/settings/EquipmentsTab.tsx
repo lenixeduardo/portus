@@ -141,6 +141,7 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
   const [parseRegex, setParseRegex] = useState(equipment.parseRegex ?? "");
   const [lineDelimiter, setLineDelimiter] = useState<LineDelimiter>(equipment.lineDelimiter ?? "lf");
   const [skipFirstReading, setSkipFirstReading] = useState(equipment.skipFirstReading ?? false);
+  const [singleReadingPerCapture, setSingleReadingPerCapture] = useState(equipment.singleReadingPerCapture ?? false);
   const [stopAfterFirstReading, setStopAfterFirstReading] = useState(equipment.stopAfterFirstReading ?? false);
   const [protocol, setProtocol] = useState<EquipmentProtocol>(equipment.protocol ?? "passive");
   const [modbusUnitId, setModbusUnitId] = useState(equipment.modbusUnitId ?? 1);
@@ -183,6 +184,7 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
       lineDelimiter,
       skipFirstReading,
       stopAfterFirstReading,
+      singleReadingPerCapture,
       protocol,
       modbusUnitId,
       modbusFunction,
@@ -448,6 +450,14 @@ function EquipmentEditModal({ equipment, ports, onClose, onSaved, onError }: Edi
           </>
         )}
 
+        <div className="field">
+          <label className="checkbox">
+            <input type="checkbox" checked={singleReadingPerCapture}
+              onChange={(e) => setSingleReadingPerCapture(e.target.checked)} />
+            <span>Registrar somente uma leitura por captura</span>
+          </label>
+          <small className="muted">Desmarcado: registra todas as leituras válidas. Marcado: registra apenas a primeira leitura válida deste equipamento em cada captura, sem afetar outros equipamentos na mesma porta.</small>
+        </div>
         <div className="field">
           <label className="checkbox">
             <input
