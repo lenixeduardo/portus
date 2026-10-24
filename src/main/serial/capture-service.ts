@@ -57,6 +57,7 @@ interface ActiveSlot {
   linesReceived: number;
   // Para slots Modbus: função que interrompe o polling ativo.
   modbusStop?: () => void;
+  sharedModbus?: boolean;
 }
 
 // Conecta um slot Modbus aos mesmos mecanismos de persistência/UI/log usados pelo
@@ -377,8 +378,10 @@ async function performCleanup(reason: "completed" | "cancelled"): Promise<Captur
   // Aguarda o fechamento efetivo de todas as portas antes de liberar a sessão,
   // evitando colisão de handle COM ao reabrir numa nova captura (reentrância).
   const closes: Promise<void>[] = [];
+  const closingPorts = new Set<SerialPort>();
   slots.forEach((slot, slotIndex) => {
-    if (slot.port.isOpen) {
+    if (slot.port.isOpen && !closingPorts.has(slot.port)) {
+      closingPorts.add(slot.port);
       intentionallyClosing.add(slotIndex);
       closes.push(
         new Promise<void>((resolve) => {
@@ -497,7 +500,7 @@ function closeSlotAfterFirstReading(slotIndex: number): void {
     slot.modbusStop = undefined;
   }
 
-  intentionallyClosing.add(slotIndex);
+  if (!slot.sharedModbus) intentionallyClosing.add(slotIndex);
 
   const pending = uiDebounceTimers.get(slotIndex);
   if (pending) {
@@ -508,7 +511,7 @@ function closeSlotAfterFirstReading(slotIndex: number): void {
   slot.status = "completed";
   broadcast(IPC.captureSlotUpdate, { slotIndex, status: "completed" } satisfies SlotUpdateEvent);
 
-  if (slot.port.isOpen) {
+  if (slot.port.isOpen && !slot.sharedModbus) {
     slot.port.close((err) => {
       if (err) {
         console.warn(`[serial] Erro ao fechar slot ${slotIndex} após 1ª leitura:`, err.message);
@@ -700,9 +703,12 @@ export async function startCapture(
       });
     }
   } else for (const eq of equipments) {
+    const existingModbus = eq.protocol === "modbus_rtu"
+      ? [...slots.values()].find(other => other.equipment.protocol === "modbus_rtu" && other.equipment.portPath.toUpperCase() === eq.portPath.toUpperCase())
+      : undefined;
     let port: SerialPort;
     try {
-      port = new SerialPort({
+      port = existingModbus?.port ?? new SerialPort({
         path: eq.portPath,
         baudRate: eq.baudRate,
         dataBits: eq.dataBits,
@@ -751,7 +757,8 @@ export async function startCapture(
       buffer: "",
       openAttempts: 1,
       usedFallback: false,
-      linesReceived: 0
+      linesReceived: 0,
+      sharedModbus: Boolean(existingModbus)
     };
     slots.set(eq.slotIndex, slot);
 
@@ -769,7 +776,7 @@ export async function startCapture(
     }
 
     // --- Reconexão automática em caso de fechamento inesperado ---
-    port.on("close", () => {
+    if (!existingModbus) port.on("close", () => {
       if (intentionallyClosing.has(eq.slotIndex)) {
         // Fechamento intencional pelo cleanup — não reconectar
         intentionallyClosing.delete(eq.slotIndex);
@@ -779,7 +786,7 @@ export async function startCapture(
       attemptReconnect(eq.slotIndex);
     });
 
-    port.on("error", (err) => {
+    if (!existingModbus) port.on("error", (err) => {
       logCaptureError({
         slot,
         code: "serial_port_error",
@@ -803,10 +810,12 @@ export async function startCapture(
     initSlots.push(initSlotEntry);
 
     const openPromise = (async () => {
-      let opened = await openPortWithRetry(port, slot, OPEN_TIMEOUT_MS);
+      let opened = existingModbus
+        ? (await Promise.allSettled(openPromises), port.isOpen)
+        : await openPortWithRetry(port, slot, OPEN_TIMEOUT_MS);
 
       // Se falhar e for um slot de 1-5, tenta usar fallback (slot 6 "Reserva")
-      if (!opened && eq.slotIndex >= 1 && eq.slotIndex <= 5) {
+      if (!opened && !existingModbus && eq.slotIndex >= 1 && eq.slotIndex <= 5) {
         const allEquipments = await listCentralEquipments();
         const reserveEq = allEquipments.find((e) => e.slotIndex === 6 || e.name === "Reserva");
         if (reserveEq && reserveEq.portPath && reserveEq.portPath !== eq.portPath) {
