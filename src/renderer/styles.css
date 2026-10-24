@@ -1644,8 +1644,8 @@ button.secondary:hover { background: var(--surface-raised); }
 }
 .batch-stage strong { color: var(--portus-aqua-400); font-size: 13px; font-weight: 500; }
 .batch-row-readings { grid-column: 1 / -1; display: grid; gap: 7px; }
-.batch-row-readings > div { display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.batch-row-readings small { color: var(--text-muted); font-size: 10px; }
+.batch-row-readings > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 7px 12px; max-height: 220px; overflow-y: auto; min-width: 0; padding-right: 4px; }
+.batch-row-readings small { color: var(--text-muted); font-size: 10px; overflow-wrap: anywhere; line-height: 1.5; }
 .batch-row-readings small strong { color: var(--text); font-weight: 500; }
 
 .batch-confirmations { display: grid; align-content: center; gap: 10px; padding-inline: 18px; }
