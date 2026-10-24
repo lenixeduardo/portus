@@ -73,9 +73,10 @@ export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
     });
   }
 
+  const latestByEquipment = new Map<number | string, TraceRow>();
   for (const session of history.sessions) {
     for (const reading of session.readings) {
-      rows.push({
+      const candidate: TraceRow = {
         at: reading.capturedAt,
         sector: sectorLabel(session.sectorCode),
         event: reportEquipmentName(reading.equipmentName),
@@ -83,10 +84,14 @@ export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
         responsible: session.operatorName ?? session.operatorLogin ?? "—",
         login: session.operatorLogin ?? session.operatorName ?? "—",
         station: session.stationCode ?? session.stationName ?? "—"
-      });
+      };
+      const key = reading.equipmentId ?? reading.equipmentName;
+      const previous = latestByEquipment.get(key);
+      if (!previous || new Date(candidate.at).getTime() >= new Date(previous.at).getTime()) latestByEquipment.set(key, candidate);
     }
   }
 
+  rows.push(...latestByEquipment.values());
   return rows.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
 }
 
