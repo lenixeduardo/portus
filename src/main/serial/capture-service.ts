@@ -341,14 +341,17 @@ function consumeSerialData(slot: ActiveSlot, chunk: Buffer): void {
   if (sessionId === null || cleanupInFlight || slot.closing || slot.status === "completed") return;
   // latin1 preserves bytes one-to-one, so string length is the byte length.
   const incoming = chunk.toString("latin1");
-  // Alguns espectrofotômetros enviam CR isolado, mesmo quando o perfil usa LF.
-  // Aceita CR como terminador alternativo sem dividir um CRLF entre dois eventos.
-  if (slot.delimiter === "\\n" && incoming.includes("\\r") && !incoming.includes("\\n")) {
-    // Mantém o buffer até receber mais bytes; somente CR terminal é linha completa.
+  // Aceita CR isolado como terminador para instrumentos configurados em LF.
+  // CRLF permanece suportado, inclusive quando dividido entre chunks.
+  if (slot.delimiter === "\n") {
     slot.buffer += incoming;
-    if (slot.buffer.endsWith("\\r")) {
-      slot.buffer = slot.buffer.replace(/\\r$/g, "\\n");
+    slot.buffer = slot.buffer.replace(/\r\n/g, "\n");
+    // Não tratar CR no final como linha completa antes do próximo chunk,
+    // pois pode ser a primeira metade de um CRLF.
+    if (!slot.buffer.includes("\n") && slot.buffer.endsWith("\r")) {
+      return;
     }
+    slot.buffer = slot.buffer.replace(/\r(?=[^\n])/g, "\n");
   } else {
     slot.buffer += incoming;
   }
