@@ -26,6 +26,7 @@ function toEquipment(row: EquipmentProfileRow): Equipment {
     parseRegex: NUMBER_REGEX,
     lineDelimiter: "lf",
     skipFirstReading: false,
+    singleReadingPerCapture: false,
     stopAfterFirstReading: idx === 1,
     protocol: "passive",
     modbusUnitId: 1,
