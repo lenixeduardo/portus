@@ -122,7 +122,6 @@ const SELECT_BATCH = `
                  LEFT JOIN stations st ON st.id = cs.station_id
                 WHERE r.batch_id = b.id
                 ORDER BY r.captured_at DESC
-                LIMIT 8
              ) preview
          ), '[]'::json) AS reading_previews
     FROM batches b
