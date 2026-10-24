@@ -91,6 +91,13 @@ describe('serial capture recovery', () => {
     expect(injectManualReading(1, '12').ok).toBe(true);
     expect(values()).toEqual(['10', '12']);
   });
+  it('assembles Marte MVD-8 spindle and viscosity across serial chunks', async () => {
+    state.equipments = [equipment({ name: 'Viscosímetro', parseRegex: '(?<value>\\d+)' })];
+    await begin();
+    send('on\r\n00:00:00 20.8°C\r\nSP:L1 30.0RPM\r\n2.6% ');
+    send('5.151515cP\r\noff\r\n');
+    expect(values()).toEqual(['SP:L1 30.0RPM | 2.6% 5.151515cP']);
+  });
   it('records multiple valid readings by default when checkbox is disabled', async () => {
     state.equipments = [equipment({ singleReadingPerCapture: false })];
     await begin();
