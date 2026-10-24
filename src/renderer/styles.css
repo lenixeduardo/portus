@@ -1131,7 +1131,7 @@ label.checkbox input { width: auto; }
 }
 
 /* ── Capture Modal ── */
-.capture-modal-card { width: 640px; }
+.capture-modal-card { width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; }
 
 .capture-modal-body {
   display: flex;
@@ -1157,9 +1157,10 @@ label.checkbox input { width: auto; }
 
 .capture-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
+  min-width: 0;
 }
 
 .capture-slot {
@@ -1170,7 +1171,8 @@ label.checkbox input { width: auto; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 80px;
+  min-height: 100px;
+  min-width: 0;
   transition: border-color 0.2s;
 }
 .capture-slot-active {
@@ -1179,16 +1181,18 @@ label.checkbox input { width: auto; }
 
 .capture-slot-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  min-width: 0;
 }
 .capture-slot-name {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  min-width: 0;
 }
 
 .capture-slot-value {
@@ -1854,4 +1858,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .batch-list-filters { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .batch-filter-tab { flex: 1 1 auto; }
   .batch-filter-clear { width: 100%; }
+}
+
+@media (max-width: 680px) {
+  .capture-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 460px) {
+  .capture-grid { grid-template-columns: minmax(0, 1fr); }
 }
