@@ -1,27 +1,23 @@
-# Atualizações do PORTUS
+# Atualizações de arquivos do PORTUS
 
-A versão mínima desta mudança é 0.1.35. Cada build aprovado da `main` calcula uma versão superior à última Release publicada (ou usa a mínima do package.json se ela for maior). O build usa essa mesma versão no package.json, package-lock.json, tela de login, executável e nome do instalador. Empacotar localmente não incrementa mais a versão silenciosamente.
+O app consulta `/releases/latest` ao abrir e novamente a cada minuto ou ao voltar a conexão. Ele oferece somente versões estáveis superiores à instalada com um asset `PORTUS-Update-<versão>-x64.zip` e digest SHA256 válido publicado pelo GitHub. O instalador NSIS permanece disponível para a primeira instalação e para versões antigas que ainda só entendem instaladores; não é executado pelo novo atualizador.
 
-O workflow Windows é serializado na main. Após testes, build e smoke test do DB Utility, o instalador validado é enviado como artifact, e o job reutilizável de publicação envia **esse mesmo arquivo** para uma Release. A Release só deixa de ser draft depois do upload. O job confirma que `/releases/latest` contém a tag e o instalador esperado. PRs geram artifacts para homologação e nunca publicam no canal de atualização. Uma execução manual do workflow Build instalável na main também permite publicar uma versão validada. Erros de autenticação/rede ao consultar a versão publicada interrompem o build, evitando reutilizar uma versão por engano.
+**Baixar atualização** transfere o ZIP para uma pasta de sessão em `userData/updates`, sem navegador nem Downloads. O download por stream informa progresso, confere tamanho e SHA256 e descarta parciais e respostas inválidas.
 
-O app instalado consulta a Release ao abrir, repete a consulta a cada minuto enquanto não encontrar atualização e tenta novamente quando a conexão volta. As falhas ficam nos logs. Uma vez oferecida, a mesma atualização não fica reaparecendo ao dispensar o aviso nessa sessão.
+**Aplicar e reiniciar** inicia o auxiliar PowerShell distribuído dentro dos recursos da instalação. Antes de fechar o PORTUS, o auxiliar verifica o arquivo baixado, extrai em staging, valida caminhos e todos os hashes do manifesto e verifica permissão de escrita. Quando necessário, pede elevação pelo Windows. Se essa preparação falhar ou for cancelada, o PORTUS permanece aberto. Captura serial ativa impede a atualização.
 
-O botão **Baixar atualização** baixa pelo processo principal do Electron para a pasta Downloads. O modal mostra o progresso. Arquivos incompletos e respostas que não sejam executáveis Windows são descartados; a interface nunca fornece URL ou caminho de executável ao processo principal.
+Após o PORTUS encerrar, o auxiliar compara hashes, copia apenas os arquivos alterados e remove arquivos obsoletos que estavam no manifesto anterior. Arquivos locais não listados no manifesto são preservados. Configurações, logs e dados do usuário permanecem em userData. O pacote contém o conjunto completo de arquivos da aplicação (incluindo runtime Electron e recursos), por isso também permite atualizar dependências nativas; o download não é um delta binário.
 
-Após concluir o download, **Instalar e reiniciar** inicia o instalador NSIS com `/S --updated --force-run /D=<pasta atual do executável>`. O argumento `/D` fica por último, sem aspas internas, conforme o contrato do NSIS para caminhos com espaços. A instalação é bloqueada durante captura ativa. Se não for possível iniciar o instalador, o PORTUS permanece aberto e informa o erro. A atualização usa a instalação atual e preserva os dados de usuário pelo modo `--updated`; o Windows pode pedir elevação conforme a instalação existente.
+Cada arquivo substituído ou removido tem cópia de segurança. Falha na aplicação restaura as alterações e tenta reabrir a versão anterior. Sucesso registra a versão aplicada e abre o executável no mesmo caminho. `apply.log`, `completed` ou `failed` ficam em `.portus-update-work/<sessão>` na instalação para diagnóstico. Em pastas protegidas, o auxiliar confere o digest diretamente no GitHub e usa staging com escrita restrita a administradores/SYSTEM. A preparação tem limite de tempo; um pedido cancelado não aplica arquivos quando o usuário fechar o app mais tarde.
 
-## Primeira atualização
+O build gera ZIP e manifesto a partir do mesmo `win-unpacked` validado. A Release fica em draft durante o upload do instalador e ZIP. PRs geram artifacts e não publicam versões. A publicação valida presença e SHA256 do asset ZIP.
 
-Instalações antigas ainda abrem o navegador ao clicar em Baixar e não recebem código novo antes de instalá-lo. Após o merge e publicação da primeira Release, essas instalações precisam instalar essa versão uma vez pelo fluxo antigo/download manual. Nas versões corrigidas, o fluxo passa a ocorrer dentro do PORTUS.
+## Compatibilidade
 
-As migrations do PostgreSQL central continuam sendo aplicadas pelo DB Utility com a credencial administrativa; a atualização do aplicativo não executa migrations no banco do cliente automaticamente.
+A 0.1.36 e anteriores já publicadas ainda executam o instalador no fluxo de atualização. Elas precisam receber uma vez a versão com este mecanismo. A partir dessa versão, as próximas atualizações usam somente pacotes de arquivos.
 
-## Homologação Windows
+Migrations PostgreSQL continuam sendo aplicadas pelo DB Utility com credencial administrativa. Atualizar arquivos não altera automaticamente o banco central.
 
-1. Instalar uma versão anterior numa pasta personalizada com espaços.
-2. Abrir com e sem conexão; ao reconectar, confirmar a oferta da versão publicada.
-3. Baixar no modal e conferir progresso/arquivo final, sem abertura de navegador.
-4. Iniciar uma captura e conferir que Instalar e reiniciar é bloqueado.
-5. Concluir a captura, confirmar instalação, aceitar elevação quando solicitada e conferir reinício, versão exibida e manutenção da pasta/configurações.
+## Validação
 
-Os testes automatizados cobrem consulta, download por stream, limpeza de parciais, falha ao iniciar instalador e argumentos de instalação. O teste do instalador real deve ocorrer em Windows; os mocks de processo não substituem essa homologação.
+Testes unitários cobrem seleção da Release, integridade, parciais, repetição após falha de rede e bloqueios durante captura. O build Windows executa `tests/windows/file-update.mjs` sobre o aplicativo real empacotado: uma versão alvo com marcador console/log é preparada em ZIP, o transporte da Release ainda não publicada é interceptado, e download, aplicação, reinício e reabertura ocorrem de verdade. O teste confirma versão nova, execução do marcador e preservação do executável não alterado e de arquivos/configurações locais. Evidências ficam no artifact `portus-file-update-<run_id>`.
