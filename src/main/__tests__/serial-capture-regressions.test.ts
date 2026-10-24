@@ -98,7 +98,7 @@ describe('serial capture recovery', () => {
     expect(values()).toEqual(['10', '11', '12']);
   });
   it('does not consume the reading quota on an invalid parse', async () => {
-    state.equipments = [equipment({ parseRegex: '^VAL:(\\d+)
+    state.equipments = [equipment({ parseRegex: '^VAL:(\\d+)$', singleReadingPerCapture: true })];
     await begin();
     send('invalid\nVAL:42\nVAL:43\n');
     expect(values()).toEqual(['VAL:42']);
@@ -109,18 +109,4 @@ describe('serial capture recovery', () => {
     send('header\n42\n43\n');
     expect(values()).toEqual(['42']);
   });
-
-});
-, singleReadingPerCapture: true })];
-    await begin();
-    send('invalid\nVAL:42\nVAL:43\n');
-    expect(values()).toEqual(['VAL:42']);
-  });
-  it('honors skip-first-reading before accepting one subsequent reading', async () => {
-    state.equipments = [equipment({ skipFirstReading: true })];
-    await begin();
-    send('header\n42\n43\n');
-    expect(values()).toEqual(['42']);
-  });
-
 });
