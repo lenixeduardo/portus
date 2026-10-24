@@ -76,8 +76,8 @@ describe('serial capture recovery', () => {
       equipment({ id: 2, slotIndex: 2, portPath: 'COM2' })
     ];
     expect((await startCapture(7, [1, 2], 'qa')).ok).toBe(true);
-    send('10\\n11\\n', state.ports[0]);
-    send('20\\n21\\n', state.ports[1]);
+    send('10\n11\n', state.ports[0]);
+    send('20\n21\n', state.ports[1]);
     expect(vi.mocked(insertCentralReading).mock.calls.map(([reading]) => [reading.equipmentId, reading.valueRaw])).toEqual([[1, '10'], [2, '20']]);
   });
   it('ignores repeated simulated readings and accepts a new reading in the next capture', async () => {
