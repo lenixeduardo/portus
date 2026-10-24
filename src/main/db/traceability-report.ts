@@ -173,7 +173,7 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
     <tr>
       <td>${esc(row.station)}</td>
       <td class="mono">${esc(row.login)}</td>
-      <td>${esc(row.event)}</td>
+      <td class="equipment-name"><span>${esc(row.event)}</span></td>
       <td class="mono">${esc(row.result)}</td>
       <td>${esc(formatDate(row.at))}</td>
     </tr>`).join("");
@@ -198,7 +198,10 @@ h1 { margin:0; min-width:0; padding:0; font-size:clamp(16pt, 2.7vw, 21pt); font-
 .barcode svg { width:100%; max-width:none; height:52px; display:block; }
 .code { font-size:12pt; margin-top:8px; overflow-wrap:anywhere; }
 table { width:100%; border-collapse:collapse; table-layout:fixed; }
-th,td { padding:12px 9px; border:1px solid #bbb; word-break:break-word; text-align:left; }
+th,td { padding:12px 7px; border:1px solid #bbb; overflow-wrap:anywhere; text-align:left; }
+.equipment-name { white-space:nowrap; overflow:visible; }
+.equipment-name span { display:inline-block; white-space:nowrap; max-width:none; }
+@media screen and (max-width:750px) { body { padding:0 8px 16px; } th,td { padding:8px 4px; font-size:9pt; } }
 th { background:#eee; font-size:10.5pt; font-weight:700; }
 tbody tr:nth-child(even) { background:#f1f1f1; }
 tr { break-inside:avoid; }
@@ -210,6 +213,24 @@ tr { break-inside:avoid; }
 .mono { font-family:Consolas,monospace; }
 footer { position:fixed; bottom:-11mm; left:0; right:0; display:flex; justify-content:space-between; font-size:9pt; border-top:1px solid #111; padding-top:8px; }
 </style>
+<script>
+function fitEquipmentNames() {
+  document.querySelectorAll(".equipment-name").forEach(function(cell) {
+    var span = cell.querySelector("span");
+    if (!span) return;
+    span.style.fontSize = "";
+    var available = cell.clientWidth - parseFloat(getComputedStyle(cell).paddingLeft) - parseFloat(getComputedStyle(cell).paddingRight);
+    var width = span.getBoundingClientRect().width;
+    if (width > available && available > 0) {
+      var size = parseFloat(getComputedStyle(span).fontSize);
+      span.style.fontSize = Math.max(6, size * available / width * 0.98) + "px";
+    }
+  });
+}
+window.addEventListener("load", fitEquipmentNames);
+window.addEventListener("beforeprint", fitEquipmentNames);
+window.addEventListener("resize", fitEquipmentNames);
+</script>
 </head>
 <body>
 <header>
@@ -223,11 +244,11 @@ footer { position:fixed; bottom:-11mm; left:0; right:0; display:flex; justify-co
 <table>
   <thead>
     <tr>
-      <th style="width:21%">Computador</th>
-      <th style="width:18%">Login</th>
-      <th style="width:23%">Equipamento</th>
-      <th style="width:17%">Valor</th>
-      <th style="width:21%">Data da captura</th>
+      <th style="width:16%">Computador</th>
+      <th style="width:13%">Login</th>
+      <th style="width:39%">Equipamento</th>
+      <th style="width:12%">Valor</th>
+      <th style="width:20%">Data da captura</th>
     </tr>
   </thead>
   <tbody>${body || '<tr><td colspan="5">Nenhum registro.</td></tr>'}</tbody>
