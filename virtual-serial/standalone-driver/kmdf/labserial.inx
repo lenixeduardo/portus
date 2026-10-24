@@ -1,0 +1,73 @@
+; LabSerial standalone - original experimental KMDF package.
+; FOR TEST VMs ONLY. Does not include a catalog/signature.
+[Version]
+Signature="$Windows NT$"
+Class=Ports
+ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318}
+Provider=%Provider%
+CatalogFile=labserial.cat
+DriverVer=10/17/2026,0.1.1.0
+PnpLockdown=1
+
+[Manufacturer]
+%Manufacturer%=Models,NTamd64.10.0...19041
+
+[Models.NTamd64.10.0...19041]
+%PortA%=InstallA, ROOT\LABSERIAL_VCOM_A
+%PortB%=InstallB, ROOT\LABSERIAL_VCOM_B
+
+[DestinationDirs]
+DefaultDestDir=13
+
+[SourceDisksNames]
+1=%Disk%,,,
+
+[SourceDisksFiles]
+labserial.sys=1
+
+[InstallA.NT]
+CopyFiles=CopyDriver
+[InstallA.NT.HW]
+AddReg=PortNameA, DeviceSecurity
+[InstallA.NT.Services]
+AddService=LabSerial,0x00000002,Service
+[InstallA.NT.Wdf]
+KmdfService=LabSerial,Kmdf
+
+[InstallB.NT]
+CopyFiles=CopyDriver
+[InstallB.NT.HW]
+AddReg=PortNameB, DeviceSecurity
+[InstallB.NT.Services]
+AddService=LabSerial,0x00000002,Service
+[InstallB.NT.Wdf]
+KmdfService=LabSerial,Kmdf
+
+[CopyDriver]
+labserial.sys
+
+[PortNameA]
+HKR,,PortName,0x00000000,"COM210"
+[PortNameB]
+HKR,,PortName,0x00000000,"COM211"
+[DeviceSecurity]
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;WD)"
+HKR,,DeviceCharacteristics,0x00010001,0x00000100
+
+[Service]
+DisplayName=%ServiceName%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%13%\labserial.sys
+
+[Kmdf]
+KmdfLibraryVersion=$KMDFVERSION$
+
+[Strings]
+Provider="LabSerial Development"
+Manufacturer="LabSerial"
+PortA="LabSerial Virtual Serial Port A (EXPERIMENTAL)"
+PortB="LabSerial Virtual Serial Port B (EXPERIMENTAL)"
+ServiceName="LabSerial Kernel Virtual Serial Driver"
+Disk="LabSerial experimental driver files"

@@ -1,0 +1,8 @@
+build/
+.vs/
+*.suo
+*.user
+*.dll
+*.sys
+*.cat
+*.pdb

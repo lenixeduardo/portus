@@ -1,0 +1,830 @@
+using System.Diagnostics;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+
+namespace LabSerial.Setup;
+
+/// <summary>
+/// com0com-style experience for the EXISTING LabSerial fixed pair.
+/// Adding/removing pairs in this interface only changes workspace visibility.
+/// It never creates/removes PnP nodes, edits driver registry settings or alters BCD.
+/// </summary>
+internal sealed class MainForm : Form
+{
+    private static readonly Color Accent = Color.FromArgb(155, 38, 48);
+    private static readonly Color Ink = Color.FromArgb(38, 46, 56);
+    private static readonly Color Muted = Color.FromArgb(99, 108, 119);
+    private static readonly Color Surface = Color.FromArgb(240, 240, 240);
+    private static readonly Color AccentBlue = Color.FromArgb(0, 120, 215);
+
+    private readonly DataGridView _pairs = new();
+    private readonly TextBox _properties = new();
+    private readonly RichTextBox _events = new();
+    private readonly TextBox[] _ports = { new(), new() };
+    private readonly TextBox[] _names = { new(), new() };
+    private readonly TextBox[] _hardwareIds = { new(), new() };
+    private readonly TextBox[] _descriptions = { new(), new() };
+    private readonly ToolStripStatusLabel _deviceManager = new();
+    private readonly ToolStripStatusLabel _pairCount = new();
+    private readonly ToolStripStatusLabel _state = new();
+    private readonly ToolStripStatusLabel _connection = new();
+    private readonly Label _summary = new();
+    private readonly Label _profile = new();
+
+    private ToolStripButton _btnAdd = null!;
+    private ToolStripButton _btnRemove = null!;
+    private ToolStripButton _btnProperties = null!;
+    private ToolStripButton _btnApply = null!;
+    private ToolStripButton _btnProfile = null!;
+    private ToolStripButton _btnWin32 = null!;
+    private ToolStripButton _btnNet = null!;
+
+    private LabSerialInventory.Snapshot? _snapshot;
+    private ConsoleForm? _console;
+    private CancellationTokenSource? _activeTest;
+    private bool _showPair = true;
+    private bool _busy;
+    private int _selectedBaudRate = 9600;
+
+    internal MainForm()
+    {
+        Text = "SerialLab";
+        Icon = LabSerialBrand.MakeIcon();
+        StartPosition = FormStartPosition.CenterScreen;
+        ClientSize = new Size(1000, 695);
+        MinimumSize = new Size(855, 605);
+        Font = new Font("Segoe UI", 9.2f);
+        BackColor = Surface;
+        ForeColor = Ink;
+        AutoScaleMode = AutoScaleMode.Dpi;
+
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty, Padding = Padding.Empty };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+
+        var menu = BuildMenu();
+        MainMenuStrip = menu;
+        layout.Controls.Add(menu, 0, 0);
+        layout.Controls.Add(BuildToolbar(), 0, 1);
+        layout.Controls.Add(BuildWorkspace(), 0, 2);
+        layout.Controls.Add(BuildStatus(), 0, 3);
+
+        Controls.Add(layout);
+        Shown += async (_, _) => { FitWindowToWorkArea(); await RefreshInventoryAsync(); };
+        FormClosing += (_, _) => _activeTest?.Cancel();
+    }
+
+    private void FitWindowToWorkArea()
+    {
+        // Fit the ENTIRE form inside the usable monitor rectangle, including
+        // taskbar/125–150% display scaling. Keep footer and diagnostics visible.
+        var work = Screen.FromControl(this).WorkingArea;
+        int w = Math.Min(Math.Max(MinimumSize.Width, Width), Math.Max(1, work.Width - 24));
+        int h = Math.Min(Math.Max(MinimumSize.Height, Height), Math.Max(1, work.Height - 22));
+        Size = new Size(w, h);
+        Location = new Point(work.Left + Math.Max(0, (work.Width - Width) / 2),
+                             work.Top + Math.Max(0, (work.Height - Height) / 2));
+    }
+
+    private MenuStrip BuildMenu()
+    {
+        var menu = new MenuStrip
+        {
+            Dock = DockStyle.Fill, BackColor = Color.White, ForeColor = Ink,
+            Padding = new Padding(9, 2, 9, 2)
+        };
+
+        var arquivo = new ToolStripMenuItem("Arquivo");
+        arquivo.DropDownItems.Add("Exportar log...", null, (_, _) => ExportLog());
+        arquivo.DropDownItems.Add(new ToolStripSeparator());
+        arquivo.DropDownItems.Add("Sair", null, (_, _) => Close());
+
+        var acao = new ToolStripMenuItem("Ação");
+        acao.DropDownItems.Add("Adicionar par existente à lista", null, (_, _) => AddPair());
+        acao.DropDownItems.Add("Remover par da lista", null, (_, _) => RemovePair());
+        acao.DropDownItems.Add("Propriedades / Configurar teste...", null, (_, _) => OpenProperties());
+        acao.DropDownItems.Add("Atualizar inventário", null, async (_, _) => await RefreshInventoryAsync());
+        acao.DropDownItems.Add(new ToolStripSeparator());
+        acao.DropDownItems.Add("Testar perfil selecionado", null, async (_, _) =>
+            await RunTestAsync("Perfil selecionado", "Run-LabSerialProfileProbe.ps1", 45, _selectedBaudRate));
+        acao.DropDownItems.Add("Teste Win32 — 6 quadros", null, async (_, _) =>
+            await RunTestAsync("Win32 — 6 quadros", "Run-LabSerialEvidenceBounded.ps1", 95));
+        acao.DropDownItems.Add("Teste .NET — 4 quadros", null, async (_, _) =>
+            await RunTestAsync(".NET — 4 quadros", "Run-LabSerialCompatibilityBounded.ps1", 65));
+
+        var exibir = new ToolStripMenuItem("Exibir");
+        exibir.DropDownItems.Add("Console independente", null, (_, _) => ShowConsole());
+
+        var tools = new ToolStripMenuItem("Ferramentas");
+        tools.DropDownItems.Add("Abrir evidências", null, (_, _) => OpenEvidenceFolder());
+        tools.DropDownItems.Add("Cancelar teste ativo", null, (_, _) => _activeTest?.Cancel());
+
+        var help = new ToolStripMenuItem("Ajuda");
+        help.DropDownItems.Add("Sobre o SerialLab", null, (_, _) => ShowAbout());
+
+        menu.Items.AddRange(new ToolStripItem[] { arquivo, acao, exibir, tools, help });
+        return menu;
+    }
+
+    private ToolStrip BuildToolbar()
+    {
+        var toolbar = new ToolStrip
+        {
+            Dock = DockStyle.Fill, BackColor = Surface, ForeColor = Ink,
+            GripStyle = ToolStripGripStyle.Hidden, RenderMode = ToolStripRenderMode.System,
+            Padding = new Padding(14, 6, 10, 6),
+            ImageScalingSize = new Size(27, 27)
+        };
+
+        _btnAdd = ToolButton("Adicionar Par", "✚", Color.ForestGreen, (_, _) => AddPair());
+        _btnRemove = ToolButton("Remover Par", "✖", Color.Firebrick, (_, _) => RemovePair());
+        _btnProperties = ToolButton("Propriedades", "⚙", Ink, (_, _) => OpenProperties());
+        var refresh = ToolButton("Atualizar", "⟳", AccentBlue, async (_, _) => await RefreshInventoryAsync());
+        _btnApply = ToolButton("Aplicar", "✓", Color.FromArgb(74, 117, 65), (_, _) => OpenProperties());
+        _btnProfile = ToolButton("Testar Perfil", "▶", AccentBlue, async (_, _) =>
+            await RunTestAsync("Perfil selecionado", "Run-LabSerialProfileProbe.ps1", 45, _selectedBaudRate));
+        _btnWin32 = ToolButton("Testar Win32", "⇄", AccentBlue, async (_, _) =>
+            await RunTestAsync("Win32 — 6 quadros", "Run-LabSerialEvidenceBounded.ps1", 95));
+        _btnNet = ToolButton("Testar .NET", "●", AccentBlue, async (_, _) =>
+            await RunTestAsync(".NET — 4 quadros", "Run-LabSerialCompatibilityBounded.ps1", 65));
+
+        _btnAdd.ToolTipText = "Exibir o único par LabSerial existente; não cria dispositivos.";
+        _btnRemove.ToolTipText = "Remover da lista visual, sem excluir portas ou drivers.";
+        _btnApply.ToolTipText = "Aplicar somente o perfil local de testes.";
+
+        toolbar.SizeChanged += (_, _) =>
+        {
+            int available = toolbar.ClientSize.Width;
+            // Keep test captions visible on the actual 1000–1100 px classic
+            // Windows app. At genuinely narrow widths, icon-only diagnostic
+            // actions still have complete descriptive tooltips.
+            bool compact = available < 1090;
+            _btnAdd.Text = compact ? "Adicionar" : "Adicionar Par";
+            _btnRemove.Text = compact ? "Remover" : "Remover Par";
+            _btnProfile.Text = compact ? "Perfil" : "Testar Perfil";
+            _btnWin32.Text = compact ? "Win32" : "Testar Win32";
+            _btnNet.Text = compact ? ".NET" : "Testar .NET";
+            bool narrow = available < 985;
+            foreach (var b in new[] { _btnProfile, _btnWin32, _btnNet })
+                b.DisplayStyle = narrow ? ToolStripItemDisplayStyle.Image :
+                    ToolStripItemDisplayStyle.ImageAndText;
+        };
+        _btnProfile.ToolTipText = "Testar Perfil — teste SerialPort na velocidade selecionada";
+        _btnWin32.ToolTipText = "Testar Win32 — 6 quadros de transmissão";
+        _btnNet.ToolTipText = "Testar .NET — 4 quadros a 9600/115200 baud";
+        toolbar.Items.AddRange(new ToolStripItem[] {
+            _btnAdd, _btnRemove, _btnProperties, refresh, _btnApply,
+            new ToolStripSeparator(), _btnProfile, _btnWin32, _btnNet,
+            new ToolStripSeparator(), ToolButton("Console", "▣", Ink, (_, _) => ShowConsole())
+        });
+        return toolbar;
+    }
+
+    private static ToolStripButton ToolButton(string caption, string glyph, Color glyphColor, EventHandler onClick)
+    {
+        var bitmap = LabSerialUiArt.Icon(glyph, glyphColor);
+        var button = new ToolStripButton(caption)
+        {
+            Image = bitmap, DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
+            ImageScaling = ToolStripItemImageScaling.None,
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            AutoSize = true, Margin = new Padding(3, 0, 3, 0),
+            Padding = new Padding(4, 3, 4, 3)
+        };
+        button.Click += onClick;
+        return button;
+    }
+
+    private Control BuildHeader()
+    {
+        var header = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(32, 37, 45) };
+        header.Controls.Add(new Panel { Dock = DockStyle.Left, Width = 5, BackColor = Accent });
+        var name = new Label
+        {
+            Text = "SerialLab", Font = new Font("Segoe UI Semibold", 18f, FontStyle.Bold),
+            ForeColor = Color.White, AutoSize = true, Location = new Point(24, 13)
+        };
+        var sub = new Label
+        {
+            Text = "Gerenciador local do par virtual COM210 ↔ COM211",
+            ForeColor = Color.FromArgb(188, 199, 209), AutoSize = true, Location = new Point(25, 54)
+        };
+        var experimental = new Label
+        {
+            Text = "EXPERIMENTAL", ForeColor = Color.FromArgb(255, 211, 212),
+            BackColor = Accent, Padding = new Padding(10, 6, 10, 6), AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right
+        };
+        header.Controls.Add(name);
+        header.Controls.Add(sub);
+        header.Controls.Add(experimental);
+        header.Resize += (_, _) => experimental.Location = new Point(Math.Max(680, header.Width - experimental.Width - 24), 21);
+        return header;
+    }
+
+    private Control BuildWorkspace()
+    {
+        var content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, BackColor = Surface, ColumnCount = 1, RowCount = 3,
+            Padding = new Padding(10, 8, 10, 7), Margin = Padding.Empty
+        };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 24));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 18));
+        // Responsive distribution: taller work areas can show more of the list/log;
+        // on shorter desktops prioritize a fully visible settings group.
+        content.SizeChanged += (_, _) =>
+        {
+            bool taller = content.ClientSize.Height >= 660;
+            float[] split = taller ? new float[] { 28f, 49f, 23f } : new float[] { 24f, 58f, 18f };
+            for (int i = 0; i < split.Length; i++) content.RowStyles[i].Height = split[i];
+        };
+
+        var pairGroup = new GroupBox
+        {
+            Text = "Pares de Portas Virtuais", Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 9.2f, FontStyle.Bold),
+            Padding = new Padding(9, 9, 9, 6)
+        };
+        var pairPanel = new Panel { Dock = DockStyle.Fill };
+        // Exactly one installed pair: use a fixed, non-scrollable DataGridView.
+        // Its Fill columns adapt to the ACTUAL viewport on every DPI/resize,
+        // rather than ListView's native horizontal scrollbar calculations.
+        _pairs.Dock = DockStyle.Fill;
+        _pairs.Font = new Font("Segoe UI", 9.2f);
+        _pairs.ReadOnly = true;
+        _pairs.AutoGenerateColumns = false;
+        _pairs.AllowUserToAddRows = false;
+        _pairs.AllowUserToDeleteRows = false;
+        _pairs.AllowUserToResizeRows = false;
+        _pairs.AllowUserToResizeColumns = false;
+        _pairs.RowHeadersVisible = false;
+        _pairs.MultiSelect = false;
+        _pairs.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        _pairs.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _pairs.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
+        _pairs.ScrollBars = ScrollBars.None;
+        _pairs.BackgroundColor = Color.White;
+        _pairs.BorderStyle = BorderStyle.FixedSingle;
+        _pairs.GridColor = Color.FromArgb(231, 231, 231);
+        _pairs.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        _pairs.ColumnHeadersHeight = 27;
+        _pairs.RowTemplate.Height = 25;
+        _pairs.EnableHeadersVisualStyles = false;
+        _pairs.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 248, 248);
+        _pairs.ColumnHeadersDefaultCellStyle.ForeColor = Ink;
+        _pairs.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(248, 248, 248);
+        _pairs.DefaultCellStyle.BackColor = Color.White;
+        _pairs.DefaultCellStyle.ForeColor = Ink;
+        _pairs.DefaultCellStyle.SelectionBackColor = SystemColors.Highlight;
+        _pairs.DefaultCellStyle.SelectionForeColor = SystemColors.HighlightText;
+        _pairs.DefaultCellStyle.Padding = new Padding(5, 1, 4, 1);
+        _pairs.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(251, 251, 251);
+
+        foreach (var spec in new (string Header, string Name, float Weight, int MinWidth)[] {
+            ("#", "Index", 7f, 28),
+            ("Porta A", "PortA", 14f, 72),
+            ("Porta B", "PortB", 14f, 72),
+            ("Status", "Status", 16f, 74),
+            ("Driver", "Driver", 26f, 133),
+            ("Criado em", "CreatedAt", 23f, 101)
+        })
+        {
+            _pairs.Columns.Add(new DataGridViewTextBoxColumn {
+                HeaderText = spec.Header, Name = spec.Name,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                FillWeight = spec.Weight, MinimumWidth = spec.MinWidth,
+                SortMode = DataGridViewColumnSortMode.NotSortable
+            });
+        }
+        _pairs.CellPainting += (_, e) =>
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != 3) return;
+            if (e.Graphics is not Graphics graphics) return;
+            string label = e.Value?.ToString() ?? "";
+            if (!string.Equals(label, "Ativo", StringComparison.Ordinal)) return;
+            e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+            int dot = 10, x = e.CellBounds.X + 10;
+            int y = e.CellBounds.Y + (e.CellBounds.Height - dot) / 2;
+            using (var green = new SolidBrush(Color.FromArgb(36, 177, 72)))
+                graphics.FillEllipse(green, x, y, dot, dot);
+            var textRect = new Rectangle(x + dot + 7, e.CellBounds.Y,
+                Math.Max(1, e.CellBounds.Width - dot - 18), e.CellBounds.Height);
+            Color textColor = _pairs.Rows[e.RowIndex].Selected ? Color.White : Ink;
+            TextRenderer.DrawText(graphics, label, _pairs.Font, textRect, textColor,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
+                TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+            e.Handled = true;
+        };
+        _pairs.SelectionChanged += (_, _) => UpdateButtons();
+        _pairs.CellDoubleClick += (_, _) => OpenProperties();
+
+        _summary.Dock = DockStyle.Bottom;
+        _summary.Height = 25;
+        _summary.Font = new Font("Segoe UI", 8.3f);
+        _summary.ForeColor = Muted;
+        _summary.Text = "Aguardando leitura do driver LabSerial...";
+        pairPanel.Controls.Add(_pairs);
+        pairPanel.Controls.Add(_summary);
+        pairGroup.Controls.Add(pairPanel);
+        content.Controls.Add(pairGroup, 0, 0);
+
+        var details = new GroupBox
+        {
+            Text = "Propriedades do Par Selecionado", Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 9.2f, FontStyle.Bold),
+            Padding = new Padding(9, 10, 9, 7)
+        };
+        var detailLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            Padding = Padding.Empty, Margin = Padding.Empty
+        };
+        detailLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        detailLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 59));
+        detailLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 41));
+        var endpoints = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+        endpoints.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        endpoints.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        endpoints.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        endpoints.Controls.Add(BuildEndpointGroup(0, "Porta A (Lado A)"), 0, 0);
+        endpoints.Controls.Add(BuildEndpointGroup(1, "Porta B (Lado B)"), 1, 0);
+        detailLayout.Controls.Add(endpoints, 0, 0);
+        detailLayout.Controls.Add(BuildConfigurationGroup(), 0, 1);
+        details.Controls.Add(detailLayout);
+        content.Controls.Add(details, 0, 1);
+
+        var logGroup = new GroupBox
+        {
+            Text = "Log de Eventos", Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 9.2f, FontStyle.Bold),
+            Padding = new Padding(9, 9, 9, 7)
+        };
+        var logPane = new Panel { Dock = DockStyle.Fill };
+        var clear = new Button
+        {
+            Text = "Limpar Log", Dock = DockStyle.Right, Width = 105,
+            FlatStyle = FlatStyle.System, Font = new Font("Segoe UI", 8.3f)
+        };
+        clear.Click += (_, _) => _events.Clear();
+        var logActions = new Panel { Dock = DockStyle.Top, Height = 29 };
+        logActions.Controls.Add(clear);
+        _events.Dock = DockStyle.Fill;
+        _events.ReadOnly = true;
+        _events.WordWrap = false;
+        _events.ScrollBars = RichTextBoxScrollBars.Both;
+        _events.BorderStyle = BorderStyle.FixedSingle;
+        _events.Font = new Font("Consolas", 9.1f);
+        _events.BackColor = Color.White;
+        _events.ForeColor = Ink;
+        logPane.Controls.Add(_events);
+        logPane.Controls.Add(logActions);
+        logGroup.Controls.Add(logPane);
+        content.Controls.Add(logGroup, 0, 2);
+        return content;
+    }
+
+    private Control BuildEndpointGroup(int index, string title)
+    {
+        var group = new GroupBox
+        {
+            Text = title, Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 9.0f, FontStyle.Bold),
+            ForeColor = Color.FromArgb(25, 77, 140), Margin = new Padding(3, 2, 7, 2),
+            Padding = new Padding(8, 7, 8, 6)
+        };
+        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4 };
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        foreach (var percent in new float[] { 22, 22, 22, 34 }) grid.RowStyles.Add(new RowStyle(SizeType.Percent, percent));
+        var fields = new[] { _ports[index], _names[index], _hardwareIds[index], _descriptions[index] };
+        var labels = new[] { "Número da Porta:", "Nome Amigável:", "Hardware ID:", "Descrição:" };
+        for (int row = 0; row < 4; row++)
+        {
+            var label = new Label
+            {
+                Text = labels[row], Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 9.1f), ForeColor = Ink, AutoEllipsis = true
+            };
+            var field = fields[row];
+            field.Dock = DockStyle.Fill;
+            field.BorderStyle = BorderStyle.FixedSingle;
+            if (row == 3) { field.Multiline = true; field.WordWrap = true; }
+            field.ReadOnly = true;
+            field.BackColor = Color.White;
+            field.ForeColor = Ink;
+            field.Font = new Font("Segoe UI", 9.0f);
+            field.Margin = new Padding(1, 2, 5, 2);
+            grid.Controls.Add(label, 0, row);
+            grid.Controls.Add(field, 1, row);
+        }
+        group.Controls.Add(grid);
+        return group;
+    }
+
+    private Control BuildConfigurationGroup()
+    {
+        var group = new GroupBox
+        {
+            Text = "Configurações do Par", Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 9.1f, FontStyle.Bold),
+            Padding = new Padding(10, 8, 10, 7),
+            Margin = new Padding(3, 4, 7, 2)
+        };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        var top = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = false, WrapContents = false };
+        var emulationLabel = new Label
+        {
+            Text = "Modo de Emulação:", AutoSize = true, Padding = new Padding(0, 6, 6, 0),
+            Font = new Font("Segoe UI", 9.0f)
+        };
+        var mode = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList, Width = 290, Enabled = false,
+            Font = new Font("Segoe UI", 9f)
+        };
+        mode.Items.Add("Null-modem pair (conexão cruzada)");
+        mode.SelectedIndex = 0;
+        var advanced = new Button
+        {
+            Text = "Configurações Avançadas...", Width = 185, Height = 27,
+            Margin = new Padding(14, 0, 0, 0), Font = new Font("Segoe UI", 8.6f)
+        };
+        advanced.Click += (_, _) => MessageBox.Show(this,
+            "O driver LabSerial atual oferece apenas o par COM210 ↔ COM211 e transmissão serial básica.\r\n\r\n" +
+            "Configurações avançadas de handshake, mapeamento dinâmico e sinais ainda não estão disponíveis.",
+            "Configurações do driver (somente leitura)", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        top.Controls.Add(emulationLabel);
+        top.Controls.Add(mode);
+        top.Controls.Add(advanced);
+
+        var bottom = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false, AutoScroll = false, Padding = new Padding(0, 0, 0, 0)
+        };
+        var startup = new CheckBox { Text = "Iniciar com o Windows", Enabled = false, AutoSize = true, Margin = new Padding(3, 3, 17, 0) };
+        var logging = new CheckBox
+        {
+            Text = "Log de testes (local)", Checked = true, Enabled = false, AutoSize = true,
+            Margin = new Padding(3, 3, 17, 0)
+        };
+        var auto = new CheckBox
+        {
+            Text = "Criar portas automaticamente", Enabled = false, AutoSize = true,
+            Margin = new Padding(3, 3, 17, 0)
+        };
+        bottom.Controls.Add(startup);
+        bottom.Controls.Add(logging);
+        bottom.Controls.Add(auto);
+        layout.Controls.Add(top, 0, 0);
+        layout.Controls.Add(bottom, 0, 1);
+        group.Controls.Add(layout);
+        return group;
+    }
+
+    private Control BuildStatus()
+    {
+        var strip = new StatusStrip { Dock = DockStyle.Fill, SizingGrip = false, BackColor = Surface };
+        _pairCount.Text = "1 par configurado";
+        _pairCount.BorderSides = ToolStripStatusLabelBorderSides.Right;
+        _state.Spring = true;
+        _state.TextAlign = ContentAlignment.MiddleLeft;
+        _state.Text = "LabSerial Virtual Serial Port Driver (Experimental)";
+        _deviceManager.Text = "Abrir Gerenciador de Dispositivos...";
+        _deviceManager.ToolTipText = "Abrir o Gerenciador de Dispositivos do Windows";
+        _deviceManager.IsLink = true;
+        _deviceManager.LinkColor = AccentBlue;
+        _deviceManager.Click += (_, _) =>
+            Process.Start(new ProcessStartInfo("devmgmt.msc") { UseShellExecute = true });
+        _connection.Text = "COM210 ↔ COM211 | aguardando";
+        strip.Items.Add(_pairCount);
+        strip.Items.Add(_state);
+        strip.Items.Add(_connection);
+        strip.Items.Add(_deviceManager);
+        strip.SizeChanged += (_, _) =>
+        {
+            // On narrow laptops prioritize the working Device Manager action;
+            // the COM mapping remains visible in the list/table and its tooltip.
+            _connection.Visible = strip.ClientSize.Width >= 1020;
+        };
+        return strip;
+    }
+
+    private async Task RefreshInventoryAsync()
+    {
+        if (_busy) return;
+        _state.Text = "Consultando Windows...";
+        try
+        {
+            _snapshot = await Task.Run(LabSerialInventory.Read);
+            _pairs.SuspendLayout();
+            try
+            {
+                _pairs.Rows.Clear();
+                if (_showPair)
+                {
+                    var s = _snapshot;
+                    int row = _pairs.Rows.Add("0", "COM210", "COM211",
+                        s.Ready ? "Ativo" : "Verificação pendente",
+                        "LabSerial (Experimental)", "Não disponível");
+                    _pairs.Rows[row].Tag = s;
+                    _pairs.Rows[row].Selected = true;
+                }
+            }
+            finally { _pairs.ResumeLayout(); }
+            _pairCount.Text = _showPair ? "1 par configurado" : "0 pares configurados";
+            _summary.Text = _snapshot.Ready
+                ? "Par COM210 ↔ COM211 reconhecido. Nenhum outro dispositivo será aberto."
+                : "Identidade ou estado não confirmado. Testes bloqueados.";
+            _connection.Text = _snapshot.Ready ? "COM210 ↔ COM211 | OK" : "COM210 ↔ COM211 | indisponível";
+            _state.Text = _snapshot.Status;
+            UpdateProperties();
+            WriteLog("Inventário: " + _snapshot.Status);
+        }
+        catch (Exception e)
+        {
+            // Fail closed: a stale successful inventory must never enable any COM I/O.
+            _snapshot = null;
+            _pairs.Rows.Clear();
+            UpdateProperties();
+            _pairCount.Text = "0 pares confirmados";
+            _summary.Text = "Falha de inventário: testes bloqueados até nova verificação.";
+            _state.Text = "Falha no inventário";
+            _connection.Text = "Não verificado";
+            WriteLog("ERRO AO INVENTARIAR: " + e.Message);
+        }
+        UpdateButtons();
+    }
+
+    private void UpdateProperties()
+    {
+        var s = _snapshot;
+        if (s == null)
+        {
+            foreach (var field in _ports.Concat(_names).Concat(_hardwareIds).Concat(_descriptions))
+                field.Text = "";
+            return;
+        }
+        var endpoints = new[] { s.A, s.B };
+        for (int n = 0; n < 2; n++)
+        {
+            var ep = endpoints[n];
+            _ports[n].Text = ep.Port;
+            _names[n].Text = "LabSerial " + ep.Label;
+            _hardwareIds[n].Text = ep.HardwareId;
+            _descriptions[n].Text = ep.FriendlyName.Replace(" (EXPERIMENTAL)", Environment.NewLine + "(EXPERIMENTAL)");
+            var tooltip = new ToolTip();
+            tooltip.SetToolTip(_descriptions[n], ep.FriendlyName);
+            tooltip.SetToolTip(_hardwareIds[n], ep.HardwareId);
+        }
+        _profile.Text = $"Perfil de teste: {_selectedBaudRate} baud, 8N1, Handshake.None.";
+    }
+
+    private void UpdateButtons()
+    {
+        bool visible = _showPair && _pairs.Rows.Count > 0;
+        bool ready = visible && _snapshot?.Ready == true;
+        _btnAdd.Enabled = !_busy && _snapshot?.Ready == true;
+        _btnRemove.Enabled = !_busy && visible;
+        _btnProperties.Enabled = !_busy && visible;
+        _btnApply.Enabled = !_busy && visible;
+        _btnProfile.Enabled = !_busy && ready;
+        _btnWin32.Enabled = !_busy && ready;
+        _btnNet.Enabled = !_busy && ready;
+    }
+
+    private void AddPair()
+    {
+        if (_busy) return;
+        if (_snapshot?.Ready != true)
+        {
+            MessageBox.Show(this, "O par LabSerial ainda não foi identificado com segurança. Atualize o inventário.",
+                "Adicionar par existente", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var form = new Form
+        {
+            Text = "LabSerial — Adicionar Par de Portas", StartPosition = FormStartPosition.CenterParent,
+            ClientSize = new Size(465, 475), MinimumSize = new Size(465, 475),
+            FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
+            BackColor = Surface, Font = new Font("Segoe UI", 9f)
+        };
+        var title = new Label
+        {
+            Text = "Adicionar Par de Portas", Location = new Point(18, 15),
+            AutoSize = true, Font = new Font("Segoe UI", 12f, FontStyle.Bold)
+        };
+        form.Controls.Add(title);
+
+        var pair = new GroupBox { Text = "Números das Portas", Location = new Point(18, 52), Size = new Size(427, 101) };
+        var aPort = new ComboBox { Location = new Point(19, 43), Width = 158, DropDownStyle = ComboBoxStyle.DropDownList, Enabled = false };
+        aPort.Items.Add("COM210"); aPort.SelectedIndex = 0;
+        var bPort = new ComboBox { Location = new Point(248, 43), Width = 158, DropDownStyle = ComboBoxStyle.DropDownList, Enabled = false };
+        bPort.Items.Add("COM211"); bPort.SelectedIndex = 0;
+        pair.Controls.Add(new Label { Text = "Porta A:", Location = new Point(19, 23), AutoSize = true });
+        pair.Controls.Add(new Label { Text = "Porta B:", Location = new Point(248, 23), AutoSize = true });
+        pair.Controls.Add(new Label { Text = "↔", Location = new Point(200, 43), AutoSize = true, Font = new Font("Segoe UI", 13, FontStyle.Bold) });
+        pair.Controls.AddRange(new Control[] { aPort, bPort });
+        form.Controls.Add(pair);
+
+        var names = new GroupBox { Text = "Nomes Amigáveis (somente leitura)", Location = new Point(18, 167), Size = new Size(427, 95) };
+        names.Controls.Add(new Label { Text = "LabSerial A", Location = new Point(20, 29), AutoSize = true });
+        names.Controls.Add(new Label { Text = "LabSerial B", Location = new Point(247, 29), AutoSize = true });
+        names.Controls.Add(new TextBox { Text = "LabSerial A", ReadOnly = true, BackColor = Color.White, Location = new Point(20, 50), Width = 170 });
+        names.Controls.Add(new TextBox { Text = "LabSerial B", ReadOnly = true, BackColor = Color.White, Location = new Point(247, 50), Width = 160 });
+        form.Controls.Add(names);
+
+        var mode = new GroupBox { Text = "Modo de Emulação", Location = new Point(18, 275), Size = new Size(427, 60) };
+        var fixedMode = new ComboBox { Location = new Point(18, 24), Width = 379, Enabled = false, DropDownStyle = ComboBoxStyle.DropDownList };
+        fixedMode.Items.Add("Null-modem pair (conexão cruzada)"); fixedMode.SelectedIndex = 0;
+        mode.Controls.Add(fixedMode);
+        form.Controls.Add(mode);
+
+        var note = new Label
+        {
+            Location = new Point(22, 344), Size = new Size(419, 60),
+            Text = _showPair
+                ? "COM210 ↔ COM211 já está visível. O driver não oferece criação dinâmica de novos pares."
+                : "O par COM210 ↔ COM211 já existe no Windows; esta operação só o restaura à lista visual.",
+            ForeColor = Muted
+        };
+        form.Controls.Add(note);
+        var confirm = new Button
+        {
+            Text = "Exibir par existente", Location = new Point(198, 419), Size = new Size(145, 31),
+            DialogResult = DialogResult.OK, Enabled = !_showPair
+        };
+        var cancel = new Button { Text = "Cancelar", Location = new Point(353, 419), Size = new Size(92, 31), DialogResult = DialogResult.Cancel };
+        form.Controls.AddRange(new Control[] { confirm, cancel });
+        form.AcceptButton = confirm;
+        form.CancelButton = cancel;
+        if (form.ShowDialog(this) != DialogResult.OK || _showPair) return;
+
+        _showPair = true;
+        WriteLog("Par existente restaurado à lista. Nenhum dispositivo PnP alterado.");
+        _ = RefreshInventoryAsync();
+    }
+
+    private void RemovePair()
+    {
+        if (_busy || !_showPair) return;
+        if (MessageBox.Show(this,
+            "Remover COM210 ↔ COM211 apenas da lista desta interface?\r\n\r\n" +
+            "O driver, as portas e as instâncias Windows permanecerão instalados e funcionando.",
+            "Remover da lista (não desinstala)", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+            != DialogResult.Yes) return;
+        _showPair = false;
+        _pairs.Rows.Clear();
+        _pairCount.Text = "0 pares configurados";
+        _summary.Text = "Par oculto apenas nesta sessão. Clique Adicionar Par para restaurar.";
+        foreach (var field in _ports.Concat(_names).Concat(_hardwareIds).Concat(_descriptions)) field.Text = "";
+        WriteLog("Par removido da lista visual. Nenhuma alteração no Windows.");
+        UpdateButtons();
+    }
+
+    private void OpenProperties()
+    {
+        if (_busy || !_showPair || _snapshot is null) return;
+        using var form = new Form
+        {
+            Text = "LabSerial — Propriedades do par", StartPosition = FormStartPosition.CenterParent,
+            ClientSize = new Size(480, 286), MinimumSize = new Size(480, 286),
+            FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
+            Font = new Font("Segoe UI", 9.5f)
+        };
+        var label = new Label
+        {
+            Text = "Par existente: COM210 ↔ COM211\r\nServiço: LabSerial | Hardware: ROOT\\LABSERIAL_VCOM_A/B\r\n\r\n" +
+                   "Velocidade para o teste de perfil (8N1 / Handshake.None):",
+            Location = new Point(22, 20), Size = new Size(435, 97)
+        };
+        var baud = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(22, 116), Width = 195
+        };
+        baud.Items.AddRange(new object[] { "9600", "115200" });
+        baud.SelectedItem = _selectedBaudRate.ToString();
+        var note = new Label
+        {
+            Text = "A configuração aplica-se ao próximo teste de comunicação.\r\nNão altera registro, driver ou portas de outros programas.",
+            Location = new Point(22, 161), Size = new Size(440, 46), ForeColor = Muted
+        };
+        var save = new Button { Text = "Aplicar", Location = new Point(244, 230), Size = new Size(100, 31), DialogResult = DialogResult.OK };
+        var cancel = new Button { Text = "Cancelar", Location = new Point(353, 230), Size = new Size(100, 31), DialogResult = DialogResult.Cancel };
+        form.Controls.AddRange(new Control[] { label, baud, note, save, cancel });
+        form.AcceptButton = save;
+        form.CancelButton = cancel;
+        if (form.ShowDialog(this) != DialogResult.OK) return;
+        _selectedBaudRate = int.Parse((string)baud.SelectedItem!);
+        WriteLog($"Perfil de teste aplicado: {_selectedBaudRate} baud / 8N1 / Handshake.None. Driver não modificado.");
+        UpdateProperties();
+    }
+
+    private async Task RunTestAsync(string test, string script, int timeoutSeconds, int? baud = null)
+    {
+        if (_busy) return;
+        await RefreshInventoryAsync(); // Fresh identity check before any COM open.
+        if (_snapshot?.Ready != true || !_showPair)
+        {
+            MessageBox.Show(this, "COM210 e COM211 não passaram na verificação de identidade PnP/SERIALCOMM/QueryDosDevice.",
+                "Teste bloqueado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+        if (!ProbeRunner.IsElevated())
+        {
+            MessageBox.Show(this, "Para executar os testes validados, inicie o SerialLab como administrador no PC de laboratório.",
+                "Permissão necessária", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        _busy = true;
+        _activeTest = new CancellationTokenSource();
+        UpdateButtons();
+        _state.Text = "Executando " + test;
+        WriteLog($"INICIANDO: {test} (máximo {timeoutSeconds}s).");
+        try
+        {
+            ProbeResult result = await ProbeRunner.ExecuteAsync(script, timeoutSeconds, baud, _activeTest.Token);
+            if (!string.IsNullOrWhiteSpace(result.Output)) WriteLog(result.Output.TrimEnd());
+            if (!string.IsNullOrWhiteSpace(result.Error)) WriteLog("ERRO: " + result.Error.TrimEnd());
+            _state.Text = result.Passed ? "PASS — " + test : "FAIL — " + test;
+            WriteLog($"RESULTADO {test}: {(result.Passed ? "PASS" : "FAIL")} (exit {result.ExitCode}).");
+            if (!result.Passed)
+            {
+                MessageBox.Show(this, "O teste não foi aprovado. Consulte o Console e as evidências. Não repita sem analisar a falha.",
+                    "LabSerial — teste FAIL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+        finally
+        {
+            _activeTest.Dispose();
+            _activeTest = null;
+            _busy = false;
+            UpdateButtons();
+        }
+    }
+
+    private void WriteLog(string value)
+    {
+        string line = "[" + DateTime.Now.ToString("HH:mm:ss") + "] " + value;
+        foreach (var segment in line.Replace("\r\n", "\n").Split('\n'))
+        {
+            _events.SelectionStart = _events.TextLength;
+            _events.SelectionLength = 0;
+            _events.SelectionColor = segment.Contains("FAIL", StringComparison.OrdinalIgnoreCase) ||
+                segment.Contains("ERRO", StringComparison.OrdinalIgnoreCase) ? Color.Firebrick :
+                segment.Contains("PASS", StringComparison.OrdinalIgnoreCase) ? Color.ForestGreen :
+                segment.Contains("INICIANDO", StringComparison.OrdinalIgnoreCase) ? AccentBlue : Ink;
+            _events.AppendText(segment + Environment.NewLine);
+        }
+        _events.SelectionColor = Ink;
+        if (_events.TextLength > 400000)
+            _events.Text = _events.Text[^250000..];
+        if (_console is { IsDisposed: false }) _console.Append(line);
+    }
+
+    private void ShowConsole()
+    {
+        if (_console is { IsDisposed: false })
+        {
+            _console.BringToFront();
+            return;
+        }
+        _console = new ConsoleForm(_events.Text);
+        _console.Show(this);
+    }
+
+    private void ExportLog()
+    {
+        using var dialog = new SaveFileDialog { Filter = "Texto (*.txt)|*.txt", FileName = "LabSerial-Eventos.txt" };
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+            File.WriteAllText(dialog.FileName, _events.Text);
+    }
+
+    private void OpenEvidenceFolder()
+    {
+        string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LabSerial-Evidencias");
+        Directory.CreateDirectory(folder);
+        Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { folder }, UseShellExecute = true });
+    }
+
+    private void ShowAbout()
+    {
+        MessageBox.Show(this,
+            "SerialLab v0.1.5\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
+            "Interface de gerenciamento e diagnóstico do par fixo COM210 ↔ COM211.\r\n" +
+            "Faz verificação rigorosa dos dispositivos LabSerial antes de permitir testes.\r\n" +
+            "Não instala drivers, não cria pares PnP e não altera configurações globais.\r\n" +
+            "Distribuição experimental para computadores de laboratório.",
+            "Sobre o SerialLab", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+}
