@@ -340,7 +340,18 @@ function logBufferOverflow(slot: ActiveSlot): void {
 function consumeSerialData(slot: ActiveSlot, chunk: Buffer): void {
   if (sessionId === null || cleanupInFlight || slot.closing || slot.status === "completed") return;
   // latin1 preserves bytes one-to-one, so string length is the byte length.
-  slot.buffer += chunk.toString("latin1");
+  const incoming = chunk.toString("latin1");
+  // Alguns espectrofotômetros enviam CR isolado, mesmo quando o perfil usa LF.
+  // Aceita CR como terminador alternativo sem dividir um CRLF entre dois eventos.
+  if (slot.delimiter === "\\n" && incoming.includes("\\r") && !incoming.includes("\\n")) {
+    // Mantém o buffer até receber mais bytes; somente CR terminal é linha completa.
+    slot.buffer += incoming;
+    if (slot.buffer.endsWith("\\r")) {
+      slot.buffer = slot.buffer.replace(/\\r$/g, "\\n");
+    }
+  } else {
+    slot.buffer += incoming;
+  }
   drainBuffer(slot);
 }
 
