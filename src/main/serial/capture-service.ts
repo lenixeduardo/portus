@@ -70,7 +70,7 @@ function startModbusForSlot(slot: ActiveSlot): void {
     onReading: ({ valueRaw, valueParsed }) => {
       const sid = sessionId;
       const bid = batchId;
-      if (sid === null || bid === null || slot.readingAccepted) return;
+      if (sid === null || bid === null || (eq.singleReadingPerCapture && slot.readingAccepted)) return;
 
       slot.linesReceived++;
       if ((eq.skipFirstReading || skipFirstReadingForSession) && slot.linesReceived === 1) {
@@ -238,7 +238,7 @@ function handleLine(slot: ActiveSlot, line: string): void {
   const raw = line.trim();
   const sid = sessionId;
   const bid = batchId;
-  if (!raw || sid === null || bid === null || slot.status === "completed" || slot.readingAccepted) return;
+  if (!raw || sid === null || bid === null || slot.status === "completed" || (slot.equipment.singleReadingPerCapture && slot.readingAccepted)) return;
 
   slot.linesReceived++;
 
