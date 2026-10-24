@@ -72,8 +72,8 @@ describe('serial capture recovery', () => {
   });
   it('stores only one reading per equipment across distinct serial ports', async () => {
     state.equipments = [
-      equipment({ id: 1, slotIndex: 1, portPath: 'COM1' }),
-      equipment({ id: 2, slotIndex: 2, portPath: 'COM2' })
+      equipment({ id: 1, slotIndex: 1, portPath: 'COM1', singleReadingPerCapture: true }),
+      equipment({ id: 2, slotIndex: 2, portPath: 'COM2', singleReadingPerCapture: true })
     ];
     expect((await startCapture(7, [1, 2], 'qa')).ok).toBe(true);
     send('10\n11\n', state.ports[0]);
@@ -81,6 +81,7 @@ describe('serial capture recovery', () => {
     expect(vi.mocked(insertCentralReading).mock.calls.map(([reading]) => [reading.equipmentId, reading.valueRaw])).toEqual([[1, '10'], [2, '20']]);
   });
   it('ignores repeated simulated readings and accepts a new reading in the next capture', async () => {
+    state.equipments = [equipment({ singleReadingPerCapture: true })];
     expect((await startCapture(7, [1], 'qa', 'PRODUCTION', true)).ok).toBe(true);
     expect(injectManualReading(1, '10').ok).toBe(true);
     expect(injectManualReading(1, '11').ok).toBe(true);
@@ -89,6 +90,12 @@ describe('serial capture recovery', () => {
     expect((await startCapture(7, [1], 'qa', 'PRODUCTION', true)).ok).toBe(true);
     expect(injectManualReading(1, '12').ok).toBe(true);
     expect(values()).toEqual(['10', '12']);
+  });
+  it('records multiple valid readings by default when checkbox is disabled', async () => {
+    state.equipments = [equipment({ singleReadingPerCapture: false })];
+    await begin();
+    send('10\n11\n12\n');
+    expect(values()).toEqual(['10', '11', '12']);
   });
   it('does not consume the reading quota on an invalid parse', async () => {
     state.equipments = [equipment({ parseRegex: '^VAL:(\\d+)$' })];
