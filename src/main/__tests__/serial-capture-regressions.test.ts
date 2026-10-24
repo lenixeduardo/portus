@@ -10,6 +10,7 @@ vi.mock('serialport', () => ({ SerialPort: class extends EventEmitter {
   onClose?: () => void;
   constructor(options: { path: string }) { super(); this.path = options.path; state.ports.push(this); }
   open(cb: (error?: Error) => void) { if (state.failPaths.has(this.path)) cb(new Error('Port unavailable')); else { this.isOpen = true; cb(); } }
+  write(_frame: Buffer, cb: (error?: Error) => void) { cb?.(); }
   close(cb: () => void) { this.onClose?.(); this.isOpen = false; this.emit('close'); cb?.(); }
 } }));
 vi.mock('../db/central-connection', () => ({ isCentralDatabaseConfigured: () => true }));
@@ -20,7 +21,7 @@ vi.mock('../db/capture-error-logs-repo', () => ({ insertCaptureErrorLog: vi.fn(a
 vi.mock('../auth/auth-service', () => ({ getCurrentUser: () => null, logout: vi.fn() }));
 vi.mock('../db/audit-repo', () => ({ logAudit: vi.fn(async () => undefined) }));
 
-import { startCapture, cancelCapture, completeCapture, isActive, getState } from '../serial/capture-service';
+import { startCapture, cancelCapture, completeCapture, isActive, getState, injectManualReading } from '../serial/capture-service';
 import { insertCentralReading } from '../db/central-capture-repo';
 import { insertCaptureErrorLog } from '../db/capture-error-logs-repo';
 
@@ -34,6 +35,41 @@ function values() { return vi.mocked(insertCentralReading).mock.calls.map(([inpu
 describe('serial capture recovery', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); state.ports = []; state.events = []; state.failPaths.clear(); state.equipments = [equipment()]; vi.spyOn(console, 'error').mockImplementation(() => undefined); });
   afterEach(async () => { if (isActive()) await cancelCapture(); vi.useRealTimers(); vi.restoreAllMocks(); });
+  it('shares one COM7 port across two Modbus register slots and keeps it open for the second slot', async () => {
+    state.equipments = [
+      equipment({ id: 7, slotIndex: 1, name: 'PV7', portPath: 'COM7', protocol: 'modbus_rtu', modbusUnitId: 1, modbusFunction: 3, modbusStartAddress: 6, modbusQuantity: 1, modbusPollIntervalMs: 1000, modbusResponseTimeoutMs: 100 }),
+      equipment({ id: 8, slotIndex: 2, name: 'PV8', portPath: 'COM7', protocol: 'modbus_rtu', modbusUnitId: 1, modbusFunction: 3, modbusStartAddress: 7, modbusQuantity: 1, modbusPollIntervalMs: 1000, modbusResponseTimeoutMs: 100 })
+    ];
+    expect((await startCapture(7, [7, 8], 'qa')).ok).toBe(true);
+    expect(state.ports.filter(port => port.path === 'COM7')).toHaveLength(1);
+    expect(getState().slots.map(slot => slot.status)).toEqual(['open', 'open']);
+    await cancelCapture();
+    expect(state.ports[0].isOpen).toBe(false);
+  });
+  it('simulates PV7 and PV8 independently on COM7 while preserving other configured readings', async () => {
+    state.equipments = [
+      equipment({ id: 7, slotIndex: 1, name: 'PV7', portPath: 'COM7', protocol: 'modbus_rtu', modbusUnitId: 1, modbusFunction: 3, modbusStartAddress: 6, modbusQuantity: 1 }),
+      equipment({ id: 8, slotIndex: 2, name: 'PV8', portPath: 'COM7', protocol: 'modbus_rtu', modbusUnitId: 1, modbusFunction: 3, modbusStartAddress: 7, modbusQuantity: 1 }),
+      equipment({ id: 9, slotIndex: 3, name: 'Balanca', portPath: 'COM9', protocol: 'passive' })
+    ];
+    const started = await startCapture(7, [7, 8, 9], 'qa', 'PRODUCTION', true);
+    expect(started.ok).toBe(true);
+    expect(state.ports).toHaveLength(0); // simulação não acessa COM física
+    expect(getState().slots.map(slot => slot.name)).toEqual(['PV7', 'PV8', 'Balanca']);
+    for (const [slotIndex, rawValue] of [[1, '10.00'], [2, '11.25'], [3, '12.50']] as const) {
+      expect(injectManualReading(slotIndex, rawValue).ok).toBe(true);
+    }
+    expect(vi.mocked(insertCentralReading).mock.calls.map(([reading]) => ({
+      equipmentId: reading.equipmentId,
+      equipmentName: reading.equipmentName,
+      valueRaw: reading.valueRaw
+    }))).toEqual([
+      { equipmentId: 7, equipmentName: 'PV7', valueRaw: '10.00' },
+      { equipmentId: 8, equipmentName: 'PV8', valueRaw: '11.25' },
+      { equipmentId: 9, equipmentName: 'Balanca', valueRaw: '12.50' }
+    ]);
+    expect((await completeCapture()).ok).toBe(true);
+  });
   it('captures laboratory readings on a production station under the laboratory sector', async () => {
     expect((await startCapture(7, [1], 'lab', 'LABORATORY')).ok).toBe(true);
     send('10\n');

@@ -111,6 +111,9 @@ export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose
         if (simulatedSlots.length === 0) {
           throw new Error("Nenhum equipamento disponível para a leitura simulada.");
         }
+        // Cada slot recebe uma leitura independente, inclusive quando PV7 e PV8
+        // compartilham a COM7 e apontam para registros Modbus diferentes.
+        // A simulação não abre portas físicas nem substitui os demais equipamentos.
         for (const [index, slot] of simulatedSlots.entries()) {
           if (cancelled) return;
           await new Promise((resolve) => window.setTimeout(resolve, 350));

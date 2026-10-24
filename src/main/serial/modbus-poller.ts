@@ -10,6 +10,9 @@ import {
 } from "./modbus-frame";
 import { applyLinearScale } from "./parse";
 
+// Um barramento Modbus RTU só admite uma transação por vez, mesmo com vários slots.
+const busQueues = new WeakMap<SerialPort, { busy: boolean; waiters: Array<() => void> }>();
+
 export interface ModbusReading {
   // Frame de resposta completo em hex (auditoria do "cru").
   valueRaw: string;
@@ -56,6 +59,25 @@ export function startModbusPolling(
   );
 
   let stopped = false;
+  const bus = busQueues.get(port) ?? { busy: false, waiters: [] as Array<() => void> };
+  busQueues.set(port, bus);
+  let ownsBus = false;
+  function releaseBus(): void {
+    if (!ownsBus) return;
+    ownsBus = false;
+    bus.busy = false;
+    const next = bus.waiters.shift();
+    if (next) queueMicrotask(next);
+  }
+  function acquireBus(): boolean {
+    if (bus.busy) {
+      bus.waiters.push(() => { if (!stopped) pollOnce(); });
+      return false;
+    }
+    bus.busy = true;
+    ownsBus = true;
+    return true;
+  }
   let awaiting = false;
   let buffer = Buffer.alloc(0);
   let timeoutHandle: NodeJS.Timeout | null = null;
@@ -83,6 +105,7 @@ export function startModbusPolling(
   function finishTransaction(): void {
     awaiting = false;
     clearTimeoutHandle();
+    releaseBus();
     const frame = buffer;
     buffer = Buffer.alloc(0);
 
@@ -148,6 +171,7 @@ export function startModbusPolling(
       scheduleNext();
       return;
     }
+    if (!acquireBus()) return;
 
     buffer = Buffer.alloc(0);
     awaiting = true;
@@ -156,6 +180,7 @@ export function startModbusPolling(
       if (err) {
         awaiting = false;
         clearTimeoutHandle();
+        releaseBus();
         cb.onError("modbus_write_error", `Falha ao enviar requisição Modbus: ${err.message}`);
         cb.onStatus("error");
         scheduleNext();
@@ -166,6 +191,7 @@ export function startModbusPolling(
       if (!awaiting) return;
       awaiting = false;
       timeoutHandle = null;
+      releaseBus();
       cb.onError(
         "modbus_timeout",
         `Sem resposta do nó ${equipment.modbusUnitId} em ${equipment.modbusResponseTimeoutMs}ms (slot ${equipment.slotIndex}).`
@@ -182,6 +208,7 @@ export function startModbusPolling(
     stopped = true;
     awaiting = false;
     clearTimeoutHandle();
+    releaseBus();
     if (nextHandle) {
       clearTimeout(nextHandle);
       nextHandle = null;
