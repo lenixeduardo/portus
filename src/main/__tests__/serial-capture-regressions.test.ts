@@ -91,6 +91,15 @@ describe('serial capture recovery', () => {
     expect(injectManualReading(1, '12').ok).toBe(true);
     expect(values()).toEqual(['10', '12']);
   });
+  it('Simular Scan combines Marte MVD-8 readings without a physical COM port', async () => {
+    state.equipments = [equipment({ name: 'Viscosímetro', singleReadingPerCapture: false })];
+    expect((await startCapture(7, [1], 'qa', 'PRODUCTION', true)).ok).toBe(true);
+    for (const line of ['on', '00:00:00 20.8°C', 'SP:L1 30.0RPM', '2.6% 5.151515cP', 'off']) {
+      expect(injectManualReading(1, line).ok).toBe(true);
+    }
+    expect(values()).toEqual(['SP:L1 30.0RPM | 2.6% 5.151515cP']);
+    expect((await completeCapture()).ok).toBe(true);
+  });
   it('assembles Marte MVD-8 spindle and viscosity across serial chunks', async () => {
     state.equipments = [equipment({ name: 'Viscosímetro', parseRegex: '(?<value>\\d+)' })];
     await begin();
