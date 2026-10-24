@@ -58,6 +58,7 @@ interface ActiveSlot {
   // Para slots Modbus: função que interrompe o polling ativo.
   modbusStop?: () => void;
   sharedModbus?: boolean;
+  readingAccepted?: boolean;
 }
 
 // Conecta um slot Modbus aos mesmos mecanismos de persistência/UI/log usados pelo
@@ -69,13 +70,14 @@ function startModbusForSlot(slot: ActiveSlot): void {
     onReading: ({ valueRaw, valueParsed }) => {
       const sid = sessionId;
       const bid = batchId;
-      if (sid === null || bid === null) return;
+      if (sid === null || bid === null || slot.readingAccepted) return;
 
       slot.linesReceived++;
       if ((eq.skipFirstReading || skipFirstReadingForSession) && slot.linesReceived === 1) {
         return;
       }
 
+      slot.readingAccepted = true;
       persistReading({
         batchId: bid,
         equipmentId: eq.id,
@@ -236,7 +238,7 @@ function handleLine(slot: ActiveSlot, line: string): void {
   const raw = line.trim();
   const sid = sessionId;
   const bid = batchId;
-  if (!raw || sid === null || bid === null || slot.status === "completed") return;
+  if (!raw || sid === null || bid === null || slot.status === "completed" || slot.readingAccepted) return;
 
   slot.linesReceived++;
 
@@ -270,6 +272,8 @@ function handleLine(slot: ActiveSlot, line: string): void {
     console.error(`[serial] Regex inválida (slot ${eq.slotIndex}, regex="${eq.parseRegex}")`);
   }
 
+  if (failureReason) return; // leituras inválidas não consomem a cota do slot
+  slot.readingAccepted = true;
   persistReading({
     batchId: bid,
     equipmentId: eq.id,
