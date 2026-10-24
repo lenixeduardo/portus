@@ -725,7 +725,7 @@ function BatchRow({
           <div className="batch-row-readings" aria-label="Últimas leituras do lote">
             <span>Últimas leituras</span>
             <div>
-              {batch.readingPreviews.slice(0, 3).map((reading, index) => (
+              {batch.readingPreviews.map((reading, index) => (
                 <small key={`${reading.sectorCode}-${reading.equipmentName}-${reading.capturedAt}-${index}`}>
                   {reading.sectorCode === "LABORATORY" ? "LAB" : "PROD"} · {formatRecentReadingEquipmentName(reading.equipmentName)} <strong>{reading.value}</strong>
                 </small>
