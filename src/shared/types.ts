@@ -59,6 +59,7 @@ export interface Equipment {
   lineDelimiter: LineDelimiter;
   skipFirstReading: boolean;
   stopAfterFirstReading: boolean;
+  singleReadingPerCapture?: boolean;
   protocol: EquipmentProtocol;
   modbusUnitId: number;
   modbusFunction: ModbusFunction;
