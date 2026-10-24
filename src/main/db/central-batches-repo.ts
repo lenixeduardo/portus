@@ -106,7 +106,7 @@ const SELECT_BATCH = `
          COALESCE((
            SELECT json_agg(preview ORDER BY preview."capturedAt" DESC)
              FROM (
-               SELECT COALESCE(s.code, 'PRODUCTION') AS "sectorCode",
+               SELECT DISTINCT ON (r.equipment_id) COALESCE(s.code, 'PRODUCTION') AS "sectorCode",
                       COALESCE(NULLIF(trim((
                         SELECT p.config->>'name'
                           FROM portus_station_equipment_profiles p
@@ -121,7 +121,7 @@ const SELECT_BATCH = `
                  JOIN equipments e ON e.id = r.equipment_id
                  LEFT JOIN stations st ON st.id = cs.station_id
                 WHERE r.batch_id = b.id
-                ORDER BY r.captured_at DESC
+                ORDER BY r.equipment_id, r.captured_at DESC, r.id DESC
              ) preview
          ), '[]'::json) AS reading_previews
     FROM batches b
