@@ -10,6 +10,7 @@ vi.mock('serialport', () => ({ SerialPort: class extends EventEmitter {
   onClose?: () => void;
   constructor(options: { path: string }) { super(); this.path = options.path; state.ports.push(this); }
   open(cb: (error?: Error) => void) { if (state.failPaths.has(this.path)) cb(new Error('Port unavailable')); else { this.isOpen = true; cb(); } }
+  write(_frame: Buffer, cb: (error?: Error) => void) { cb?.(); }
   close(cb: () => void) { this.onClose?.(); this.isOpen = false; this.emit('close'); cb?.(); }
 } }));
 vi.mock('../db/central-connection', () => ({ isCentralDatabaseConfigured: () => true }));
@@ -34,6 +35,17 @@ function values() { return vi.mocked(insertCentralReading).mock.calls.map(([inpu
 describe('serial capture recovery', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); state.ports = []; state.events = []; state.failPaths.clear(); state.equipments = [equipment()]; vi.spyOn(console, 'error').mockImplementation(() => undefined); });
   afterEach(async () => { if (isActive()) await cancelCapture(); vi.useRealTimers(); vi.restoreAllMocks(); });
+  it('shares one COM7 port across two Modbus register slots and keeps it open for the second slot', async () => {
+    state.equipments = [
+      equipment({ id: 7, slotIndex: 1, name: 'PV7', portPath: 'COM7', protocol: 'modbus_rtu', modbusUnitId: 1, modbusFunction: 3, modbusStartAddress: 6, modbusQuantity: 1, modbusPollIntervalMs: 1000, modbusResponseTimeoutMs: 100 }),
+      equipment({ id: 8, slotIndex: 2, name: 'PV8', portPath: 'COM7', protocol: 'modbus_rtu', modbusUnitId: 1, modbusFunction: 3, modbusStartAddress: 7, modbusQuantity: 1, modbusPollIntervalMs: 1000, modbusResponseTimeoutMs: 100 })
+    ];
+    expect((await startCapture(7, [7, 8], 'qa')).ok).toBe(true);
+    expect(state.ports.filter(port => port.path === 'COM7')).toHaveLength(1);
+    expect(getState().slots.map(slot => slot.status)).toEqual(['open', 'open']);
+    await cancelCapture();
+    expect(state.ports[0].isOpen).toBe(false);
+  });
   it('captures laboratory readings on a production station under the laboratory sector', async () => {
     expect((await startCapture(7, [1], 'lab', 'LABORATORY')).ok).toBe(true);
     send('10\n');
