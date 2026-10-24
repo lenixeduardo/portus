@@ -54,7 +54,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'WinForms publish failed' }
           $output = "$root/publish"
           foreach ($path in @(
-            'LabSerial.Setup.exe',
+            'SerialLab.exe',
             'Scripts/Run-LabSerialProfileProbe.ps1',
             'Scripts/Run-LabSerialEvidenceBounded.ps1',
             'Scripts/Evidence-LabSerialTransfer.ps1',
@@ -66,7 +66,7 @@ jobs:
             }
           }
           $checks = [ordered]@{
-            product = 'LabSerial Setup'
+            product = 'SerialLab'
             type = 'Experimental WinForms user-mode manager (NO DRIVER)'
             build = $env:GITHUB_SHA
             production_approved = $false
@@ -84,7 +84,7 @@ jobs:
         run: |
           # WinExe GUI subsystem launches nonblocking from PowerShell with no LASTEXITCODE.
           # Use an explicit Process watchdog and query the completed exit code.
-          $exe = (Resolve-Path "virtual-serial/standalone-driver/manager/publish/LabSerial.Setup.exe").Path
+          $exe = (Resolve-Path "virtual-serial/standalone-driver/manager/publish/SerialLab.exe").Path
           $report = Join-Path $env:TEMP 'LabSerial-Setup-selftest.txt'
           Remove-Item -LiteralPath $report -ErrorAction SilentlyContinue
           $psi = [System.Diagnostics.ProcessStartInfo]::new()
@@ -136,7 +136,7 @@ jobs:
           if (-not $iscc) { throw 'ISCC.exe was not found' }
           & $iscc "virtual-serial/standalone-driver/manager/LabSerialSetup.iss"
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installer compilation failed' }
-          $installer = "virtual-serial/standalone-driver/manager/dist/LabSerial-Setup-Windows-x64-Experimental.exe"
+          $installer = "virtual-serial/standalone-driver/manager/dist/SerialLab-Setup-v0.1.5-Windows-x64.exe"
           if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) { throw 'Installer EXE missing' }
           Get-FileHash -LiteralPath $installer -Algorithm SHA256
       - uses: actions/upload-artifact@v4
@@ -148,6 +148,6 @@ jobs:
             LabSerial-Setup-selftest.png
             LabSerial-Setup-selftest-compact.png
             LabSerial-Setup-selftest.txt
-            virtual-serial/standalone-driver/manager/dist/LabSerial-Setup-Windows-x64-Experimental.exe
+            virtual-serial/standalone-driver/manager/dist/SerialLab-Setup-v0.1.5-Windows-x64.exe
           if-no-files-found: error
           retention-days: 15

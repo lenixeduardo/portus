@@ -49,7 +49,7 @@ internal sealed class MainForm : Form
 
     internal MainForm()
     {
-        Text = "LabSerial Setup";
+        Text = "SerialLab";
         Icon = LabSerialBrand.MakeIcon();
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1000, 695);
@@ -124,7 +124,7 @@ internal sealed class MainForm : Form
         tools.DropDownItems.Add("Cancelar teste ativo", null, (_, _) => _activeTest?.Cancel());
 
         var help = new ToolStripMenuItem("Ajuda");
-        help.DropDownItems.Add("Sobre o LabSerial Setup", null, (_, _) => ShowAbout());
+        help.DropDownItems.Add("Sobre o SerialLab", null, (_, _) => ShowAbout());
 
         menu.Items.AddRange(new ToolStripItem[] { arquivo, acao, exibir, tools, help });
         return menu;
@@ -205,7 +205,7 @@ internal sealed class MainForm : Form
         header.Controls.Add(new Panel { Dock = DockStyle.Left, Width = 5, BackColor = Accent });
         var name = new Label
         {
-            Text = "LabSerial Setup", Font = new Font("Segoe UI Semibold", 18f, FontStyle.Bold),
+            Text = "SerialLab", Font = new Font("Segoe UI Semibold", 18f, FontStyle.Bold),
             ForeColor = Color.White, AutoSize = true, Location = new Point(24, 13)
         };
         var sub = new Label
@@ -742,18 +742,10 @@ internal sealed class MainForm : Form
         }
         if (!ProbeRunner.IsElevated())
         {
-            MessageBox.Show(this, "Para executar os testes validados, inicie o LabSerial Setup como administrador no PC de laboratório.",
+            MessageBox.Show(this, "Para executar os testes validados, inicie o SerialLab como administrador no PC de laboratório.",
                 "Permissão necessária", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        if (MessageBox.Show(this,
-            "CONFIRMAÇÃO — TESTE REAL DE DRIVER DE KERNEL\r\n\r\n" +
-            $"Operação: {test}\r\nPortas: COM210 ↔ COM211\r\n" +
-            "Este computador é dedicado a testes, possui backup recuperável e acesso físico ao console?\r\n\r\n" +
-            "O watchdog encerra o processo do teste, mas NÃO evita BSOD ou falhas do kernel.",
-            "Autorizar comunicação real", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
-            MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
-
         _busy = true;
         _activeTest = new CancellationTokenSource();
         UpdateButtons();
@@ -828,11 +820,11 @@ internal sealed class MainForm : Form
     private void ShowAbout()
     {
         MessageBox.Show(this,
-            "LabSerial Setup v0.1.4\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
+            "SerialLab v0.1.5\r\nWindows Forms / .NET 8 — Windows x64\r\n\r\n" +
             "Interface de gerenciamento e diagnóstico do par fixo COM210 ↔ COM211.\r\n" +
             "Faz verificação rigorosa dos dispositivos LabSerial antes de permitir testes.\r\n" +
             "Não instala drivers, não cria pares PnP e não altera configurações globais.\r\n" +
             "Distribuição experimental para computadores de laboratório.",
-            "Sobre o LabSerial Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "Sobre o SerialLab", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 }

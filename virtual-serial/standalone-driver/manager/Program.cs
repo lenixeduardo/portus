@@ -132,7 +132,7 @@ internal static class Program
 
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += (_, e) =>
-            MessageBox.Show(e.Exception.Message, "LabSerial Setup — erro",
+            MessageBox.Show(e.Exception.Message, "SerialLab — erro",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         Application.Run(new MainForm());
     }

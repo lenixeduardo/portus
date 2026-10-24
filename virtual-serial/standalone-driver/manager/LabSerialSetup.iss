@@ -1,16 +1,16 @@
-#define AppName "LabSerial Setup"
-#define AppVersion "0.1.4"
-#define AppExeName "LabSerial.Setup.exe"
+#define AppName "SerialLab"
+#define AppVersion "0.1.5"
+#define AppExeName "SerialLab.exe"
 [Setup]
 AppId={{D4C39022-EC70-4A9D-AEB4-FBEEFC572C5A}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=LabSerial Development
-DefaultDirName={localappdata}\Programs\LabSerial Setup
-DefaultGroupName=LabSerial Setup
+DefaultDirName={localappdata}\Programs\SerialLab
+DefaultGroupName=SerialLab
 UninstallDisplayIcon={app}\{#AppExeName}
 OutputDir=dist
-OutputBaseFilename=LabSerial-Setup-Windows-x64-Experimental
+OutputBaseFilename=SerialLab-Setup-v0.1.5-Windows-x64
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
@@ -18,21 +18,16 @@ PrivilegesRequired=lowest
 WizardStyle=modern
 DisableProgramGroupPage=yes
 SetupLogging=yes
+SetupIconFile=SerialLab.ico
 [Files]
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+[InstallDelete]
+Type: files; Name: "{autoprograms}\LabSerial Setup.lnk"
+Type: files; Name: "{autodesktop}\LabSerial Setup.lnk"
 [Icons]
-Name: "{autoprograms}\LabSerial Setup"; Filename: "{app}\{#AppExeName}"
-Name: "{autodesktop}\LabSerial Setup"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\SerialLab"; Filename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\SerialLab"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; GroupDescription: "Atalhos:"
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Abrir LabSerial Setup"; Flags: nowait postinstall skipifsilent
-[Code]
-function InitializeSetup(): Boolean;
-begin
-  Result := MsgBox(
-    'LabSerial Setup é experimental, não instala nem assina drivers e só testa o par COM210/COM211 pré-existente.' + #13#10 + #13#10 +
-    'Execução real de testes exige PC de laboratório com backup e acesso físico à recuperação.' + #13#10 + #13#10 +
-    'Continuar com a instalação da interface de gerenciamento?',
-    mbConfirmation, MB_YESNO) = IDYES;
-end;
+Filename: "{app}\{#AppExeName}"; Description: "Abrir SerialLab"; Flags: nowait postinstall skipifsilent
