@@ -33,7 +33,7 @@ function formatDate(value?: string): string {
 
 function sectorLabel(code?: CaptureSessionRecord["sectorCode"]): string {
   if (code === "LABORATORY") return "Laboratório";
-  if (code === "PRODUCTION") return "Produção";
+  if (code === "PRODUCTION") return "Caramelo";
   return "—";
 }
 
@@ -171,7 +171,7 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
   const closedBy = actorFor(history, ["BATCH_FINALIZED", "BATCH_CLOSED", "MASTER_BATCH_CLOSED"]);
   const body = rows.map((row) => `
     <tr>
-      <td>${esc(row.station)}</td>
+      <td>${esc(row.sector)}</td>
       <td class="mono">${esc(row.login)}</td>
       <td class="equipment-name"><span>${esc(row.event)}</span></td>
       <td class="mono">${esc(row.result)}</td>
@@ -244,7 +244,7 @@ window.addEventListener("resize", fitEquipmentNames);
 <table>
   <thead>
     <tr>
-      <th style="width:16%">Computador</th>
+      <th style="width:16%">Setor</th>
       <th style="width:13%">Login</th>
       <th style="width:39%">Equipamento</th>
       <th style="width:12%">Valor</th>
