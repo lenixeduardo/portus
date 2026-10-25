@@ -40,12 +40,12 @@ describe("exportação unificada de leituras", () => {
     expect(csv).toContain("Laboratório;Maria Analista;laboratorio;LABORATORIO-01;pH;;7,2;7,2");
   });
 
-  it("gera folha cronológica com login e computador de cada leitura", () => {
+  it("gera folha cronológica com login e setor de cada leitura", () => {
     const history = sampleHistory();
     const rows = buildTraceabilityRows(history);
     expect(rows.map((row) => row.event)).toEqual(["Lote aberto", "Balança", "pH", "Lote concluído"]);
     expect(rows[1]).toMatchObject({
-      sector: "Produção",
+      sector: "Caramelo",
       responsible: "João Operador",
       login: "producao",
       station: "PRODUCAO-01",
@@ -56,8 +56,10 @@ describe("exportação unificada de leituras", () => {
     expect(html).toContain("RELATÓRIO DO LOTE");
     expect(html).toContain("Equipamento");
     expect(html).toContain("Login");
-    expect(html).toContain("Computador");
-    expect(html).toContain("LABORATORIO-01");
+    expect(html).toContain(">Setor</th>");
+    expect(html).toContain(">Caramelo</td>");
+    expect(html).toContain(">Laboratório</td>");
+    expect(html).not.toContain(">Computador</th>");
   });
 
   it("usa a cor atual do tema como padrão do código de barras", () => {
