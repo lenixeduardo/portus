@@ -2,6 +2,7 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '120s';
 LOCK TABLE batches, products, users, capture_sessions, readings IN SHARE ROW EXCLUSIVE MODE;
+SELECT set_config('portus.clear_history', :'clear_history', true);
 CREATE TEMP TABLE selected_test_batches(id BIGINT PRIMARY KEY) ON COMMIT DROP;
 CREATE TEMP TABLE selected_test_products(id BIGINT PRIMARY KEY) ON COMMIT DROP;
 CREATE TEMP TABLE selected_test_users(id BIGINT PRIMARY KEY) ON COMMIT DROP;
@@ -24,7 +25,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM batches b JOIN selected_test_products p ON p.id=b.product_id LEFT JOIN selected_test_batches s ON s.id=b.id WHERE s.id IS NULL) THEN
     RAISE EXCEPTION 'Produto selecionado possui lote nao selecionado. Selecione o lote tambem.';
   END IF;
-  IF :'clear_history' = 'true' AND EXISTS (SELECT 1 FROM capture_sessions WHERE status='active') THEN
+  IF current_setting('portus.clear_history') = 'true' AND EXISTS (SELECT 1 FROM capture_sessions WHERE status='active') THEN
     RAISE EXCEPTION 'Nao e permitido limpar historicos enquanto houver capturas ativas.';
   END IF;
 END;
