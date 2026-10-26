@@ -55,30 +55,16 @@ export function registerLogHandlers(): void {
       }
 
       if (!filePath) return { ok: false, error: "Não foi possível gerar o anexo de logs." };
-      if (!process.env.PORTUS_SMTP_HOST || !process.env.PORTUS_SMTP_USER || !process.env.PORTUS_SMTP_PASSWORD || !process.env.PORTUS_SMTP_FROM) {
-        return { ok: false, error: "SMTP não configurado. Relatório salvo em: " + filePath };
-      }
       try {
-        const nodemailer = require("nodemailer");
-        const port = Number(process.env.PORTUS_SMTP_PORT ?? "587");
-        const transport = nodemailer.createTransport({
-          host: process.env.PORTUS_SMTP_HOST, port, secure: port === 465,
-          auth: { user: process.env.PORTUS_SMTP_USER, pass: process.env.PORTUS_SMTP_PASSWORD },
-          connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
-        });
-        try {
-          await transport.sendMail({
-            from: process.env.PORTUS_SMTP_FROM,
-            to: "lenix.camargo@gmail.com",
-            subject: "[PORTUS] Reportar Erro - " + timestamp,
-            text: "Relatório de erro enviado pela estação " + os.hostname() + ".\\n\\n" + description + "\\n\\nConsulte o log completo anexado.",
-            attachments: [{ filename: "portus-error-" + timestamp.replace(/[:.]/g, "-") + ".txt", path: filePath }]
-          });
-        } finally { transport.close(); }
+        const { centralQuery } = await import("../db/central-connection");
+        await centralQuery(
+          "INSERT INTO portus_error_report_queue (station_name, description, attachment_name, attachment_text) VALUES ($1, $2, $3, $4)",
+          [os.hostname(), description, "portus-error-" + timestamp.replace(/[:.]/g, "-") + ".txt", reportText]
+        );
       } catch (error) {
-        return { ok: false, error: "Falha ao enviar e-mail SMTP: " + (error instanceof Error ? error.message : String(error)) + ". Relatório salvo em: " + filePath };
+        return { ok: false, error: "Não foi possível colocar o relatório na fila central: " + (error instanceof Error ? error.message : String(error)) + ". Arquivo local: " + filePath };
       }
-      const sent = true;
+      const sent = false;
       return { ok: true, data: { sent, filePath } };
     })
   );
