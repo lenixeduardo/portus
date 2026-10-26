@@ -273,7 +273,7 @@ $adminButton = Make-Action "Inserir admin" 885
 $adminButton.Image = New-PortusGlyph "user" 24 "brandMuted"
 $dataImportButton = Make-Action "Migrar dados" 49 $false 560
 $dataImportButton.Image = New-PortusGlyph "database" 24 "brandMuted"
-$cleanupButton = Make-Action "Limpar dados de teste" 467 $false 560
+$cleanupButton = Make-Action "Limpar dados cadastrados" 467 $false 560
 $cleanupButton.Image = New-PortusGlyph "database" 24 "brandMuted"
 $diagnoseButton = Make-Action "Detectar PostgreSQL" 258 $false 560
 
@@ -313,7 +313,7 @@ $actionToolTip.SetToolTip($registerButton, "Registra o servidor da primeira inst
 $actionToolTip.SetToolTip($adminButton, "Desenvolvimento local: cria admin e redefine explicitamente a senha existente para admin.")
 $actionToolTip.SetToolTip($dataImportButton, "Importa dados históricos do SQLite para PostgreSQL, após backups e validação de estação/setor.")
 $actionToolTip.SetToolTip($passField, "Senha lembrada para esta conexao, protegida pelo usuario Windows. Para esquecer, apague o campo e feche o utilitario.")
-$actionToolTip.SetToolTip($cleanupButton, "Seleciona lotes de teste e remove seus dados relacionados, com backup obrigatorio.")
+$actionToolTip.SetToolTip($cleanupButton, "Seleciona lotes, usuarios, produtos e historicos, com backup obrigatorio.")
 $actionToolTip.SetToolTip($diagnoseButton, "Detecta instalacoes, ferramentas e servicos PostgreSQL neste computador, sem alterar dados.")
 
 # Status card.
@@ -691,8 +691,8 @@ $timer.Add_Tick({
         elseif ($script:action -eq "register") { "IP inicial do servidor registrado. Verifique a rede." }
         elseif ($script:action -eq "seed-admin") { "Conta Master local configurada. Login admin/admin disponível." }
         elseif ($script:action -eq "import-legacy") { "Dados históricos importados e conciliados. Backups preservados." }
-        elseif ($script:action -eq "cleanup-preview") { "Selecione os lotes de teste na previa." }
-        elseif ($script:action -eq "cleanup-test-data") { "Dados dos lotes de teste selecionados removidos. Backup preservado." }
+        elseif ($script:action -eq "cleanup-preview") { "Revise os registros preselecionados na previa." }
+        elseif ($script:action -eq "cleanup-test-data") { "Registros selecionados removidos. Backup preservado." }
         else { "Verificacao de IP e rede concluida." }
       $status.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#166534")
       $statusDot.ForeColor = UiColor "success"
@@ -714,8 +714,8 @@ $timer.Add_Tick({
         if ($code -eq 0) {
           $preview = Get-Content -LiteralPath $script:cleanupPreviewFile -Raw -Encoding UTF8 | ConvertFrom-Json
           $target = "$($hostField.Text.Trim()):$($portField.Text.Trim())/$($dbField.Text.Trim())"
-          $script:cleanupBatchIds = Show-PortusTestCleanupDialog -Owner $form -Preview $preview -Target $target
-          if ($script:cleanupBatchIds) { Start-Action "cleanup-test-data" }
+          $script:cleanupSelection = Show-PortusTestCleanupDialog -Owner $form -Preview $preview -Target $target
+          if ($script:cleanupSelection) { Start-Action "cleanup-test-data" }
           else { Show-Log "Limpeza cancelada. Nenhum dado removido." }
         }
       } catch { Show-Log ("Falha ao abrir previa: " + $_.Exception.Message) "diagnostic" }
@@ -844,8 +844,9 @@ function Start-Action([string]$operation) {
     $arguments += @("-PreviewPath", (Quoted $script:cleanupPreviewFile))
   }
   if ($operation -eq "cleanup-test-data") {
-    if ([string]::IsNullOrWhiteSpace($script:cleanupBatchIds)) { throw "Nenhum lote de teste selecionado." }
-    $arguments += @("-BatchIds", (Quoted $script:cleanupBatchIds))
+    if (-not $script:cleanupSelection) { throw "Selecao ausente." }
+    $arguments += @("-BatchIds", (Quoted ([string]$script:cleanupSelection.Batches)), "-ProductIds", (Quoted ([string]$script:cleanupSelection.Products)), "-UserIds", (Quoted ([string]$script:cleanupSelection.Users)))
+    if ($script:cleanupSelection.ClearHistory) { $arguments += "-ClearHistory" }
   }
   if ($operation -eq "seed-admin") { $arguments += "-ResetAdminPassword" }
   if ($operation -eq "import-legacy") {

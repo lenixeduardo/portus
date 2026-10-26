@@ -15,7 +15,10 @@ param(
   [string]$StationCode = "",
   [ValidateSet("PRODUCTION","LABORATORY")][string]$Sector = "PRODUCTION",
   [string]$PreviewPath = "",
-  [string]$BatchIds = ""
+  [string]$BatchIds = "",
+  [string]$ProductIds = "",
+  [string]$UserIds = "",
+  [switch]$ClearHistory
 )
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -38,7 +41,7 @@ try {
   } else {
     switch ($Operation) {
       { $_ -in @("cleanup-preview","cleanup-test-data") } {
-        $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName; PreviewPath=$PreviewPath; BatchIds=$BatchIds; ConfirmCleanup=($Operation -eq "cleanup-test-data") }
+        $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName; PreviewPath=$PreviewPath; BatchIds=$BatchIds; ProductIds=$ProductIds; UserIds=$UserIds; ClearHistory=$ClearHistory; ConfirmCleanup=($Operation -eq "cleanup-test-data") }
         & (Join-Path $PSScriptRoot "cleanup-portus-test-data.ps1") @invokeParams
       }
       "validate" {
