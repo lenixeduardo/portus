@@ -1,9 +1,11 @@
 import { ipcMain } from "electron";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+import os from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { IPC, type LogReportInput } from "../../shared/ipc";
 import { getLogsDir, getRecentLogs, logError } from "../logger";
-import { getCentralStationSetting } from "../db/central-station-settings-repo";
+
 import { requireAuth } from "./middleware";
 
 export function registerLogHandlers(): void {
@@ -23,7 +25,7 @@ export function registerLogHandlers(): void {
 
       const logs = getRecentLogs();
       const timestamp = new Date().toISOString();
-      const webhookUrl = (await getCentralStationSetting("error_report_webhook"))?.trim() ?? "";
+
 
       const reportText = [
         "PORTUS — Relatório de Erro",
@@ -39,9 +41,11 @@ export function registerLogHandlers(): void {
 
       let filePath: string | null = null;
       const logsDir = getLogsDir();
-      if (logsDir) {
+      {
         const ts = timestamp.replace(/[:.]/g, "-").slice(0, 19);
-        const path = join(logsDir, `report-${ts}.txt`);
+        const targetDir = logsDir || join(tmpdir(), "portus-error-reports");
+        mkdirSync(targetDir, { recursive: true });
+        const path = join(targetDir, `report-${ts}.txt`);
         try {
           writeFileSync(path, reportText, "utf-8");
           filePath = path;
@@ -50,29 +54,31 @@ export function registerLogHandlers(): void {
         }
       }
 
-      let sent = false;
-      if (webhookUrl) {
-        try {
-          const payload = {
-            app: "PORTUS",
-            timestamp,
-            description,
-            platform: process.platform,
-            arch: process.arch,
-            logs
-          };
-          const res = await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(10000)
-          });
-          sent = res.ok;
-        } catch {
-          // erro de rede — não bloqueia o relatório local
-        }
+      if (!filePath) return { ok: false, error: "Não foi possível gerar o anexo de logs." };
+      if (!process.env.PORTUS_SMTP_HOST || !process.env.PORTUS_SMTP_USER || !process.env.PORTUS_SMTP_PASSWORD || !process.env.PORTUS_SMTP_FROM) {
+        return { ok: false, error: "SMTP não configurado. Relatório salvo em: " + filePath };
       }
-
+      try {
+        const nodemailer = require("nodemailer");
+        const port = Number(process.env.PORTUS_SMTP_PORT ?? "587");
+        const transport = nodemailer.createTransport({
+          host: process.env.PORTUS_SMTP_HOST, port, secure: port === 465,
+          auth: { user: process.env.PORTUS_SMTP_USER, pass: process.env.PORTUS_SMTP_PASSWORD },
+          connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
+        });
+        try {
+          await transport.sendMail({
+            from: process.env.PORTUS_SMTP_FROM,
+            to: "lenix.camargo@gmail.com",
+            subject: "[PORTUS] Reportar Erro - " + timestamp,
+            text: "Relatório de erro enviado pela estação " + os.hostname() + ".\\n\\n" + description + "\\n\\nConsulte o log completo anexado.",
+            attachments: [{ filename: "portus-error-" + timestamp.replace(/[:.]/g, "-") + ".txt", path: filePath }]
+          });
+        } finally { transport.close(); }
+      } catch (error) {
+        return { ok: false, error: "Falha ao enviar e-mail SMTP: " + (error instanceof Error ? error.message : String(error)) + ". Relatório salvo em: " + filePath };
+      }
+      const sent = true;
       return { ok: true, data: { sent, filePath } };
     })
   );
