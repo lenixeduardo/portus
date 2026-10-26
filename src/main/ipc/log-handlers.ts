@@ -1,9 +1,11 @@
 import { ipcMain } from "electron";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+import os from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { IPC, type LogReportInput } from "../../shared/ipc";
 import { getLogsDir, getRecentLogs, logError } from "../logger";
-import { getCentralStationSetting } from "../db/central-station-settings-repo";
+
 import { requireAuth } from "./middleware";
 
 export function registerLogHandlers(): void {
@@ -23,7 +25,7 @@ export function registerLogHandlers(): void {
 
       const logs = getRecentLogs();
       const timestamp = new Date().toISOString();
-      const webhookUrl = (await getCentralStationSetting("error_report_webhook"))?.trim() ?? "";
+
 
       const reportText = [
         "PORTUS — Relatório de Erro",
@@ -39,9 +41,11 @@ export function registerLogHandlers(): void {
 
       let filePath: string | null = null;
       const logsDir = getLogsDir();
-      if (logsDir) {
+      {
         const ts = timestamp.replace(/[:.]/g, "-").slice(0, 19);
-        const path = join(logsDir, `report-${ts}.txt`);
+        const targetDir = logsDir || join(tmpdir(), "portus-error-reports");
+        mkdirSync(targetDir, { recursive: true });
+        const path = join(targetDir, `report-${ts}.txt`);
         try {
           writeFileSync(path, reportText, "utf-8");
           filePath = path;
@@ -50,29 +54,17 @@ export function registerLogHandlers(): void {
         }
       }
 
-      let sent = false;
-      if (webhookUrl) {
-        try {
-          const payload = {
-            app: "PORTUS",
-            timestamp,
-            description,
-            platform: process.platform,
-            arch: process.arch,
-            logs
-          };
-          const res = await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(10000)
-          });
-          sent = res.ok;
-        } catch {
-          // erro de rede — não bloqueia o relatório local
-        }
+      if (!filePath) return { ok: false, error: "Não foi possível gerar o anexo de logs." };
+      try {
+        const { centralQuery } = await import("../db/central-connection");
+        await centralQuery(
+          "INSERT INTO portus_error_report_queue (station_name, description, attachment_name, attachment_text) VALUES ($1, $2, $3, $4)",
+          [os.hostname(), description, "portus-error-" + timestamp.replace(/[:.]/g, "-") + ".txt", reportText]
+        );
+      } catch (error) {
+        return { ok: false, error: "Não foi possível colocar o relatório na fila central: " + (error instanceof Error ? error.message : String(error)) + ". Arquivo local: " + filePath };
       }
-
+      const sent = false;
       return { ok: true, data: { sent, filePath } };
     })
   );
