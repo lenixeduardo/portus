@@ -35,7 +35,7 @@ export function ReportErrorModal({ onClose }: Props) {
         return;
       }
       const parts: string[] = [];
-      if (res.data.sent) parts.push("e-mail enviado para lenix.camargo@gmail.com com log anexado");
+      parts.push("relatório registrado na fila central para envio por e-mail com log anexado");
       if (res.data.filePath) parts.push("arquivo salvo na pasta de logs");
       setResultMsg(parts.length ? parts.join(" e ") + "." : "Relatório processado.");
       setPhase("done");
