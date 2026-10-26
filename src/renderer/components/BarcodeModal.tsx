@@ -51,8 +51,8 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
           return;
         }
         const digits = original.replace(/\D/g, "");
-        if (!/^\d{16}$/.test(digits)) {
-          setError("Etiqueta inválida: informe os 12 dígitos do produto e os 4 dígitos do lote.");
+        if (!/^\d{16,}$/.test(digits)) {
+          setError("Etiqueta inválida: informe os 12 dígitos do produto e pelo menos 4 dígitos do lote.");
           return;
         }
         const prefix = digits.slice(0, 12);
@@ -71,7 +71,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         }
         setMatchedProduct(matches[0]);
         setProductId(matches[0].id);
-        setLotCode(digits.slice(-4));
+        setLotCode(digits.slice(12));
         setPendingBarcode(original);
         return;
       } catch {
@@ -93,8 +93,8 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   async function createConfirmedBatch() {
     if (!pendingBarcode || loading) return;
     const code = lotCode.trim();
-    if (!/^[0-9]{4}$/.test(code)) {
-      setError("O número do lote deve conter exatamente quatro dígitos.");
+    if (!/^[0-9]{4,}$/.test(code)) {
+      setError("O número do lote deve conter pelo menos quatro dígitos.");
       return;
     }
     if (productId === null || !matchedProduct) { setError("Produto não identificado pelo código de barras."); return; }
@@ -141,7 +141,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         ) : pendingBarcode ? (
           <>
             <button className="secondary" onClick={() => { setPendingBarcode(null); setError(null); }}>Voltar</button>
-            <button onClick={() => void createConfirmedBatch()} disabled={loading || !/^[0-9]{4}$/.test(lotCode) || productId === null}>
+            <button onClick={() => void createConfirmedBatch()} disabled={loading || !/^[0-9]{4,}$/.test(lotCode) || productId === null}>
               {loading ? "Criando..." : "Confirmar novo lote"}
             </button>
           </>
@@ -161,10 +161,10 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         <div>
           <p className="muted">Confira ou altere o número do lote antes de confirmar a criação.</p>
           <div className="field">
-            <label htmlFor="lot-code">Número do lote (4 dígitos)</label>
-            <input id="lot-code" className="mono" inputMode="numeric" maxLength={4} autoFocus
-              value={lotCode} onChange={(event) => { setLotCode(event.target.value.replace(/[^0-9]/g, "").slice(0, 4)); setError(null); }} />
-            <small className="muted">Sugestão: os quatro últimos dígitos de {pendingBarcode}.</small>
+            <label htmlFor="lot-code">Número do lote (mínimo 4 dígitos)</label>
+            <input id="lot-code" className="mono" inputMode="numeric" autoFocus
+              value={lotCode} onChange={(event) => { setLotCode(event.target.value.replace(/[^0-9]/g, "")); setError(null); }} />
+            <small className="muted">Número completo do lote identificado na etiqueta {pendingBarcode}.</small>
           </div>
           <div className="field">
             <label>Produto identificado</label>
