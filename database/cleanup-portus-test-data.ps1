@@ -7,6 +7,9 @@ param(
   [string]$AdminUser = 'postgres',
   [string]$PreviewPath = '',
   [string]$BatchIds = '',
+  [string]$ProductIds = '',
+  [string]$UserIds = '',
+  [switch]$ClearHistory,
   [switch]$ConfirmCleanup
 )
 $ErrorActionPreference = 'Stop'
@@ -30,17 +33,19 @@ try {
     $preview = $json | ConvertFrom-Json
     if ($preview.database -cne $DatabaseName -or $preview.databaseUser -cne $AdminUser) { throw 'Banco ou usuario da previa divergente.' }
     [IO.File]::WriteAllText($PreviewPath,$json,[Text.UTF8Encoding]::new($false))
-    Write-Host "Previa: $(@($preview.batches).Count) lotes disponiveis. Marque explicitamente os lotes de teste. Nenhum dado alterado."
+    Write-Host "Previa: $(@($preview.batches).Count) lotes, $(@($preview.products).Count) produtos e $(@($preview.users).Count) usuarios. Nenhum dado alterado."
     return
   }
-  # IDs numericos explicitos; nunca inferimos dados de teste pelo nome.
-  if ($BatchIds -notmatch '^[1-9][0-9]*(,[1-9][0-9]*)*$') { throw 'Selecione os IDs dos lotes de teste antes de limpar.' }
-  $ids = @($BatchIds.Split(',') | ForEach-Object {
-    $id = 0L
-    if (-not [long]::TryParse($_,[ref]$id) -or $id -le 0) { throw 'ID de lote invalido.' }
-    $id
-  } | Sort-Object -Unique)
-  if ($ids.Count -gt 500) { throw 'Selecione no maximo 500 lotes por operacao.' }
+  # Selecao explicita. Listas vazias sao permitidas, mas nunca inferidas.
+  foreach ($value in @($BatchIds,$ProductIds,$UserIds)) {
+    if ($value -ne '' -and $value -notmatch '^[1-9][0-9]*(,[1-9][0-9]*)*$') {
+      throw 'Selecao invalida. Use somente IDs numericos positivos.'
+    }
+    if ($value -and $value.Split(',').Count -gt 10000) { throw 'Selecao excede 10000 registros por categoria.' }
+  }
+  if (-not $BatchIds -and -not $ProductIds -and -not $UserIds -and -not $ClearHistory) {
+    throw 'Nenhum registro selecionado.'
+  }
   $pgDump = Join-Path $PostgresBin 'pg_dump.exe'
   if (-not (Test-Path -LiteralPath $pgDump -PathType Leaf)) { throw 'pg_dump.exe ausente. Backup obrigatorio; limpeza cancelada.' }
   $backupRoot = Join-Path $env:LOCALAPPDATA 'PORTUS\backups'
@@ -50,10 +55,9 @@ try {
   & $pgDump -h $DatabaseHost -p "$Port" -U $AdminUser -d $DatabaseName -Fc -f $backup
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $backup) -or (Get-Item -LiteralPath $backup).Length -eq 0) { throw 'Backup falhou. Nenhum dado removido.' }
   Write-Host "Backup preservado: $backup"
-  $batchList = $ids -join ','
-  & $psql @arguments -v "batch_ids=$batchList" -v "backup_path=$backup" -f (Join-Path $PSScriptRoot 'maintenance\cleanup-test-batches.sql')
+  & $psql @arguments -v "batch_ids=$BatchIds" -v "product_ids=$ProductIds" -v "user_ids=$UserIds" -v "clear_history=$($ClearHistory.IsPresent.ToString().ToLowerInvariant())" -v "backup_path=$backup" -f (Join-Path $PSScriptRoot 'maintenance\cleanup-test-batches.sql')
   if ($LASTEXITCODE -ne 0) { throw 'Limpeza cancelada; transacao nao confirmada. Backup preservado.' }
-  Write-Host "Lotes de teste removidos do banco central: $batchList. Leituras, sessoes e historicos relacionados removidos."
+  Write-Host "Limpeza concluida. Lotes: $BatchIds | Produtos: $ProductIds | Usuarios: $UserIds | Historicos avulsos: $ClearHistory"
 } finally {
   $env:PGPASSWORD = $previousPassword
   $env:PGCONNECT_TIMEOUT = $previousTimeout
