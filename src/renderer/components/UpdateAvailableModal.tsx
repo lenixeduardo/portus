@@ -17,7 +17,7 @@ export function UpdateAvailableModal({ update, onClose }: { update: AvailableUpd
       const result = await window.api.updates.download();
       if (result.ok) setDownloaded(true);
       else setError(result.error);
-    } catch { setError("Não foi possível concluir o download. Tente novamente."); }
+    } catch (error) { setError(error instanceof Error ? `Não foi possível iniciar o download: ${error.message}` : "Não foi possível iniciar o download. Tente novamente."); }
     finally { setBusy(false); }
   }
 
@@ -43,7 +43,7 @@ export function UpdateAvailableModal({ update, onClose }: { update: AvailableUpd
       {!downloaded && <p>O instalador será salvo na pasta Downloads.</p>}
       {busy && !downloaded && <div role="status" aria-live="polite">
         <progress aria-label="Download da atualização" max={100} value={percent} style={{ width: "100%" }} />
-        <p>{percent === undefined ? "Baixando…" : `${percent}% baixado`}</p>
+        <p>{percent === undefined ? "Conectando ao servidor e aguardando dados…" : `${percent}% baixado`}</p>
       </div>}
       {downloaded && <p role="status">Download concluído. Ao confirmar, o PORTUS será fechado e atualizado na pasta em que está instalado. Conclua suas leituras antes de continuar.</p>}
       {installing && <p role="status">Fechando o PORTUS para instalar a atualização…</p>}
