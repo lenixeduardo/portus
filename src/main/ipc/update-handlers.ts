@@ -12,6 +12,7 @@ export function registerUpdateHandlers() {
   let checking: Promise<AvailableUpdate | null> | undefined;
   let downloading: Promise<ServiceResult<true>> | undefined;
   let downloadedPath: string | undefined;
+  let announcedUpdate: AvailableUpdate | null = null;
   let installing = false;
   // Coalesce concurrent requests, but never cache a failed/no-release result forever.
   const check = (): Promise<AvailableUpdate | null> => {
@@ -19,15 +20,22 @@ export function registerUpdateHandlers() {
     return checking ??= checkForUpdate(app.getVersion(), net.fetch.bind(net)).finally(() => { checking = undefined; });
   };
 
-  ipcMain.handle(IPC.updatesCheck, () => check());
+  ipcMain.handle(IPC.updatesCheck, async () => {
+    const result = await check();
+    announcedUpdate = result;
+    return result;
+  });
   ipcMain.handle(IPC.updatesDownload, (event): Promise<ServiceResult<true>> => {
     if (installing) return Promise.resolve({ ok: false, error: "A atualização já está sendo instalada." });
     if (downloading) return downloading;
+    logInfo("updates:download", "Solicitação de download recebida.");
     downloading = (async (): Promise<ServiceResult<true>> => {
       try {
-        const update = await check();
-        if (!update) return { ok: false, error: "Nenhuma atualização disponível. Confira a conexão e tente novamente." };
+        // Reuse the already announced release; an intermittent second check must not block a click.
+        const update = announcedUpdate ?? await check();
+        if (!update) return { ok: false, error: "Não foi possível confirmar a atualização no GitHub. Verifique sua conexão e tente novamente." };
         downloadedPath = undefined;
+        logInfo("updates:download", `Iniciando download da versão ${update.version}.`);
         downloadedPath = await downloadUpdate(update, app.getPath("downloads"), net.fetch.bind(net), progress => {
           if (!event.sender.isDestroyed()) event.sender.send(IPC.updatesProgress, progress);
         });
@@ -35,7 +43,8 @@ export function registerUpdateHandlers() {
         return { ok: true, data: true };
       } catch (error) {
         logError("updates:download", "Falha ao baixar atualização.", error);
-        return { ok: false, error: "Não foi possível concluir o download. Confira a conexão e tente novamente." };
+        const detail = error instanceof Error ? error.message : String(error);
+        return { ok: false, error: `Não foi possível baixar a atualização: ${detail}` };
       }
     })().finally(() => { downloading = undefined; });
     return downloading;

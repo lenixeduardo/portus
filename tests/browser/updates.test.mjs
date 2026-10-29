@@ -72,3 +72,12 @@ test('conexão recuperada dispara nova consulta sem reabrir o app',async()=>{
     await page.getByRole('button',{name:'Baixar atualização',exact:true}).waitFor();
   } finally {await page.close();}
 });
+
+test('ao clicar em baixar, o estado de conexão aparece antes do primeiro byte', async () => {
+  const page = await openUpdate();
+  try {
+    await page.getByRole('button',{name:'Baixar atualização',exact:true}).click();
+    await page.getByText('Conectando ao servidor e aguardando dados…',{exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>window.downloads),1);
+  } finally { await page.close(); }
+});
