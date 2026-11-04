@@ -670,7 +670,10 @@ export async function startCapture(
   let timeoutSeconds: number;
   try {
     stationIdentity = await getCentralStationIdentity();
-    // A estação identifica a máquina; o setor operacional vem da credencial.
+    // Não permite atribuir a leitura a setor diferente do da estação física.
+    if (stationIdentity.sectorCode !== sectorCode) {
+      return { ok: false, error: "Setor da captura não corresponde ao setor configurado nesta máquina." };
+    }
     const allEquipments = await listCentralEquipments();
     equipments = allEquipments.filter(
       e => e.enabled && (equipmentIds == null || equipmentIds.includes(e.id))

@@ -9,11 +9,9 @@ export function resolveCaptureSector(
   user: Pick<User, "role" | "sectorCode">,
   stationSector: OperationalSector
 ): OperationalSector {
-  if (user.role === "master" || user.role === "supervisor") return stationSector;
-  // Operadores seguem a própria credencial, independentemente da máquina.
-  const userSector = getUserOperationalSector(user);
-  if (user.sectorCode === "ADMIN") {
+  if (user.sectorCode === "ADMIN" && user.role !== "master" && user.role !== "supervisor") {
     throw new Error("O perfil administrativo não possui setor operacional de captura.");
   }
-  return userSector;
+  // O setor operacional da leitura pertence à máquina, não à credencial.
+  return stationSector;
 }
