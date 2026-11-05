@@ -1,8 +1,8 @@
-import { app, ipcMain } from "electron";
+import { ipcMain } from "electron";
 import { assertUpdateGateOpen, isUpdateGateOpen } from "../update-gate";
 
 function blockOutdatedInstallation(): void {
-  if (app?.isPackaged && process.platform === "win32") assertUpdateGateOpen();
+  assertUpdateGateOpen();
 }
 import { IPC, type BarcodeLoginRequest, type LoginRequest, type LoginResult } from "../../shared/ipc";
 import { getCurrentUser, isLoginBlocked, login, loginByBarcode, logout, recordFailedLogin } from "../auth/auth-service";
@@ -74,7 +74,7 @@ export function registerAuthHandlers(): void {
   });
 
   ipcMain.handle(IPC.authCurrentUser, () => {
-    if (app?.isPackaged && process.platform === "win32" && !isUpdateGateOpen()) return null;
+    if (!isUpdateGateOpen()) return null;
     return getCurrentUser();
   });
 }
