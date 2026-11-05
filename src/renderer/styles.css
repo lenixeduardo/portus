@@ -302,6 +302,36 @@ label.checkbox input { width: auto; }
   padding: 14px;
 }
 
+/* Login update search: secondary action, independent of authentication. */
+.login-update-panel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.login-update-button {
+  width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  font-size: 12px;
+}
+.login-update-icon { flex: 0 0 auto; }
+.login-update-icon--spinning { animation: login-update-spin 1s linear infinite; }
+@keyframes login-update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .login-update-icon--spinning { animation: none; }
+}
+.login-update-feedback {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.login-update-feedback--success { color: var(--text-muted); }
+.login-update-feedback--error { color: var(--danger); }
+
 /* ── App shell ───────────────────────────────────────── */
 
 .app-shell { display: flex; height: 100%; }
