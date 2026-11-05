@@ -252,9 +252,11 @@ tr { break-inside: avoid; page-break-inside: avoid; }
 .responsibles strong { font-size: 9pt; line-height: 1.2; }
 .mono { font-family: Consolas, 'Liberation Mono', monospace; }
 footer {
-  position: fixed; bottom: -6mm; left: 0; right: 0;
+  /* O rodapé fixo com bottom negativo criava uma segunda página em branco. */
+  position: static; margin-top: 10px;
   display: flex; justify-content: space-between;
   font-size: 7pt; border-top: 1px solid #111; padding-top: 4px;
+  break-inside: avoid;
 }
 @media screen and (max-width: 730px) {
   body { margin: 0 auto; padding: 7mm 5mm; }
