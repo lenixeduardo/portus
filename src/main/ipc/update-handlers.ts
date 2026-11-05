@@ -22,7 +22,9 @@ export function registerUpdateHandlers() {
 
   ipcMain.handle(IPC.updatesCheck, async () => {
     const result = await check();
-    announcedUpdate = result;
+    // Uma consulta automática sem resposta não invalida a versão que já
+    // foi confirmada manualmente e oferecida para download.
+    if (result) announcedUpdate = result;
     return result;
   });
   ipcMain.handle(IPC.updatesCheckNow, async (): Promise<ServiceResult<AvailableUpdate | null>> => {
