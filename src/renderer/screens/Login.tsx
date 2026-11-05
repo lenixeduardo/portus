@@ -48,10 +48,28 @@ export function Login({ onAuthenticated, onUpdateFound }: Props) {
     return () => clearInterval(interval);
   }, []);
 
+  async function validateInstalledVersion(): Promise<boolean> {
+    const gate = await window.api.updates.verify();
+    if (gate.status === "required") {
+      onUpdateFound(gate.update);
+      return false;
+    }
+    if (gate.status === "error") {
+      setError(gate.error);
+      return false;
+    }
+    if (gate.status !== "current") {
+      setError("Aguarde a verificação de versão do PORTUS.");
+      return false;
+    }
+    return true;
+  }
+
   async function authenticate(credentials: { username: string; password: string }) {
     setError(null);
     setLoading(true);
     try {
+      if (!await validateInstalledVersion()) return;
       const result = await window.api.auth.login(credentials);
       if (result.ok) {
         if (!isAuthenticatedUser(result.user)) {
@@ -75,6 +93,7 @@ export function Login({ onAuthenticated, onUpdateFound }: Props) {
     setUsername("");
     setPassword("");
     try {
+      if (!await validateInstalledVersion()) return;
       const result = await window.api.auth.loginBarcode({ barcodeValue });
       if (result.ok) {
         if (!isAuthenticatedUser(result.user)) {
