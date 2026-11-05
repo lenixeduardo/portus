@@ -4,13 +4,14 @@ import { win32 } from "node:path";
 import { access } from "node:fs/promises";
 import { IPC, type AvailableUpdate, type ServiceResult } from "../../shared/ipc";
 import { checkForUpdateDetailed } from "../updates";
-import { allowDevelopmentWithoutUpdateCheck, verifyUpdateGate } from "../update-gate";
+import { allowDevelopmentWithoutUpdateCheck, configureUpdateGateEnforcement, verifyUpdateGate } from "../update-gate";
 import type { UpdateGateState } from "../../shared/ipc";
 import { downloadUpdate } from "../update-download";
 import { isActive } from "../serial/capture-service";
 import { logError, logInfo } from "../logger";
 
 export function registerUpdateHandlers() {
+  configureUpdateGateEnforcement(app.isPackaged && process.platform === "win32");
   let checking: Promise<AvailableUpdate | null> | undefined;
   let downloading: Promise<ServiceResult<true>> | undefined;
   let downloadedPath: string | undefined;
