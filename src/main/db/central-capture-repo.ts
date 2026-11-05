@@ -5,6 +5,8 @@ interface ContextRow {
   user_id: number;
   application_id: number;
   sector_id: number;
+  user_role: string;
+  user_sector_code: string;
 }
 
 interface SessionRow {
@@ -19,7 +21,8 @@ interface SessionRow {
 async function resolveContext(username: string, sectorCode = "PRODUCTION"): Promise<ContextRow> {
   const applicationCode = sectorCode === "LABORATORY" ? "PORTUS_LABORATORY" : "PORTUS";
   const result = await centralQuery<ContextRow>(
-    `SELECT u.id AS user_id, a.id AS application_id, s.id AS sector_id
+    `SELECT u.id AS user_id, a.id AS application_id, s.id AS sector_id,
+              u.role AS user_role, u.sector_code AS user_sector_code
        FROM users u
        CROSS JOIN applications a
        CROSS JOIN sectors s
@@ -29,6 +32,51 @@ async function resolveContext(username: string, sectorCode = "PRODUCTION"): Prom
   );
   if (!result.rows[0]) throw new Error("Usuário, aplicação ou setor não encontrado na base central.");
   return result.rows[0];
+}
+
+/**
+ * O erro 42501 é genérico no PostgreSQL. Quando a captura ocorre em uma
+ * estação de setor diferente do vínculo do operador, a falha normalmente
+ * indica permissões centrais ainda não reconciliadas após a mudança de regra.
+ * Não eleva privilégios no cliente: a liberação continua sendo migration admin.
+ */
+export function describeCapturePermissionError(
+  error: unknown,
+  context: Pick<ContextRow, "user_role" | "user_sector_code">,
+  captureSectorCode: "PRODUCTION" | "LABORATORY"
+): Error {
+  const original = error instanceof Error ? error : new Error(String(error));
+  const sqlState = (error as { code?: string } | null)?.code;
+  if (sqlState !== "42501" ||
+      !["operator", "laboratory"].includes(context.user_role) ||
+      context.user_sector_code === captureSectorCode) {
+    return original;
+  }
+
+  return new Error(
+    "Captura entre setores negada pelo PostgreSQL central. " +
+    "O usuário possui vínculo com " +
+    (context.user_sector_code === "LABORATORY" ? "Laboratório" : "Produção") +
+    ", mas a máquina está configurada como " +
+    (captureSectorCode === "PRODUCTION" ? "Produção" : "Laboratório") +
+    ". No servidor do banco, execute PORTUS DB Utility > Aplicar migrations " +
+    "(024 e 025) e verifique a permissão de captura do usuário. " +
+    "Não é necessário alterar o setor do usuário."
+  );
+}
+
+async function assertCentralCapturePermission(
+  context: ContextRow,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<void> {
+  try {
+    await centralQuery(
+      "SELECT portus_assert_permission($1, $2, $3, 'capture')",
+      [context.user_id, context.application_id, context.sector_id]
+    );
+  } catch (error) {
+    throw describeCapturePermissionError(error, context, sectorCode);
+  }
 }
 
 export interface CentralCaptureBatchState {
@@ -92,10 +140,7 @@ export async function createCentralCaptureSession(
 ): Promise<CaptureSession> {
   const context = await resolveContext(username, sectorCode);
   const stationId = await ensureCentralStation(station);
-  await centralQuery(
-    "SELECT portus_assert_permission($1, $2, $3, 'capture')",
-    [context.user_id, context.application_id, context.sector_id]
-  );
+  await assertCentralCapturePermission(context, sectorCode);
   const result = await centralQuery<SessionRow>(
     `INSERT INTO capture_sessions (
        batch_id, sector_id, station_id, source_application_id, user_id, timeout_seconds
@@ -127,10 +172,7 @@ export async function finishCentralCaptureSession(
   status: "completed" | "cancelled"
 ): Promise<void> {
   const context = await resolveContext(username, sectorCode);
-  await centralQuery(
-    "SELECT portus_assert_permission($1, $2, $3, 'capture')",
-    [context.user_id, context.application_id, context.sector_id]
-  );
+  await assertCentralCapturePermission(context, sectorCode);
   await centralQuery(
     `UPDATE capture_sessions
         SET status = $1, ended_at = now()
@@ -159,22 +201,27 @@ export async function insertCentralReading(input: {
   if (!equipment.rows[0]) {
     throw new Error(`Equipamento ID ${input.equipmentId} não encontrado ou desabilitado na base central.`);
   }
-  const result = await centralQuery<{ id: number; batch_id: number; equipment_id: number; value_raw: string; value_parsed: string | null; captured_at: string; capture_session_id: number }>(
-    `SELECT id, batch_id, equipment_id, value_raw, value_parsed, captured_at, capture_session_id
-       FROM register_reading($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [
-      input.batchId,
-      equipment.rows[0].id,
-      input.captureSessionId,
-      input.valueRaw,
-      input.valueParsed,
-      input.parseFailureReason ?? null,
-      input.parseRegexUsed ?? null,
-      context.user_id,
-      context.application_id,
-      context.sector_id
-    ]
-  );
+  let result;
+  try {
+    result = await centralQuery<{ id: number; batch_id: number; equipment_id: number; value_raw: string; value_parsed: string | null; captured_at: string; capture_session_id: number }>(
+      `SELECT id, batch_id, equipment_id, value_raw, value_parsed, captured_at, capture_session_id
+         FROM register_reading($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        input.batchId,
+        equipment.rows[0].id,
+        input.captureSessionId,
+        input.valueRaw,
+        input.valueParsed,
+        input.parseFailureReason ?? null,
+        input.parseRegexUsed ?? null,
+        context.user_id,
+        context.application_id,
+        context.sector_id
+      ]
+    );
+  } catch (error) {
+    throw describeCapturePermissionError(error, context, input.sectorCode);
+  }
   const row = result.rows[0];
   return row ? {
     id: row.id,
