@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { win32 } from "node:path";
 import { access } from "node:fs/promises";
 import { IPC, type AvailableUpdate, type ServiceResult } from "../../shared/ipc";
-import { checkForUpdate } from "../updates";
+import { checkForUpdate, checkForUpdateDetailed } from "../updates";
 import { downloadUpdate } from "../update-download";
 import { isActive } from "../serial/capture-service";
 import { logError, logInfo } from "../logger";
@@ -23,6 +23,14 @@ export function registerUpdateHandlers() {
   ipcMain.handle(IPC.updatesCheck, async () => {
     const result = await check();
     announcedUpdate = result;
+    return result;
+  });
+  ipcMain.handle(IPC.updatesCheckNow, async (): Promise<ServiceResult<AvailableUpdate | null>> => {
+    if (!app.isPackaged || process.platform !== "win32") {
+      return { ok: false, error: "A busca manual está disponível na versão instalada do PORTUS para Windows." };
+    }
+    const result = await checkForUpdateDetailed(app.getVersion(), net.fetch.bind(net));
+    if (result.ok && result.data) announcedUpdate = result.data;
     return result;
   });
   ipcMain.handle(IPC.updatesDownload, (event): Promise<ServiceResult<true>> => {
