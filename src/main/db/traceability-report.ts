@@ -167,6 +167,10 @@ function fallbackEpaLogoSvg(): string {
 export function buildBatchPrintHtml(history: BatchHistory): string {
   const rows = buildTraceabilityRows(history).filter(row => row.result !== "");
   const batch = history.batch;
+  // Escalas progressivas para otimizar o número de registros legíveis por A4.
+  // Lotes muito extensos continuam paginados; nenhuma leitura pode ser omitida.
+  const density = rows.length >= 43 ? "report--dense"
+    : rows.length >= 22 ? "report--compact" : "report--regular";
   const startedBy = actorFor(history, ["BATCH_OPENED"]);
   const closedBy = actorFor(history, ["BATCH_FINALIZED", "BATCH_CLOSED", "MASTER_BATCH_CLOSED"]);
   const body = rows.map((row) => `
@@ -184,34 +188,87 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
 <meta charset="utf-8">
 <title>PORTUS · Lote ${esc(batch.code)}</title>
 <style>
-@page { size: A4 portrait; margin: 14mm 12mm 18mm; }
-* { box-sizing:border-box; }
-body { background:#fff; color:#111; margin:0; font:10pt Arial,Helvetica,sans-serif; width:100%; max-width:100%; overflow-x:hidden; }
-@media screen { body { padding:0 28px 24px 16px; } }
-@media print { h1 { font-size:21pt; } }
-header { display:grid; grid-template-columns:172px minmax(0,1fr); align-items:center; gap:20px; border-bottom:1.5px solid #111; padding:0 24px 12px 0; margin-bottom:15px; min-height:90px; max-width:100%; }
-h1 { margin:0; min-width:0; padding:0; font-size:clamp(16pt, 2.7vw, 21pt); font-weight:800; text-align:right; overflow-wrap:normal; }
-.identity { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); border:1px solid #bbb; align-items:center; padding:14px; margin-bottom:18px; }
-.product { min-width:0; padding-right:14px; font-size:13pt; overflow-wrap:anywhere; }
-.label { display:block; font-size:10pt; margin-bottom:10px; }
-.barcode { border-left:1px solid #aaa; padding:0 5px 0 14px; text-align:center; min-width:0; width:100%; }
-.barcode svg { width:100%; max-width:none; height:52px; display:block; }
-.code { font-size:12pt; margin-top:8px; overflow-wrap:anywhere; }
-table { width:100%; border-collapse:collapse; table-layout:fixed; }
-th,td { padding:12px 7px; border:1px solid #bbb; overflow-wrap:anywhere; text-align:left; }
-.equipment-name { white-space:nowrap; overflow:visible; }
-.equipment-name span { display:inline-block; white-space:nowrap; max-width:none; }
-@media screen and (max-width:750px) { body { padding:0 8px 16px; } th,td { padding:8px 4px; font-size:9pt; } }
-th { background:#eee; font-size:10.5pt; font-weight:700; }
-tbody tr:nth-child(even) { background:#f1f1f1; }
-tr { break-inside:avoid; }
-.responsibles { border:1px solid #bbb; display:grid; grid-template-columns:1fr 1fr; padding:14px 0; margin-top:23px; }
-.responsibles > div { padding:0 16px; min-width:0; overflow-wrap:anywhere; }
-.responsibles > div+div { border-left:1px solid #999; }
-.responsibles span { display:block; margin-bottom:8px; }
-.responsibles strong { font-size:12pt; }
-.mono { font-family:Consolas,monospace; }
-footer { position:fixed; bottom:-11mm; left:0; right:0; display:flex; justify-content:space-between; font-size:9pt; border-top:1px solid #111; padding-top:8px; }
+@page { size: A4 portrait; margin: 9mm 9mm 11mm; }
+* { box-sizing: border-box; }
+html { background: #fff; }
+body {
+  background: #fff; color: #111; margin: 0; width: 100%; max-width: 100%;
+  font: 8.5pt/1.22 Arial, Helvetica, sans-serif;
+}
+@media screen {
+  html { background: #e9ecef; }
+  body {
+    width: min(210mm, 100%); min-height: 297mm; margin: 14px auto;
+    padding: 9mm; box-shadow: 0 3px 22px rgba(0,0,0,.15);
+  }
+}
+header {
+  display: grid; grid-template-columns: 132px minmax(0,1fr);
+  align-items: center; gap: 12px; min-height: 62px;
+  border-bottom: 1px solid #111; padding: 0 0 7px; margin-bottom: 9px;
+  max-width: 100%; break-inside: avoid;
+}
+header img, header svg {
+  display: block; width: 132px !important; max-width: 132px !important;
+  height: auto !important; max-height: 60px !important; object-fit: contain;
+  object-position: left center;
+}
+h1 {
+  margin: 0; min-width: 0; font-size: 16pt; line-height: 1.12;
+  font-weight: 800; text-align: right; white-space: nowrap;
+}
+.identity {
+  display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr);
+  border: 1px solid #bbb; align-items: center;
+  padding: 8px 10px; margin-bottom: 10px; min-height: 58px;
+  break-inside: avoid;
+}
+.product { min-width: 0; padding-right: 10px; font-size: 10pt; overflow-wrap: anywhere; }
+.label { display: block; font-size: 7.5pt; margin-bottom: 3px; color: #444; }
+.barcode { border-left: 1px solid #aaa; padding: 0 4px 0 12px; text-align: center; min-width: 0; width: 100%; }
+.barcode svg { display: block; width: 100%; height: 34px; }
+.code { font-size: 9pt; line-height: 1; margin-top: 4px; overflow-wrap: anywhere; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+thead { display: table-header-group; }
+th, td {
+  padding: 5px 4px; border: 1px solid #bbb; text-align: left;
+  vertical-align: middle; overflow-wrap: anywhere; line-height: 1.16;
+}
+th { background: #eee; font-size: 8pt; font-weight: 700; }
+td { font-size: 8pt; }
+.equipment-name { white-space: nowrap; overflow: hidden; }
+.equipment-name span { display: inline-block; white-space: nowrap; transform-origin: left center; }
+tbody tr:nth-child(even) { background: #f4f4f4; }
+tr { break-inside: avoid; page-break-inside: avoid; }
+.report--compact th, .report--compact td { font-size: 7.35pt; padding: 3px 3px; line-height: 1.12; }
+.report--dense th, .report--dense td { font-size: 6.7pt; padding: 2.5px 3px; line-height: 1.08; }
+.responsibles {
+  border: 1px solid #bbb; display: grid; grid-template-columns: 1fr 1fr;
+  padding: 8px 0; margin-top: 12px; break-inside: avoid;
+}
+.responsibles > div { padding: 0 11px; min-width: 0; overflow-wrap: anywhere; }
+.responsibles > div + div { border-left: 1px solid #999; }
+.responsibles span { display: block; margin-bottom: 4px; font-size: 7.5pt; }
+.responsibles strong { font-size: 9pt; line-height: 1.2; }
+.mono { font-family: Consolas, 'Liberation Mono', monospace; }
+footer {
+  position: fixed; bottom: -6mm; left: 0; right: 0;
+  display: flex; justify-content: space-between;
+  font-size: 7pt; border-top: 1px solid #111; padding-top: 4px;
+}
+@media screen and (max-width: 730px) {
+  body { margin: 0 auto; padding: 7mm 5mm; }
+  header { gap: 7px; grid-template-columns: 105px minmax(0,1fr); }
+  header img, header svg { width: 105px !important; max-width: 105px !important; }
+  h1 { font-size: 13pt; }
+  th, td { padding: 3px; font-size: 7pt; }
+}
+@media print {
+  html, body { background: #fff; margin: 0; padding: 0; width: 100%; min-height: auto; box-shadow: none; }
+  header, .identity, .responsibles { break-inside: avoid; }
+  table { break-before: avoid; }
+  th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 <script>
 function fitEquipmentNames() {
@@ -219,11 +276,18 @@ function fitEquipmentNames() {
     var span = cell.querySelector("span");
     if (!span) return;
     span.style.fontSize = "";
+    span.style.transform = "";
     var available = cell.clientWidth - parseFloat(getComputedStyle(cell).paddingLeft) - parseFloat(getComputedStyle(cell).paddingRight);
     var width = span.getBoundingClientRect().width;
     if (width > available && available > 0) {
       var size = parseFloat(getComputedStyle(span).fontSize);
-      span.style.fontSize = Math.max(6, size * available / width * 0.98) + "px";
+      span.style.fontSize = Math.max(7, size * available / width * 0.98) + "px";
+      width = span.getBoundingClientRect().width;
+      // Se o nome continuar maior que a coluna no piso de legibilidade,
+      // comprimir somente na horizontal; nunca cortar nem quebrar o nome.
+      if (width > available) {
+        span.style.transform = "scaleX(" + Math.max(0.45, available / width * 0.98) + ")";
+      }
     }
   });
 }
@@ -232,7 +296,7 @@ window.addEventListener("beforeprint", fitEquipmentNames);
 window.addEventListener("resize", fitEquipmentNames);
 </script>
 </head>
-<body>
+<body class="${density}">
 <header>
   <div>${epaLogoSvg()}</div>
   <h1>RELATÓRIO DO LOTE</h1>
