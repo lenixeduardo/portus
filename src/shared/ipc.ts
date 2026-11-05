@@ -11,6 +11,7 @@ import type {
 
 export const IPC = {
   updatesCheck: "updates:check",
+  updatesCheckNow: "updates:check-now",
   updatesDownload: "updates:download",
   updatesInstall: "updates:install",
   updatesProgress: "updates:progress",
@@ -329,6 +330,7 @@ export interface UpdateDownloadProgress {
 export interface SerialReaderApi {
   updates: {
     check(): Promise<AvailableUpdate | null>;
+    checkNow(): Promise<ServiceResult<AvailableUpdate | null>>;
     download(): Promise<ServiceResult<true>>;
     install(): Promise<ServiceResult<true>>;
     onProgress(cb: (progress: UpdateDownloadProgress) => void): Unsubscribe;
