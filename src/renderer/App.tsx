@@ -195,7 +195,7 @@ export function App() {
   if (initialSetup) return <><InitialSetup initialStatus={initialSetup} onCompleted={() => { setUser(null); setInitialSetup(null); }} />{updateModal}</>;
   if (!user) return (
     <>
-      <Login onAuthenticated={setUser} />
+      <Login onAuthenticated={setUser} onUpdateFound={setAvailableUpdate} />
       {updateModal}
       {!availableUpdate && showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
     </>

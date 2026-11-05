@@ -38,6 +38,29 @@ describe("IPC de atualização", () => {
     state.offline = false;
     expect(await state.routes.get(IPC.updatesCheck)!()).toMatchObject({ version: "0.1.35" });
   });
+  it("permite consultar versão mesmo sem login e diferencia falha de rede", async () => {
+    const manual = state.routes.get(IPC.updatesCheckNow);
+    expect(manual).toBeTypeOf("function");
+    const offline = await manual!();
+    expect(offline).toMatchObject({ ok: false });
+    if (!offline.ok) expect(offline.error).toMatch(/conexão/);
+
+    state.offline = false;
+    expect(await manual!()).toMatchObject({
+      ok: true,
+      data: { currentVersion: "0.1.27", version: "0.1.35" }
+    });
+    expect(state.attempts).toBe(2);
+  });
+  it("a atualização encontrada manualmente pode ser baixada sem segunda consulta", async () => {
+    state.offline = false;
+    expect((await state.routes.get(IPC.updatesCheckNow)!()).ok).toBe(true);
+    state.offline = true;
+    const event = { sender: { isDestroyed: () => false, send: vi.fn() } };
+    expect(await state.routes.get(IPC.updatesDownload)!(event)).toEqual({ ok: true, data: true });
+    expect(state.attempts).toBe(1);
+  });
+
   it("baixa pelo processo principal sem abrir navegador", async () => {
     state.offline = false;
     const event = { sender: { isDestroyed: () => false, send: vi.fn() } };
