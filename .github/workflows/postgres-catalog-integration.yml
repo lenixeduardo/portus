@@ -120,3 +120,6 @@ jobs:
 
       - name: Validar permissões reais de conclusão e finalização do Laboratório
         run: node database/tests/009_laboratory_batch_permissions.mjs
+
+      - name: Validar captura cruzada real e manter restrições de lote
+        run: node database/tests/010_cross_sector_capture_permissions.mjs

@@ -670,3 +670,35 @@ node database/tests/009_laboratory_batch_permissions.mjs
 ```
 
 O teste usa as variáveis padrão `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` e `PGDATABASE`, pressupõe todas as migrations aplicadas e desfaz os fixtures ao terminar. Use banco de homologação.
+
+
+### Captura entre setores — migrations 024 e 025
+
+Se uma pessoa cadastrada no Laboratório iniciar uma leitura na estação da Produção,
+a sessão e os registros devem ficar vinculados a **Produção**, mantendo o usuário
+do Laboratório como autor. O inverso também se aplica. A mudança não concede
+movimentação, abertura ou finalização de lotes no setor de destino.
+
+O erro `Operação não autorizada para usuário/aplicação/setor` ao iniciar essa
+captura indica que o PostgreSQL central recusou a operação (SQLSTATE 42501).
+O aplicativo não altera as permissões de segurança durante o login.
+
+No **servidor PostgreSQL** do PORTUS, com a versão atualizada da pasta
+`database`, execute **PORTUS DB Utility → Aplicar migrations**. Esse comando
+aplica `024_cross_sector_station_capture.sql` e
+`025_reconcile_cross_sector_capture_permissions.sql`, caso pendentes.
+Não execute esse procedimento pelo usuário operacional, não altere o setor do
+usuário e não apague ou recrie o banco. O comando é transacional e preserva
+as leituras e os lotes existentes.
+
+Apenas usuários **ativos** com perfil `operator`/`laboratory` e permissão
+`can_capture = TRUE` no próprio setor recebem permissão no outro setor.
+As aplicações `PORTUS`/Produção e `PORTUS_LABORATORY`/Laboratório
+recebem somente `can_capture = TRUE` nos pares de captura respectivos.
+A verificação de permissão e de origem da estação permanece no servidor.
+
+Após aplicar, reinicie a captura e teste uma leitura real em uma máquina
+da Produção, autenticando um usuário do Laboratório. Confirme na sessão
+`capture_sessions` que `sector_id` corresponde à Produção e `user_id`
+ao operador autenticado. Se o erro persistir, revise as permissões do próprio
+usuário e se o PORTUS está conectado ao banco atualizado.
