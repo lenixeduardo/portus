@@ -8,6 +8,13 @@ export type UpdateGateState =
   | { status: "error"; error: string };
 
 let state: UpdateGateState = { status: "checking" };
+let enforceGate = false;
+
+export function configureUpdateGateEnforcement(enabled: boolean): void {
+  enforceGate = enabled;
+  state = enabled ? { status: "checking" } : { status: "current" };
+  inFlight = null;
+}
 let inFlight: Promise<UpdateGateState> | null = null;
 
 export function getUpdateGateState(): UpdateGateState {
@@ -15,7 +22,7 @@ export function getUpdateGateState(): UpdateGateState {
 }
 
 export function isUpdateGateOpen(): boolean {
-  return state.status === "current";
+  return !enforceGate || state.status === "current";
 }
 
 export function assertUpdateGateOpen(): void {
