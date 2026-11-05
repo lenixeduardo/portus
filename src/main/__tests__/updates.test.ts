@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkForUpdate, selectUpdate } from "../updates";
+import { checkForUpdate, checkForUpdateDetailed, selectUpdate } from "../updates";
 
 const release = (version = "0.1.15") => ({
   tag_name: `v${version}`, draft: false, prerelease: false,
@@ -26,6 +26,27 @@ describe("available updates", () => {
     expect(await checkForUpdate("0.1.14", async () => { throw new Error("offline"); })).toBeNull();
     expect(await checkForUpdate("0.1.14", async () => new Response("", { status: 404 }))).toBeNull();
   });
+  it("manual check reports no update only when GitHub responds successfully", async () => {
+    expect(await checkForUpdateDetailed(
+      "0.1.15", async () => new Response(JSON.stringify(release()))
+    )).toEqual({ ok: true, data: null });
+    expect(await checkForUpdateDetailed(
+      "0.1.14", async () => new Response(JSON.stringify(release()))
+    )).toMatchObject({ ok: true, data: { version: "0.1.15" } });
+  });
+  it("manual check distinguishes network and invalid responses from no update", async () => {
+    const offline = await checkForUpdateDetailed("0.1.15", async () => { throw new Error("offline"); });
+    expect(offline).toMatchObject({ ok: false });
+    if (!offline.ok) expect(offline.error).toMatch(/conexão/);
+
+    const httpError = await checkForUpdateDetailed("0.1.15", async () => new Response("", { status: 503 }));
+    expect(httpError).toMatchObject({ ok: false });
+    if (!httpError.ok) expect(httpError.error).toMatch(/503/);
+
+    const corrupt = await checkForUpdateDetailed("0.1.15", async () => new Response("{}"));
+    expect(corrupt).toMatchObject({ ok: false });
+  });
+
   it("uses the published release response", async () => {
     expect(await checkForUpdate("0.1.14", async () => new Response(JSON.stringify(release())))).toMatchObject({ version: "0.1.15" });
   });
