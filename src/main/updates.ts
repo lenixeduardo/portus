@@ -54,7 +54,16 @@ export async function checkForUpdateDetailed(
         !Array.isArray((release as Record<string, unknown>).assets)) {
       return { ok: false, error: "O canal de atualizações retornou dados inválidos. Tente novamente." };
     }
-    return { ok: true, data: selectUpdate(currentVersion, release) };
+    const update = selectUpdate(currentVersion, release);
+    const installed = versionParts(currentVersion)!;
+    const published = versionParts((release as { tag_name: string }).tag_name)!;
+    const isNewer = published.some((part, i) =>
+      part !== installed[i] && published.slice(0, i).every((value, index) => value === installed[index]) && part > installed[i]
+    );
+    if (isNewer && !update) {
+      return { ok: false, error: "A versão mais recente não possui instalador oficial válido. Contate o administrador antes de continuar." };
+    }
+    return { ok: true, data: update };
   } catch {
     return { ok: false, error: "Não foi possível acessar o canal de atualizações. Verifique a conexão e tente novamente." };
   }
