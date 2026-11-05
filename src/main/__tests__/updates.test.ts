@@ -47,6 +47,15 @@ describe("available updates", () => {
     expect(corrupt).toMatchObject({ ok: false });
   });
 
+  it("fails closed when a newer release lacks the approved Windows installer", async () => {
+    const missingAsset = { ...release("0.1.60"), assets: [] };
+    const result = await checkForUpdateDetailed(
+      "0.1.59", async () => new Response(JSON.stringify(missingAsset))
+    );
+    expect(result).toMatchObject({ ok: false });
+    if (!result.ok) expect(result.error).toMatch(/instalador oficial/i);
+  });
+
   it("uses the published release response", async () => {
     expect(await checkForUpdate("0.1.14", async () => new Response(JSON.stringify(release())))).toMatchObject({ version: "0.1.15" });
   });

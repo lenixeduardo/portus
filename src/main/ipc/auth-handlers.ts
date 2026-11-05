@@ -1,4 +1,9 @@
 import { ipcMain } from "electron";
+import { assertUpdateGateOpen, isUpdateGateOpen } from "../update-gate";
+
+function blockOutdatedInstallation(): void {
+  assertUpdateGateOpen();
+}
 import { IPC, type BarcodeLoginRequest, type LoginRequest, type LoginResult } from "../../shared/ipc";
 import { getCurrentUser, isLoginBlocked, login, loginByBarcode, logout, recordFailedLogin } from "../auth/auth-service";
 import { logAudit } from "../db/audit-repo";
@@ -11,6 +16,9 @@ export function registerAuthHandlers(): void {
   ipcMain.handle(
     IPC.authLogin,
     validateInput(loginSchema)(async (_e, req: LoginRequest): Promise<LoginResult> => {
+      try { blockOutdatedInstallation(); } catch (error) {
+        return { ok: false, error: (error as Error).message };
+      }
       if (isLoginBlocked(req.username)) {
         return { ok: false, error: "Usuário ou senha inválidos." };
       }
@@ -35,6 +43,7 @@ export function registerAuthHandlers(): void {
     IPC.authLoginBarcode,
     validateInput(barcodeLoginSchema)(async (_e, req: BarcodeLoginRequest): Promise<LoginResult> => {
       try {
+        blockOutdatedInstallation();
         await checkCentralDatabase();
         const user = await loginByBarcode(req.barcodeValue);
         if (!user) return { ok: false, error: "Etiqueta não cadastrada." };
@@ -64,5 +73,8 @@ export function registerAuthHandlers(): void {
     if (user) await logAudit({ actorUserId: user.id, action: "auth.logout", resourceType: "session" });
   });
 
-  ipcMain.handle(IPC.authCurrentUser, () => getCurrentUser());
+  ipcMain.handle(IPC.authCurrentUser, () => {
+    if (!isUpdateGateOpen()) return null;
+    return getCurrentUser();
+  });
 }

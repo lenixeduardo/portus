@@ -302,6 +302,20 @@ label.checkbox input { width: auto; }
   padding: 14px;
 }
 
+/* Verificação obrigatória antes de liberar os módulos operacionais. */
+.update-gate-screen {
+  width: min(460px, calc(100% - 40px));
+  padding: 40px 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 20px 48px rgba(0,0,0,.3);
+}
+.update-gate-screen h2 { font-size: 24px; margin: 0 0 12px; }
+.update-gate-screen h3 { font-size: 16px; margin: 0 0 12px; }
+.update-gate-screen p { margin-bottom: 16px; color: var(--text-muted); line-height: 1.6; }
+.update-gate-screen button { min-width: 180px; }
+
 /* Login update search: secondary action, independent of authentication. */
 .login-update-panel {
   margin-top: 20px;

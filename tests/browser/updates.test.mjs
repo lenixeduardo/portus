@@ -34,6 +34,9 @@ async function openUpdate({ offline = false } = {}) {
       setup:{status:async()=>({configured:true,available:true,setupCompleted:true})},
       updates:{
         check:async()=>window.updateOffline?null:({currentVersion:version,version:'0.9.0'}),
+        verify:async()=>window.updateOffline
+          ? {status:'error',error:'Não foi possível acessar o canal de atualizações.'}
+          : {status:'required',update:{currentVersion:version,version:'0.9.0'}},
         onProgress:callback=>{window.progressCallback=callback;return()=>{window.progressCallback=null;};},
         download:()=>{window.downloads++;return new Promise(resolve=>{window.finishDownload=resolve;});},
         install:async()=>{window.installs++;return window.installs===1?{ok:false,error:'Conclua a captura em andamento antes de instalar a atualização.'}:{ok:true,data:true};}
@@ -64,12 +67,17 @@ test('download interno mantém modal, mostra progresso e oferece instalação na
     assert.equal(page.context().pages().length,1);
   } finally {await page.close();}
 });
-test('conexão recuperada dispara nova consulta sem reabrir o app',async()=>{
+test('falha de conexão mantém login bloqueado até revalidar',async()=>{
   const page=await openUpdate({offline:true});
   try {
-    await page.getByRole('button',{name:'Entrar',exact:true}).waitFor();
-    await page.evaluate(()=>{window.updateOffline=false;window.dispatchEvent(new Event('online'));});
+    await page.getByRole('button',{name:'Tentar novamente',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Entrar',exact:true}).count(),0);
+    await page.evaluate(()=>{window.updateOffline=false;});
+    await page.getByRole('button',{name:'Tentar novamente'}).click();
     await page.getByRole('button',{name:'Baixar atualização',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Agora não'}).count(),0);
+    assert.equal(await page.getByRole('button',{name:'Fechar',exact:true}).count(),0);
+    assert.equal(await page.getByRole('button',{name:'Entrar',exact:true}).count(),0);
   } finally {await page.close();}
 });
 

@@ -87,7 +87,7 @@ async function openDashboard(width, height, role = "admin", sectorCode = "ADMIN"
         ...status, supported: true, setupCompleted: true, postgresBin: null,
         stationCode: "TESTE", postgresServiceStatus: "running"
       }) },
-      updates: { check: async () => null },
+      updates: { check: async () => null, verify: async () => ({ status: "current" }) },
       capture: { onEnded: () => () => {}, isActive: async () => false },
       central: {
         status: async () => status,

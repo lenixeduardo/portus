@@ -108,7 +108,7 @@ describe.skipIf(process.env.PORTUS_QA_E2E !== "1")("Homologação real PORTUS: S
           },
           setup: { status: async () => ({ ...status, supported: true, setupCompleted: true,
             postgresBin: null, stationCode: "QA-SUPERVISOR-REPORT", postgresServiceStatus: "running" }) },
-          updates: { check: async () => null },
+          updates: { check: async () => null, verify: async () => ({ status: "current" }) },
           capture: { onEnded: () => () => {}, isActive: async () => false },
           central: { status: async () => status, batches: { listOpen: async () => [] } },
           users: { findByBarcode: async () => null },

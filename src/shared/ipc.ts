@@ -12,6 +12,7 @@ import type {
 export const IPC = {
   updatesCheck: "updates:check",
   updatesCheckNow: "updates:check-now",
+  updatesVerify: "updates:verify",
   updatesDownload: "updates:download",
   updatesInstall: "updates:install",
   updatesProgress: "updates:progress",
@@ -83,6 +84,12 @@ export interface AvailableUpdate {
   version: string;
   downloadUrl: string;
 }
+
+export type UpdateGateState =
+  | { status: "checking" }
+  | { status: "current" }
+  | { status: "required"; update: AvailableUpdate }
+  | { status: "error"; error: string };
 
 export type SlotStatus = "idle" | "open" | "receiving" | "error" | "completed";
 
@@ -331,6 +338,7 @@ export interface SerialReaderApi {
   updates: {
     check(): Promise<AvailableUpdate | null>;
     checkNow(): Promise<ServiceResult<AvailableUpdate | null>>;
+    verify(): Promise<UpdateGateState>;
     download(): Promise<ServiceResult<true>>;
     install(): Promise<ServiceResult<true>>;
     onProgress(cb: (progress: UpdateDownloadProgress) => void): Unsubscribe;

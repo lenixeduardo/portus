@@ -41,6 +41,7 @@ const api: SerialReaderApi = {
   updates: {
     check: () => ipcRenderer.invoke(IPC.updatesCheck),
     checkNow: () => ipcRenderer.invoke(IPC.updatesCheckNow),
+    verify: () => ipcRenderer.invoke(IPC.updatesVerify),
     download: () => ipcRenderer.invoke(IPC.updatesDownload),
     install: () => ipcRenderer.invoke(IPC.updatesInstall),
     onProgress: (cb) => subscribe(IPC.updatesProgress, cb)

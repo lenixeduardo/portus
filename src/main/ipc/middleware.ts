@@ -1,4 +1,5 @@
 import type { IpcMainInvokeEvent } from "electron";
+import { assertUpdateGateOpen } from "../update-gate";
 import { z } from "zod";
 import { getCurrentUser, touchSession, logout } from "../auth/auth-service";
 import { centralQuery } from "../db/central-connection";
@@ -16,6 +17,7 @@ interface CurrentCentralIdentity {
 }
 
 async function verifiedIdentity(requireAdministrator: boolean): Promise<void> {
+  assertUpdateGateOpen();
   const user = getCurrentUser();
   if (!user) throw new Error("Não autenticado.");
 
