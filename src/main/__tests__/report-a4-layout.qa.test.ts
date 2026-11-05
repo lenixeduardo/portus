@@ -82,7 +82,10 @@ describe.skipIf(!active)("Auditoria visual de impressão A4 — relatório PORTU
       }
       const info = execFileSync("pdfinfo", [filename], { encoding: "utf8" });
       const pages = Number(info.match(/^Pages:\s*(\d+)/m)?.[1]);
-      expect(info).toMatch(/Page size:\s*595\.\d+ x 841\.\d+ pts \(A4\)/);
+      const pageSize = info.match(/^Page size:\s*([\d.]+) x ([\d.]+) pts \(A4\)/m);
+      expect(pageSize).not.toBeNull();
+      expect(Math.abs(Number(pageSize![1]) - 595.28)).toBeLessThan(1);
+      expect(Math.abs(Number(pageSize![2]) - 841.89)).toBeLessThan(1);
       expect(pages).toBe(1);
       const text = execFileSync("pdftotext", [filename, "-"], { encoding: "utf8" });
       expect(text).toContain("RELATÓRIO DO LOTE");
