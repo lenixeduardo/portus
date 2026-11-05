@@ -3,7 +3,7 @@ import { Download } from "lucide-react";
 import type { AvailableUpdate, UpdateDownloadProgress } from "../../shared/ipc";
 import { Modal } from "./Modal";
 
-export function UpdateAvailableModal({ update, onClose }: { update: AvailableUpdate; onClose: () => void }) {
+export function UpdateAvailableModal({ update, onClose, mandatory = false }: { update: AvailableUpdate; onClose: () => void; mandatory?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -33,12 +33,13 @@ export function UpdateAvailableModal({ update, onClose }: { update: AvailableUpd
   const percent = progress?.totalBytes ? Math.min(100, Math.floor(progress.receivedBytes / progress.totalBytes * 100)) : undefined;
   const close = () => { if (!busy && !installing) onClose(); };
   return (
-    <Modal title="Atualização disponível" onClose={close} width={520} footer={<>
-      <button className="secondary" onClick={close} disabled={busy || installing}>Agora não</button>
+    <Modal title={mandatory ? "Atualização obrigatória" : "Atualização disponível"} onClose={close} dismissable={!mandatory} width={520} footer={<>
+      {!mandatory && <button className="secondary" onClick={close} disabled={busy || installing}>Agora não</button>}
       {downloaded
         ? <button onClick={() => void install()} disabled={busy || installing}>{busy || installing ? "Iniciando instalação…" : "Instalar e reiniciar"}</button>
         : <button onClick={() => void download()} disabled={busy}><Download size={16} /> {busy ? "Baixando atualização…" : "Baixar atualização"}</button>}
     </>}>
+      {mandatory && <p>É necessário instalar a versão mais recente antes de utilizar o PORTUS. Não é possível ignorar esta atualização.</p>}
       <p>Versão instalada: <strong>{update.currentVersion}</strong><br />Nova versão: <strong>{update.version}</strong></p>
       {!downloaded && <p>O instalador será salvo na pasta Downloads.</p>}
       {busy && !downloaded && <div role="status" aria-live="polite">
