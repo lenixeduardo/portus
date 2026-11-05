@@ -3,7 +3,9 @@ import { spawn } from "node:child_process";
 import { win32 } from "node:path";
 import { access } from "node:fs/promises";
 import { IPC, type AvailableUpdate, type ServiceResult } from "../../shared/ipc";
-import { checkForUpdate, checkForUpdateDetailed } from "../updates";
+import { checkForUpdateDetailed } from "../updates";
+import { allowDevelopmentWithoutUpdateCheck, verifyUpdateGate } from "../update-gate";
+import type { UpdateGateState } from "../../shared/ipc";
 import { downloadUpdate } from "../update-download";
 import { isActive } from "../serial/capture-service";
 import { logError, logInfo } from "../logger";
@@ -14,26 +16,30 @@ export function registerUpdateHandlers() {
   let downloadedPath: string | undefined;
   let announcedUpdate: AvailableUpdate | null = null;
   let installing = false;
-  // Coalesce concurrent requests, but never cache a failed/no-release result forever.
-  const check = (): Promise<AvailableUpdate | null> => {
-    if (!app.isPackaged || process.platform !== "win32") return Promise.resolve(null);
-    return checking ??= checkForUpdate(app.getVersion(), net.fetch.bind(net)).finally(() => { checking = undefined; });
+  const verify = async (): Promise<UpdateGateState> => {
+    if (!app.isPackaged || process.platform !== "win32") {
+      return allowDevelopmentWithoutUpdateCheck();
+    }
+    const state = await verifyUpdateGate(app.getVersion(), net.fetch.bind(net));
+    if (state.status === "required") announcedUpdate = state.update;
+    return state;
   };
 
-  ipcMain.handle(IPC.updatesCheck, async () => {
-    const result = await check();
-    // Uma consulta automática sem resposta não invalida a versão que já
-    // foi confirmada manualmente e oferecida para download.
-    if (result) announcedUpdate = result;
-    return result;
-  });
+  // A busca automática e a manual usam o mesmo estado de autorização no main.
+  const check = (): Promise<AvailableUpdate | null> =>
+    checking ??= verify().then(state => state.status === "required" ? state.update : null)
+      .finally(() => { checking = undefined; });
+
+  ipcMain.handle(IPC.updatesVerify, verify);
+  ipcMain.handle(IPC.updatesCheck, check);
   ipcMain.handle(IPC.updatesCheckNow, async (): Promise<ServiceResult<AvailableUpdate | null>> => {
     if (!app.isPackaged || process.platform !== "win32") {
       return { ok: false, error: "A busca manual está disponível na versão instalada do PORTUS para Windows." };
     }
-    const result = await checkForUpdateDetailed(app.getVersion(), net.fetch.bind(net));
-    if (result.ok && result.data) announcedUpdate = result.data;
-    return result;
+    const state = await verify();
+    if (state.status === "error") return { ok: false, error: state.error };
+    if (state.status === "checking") return { ok: false, error: "Aguarde a verificação de atualização." };
+    return { ok: true, data: state.status === "required" ? state.update : null };
   });
   ipcMain.handle(IPC.updatesDownload, (event): Promise<ServiceResult<true>> => {
     if (installing) return Promise.resolve({ ok: false, error: "A atualização já está sendo instalada." });
