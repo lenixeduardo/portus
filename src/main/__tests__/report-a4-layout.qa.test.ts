@@ -1,22 +1,23 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Browser } from "playwright-core";
 import { buildBatchPrintHtml } from "../db/traceability-report";
 import type { BatchHistory, ReadingRecord } from "../../shared/ipc";
 
 const active = process.env.PORTUS_QA_E2E === "1";
-const root = mkdtempSync(join(tmpdir(), "portus-print-a4-"));
+const root = join(process.cwd(), "test-results", "qa-acceptance");
 let browser: Browser | undefined;
 
 beforeAll(async () => {
-  if (active) browser = await chromium.launch({ headless: true });
+  if (active) {
+    mkdirSync(root, { recursive: true });
+    browser = await chromium.launch({ headless: true });
+  }
 });
 afterAll(async () => {
   await browser?.close();
-  rmSync(root, { recursive: true, force: true });
 });
 
 function fixture(count: number): BatchHistory {
@@ -75,6 +76,10 @@ describe.skipIf(!active)("Auditoria visual de impressão A4 — relatório PORTU
       expect(bounds.columnOverflow).toBe(0);
 
       await page.pdf({ path: filename, format: "A4", printBackground: true, preferCSSPageSize: true });
+      if (count === 42) {
+        execFileSync("pdftoppm", ["-f", "1", "-singlefile", "-png", "-r", "130",
+          filename, join(root, "relatorio-a4-42-capturas")]);
+      }
       const info = execFileSync("pdfinfo", [filename], { encoding: "utf8" });
       const pages = Number(info.match(/^Pages:\s*(\d+)/m)?.[1]);
       expect(info).toMatch(/Page size:\s*595\.\d+ x 841\.\d+ pts \(A4\)/);
