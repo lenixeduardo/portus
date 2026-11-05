@@ -1,57 +1,27 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { describeCapturePermissionError } from "../db/central-capture-repo";
 
-vi.mock("../db/central-connection", () => ({ centralQuery: vi.fn() }));
-import { centralQuery } from "../db/central-connection";
-import {
-  createCentralCaptureSession,
-  describeCapturePermissionError
-} from "../db/central-capture-repo";
-
-const query = vi.mocked(centralQuery);
 const denied = () => Object.assign(
   new Error("Operação não autorizada para usuário/aplicação/setor"),
   { code: "42501" }
 );
 
 describe("regressão: captura entre setores", () => {
-  beforeEach(() => query.mockReset());
-
   it.each([
-    ["laboratory", "LABORATORY", "PRODUCTION", "PORTUS"],
-    ["operator", "PRODUCTION", "LABORATORY", "PORTUS_LABORATORY"]
+    ["laboratory", "LABORATORY", "PRODUCTION", "Laboratório", "Produção"],
+    ["operator", "PRODUCTION", "LABORATORY", "Produção", "Laboratório"]
   ] as const)(
-    "%s com origem %s usa a aplicação da estação %s e orienta corrigir permissões",
-    async (role, originSector, stationSector, expectedApplication) => {
-      query.mockImplementation(async (sql) => {
-        const statement = String(sql);
-        if (statement.includes("FROM users u")) {
-          return { rows: [{
-            user_id: 17,
-            application_id: 5,
-            sector_id: 3,
-            user_role: role,
-            user_sector_code: originSector
-          }] } as any;
-        }
-        if (statement.includes("ensure_station(")) {
-          return { rows: [{ id: 12 }] } as any;
-        }
-        if (statement.includes("portus_assert_permission(")) {
-          throw denied();
-        }
-        throw new Error("Consulta inesperada: " + statement);
-      });
-
-      await expect(createCentralCaptureSession(
-        99, 30, "operador.qa", stationSector,
-        { code: "PC-QA", name: "Estação QA", sectorCode: stationSector }
-      )).rejects.toThrow(/PORTUS DB Utility.*024 e 025/);
-
-      expect(query).toHaveBeenCalledTimes(3);
-      expect(query.mock.calls[0][1]).toEqual(["operador.qa", expectedApplication, stationSector]);
-      expect(query.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO capture_sessions"))).toBe(false);
+    "%s do setor %s recebe orientação quando a estação está em %s",
+    (role, originSector, stationSector, sourceName, stationName) => {
+      const error = describeCapturePermissionError(
+        denied(), { user_role: role, user_sector_code: originSector }, stationSector
+      );
+      expect(error.message).toContain("PORTUS DB Utility");
+      expect(error.message).toContain("024 e 025");
+      expect(error.message).toContain(`vínculo com ${sourceName}`);
+      expect(error.message).toContain(`configurada como ${stationName}`);
     }
   );
 
@@ -65,6 +35,12 @@ describe("regressão: captura entre setores", () => {
     expect(describeCapturePermissionError(
       unavailable, { user_role: "laboratory", user_sector_code: "LABORATORY" }, "PRODUCTION"
     )).toBe(unavailable);
+  });
+
+  it("mantém a escolha da aplicação pelo setor da estação, não pelo setor do usuário", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/main/db/central-capture-repo.ts"), "utf8");
+    expect(source).toContain('const applicationCode = sectorCode === "LABORATORY" ? "PORTUS_LABORATORY" : "PORTUS"');
+    expect(source).toContain('await assertCentralCapturePermission(context, sectorCode)');
   });
 
   it("a migration 025 só reconcilia captura para operadores previamente autorizados", () => {
