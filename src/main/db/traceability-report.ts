@@ -286,7 +286,7 @@ function fitEquipmentNames() {
       // Se o nome continuar maior que a coluna no piso de legibilidade,
       // comprimir somente na horizontal; nunca cortar nem quebrar o nome.
       if (width > available) {
-        span.style.transform = "scaleX(" + Math.max(0.45, available / width * 0.98) + ")";
+        span.style.transform = "scaleX(" + Math.min(1, available / width * 0.98) + ")";
       }
     }
   });
