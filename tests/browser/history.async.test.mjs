@@ -52,7 +52,7 @@ async function openHistory() {
       auth: { currentUser: async () => window.user, logout: async () => {} },
       setup: { status: async () => ({ configured: true, available: true, required: true, mode: "central",
         supported: true, setupCompleted: true, postgresBin: null, stationCode: "TESTE", postgresServiceStatus: "running" }) },
-      updates: { check: async () => null },
+      updates: { check: async () => null, verify: async () => ({ status: "current" }) },
       capture: { onEnded: () => () => {}, isActive: async () => false },
       users: { findByBarcode: async () => null },
       log: { error: async () => {} },
