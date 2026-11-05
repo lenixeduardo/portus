@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { RefreshCw } from "lucide-react";
+import type { AvailableUpdate } from "../../shared/ipc";
 import type { User } from "../../shared/types";
 import { PortusLogo } from "../components/PortusLogo";
 import { APP_VERSION } from "../releaseNotes";
@@ -6,6 +8,7 @@ import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 interface Props {
   onAuthenticated: (user: User) => void;
+  onUpdateFound: (update: AvailableUpdate) => void;
 }
 
 function isAuthenticatedUser(value: unknown): value is User {
@@ -24,12 +27,14 @@ function reportLoginError(error: unknown): void {
   void api?.log?.error("renderer:login", message, stack).catch(() => {});
 }
 
-export function Login({ onAuthenticated }: Props) {
+export function Login({ onAuthenticated, onUpdateFound }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activePort, setActivePort] = useState(0);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateFeedback, setUpdateFeedback] = useState<{ status: "success" | "error"; message: string } | null>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -104,6 +109,37 @@ export function Login({ onAuthenticated }: Props) {
     await authenticate({ username, password });
   }
 
+  async function checkUpdates() {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    setUpdateFeedback(null);
+    try {
+      const result = await window.api.updates.checkNow();
+      if (!result.ok) {
+        setUpdateFeedback({ status: "error", message: result.error });
+      } else if (result.data) {
+        setUpdateFeedback({
+          status: "success",
+          message: `Nova versão v${result.data.version} disponível para instalação.`
+        });
+        onUpdateFound(result.data);
+      } else {
+        setUpdateFeedback({
+          status: "success",
+          message: `Nenhuma nova atualização disponível. Versão instalada: v${APP_VERSION}.`
+        });
+      }
+    } catch (error) {
+      reportLoginError(error);
+      setUpdateFeedback({
+        status: "error",
+        message: "Falha ao verificar atualizações. Verifique sua conexão e tente novamente."
+      });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
+
   return (
     <div className="login-wrap">
       <div className="login-split">
@@ -163,6 +199,31 @@ export function Login({ onAuthenticated }: Props) {
               {loading ? "Autenticando..." : "Entrar"}
             </button>
           </form>
+          <div className="login-update-panel">
+            <button
+              type="button"
+              className="secondary login-update-button"
+              onClick={() => void checkUpdates()}
+              disabled={checkingUpdate || loading}
+              aria-busy={checkingUpdate}
+            >
+              <RefreshCw
+                size={15}
+                aria-hidden="true"
+                className={checkingUpdate ? "login-update-icon login-update-icon--spinning" : "login-update-icon"}
+              />
+              {checkingUpdate ? "Buscando atualizações..." : "Buscar atualizações"}
+            </button>
+            {updateFeedback && (
+              <p
+                className={`login-update-feedback login-update-feedback--${updateFeedback.status}`}
+                role={updateFeedback.status === "error" ? "alert" : "status"}
+                aria-live="polite"
+              >
+                {updateFeedback.message}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
