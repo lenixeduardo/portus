@@ -28,20 +28,47 @@ export function selectUpdate(currentVersion: string, data: unknown): AvailableUp
   return { currentVersion, version, downloadUrl: url };
 }
 
-export async function checkForUpdate(currentVersion: string, request: (url: string, init?: RequestInit) => Promise<Response> = fetch): Promise<AvailableUpdate | null> {
+/**
+ * Consulta manual: distingue "nenhuma atualização instalável" de erro de rede.
+ * O resultado negativo só é confiável se o GitHub respondeu com release válida.
+ */
+export async function checkForUpdateDetailed(
+  currentVersion: string,
+  request: (url: string, init?: RequestInit) => Promise<Response> = fetch
+): Promise<import("../shared/ipc").ServiceResult<AvailableUpdate | null>> {
   try {
     const response = await request(RELEASE_API, {
       headers: { Accept: "application/vnd.github+json", "User-Agent": "PORTUS" },
       signal: AbortSignal.timeout(8000), cache: "no-store"
     });
     if (!response.ok) {
-      logWarn("updates:check", `Canal de atualização indisponível: HTTP ${response.status}. A consulta será repetida.`);
-      return null;
+      return { ok: false, error: `Não foi possível consultar as atualizações (HTTP ${response.status}). Tente novamente.` };
     }
-    return selectUpdate(currentVersion, await response.json());
+    const release: unknown = await response.json();
+    if (!release || typeof release !== "object" ||
+        (release as Record<string, unknown>).draft !== false ||
+        (release as Record<string, unknown>).prerelease !== false ||
+        typeof (release as Record<string, unknown>).tag_name !== "string" ||
+        !versionParts((release as { tag_name: string }).tag_name) ||
+        !versionParts(currentVersion) ||
+        !Array.isArray((release as Record<string, unknown>).assets)) {
+      return { ok: false, error: "O canal de atualizações retornou dados inválidos. Tente novamente." };
+    }
+    return { ok: true, data: selectUpdate(currentVersion, release) };
   } catch {
-    logWarn("updates:check", "Falha de rede ao consultar atualizações. A consulta será repetida.");
-    // An unavailable update service must never prevent operational use.
+    return { ok: false, error: "Não foi possível acessar o canal de atualizações. Verifique a conexão e tente novamente." };
+  }
+}
+
+export async function checkForUpdate(
+  currentVersion: string,
+  request: (url: string, init?: RequestInit) => Promise<Response> = fetch
+): Promise<AvailableUpdate | null> {
+  const result = await checkForUpdateDetailed(currentVersion, request);
+  if (!result.ok) {
+    logWarn("updates:check", result.error);
+    // A consulta automática não deve impedir o uso do PORTUS.
     return null;
   }
+  return result.data;
 }
