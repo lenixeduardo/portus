@@ -1,4 +1,5 @@
-import type { IpcMainInvokeEvent } from "electron";
+import { app, type IpcMainInvokeEvent } from "electron";
+import { assertUpdateGateOpen } from "../update-gate";
 import { z } from "zod";
 import { getCurrentUser, touchSession, logout } from "../auth/auth-service";
 import { centralQuery } from "../db/central-connection";
@@ -16,6 +17,7 @@ interface CurrentCentralIdentity {
 }
 
 async function verifiedIdentity(requireAdministrator: boolean): Promise<void> {
+  if (app?.isPackaged && process.platform === "win32") assertUpdateGateOpen();
   const user = getCurrentUser();
   if (!user) throw new Error("Não autenticado.");
 
