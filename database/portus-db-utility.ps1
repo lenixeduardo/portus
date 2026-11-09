@@ -884,7 +884,7 @@ function Start-Action([string]$operation) {
   Save-UtilityPassword
   $previous = [Environment]::GetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD","Process")
   try {
-    if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
+    if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data","backup")) { [Environment]::SetEnvironmentVariable("PORTUS_SETUP_ADMIN_PASSWORD",$passField.Text,"Process") }
     $options = @{
       FilePath = (Join-Path $PSHOME "powershell.exe")
       ArgumentList = ($arguments -join " ")
