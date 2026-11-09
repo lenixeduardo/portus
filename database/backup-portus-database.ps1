@@ -16,6 +16,9 @@ $psql=Join-Path $PostgresBin "psql.exe"
 $dump=Join-Path $PostgresBin "pg_dump.exe"
 if (!(Test-Path -LiteralPath $psql) -or !(Test-Path -LiteralPath $dump)) { throw "psql.exe e pg_dump.exe sao obrigatorios." }
 if (!(Test-Path -LiteralPath (Split-Path -Parent $OutputPath) -PathType Container)) { throw "Pasta de destino inexistente." }
+if ($OutputPath.Contains('"') -or $OutputPath.Contains("`r") -or $OutputPath.Contains("`n")) { throw "Caminho de destino invalido." }
+$expected=@{json=".json";custom=".dump";plain=".sql";tar=".tar"}[$Format]
+if ([IO.Path]::GetExtension($OutputPath).ToLowerInvariant() -ne $expected) { throw "Extensao nao corresponde ao formato escolhido." }
 if (Test-Path -LiteralPath $OutputPath) { throw "Arquivo de destino ja existe; escolha outro nome." }
 $partial=$OutputPath+".partial"
 if (Test-Path -LiteralPath $partial) { throw "Arquivo temporario ja existe." }
@@ -31,9 +34,8 @@ try {
    & $dump -h $DatabaseHost -p $Port -U $AdminUser -d $DatabaseName --format=$flag --no-password --file=$partial
    if ($LASTEXITCODE -ne 0) { throw "pg_dump falhou (codigo $LASTEXITCODE)." }
  } else {
-   # One repeatable-read snapshot shared across table queries using pg_export_snapshot.
-   # psql commands are separate connections; use a single psql session instead via
-   # a generated SQL SELECT that builds the complete JSON in PostgreSQL.
+   # A consulta unica monta um snapshot consistente de todas as tabelas.
+   # JSON e data-only; pg_dump e a opcao de restauracao completa.
    $tables=@(Invoke-Psql "SELECT format('%I.%I',n.nspname,c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p') AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%' ORDER BY n.nspname,c.relname;")
    $tables=@($tables | Where-Object { $_ -and $_ -notmatch '^\s*$' })
    $parts=New-Object 'System.Collections.Generic.List[string]'
@@ -43,7 +45,7 @@ try {
      [void]$parts.Add("('$literal', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM $table t))")
    }
    $pairs=if($parts.Count) { $parts -join "," } else { "('empty','[]'::jsonb)" }
-   $sql="COPY (SELECT jsonb_build_object('format','portus-complete-json-v1','database',current_database(),'exportedAt',now(),'tables',(SELECT jsonb_object_agg(k,v) FROM (VALUES $pairs) x(k,v)))::text) TO STDOUT"
+   $sql="SELECT jsonb_build_object('format','portus-complete-json-v1','database',current_database(),'exportedAt',now(),'tables',(SELECT jsonb_object_agg(k,v) FROM (VALUES $pairs) x(k,v)))::text"
    $lines=Invoke-Psql $sql
    [IO.File]::WriteAllText($partial,($lines -join "`n"),$utf8)
  }
