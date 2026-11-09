@@ -26,6 +26,7 @@ const TITLES: Record<Route, string> = {
 };
 
 const LAST_SEEN_VERSION_KEY = "portus:last-seen-version";
+const BACKUP_GUIDE_KEY = "portus:admin-backup-guide:v1";
 const DATABASE_STATUS_INTERVAL_MS = 15_000;
 
 type Theme = "dark" | "light";
@@ -50,6 +51,7 @@ export function App() {
   const [noElectron, setNoElectron] = useState(false);
   const [initialSetup, setInitialSetup] = useState<InitialSetupStatus | null>(null);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+  const [showBackupGuide, setShowBackupGuide] = useState(false);
   const [updateGate, setUpdateGate] = useState<UpdateGateState>({ status: "checking" });
   const [retryingUpdate, setRetryingUpdate] = useState(false);
   const [showReportError, setShowReportError] = useState(false);
@@ -160,6 +162,16 @@ export function App() {
       window.clearInterval(interval);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (user?.role !== "master") { setShowBackupGuide(false); return; }
+    setShowBackupGuide(window.localStorage.getItem(`${BACKUP_GUIDE_KEY}:${user.id}`) !== "seen");
+  }, [user?.id, user?.role]);
+
+  function closeBackupGuide() {
+    if (user?.role === "master") window.localStorage.setItem(`${BACKUP_GUIDE_KEY}:${user.id}`, "seen");
+    setShowBackupGuide(false);
+  }
 
   useEffect(() => {
     if (user && user.role !== "master" && route === "settings") setRoute("dashboard");
@@ -300,6 +312,7 @@ export function App() {
         onRequestedBarcodeHandled={() => setRequestedUserBarcode(null)}
       />
       {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+      {showBackupGuide && user.role === "master" && <BackupGuideModal onClose={closeBackupGuide} />}
       {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>
   );
@@ -335,6 +348,18 @@ function ReleaseNotesModal({ onClose }: { onClose: () => void }) {
             </ul>
           </section>
         ))}
+      </div>
+    </Modal>
+  );
+}
+
+function BackupGuideModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="Como criar um backup completo do PORTUS" onClose={onClose} width={1040}
+      footer={<button type="button" onClick={onClose}>Entendi</button>}>
+      <div style={{ maxHeight: "70vh", overflow: "auto" }}>
+        <img src="/backup-portus-tutorial.svg" alt="Tutorial de backup completo do PORTUS em seis etapas." style={{ width: "100%", height: "auto", display: "block" }} />
+        <p>Para restauração integral do PostgreSQL, prefira o formato .dump. Guarde o arquivo em local seguro.</p>
       </div>
     </Modal>
   );
