@@ -2,7 +2,7 @@
 # The runner writes a machine-readable result only after the script completes.
 [CmdletBinding()]
 param(
-  [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","cleanup-preview","cleanup-test-data","selftest")][string]$Operation,
+  [ValidateSet("validate","migrate","network","register","seed-admin","import-legacy","cleanup-preview","cleanup-test-data","backup","selftest")][string]$Operation,
   [Parameter(Mandatory=$true)][string]$ResultPath,
   [string]$DatabaseHost = "127.0.0.1",
   [ValidateRange(1,65535)][int]$Port = 5432,
@@ -18,6 +18,8 @@ param(
   [string]$BatchIds = "",
   [string]$ProductIds = "",
   [string]$UserIds = "",
+  [string]$BackupFormat = "",
+  [string]$BackupPath = "",
   [switch]$ClearHistory
 )
 $ErrorActionPreference = "Stop"
@@ -43,6 +45,9 @@ try {
       { $_ -in @("cleanup-preview","cleanup-test-data") } {
         $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName; PreviewPath=$PreviewPath; BatchIds=$BatchIds; ProductIds=$ProductIds; UserIds=$UserIds; ClearHistory=$ClearHistory; ConfirmCleanup=($Operation -eq "cleanup-test-data") }
         & (Join-Path $PSScriptRoot "cleanup-portus-test-data.ps1") @invokeParams
+      }
+      "backup" {
+        & (Join-Path $PSScriptRoot "backup-portus-database.ps1") -DatabaseHost $DatabaseHost -Port $Port -DatabaseName $DatabaseName -AdminUser $AdminUser -PostgresBin $PostgresBin -Format $BackupFormat -OutputPath $BackupPath
       }
       "validate" {
         $invokeParams = @{ PostgresBin=$PostgresBin; DatabaseHost=$DatabaseHost; Port=$Port; AdminUser=$AdminUser; DatabaseName=$DatabaseName }
