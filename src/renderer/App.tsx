@@ -312,7 +312,7 @@ export function App() {
         onRequestedBarcodeHandled={() => setRequestedUserBarcode(null)}
       />
       {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
-      {showBackupGuide && user.role === "master" && <BackupGuideModal onClose={closeBackupGuide} />}
+      {showBackupGuide && !showReleaseNotes && user.role === "master" && <BackupGuideModal onClose={closeBackupGuide} />}
       {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>
   );
