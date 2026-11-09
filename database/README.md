@@ -1,3 +1,22 @@
+## Backup completo no Database Utility
+
+O botao **Backup completo** oferece JSON (.json), PostgreSQL Custom (.dump),
+SQL (.sql) e PostgreSQL TAR (.tar). Informe credenciais administrativas e
+selecione o destino. O arquivo e publicado somente apos sucesso, usando
+extensao temporaria .partial durante a exportacao.
+
+O JSON contem todas as tabelas de usuario encontradas nos schemas nao
+sistemicos e seus registros, inclusive tabelas vazias. Ele e destinado
+a interoperabilidade e auditoria; nao substitui um dump PostgreSQL para
+restauracao integral de schema, indices, funcoes, sequences e permissoes.
+Para recuperacao, prefira .dump com pg_restore. O formato SQL e executado
+com psql. O backup usa as ferramentas oficiais da pasta bin informada.
+
+Atencao: a exportacao JSON agrega os registros no servidor e pode consumir
+memoria elevada em bancos grandes. Homologue em copia da base antes de usar
+em producao. Backups contem dados sensiveis, inclusive hashes de senha:
+proteja os arquivos e nunca os publique em repositorios.
+
 ## Configuracao obrigatoria na primeira abertura do aplicativo
 
 Na primeira abertura do PORTUS em uma maquina Windows, o login permanece
