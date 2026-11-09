@@ -276,6 +276,7 @@ $dataImportButton.Image = New-PortusGlyph "database" 24 "brandMuted"
 $cleanupButton = Make-Action "Limpar dados cadastrados" 467 $false 560
 $cleanupButton.Image = New-PortusGlyph "database" 24 "brandMuted"
 $diagnoseButton = Make-Action "Detectar PostgreSQL" 258 $false 560
+$backupButton = Make-Action "Backup completo" 676 $false 560
 
 # Ícones avulsos transparentes do design system (24 px, assets PNG).
 $script:UiActionImages = @()
@@ -314,6 +315,7 @@ $actionToolTip.SetToolTip($adminButton, "Desenvolvimento local: cria admin e red
 $actionToolTip.SetToolTip($dataImportButton, "Importa dados históricos do SQLite para PostgreSQL, após backups e validação de estação/setor.")
 $actionToolTip.SetToolTip($passField, "Senha lembrada para esta conexao, protegida pelo usuario Windows. Para esquecer, apague o campo e feche o utilitario.")
 $actionToolTip.SetToolTip($cleanupButton, "Seleciona lotes, usuarios, produtos e historicos, com backup obrigatorio.")
+$actionToolTip.SetToolTip($backupButton, "Exporta todos os dados em JSON, PostgreSQL Custom, SQL ou TAR.")
 $actionToolTip.SetToolTip($diagnoseButton, "Detecta instalacoes, ferramentas e servicos PostgreSQL neste computador, sem alterar dados.")
 
 # Status card.
@@ -614,9 +616,9 @@ function Set-Busy([bool]$busy) {
     }
     $field.Tag.Surface.BackColor = if ($busy) { UiColor "disabledBackground" } else { UiColor "surface" }
   }
-  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$dataImportButton,$diagnoseButton,$cleanupButton)) {
+  foreach ($button in @($checkButton,$migrateButton,$networkButton,$registerButton,$adminButton,$dataImportButton,$diagnoseButton,$cleanupButton,$backupButton)) {
     if (-not $button.AccessibleDescription) { $button.AccessibleDescription = $button.Text }
-    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}elseif($button -eq $adminButton){"seed-admin"}elseif($button -eq $cleanupButton){$script:action}else{"import-legacy"})) { "Executando..." } else { $button.AccessibleDescription }
+    $button.Text = if ($busy -and $script:action -eq $(if($button -eq $checkButton){"validate"}elseif($button -eq $migrateButton){"migrate"}elseif($button -eq $networkButton){"network"}elseif($button -eq $registerButton){"register"}elseif($button -eq $adminButton){"seed-admin"}elseif($button -eq $cleanupButton){$script:action}elseif($button -eq $backupButton){"backup"}else{"import-legacy"})) { "Executando..." } else { $button.AccessibleDescription }
   }
   $checkButton.Enabled = -not $busy
   $migrateButton.Enabled = -not $busy
@@ -626,6 +628,7 @@ function Set-Busy([bool]$busy) {
   $dataImportButton.Enabled = -not $busy
   $diagnoseButton.Enabled = -not $busy
   $cleanupButton.Enabled = -not $busy
+  $backupButton.Enabled = -not $busy
   $browseButton.Enabled = -not $busy
   $showPasswordButton.Enabled = -not $busy
   $clearLogButton.Enabled = -not $busy
@@ -727,6 +730,23 @@ $timer.Add_Tick({
 })
 
 function Start-Action([string]$operation) {
+  $backupChoice = $null
+  if ($operation -eq "backup") {
+    $dialog = New-Object System.Windows.Forms.SaveFileDialog
+    $dialog.Title = "Backup completo PORTUS"
+    $dialog.Filter = "JSON completo (*.json)|*.json|PostgreSQL Custom (*.dump)|*.dump|SQL (*.sql)|*.sql|PostgreSQL TAR (*.tar)|*.tar"
+    $dialog.FileName = "portus-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".json"
+    $dialog.OverwritePrompt = $true
+    try {
+      if ($dialog.ShowDialog($form) -ne [System.Windows.Forms.DialogResult]::OK) { return }
+      $formats = @("json","custom","plain","tar")
+      $extensions = @(".json",".dump",".sql",".tar")
+      $selected = $dialog.FilterIndex - 1
+      $path = [IO.Path]::ChangeExtension($dialog.FileName,$extensions[$selected])
+      if (Test-Path -LiteralPath $path) { [void][System.Windows.Forms.MessageBox]::Show("O arquivo ja existe. Escolha outro nome.","PORTUS"); return }
+      $backupChoice = @{ Format=$formats[$selected]; Path=$path }
+    } finally { $dialog.Dispose() }
+  }
   if ($script:child) { return }
   $hostName = $hostField.Text.Trim()
   $database = $dbField.Text.Trim()
@@ -742,11 +762,11 @@ function Start-Action([string]$operation) {
     [void][System.Windows.Forms.MessageBox]::Show("Verifique os dados de conexao.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
+  if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data","backup") -and [string]::IsNullOrWhiteSpace($passField.Text)) {
     [void][System.Windows.Forms.MessageBox]::Show("Informe a senha administrativa do PostgreSQL.","PORTUS")
     return
   }
-  if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data")) {
+  if ($operation -in @("validate","migrate","seed-admin","import-legacy","cleanup-preview","cleanup-test-data","backup")) {
     $psqlProblem = Get-PortusPsqlValidationError -BinPath $bin -CheckVersion
     if ($psqlProblem) {
       Show-Log $psqlProblem "diagnostic"
@@ -759,6 +779,7 @@ function Start-Action([string]$operation) {
     elseif ($operation -in @("migrate","seed-admin")) { "install-portus-database.ps1" }
     elseif ($operation -eq "import-legacy") { "import-legacy-to-postgres.mjs" }
     elseif ($operation -in @("cleanup-preview","cleanup-test-data")) { "cleanup-portus-test-data.ps1" }
+    elseif ($operation -eq "backup") { "backup-portus-database.ps1" }
     else { "check-portus-server-network.ps1" }
   $scriptPath = if ($operation -eq "import-legacy") {
     try { Find-PortusLegacyImporter -DatabaseDirectory $PSScriptRoot }
@@ -839,6 +860,7 @@ function Start-Action([string]$operation) {
     "-AdminUser", (Quoted $username),
     "-PostgresBin", (Quoted $bin)
   )
+  if ($operation -eq "backup") { $arguments += @("-BackupFormat",$backupChoice.Format,"-BackupPath",(Quoted $backupChoice.Path)) }
   if ($operation -eq "cleanup-preview") {
     $script:cleanupPreviewFile = Join-Path $env:TEMP ("portus-cleanup-" + [guid]::NewGuid().ToString("N") + ".json")
     $arguments += @("-PreviewPath", (Quoted $script:cleanupPreviewFile))
@@ -895,6 +917,7 @@ $registerButton.Add_Click({ Start-Action "register" })
 $adminButton.Add_Click({ Start-Action "seed-admin" })
 $dataImportButton.Add_Click({ Start-Action "import-legacy" })
 $cleanupButton.Add_Click({ Start-Action "cleanup-preview" })
+$backupButton.Add_Click({ Start-Action "backup" })
 $diagnoseButton.Add_Click({ if (-not $script:child) { Show-PostgresDiscovery } })
 $form.Add_FormClosing({
   param($sender,$args)
