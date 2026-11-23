@@ -1,7 +1,7 @@
 # PORTUS EPA — preparação técnica pré-implementação
 
 Status: **proposta para revisão; nenhuma migration EPA aplicada**.
-Escopo: 18 modelos previstos, cinco cálculos automatizados e critérios de conformidade por produto. A correspondência entre os 18 modelos e as 19 imagens recebidas permanece pendente; não cadastrar limites nem aprovar modelos sem conferência documental.
+Escopo aprovado pelo responsável: **todos os 19 modelos laboratoriais documentados**, incluindo CPO e CPO-B, independentemente da quantidade prevista no contrato; cinco cálculos automatizados e critérios de conformidade por produto. Limites e critérios individuais continuam sujeitos a conferência documental e homologação.
 
 ## Arquitetura real e pontos de integração
 - Electron + TypeScript, IPC com validação Zod, processo principal acessando PostgreSQL por `pg`; **não** introduzir API REST paralela.
@@ -60,7 +60,7 @@ A origem exata das células, correspondência de comprimento de onda, densidade,
 Cada migration exige teste de upgrade em banco populado, idempotência do instalador, rollback operacional planejado e teste de não regressão.
 
 ## Critérios de aceite antes de iniciar implementação
-- [ ] Conciliar 18 modelos previstos versus 19 anexos; validar códigos e revisões.
+- [x] Escopo confirmado: implementar os 19 modelos dos anexos, incluindo CPO e CPO-B, sem exclusão por divergência contratual.\n- [ ] Validar códigos, revisões e limites de cada um dos 19 modelos.
 - [ ] Confirmar associação de cada produto aos parâmetros obrigatórios e limites a partir dos documentos.
 - [ ] Conferir célula a célula as cinco fórmulas com exemplos e resultados esperados.
 - [ ] Executar `database/tests/epa_preflight.sql` em banco de homologação; conferir migrations aplicadas e privilégios.
