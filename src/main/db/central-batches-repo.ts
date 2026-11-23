@@ -157,11 +157,20 @@ export async function listCentralAllBatches(
 export async function findCentralBatchByCode(
   code: string,
   username: string,
-  sectorCode: "PRODUCTION" | "LABORATORY"
+  sectorCode: "PRODUCTION" | "LABORATORY",
+  productId?: number
 ): Promise<BatchWithProduct | null> {
   const context = await resolveContext(username, sectorCode);
   await assertReadPermission(context);
-  const result = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.code = $1`, [code.trim()]);
+  // Um código sem produto só identifica um lote quando a busca não é ambígua.
+  const sql = productId == null
+    ? `${SELECT_BATCH} WHERE b.code = $1 ORDER BY b.id LIMIT 2`
+    : `${SELECT_BATCH} WHERE b.code = $1 AND b.product_id = $2`;
+  const params = productId == null ? [code.trim()] : [code.trim(), productId];
+  const result = await centralQuery<CentralBatchRow>(sql, params);
+  if (productId == null && result.rows.length > 1) {
+    throw new Error("Este número de lote pertence a mais de um produto. Identifique o produto para continuar.");
+  }
   return result.rows[0] ? toBatch(result.rows[0]) : null;
 }
 
@@ -219,11 +228,19 @@ export async function openCentralBatch(
     [productName, productDescription ?? null, context.user_id, context.application_id, context.sector_id]
   );
   if (!product.rows[0]?.id) throw new Error(`Não foi possível preparar o produto "${productName}" na base central.`);
-  const result = await centralQuery<{ id: number }>(
-    "SELECT id FROM open_batch($1, $2, $3, $4, $5, $6)",
-    [product.rows[0].id, code, context.user_id, context.application_id, context.sector_id, stage]
-  );
-  const id = result.rows[0]?.id;
+  let id: number | undefined;
+  try {
+    const result = await centralQuery<{ id: number }>(
+      "SELECT id FROM open_batch($1, $2, $3, $4, $5, $6)",
+      [product.rows[0].id, code, context.user_id, context.application_id, context.sector_id, stage]
+    );
+    id = result.rows[0]?.id;
+  } catch (error) {
+    if ((error as { code?: string })?.code === "23505") {
+      throw new Error(`O lote "${code.trim()}" já está cadastrado para o produto "${productName}".`);
+    }
+    throw error;
+  }
   if (!id) throw new Error("A base central não retornou o lote criado.");
   const batch = await centralQuery<CentralBatchRow>(`${SELECT_BATCH} WHERE b.id = $1`, [id]);
   if (!batch.rows[0]) throw new Error("Lote criado, mas não foi possível recarregá-lo.");

@@ -101,10 +101,6 @@ export function registerBatchesHandlers(): void {
       async (_e, input: BarcodeScanInput): Promise<ServiceResult<BarcodeScanResult>> => {
         const user = current();
         try {
-          const already = await findCentralBatchByCode(
-            input.barcodeValue.trim(), user.username, getUserOperationalSector(user)
-          );
-          if (already) return { ok: true, data: { batch: already, created: false } };
           const pattern = await getCentralStationSetting("barcode_regex");
           const regex = new RegExp(pattern || "^(?<product>.+)-(?<batch_code>[^-]+)$");
           const match = input.barcodeValue.trim().match(regex);
@@ -118,6 +114,13 @@ export function registerBatchesHandlers(): void {
             product = await createCentralProduct(input.productName, value, user.username);
           }
           if (!product) return { ok: false, error: "Produto não cadastrado no catálogo central." };
+          const already = await findCentralBatchByCode(
+            code, user.username, getUserOperationalSector(user), product.id
+          );
+          if (already) {
+            if (already.status === "closed") return { ok: false, error: "O lote deste produto está finalizado." };
+            return { ok: true, data: { batch: already, created: false } };
+          }
           const batch = await openCentralBatch(
             product.name, product.description, code,
             user.username, getUserOperationalSector(user)

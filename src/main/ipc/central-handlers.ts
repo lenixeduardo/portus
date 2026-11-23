@@ -109,11 +109,15 @@ export function registerCentralHandlers(): void {
 
   ipcMain.handle(
     IPC.centralBatchesFindByCode,
-    compose([requireAuth])(async (_e, code: string): Promise<BatchWithProduct | null> => {
+    compose([requireAuth])(async (_e, code: string, productId?: number): Promise<BatchWithProduct | null> => {
       const user = getCurrentUser();
       if (!user || !isCentralDatabaseConfigured()) return null;
+      if (typeof code !== "string" || !code.trim()) throw new Error("Número do lote obrigatório.");
+      if (productId != null && (!Number.isSafeInteger(productId) || productId <= 0)) {
+        throw new Error("Identificador do produto inválido.");
+      }
       const { findCentralBatchByCode } = await import("../db/central-batches-repo");
-      return findCentralBatchByCode(code, user.username, getUserOperationalSector(user));
+      return findCentralBatchByCode(code, user.username, getUserOperationalSector(user), productId);
     })
   );
 
