@@ -37,6 +37,7 @@ describe("scanner de lote no modo PostgreSQL central", () => {
     expect(result.ok).toBe(true);
     expect(mockApi.batches.scanBarcode).not.toHaveBeenCalled();
     expect(mockApi.central.batches.create).not.toHaveBeenCalled();
+    expect(mockApi.central.batches.findByCode).toHaveBeenCalledWith("LOTE-001", 3);
   });
 
   it("cria um lote central com o produto selecionado sem chamar a API local", async () => {
@@ -45,6 +46,31 @@ describe("scanner de lote no modo PostgreSQL central", () => {
 
     expect(result.ok).toBe(true);
     expect(mockApi.central.batches.create).toHaveBeenCalledWith({ productId: 3, code: "LOTE-002" });
+    expect(mockApi.central.batches.findByCode).toHaveBeenCalledWith("LOTE-002", 3);
     expect(mockApi.batches.scanBarcode).not.toHaveBeenCalled();
+  });
+
+  it("permite mesmo número de lote quando pertence a outro produto", async () => {
+    const mockApi = api();
+    const existingForOtherProduct = batch("LOTE-003");
+    (mockApi.central.batches.findByCode as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_code: string, productId?: number) => productId === 4 ? existingForOtherProduct : null
+    );
+    const result = await scanBarcodeByMode(mockApi, "LOTE-003", true, 3);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.created).toBe(true);
+    expect(mockApi.central.batches.findByCode).toHaveBeenCalledWith("LOTE-003", 3);
+    expect(mockApi.central.batches.create).toHaveBeenCalledWith({ productId: 3, code: "LOTE-003" });
+  });
+
+  it("não escolhe o primeiro produto do catálogo quando nenhum foi identificado", async () => {
+    const mockApi = api();
+    const result = await scanBarcodeByMode(mockApi, "LOTE-004", true, null);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("Identifique o produto");
+    expect(mockApi.central.batches.findByCode).not.toHaveBeenCalled();
+    expect(mockApi.central.batches.create).not.toHaveBeenCalled();
   });
 });

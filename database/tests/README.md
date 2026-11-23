@@ -64,3 +64,9 @@ real de auditoria do handler, use o runner isolado (não acessa banco externo):
 npm install --prefix /tmp/portus-db-tests --ignore-scripts @electric-sql/pglite
 PORTUS_TEST_PGLITE_MODULE=/tmp/portus-db-tests/node_modules/@electric-sql/pglite/dist/index.js node database/tests/008_laboratory_finalization.mjs
 ```
+
+### Identidade do lote por produto
+
+Após aplicar `026_batch_product_composite_identity.sql` em um banco PostgreSQL de teste,
+execute `psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/011_batch_composite_identity.sql`.
+O teste valida dois produtos com o mesmo código, rejeita duplicação no mesmo produto e usa `ROLLBACK`.
