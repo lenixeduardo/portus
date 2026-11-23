@@ -42,14 +42,8 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
     if (centralMode) {
       try {
         const original = barcode.trim();
-        const existing = await window.api.central.batches.findByCode(original);
         if (!mountedRef.current) return;
         setLoading(false);
-        if (existing) {
-          setResult({ batch: existing, created: false });
-          setPendingBarcode(null);
-          return;
-        }
         const digits = original.replace(/\D/g, "");
         if (!/^\d{16,}$/.test(digits)) {
           setError("Etiqueta inválida: informe os 12 dígitos do produto e pelo menos 4 dígitos do lote.");
@@ -69,9 +63,21 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
             : "Há mais de um produto associado ao código " + prefix + ". Corrija o cadastro central.");
           return;
         }
+        const code = digits.slice(12);
+        const existing = await window.api.central.batches.findByCode(code, matches[0].id);
+        if (!mountedRef.current) return;
+        if (existing) {
+          if (existing.status === "closed") {
+            setError(`O lote ${code} deste produto está finalizado.`);
+          } else {
+            setResult({ batch: existing, created: false });
+            setPendingBarcode(null);
+          }
+          return;
+        }
         setMatchedProduct(matches[0]);
         setProductId(matches[0].id);
-        setLotCode(digits.slice(12));
+        setLotCode(code);
         setPendingBarcode(original);
         return;
       } catch {
@@ -101,7 +107,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
     setLoading(true);
     setError(null);
     try {
-      const existing = await window.api.central.batches.findByCode(code);
+      const existing = await window.api.central.batches.findByCode(code, productId);
       if (!mountedRef.current) return;
       if (existing) { setError("O lote " + code + " já existe."); return; }
       const created = await window.api.central.batches.create({ productId, code, barcodeValue: pendingBarcode });

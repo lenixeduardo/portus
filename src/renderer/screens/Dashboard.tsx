@@ -241,7 +241,26 @@ export function Dashboard({
           return;
         }
 
-        const centralBatch = await window.api.central.batches.findByCode(code);
+        // Etiquetas completas: 12 dígitos do produto + número do lote.
+        // Para códigos simples, uma busca ambígua exige identificação do produto.
+        const digits = code.replace(/\D/g, "");
+        let centralBatch: BatchWithProduct | null;
+        if (/^\d{16,}$/.test(digits)) {
+          const prefix = digits.slice(0, 12);
+          const products = await window.api.products.list();
+          const matches = products.filter(product =>
+            [product.description, product.name].some(value =>
+              typeof value === "string" && value.replace(/\D/g, "").slice(0, 12) === prefix
+            )
+          );
+          if (matches.length !== 1) {
+            setScannerError("Não foi possível identificar um único produto na etiqueta. Verifique o cadastro.");
+            return;
+          }
+          centralBatch = await window.api.central.batches.findByCode(digits.slice(12), matches[0].id);
+        } else {
+          centralBatch = await window.api.central.batches.findByCode(code);
+        }
         if (centralBatch) {
           setScannerState({ phase: "idle" });
           await handleBarcodeReady(centralBatch);
@@ -287,7 +306,7 @@ export function Dashboard({
       setScannerState({ phase: "idle" });
       await handleBarcodeReady(res.data.batch);
     } catch (error) {
-      setScannerError("Não foi possível processar a leitura do código de barras.");
+      setScannerError(error instanceof Error ? error.message : "Não foi possível processar a leitura do código de barras.");
       reportDashboardError("scanner", error);
     }
   }

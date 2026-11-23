@@ -304,8 +304,8 @@ try {
     const product=productIds.get(Number(b.product_id));
     if (!creator || !product) throw new Error("Lote órfão: " + b.code);
     const id=await transfer("batches",b,async()=>{
-      const collision=await selectOne("SELECT id FROM batches WHERE code=$1",[b.code]);
-      if (collision) throw new Error("Código do lote já presente sem ledger: "+b.code);
+      const collision=await selectOne("SELECT id FROM batches WHERE product_id=$1 AND code=$2",[product,b.code]);
+      if (collision) throw new Error("Produto e lote já presentes sem ledger: "+b.code);
       const closed=b.status==="closed";
       const opened=dateValue(b.opened_at)||new Date().toISOString();
       const inserted=await selectOne(
