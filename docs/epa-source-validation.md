@@ -3,10 +3,10 @@
 ## Inventário dos 19 anexos PNG originais
 CER-A, CER-K, CER-P, CPO, CPO-B, DPC, DPC-C, DPC-CPO, DPC-CPOB, DPC-M, DPC-MB, DPC-MF, MOL, MOL-L, MOL-S, NAT PO, NAT líquido, SPC, VER.
 
-A relação anterior de 18 omitia **CPO**. CPO e CPO-B são formulários distintos, não duplicatas:
+**Decisão de escopo (usuário, 2026-11-23): implementar TODOS os 19 modelos laboratoriais, desconsiderando a contagem contratual.** A relação anterior de 18 omitia **CPO**. CPO e CPO-B são formulários distintos, não duplicatas:
 - CPO: `CORANTE CARAMELO CPO`, folha de pó; Poder Corante **77481–80033**, Poder Tintorial **0,811–0,832**, Hue **4,1–4,2**, densidade aparente **0,472–0,548 g/Kg** (unidade impressa a validar com laboratório).
 - CPO-B: `CORANTE CARAMELO CPO-B`, folha de pó; Poder Corante **50069–54631**, Poder Tintorial **0,500–0,600**, Hue **4,1–4,4**, Cor Spencer impresso **58,7 – 53,7** (intervalo invertido; **não normalizar sem homologação**), densidade aparente **0,545–0,604 g/Kg** (unidade impressa a validar).
-- Conclusão: 19 códigos distintos nos anexos. **Não excluir CPO nem cadastrar os 19 como aprovados** até confirmar os 18 contratados e eventual modelo adicional.
+- Conclusão: **os 19 códigos distintos entram no escopo de implementação**. Não há pendência de seleção contratual. A aprovação de limites, unidades e revisões técnicas de cada modelo continua dependente de conferência das folhas.
 
 ## Verificação do arquivo original `Cálculo Caramelo.xlsx`
 Aba: `Cálculo Caramelo`. Entradas: B3=0,6 (Abs 0,4% 610nm), B4=0,04 (Abs 0,1% 610nm), B5=0,187 (Abs 0,1% 560nm), B6=0,17 (Abs 0,1% 510nm), B7=0,482 (Abs 0,05% 430nm), B15=1,28 (densidade 25°C).
