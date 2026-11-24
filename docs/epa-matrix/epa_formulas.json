@@ -1,0 +1,111 @@
+[
+  {
+    "codigo_formula": "cor_spencer",
+    "versao": 1,
+    "nome_original": "Cor Spencer",
+    "arquivo_origem": "Cálculo Caramelo.xlsx",
+    "sha256": "5fb1643e862b8554bfa8a792ae851a856c068d92322960344b6e746f7dd418f7",
+    "aba": "Cálculo Caramelo",
+    "celula_resultado": "B8",
+    "formula_excel": "=74.913/B3",
+    "unidade_resultado": null,
+    "entradas_referencia": {
+      "B3": {
+        "valor": "0.6",
+        "nome_original": "Absorbância (sol. 0,4%, 610nm, cubeta 1cm)"
+      }
+    },
+    "resultado_armazenado": "124.855",
+    "resultado_recalculado": "124.855",
+    "status_validacao": "formula_conferida",
+    "observacoes": "Precisão operacional e aplicação específica por modelo dependem de confirmação."
+  },
+  {
+    "codigo_formula": "poder_tintorial",
+    "versao": 1,
+    "nome_original": "Poder Tintorial",
+    "arquivo_origem": "Cálculo Caramelo.xlsx",
+    "sha256": "5fb1643e862b8554bfa8a792ae851a856c068d92322960344b6e746f7dd418f7",
+    "aba": "Cálculo Caramelo",
+    "celula_resultado": "B9",
+    "formula_excel": "=B5",
+    "unidade_resultado": null,
+    "entradas_referencia": {
+      "B5": {
+        "valor": "0.187",
+        "nome_original": "Absorbância (sol. 0,1%, 560nm, cubeta 1cm)"
+      }
+    },
+    "resultado_armazenado": "0.187",
+    "resultado_recalculado": "0.187",
+    "status_validacao": "formula_conferida",
+    "observacoes": "Precisão operacional e aplicação específica por modelo dependem de confirmação."
+  },
+  {
+    "codigo_formula": "poder_corante",
+    "versao": 1,
+    "nome_original": "Poder Corante",
+    "arquivo_origem": "Cálculo Caramelo.xlsx",
+    "sha256": "5fb1643e862b8554bfa8a792ae851a856c068d92322960344b6e746f7dd418f7",
+    "aba": "Cálculo Caramelo",
+    "celula_resultado": "B10",
+    "formula_excel": "=B7*2000*25",
+    "unidade_resultado": null,
+    "entradas_referencia": {
+      "B7": {
+        "valor": "0.482",
+        "nome_original": "Absorbância (sol. 0,05%,430nm, cubeta 1cm)"
+      }
+    },
+    "resultado_armazenado": "24100",
+    "resultado_recalculado": "24100.000",
+    "status_validacao": "formula_conferida",
+    "observacoes": "Precisão operacional e aplicação específica por modelo dependem de confirmação."
+  },
+  {
+    "codigo_formula": "indice_hue",
+    "versao": 1,
+    "nome_original": "Índice de Hue",
+    "arquivo_origem": "Cálculo Caramelo.xlsx",
+    "sha256": "5fb1643e862b8554bfa8a792ae851a856c068d92322960344b6e746f7dd418f7",
+    "aba": "Cálculo Caramelo",
+    "celula_resultado": "B11",
+    "formula_excel": "=(LOG10(B6/B4))*10",
+    "unidade_resultado": null,
+    "entradas_referencia": {
+      "B6": {
+        "valor": "0.17",
+        "nome_original": "Absorbância (sol. 0,1%, 510nm, cubeta 1cm)"
+      },
+      "B4": {
+        "valor": "0.04",
+        "nome_original": "Absorbância (sol. 0,1%, 610nm, cubeta 1cm)"
+      }
+    },
+    "resultado_armazenado": "6.283889300503115",
+    "resultado_recalculado": "6.2838893005031153811269210487935098",
+    "status_validacao": "formula_conferida",
+    "observacoes": "Precisão operacional e aplicação específica por modelo dependem de confirmação."
+  },
+  {
+    "codigo_formula": "concentracao_be",
+    "versao": 1,
+    "nome_original": "Concentração °Be (25°C)",
+    "arquivo_origem": "Cálculo Caramelo.xlsx",
+    "sha256": "5fb1643e862b8554bfa8a792ae851a856c068d92322960344b6e746f7dd418f7",
+    "aba": "Cálculo Caramelo",
+    "celula_resultado": "B14",
+    "formula_excel": "=(((145/B15))-145)*-1+0.8-0.74",
+    "unidade_resultado": "°Bé",
+    "entradas_referencia": {
+      "B15": {
+        "valor": "1.28",
+        "nome_original": "Densidade g/ml (ou g/L) (25°C)"
+      }
+    },
+    "resultado_armazenado": "31.77875",
+    "resultado_recalculado": "31.77875",
+    "status_validacao": "bloqueado_unidade",
+    "observacoes": "A célula B15 imprime g/ml (ou g/L); confirmar a unidade antes de aprovar a aplicação da fórmula."
+  }
+]

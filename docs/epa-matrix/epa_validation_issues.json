@@ -1,0 +1,848 @@
+[
+  {
+    "codigo_modelo": "CER-A",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-A.PNG",
+    "observacoes": "Rodapé cortado."
+  },
+  {
+    "codigo_modelo": "CER-A",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-A.PNG · linha 6 · Cor Spencer · 130–110",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "CER-A",
+    "codigo_parametro": "poder_corante",
+    "codigo_pendencia": "faixa_corante_vs_absorbancia",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-A.PNG · linha 8 · Poder Corante · 35200–41100",
+    "observacoes": "Poder Corante termina em 41100 no formulário, mas 0,840 × 2000 × 25 = 42000; confirmar os limites independentes."
+  },
+  {
+    "codigo_modelo": "CER-A",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-A.PNG · linha 12 · Concentração °Be (25°C) · *38,0–39,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "CER-A",
+    "codigo_parametro": "residuo_filtracao_10pct",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-A.PNG · linha 14 · Resíduo filtração (sol. 10%) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "CER-A",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-A.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-K.PNG",
+    "observacoes": "(**) Turbidez é liberatória para lote, não para envase."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-K.PNG · linha 6 · Cor Spencer · 140–118",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "codigo_parametro": "indice_hue",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-K.PNG · linha 9 · Índice de Hue · 6,0–4,0",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-K.PNG · linha 12 · Concentração °Be (25°C) · *28,5–30,5",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "codigo_parametro": "residuo_filtracao_10pct",
+    "codigo_pendencia": "residuo_zero_sem_unidade",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-K.PNG · linha 14 · Resíduo filtração (sol. 10%) · *0",
+    "observacoes": "O teste de resíduo imprime 0 sem unidade ou escala."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-K.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-P.PNG",
+    "observacoes": "Rodapé fora do recorte."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-P.PNG · linha 6 · Cor Spencer · 140–120",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "codigo_parametro": "indice_hue",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-P.PNG · linha 9 · Índice de Hue · 6,0–4,0",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-P.PNG · linha 12 · Concentração °Be (25°C) · *38,0–39,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "codigo_parametro": "residuo_filtracao_10pct",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-P.PNG · linha 14 · Resíduo filtração (sol. 10%) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CER-P.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "CPO",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO.PNG",
+    "observacoes": "Legenda (*) fora do recorte."
+  },
+  {
+    "codigo_modelo": "CPO",
+    "codigo_parametro": "densidade_aparente",
+    "codigo_pendencia": "unidade_densidade_aparente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO.PNG · linha 9 · Densidade aparente (g/Kg) · 0,472–0,548",
+    "observacoes": "Confirmar unidade e escala impressas de densidade aparente: g/Kg."
+  },
+  {
+    "codigo_modelo": "CPO",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "CPO-B",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO-B.PNG",
+    "observacoes": "Legenda (*) fora do recorte."
+  },
+  {
+    "codigo_modelo": "CPO-B",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO-B.PNG · linha 6 · Cor Spencer · 58,7–53,7",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "CPO-B",
+    "codigo_parametro": "densidade_aparente",
+    "codigo_pendencia": "unidade_densidade_aparente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO-B.PNG · linha 11 · Densidade aparente (g/Kg) · 0,545–0,604",
+    "observacoes": "Confirmar unidade e escala impressas de densidade aparente: g/Kg."
+  },
+  {
+    "codigo_modelo": "CPO-B",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "CPO-B.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC.PNG",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC.PNG · linha 6 · Cor Spencer · 85–75",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "DPC",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC.PNG · linha 12 · Concentração °Be (25°C) · 29,0–31,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC-C",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-C.PNG",
+    "observacoes": "Cabeçalho do preparo DPC-C, linha da análise DPC-M. Legenda (*) e (**) fora do recorte."
+  },
+  {
+    "codigo_modelo": "DPC-C",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-C.PNG · linha 6 · Cor Spencer · 82–71",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "DPC-C",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-C.PNG · linha 12 · Concentração °Be (25°C) · 29,0–32,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC-C",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-C.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG · linha 2 · Cor Spencer · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": "poder_tintorial",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG · linha 3 · Poder Tintorial · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": "poder_corante",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG · linha 4 · Poder Corante · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": "indice_hue",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG · linha 5 · Índice de Hue · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG · linha 8 · Concentração °Be (25°C) · 29,9–33,5",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPO.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG",
+    "observacoes": "Código interno DPC-CPO-B com hífen adicional. (**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "absorbancia_01pct_610nm",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 2 · Absorbância (sol. 0,10%, 610nm, cubeta 1cm) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "absorbancia_01pct_560nm",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 3 · Absorbância (sol. 0,10%, 560nm, cubeta 1cm) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "absorbancia_01pct_510nm",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 4 · Absorbância (sol. 0,10%, 510nm, cubeta 1cm) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "absorbancia_005pct_430nm",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 5 · Absorbância (sol. 0,05%, 430nm, cubeta 1cm) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 6 · Cor Spencer · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "poder_tintorial",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 7 · Poder Tintorial · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "poder_corante",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 8 · Poder Corante · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "indice_hue",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 9 · Índice de Hue · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG · linha 12 · Concentração °Be (25°C) · 29,0–30,5",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-CPOB.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC-M",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-M.PNG",
+    "observacoes": "Legenda (**) fora do recorte."
+  },
+  {
+    "codigo_modelo": "DPC-M",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-M.PNG · linha 6 · Cor Spencer · 74–65",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "DPC-M",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-M.PNG · linha 12 · Concentração °Be (25°C) · 29,0–30,5",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC-M",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-M.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC-MB",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MB.PNG",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-MB",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MB.PNG · linha 6 · Cor Spencer · 76–72",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "DPC-MB",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MB.PNG · linha 12 · Concentração °Be (25°C) · 29,0–30,5",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC-MB",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MB.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "DPC-MF",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MF.PNG",
+    "observacoes": "Legenda (**) fora do recorte."
+  },
+  {
+    "codigo_modelo": "DPC-MF",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MF.PNG · linha 6 · Cor Spencer · 70–65",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "DPC-MF",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MF.PNG · linha 12 · Concentração °Be (25°C) · 29,0–30,5",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "DPC-MF",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "DPC-MF.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "MOL",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL.PNG · linha 6 · Cor Spencer · 166–140",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "MOL",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL.PNG · linha 12 · Concentração °Be (25°C) · 36,0–38,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "MOL",
+    "codigo_parametro": "residuo_filtracao_10pct",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL.PNG · linha 15 · Resíduo filtração (sol. 10%) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "MOL",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "MOL-L",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-L.PNG",
+    "observacoes": "Legenda (*) fora do recorte."
+  },
+  {
+    "codigo_modelo": "MOL-L",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-L.PNG · linha 6 · Cor Spencer · 166–140",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "MOL-L",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-L.PNG · linha 12 · Concentração °Be (25°C) · 27,0–30,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "MOL-L",
+    "codigo_parametro": "residuo_filtracao_10pct",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-L.PNG · linha 14 · Resíduo filtração (sol. 10%) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "MOL-L",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-L.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "MOL-S",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-S.PNG · linha 6 · Cor Spencer · 166–140",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "MOL-S",
+    "codigo_parametro": "poder_corante",
+    "codigo_pendencia": "faixa_corante_vs_absorbancia",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-S.PNG · linha 8 · Poder Corante · 27500–30000",
+    "observacoes": "Poder Corante é 27500–30000, enquanto 0,540–0,640 produziria 27000–32000 pela planilha; confirmar os limites independentes."
+  },
+  {
+    "codigo_modelo": "MOL-S",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-S.PNG · linha 12 · Concentração °Be (25°C) · *27,0–30,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "MOL-S",
+    "codigo_parametro": "residuo_filtracao_10pct",
+    "codigo_pendencia": "especificado_em_branco",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-S.PNG · linha 14 · Resíduo filtração (sol. 10%) · [célula em branco]",
+    "observacoes": "A célula Especificado está vazia; confirmar se a linha é apenas informativa."
+  },
+  {
+    "codigo_modelo": "MOL-S",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "MOL-S.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "NAT PO",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT PO.PNG",
+    "observacoes": "Asterisco junto ao nome da densidade aparente significa analisar uma vez por turno. Significado dos demais asteriscos não explicitado."
+  },
+  {
+    "codigo_modelo": "NAT PO",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT PO.PNG · linha 6 · Cor Spencer · 375–288",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "NAT PO",
+    "codigo_parametro": "densidade_aparente",
+    "codigo_pendencia": "unidade_densidade_aparente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT PO.PNG · linha 11 · Densidade aparente (g/Kg)* · 0,540–0,650",
+    "observacoes": "Confirmar unidade e escala impressas de densidade aparente: g/Kg."
+  },
+  {
+    "codigo_modelo": "NAT PO",
+    "codigo_parametro": "sulfito_ppm",
+    "codigo_pendencia": "criterio_qualitativo_unidade_quantitativa",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT PO.PNG · linha 13 · Sulfito (ppm) · Ausente",
+    "observacoes": "Sulfitos em ppm com critério qualitativo Ausente; confirmar método e limite de detecção."
+  },
+  {
+    "codigo_modelo": "NAT PO",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT PO.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "NAT líquido",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT líquido.PNG",
+    "observacoes": "Asterisco junto ao nome da absorbância 0,4%/610 nm e densidade a 25 °C."
+  },
+  {
+    "codigo_modelo": "NAT líquido",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT líquido.PNG · linha 6 · Cor Spencer · 556–423",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "NAT líquido",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT líquido.PNG · linha 12 · Concentração °Be (25°C) · 36,5–37,4",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "NAT líquido",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "NAT líquido.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "SPC",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "SPC.PNG",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação, sem remissão visível na linha da viscosidade."
+  },
+  {
+    "codigo_modelo": "SPC",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "SPC.PNG · linha 6 · Cor Spencer · 206–184",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "SPC",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "SPC.PNG · linha 12 · Concentração °Be (25°C) · 37,0–38,0",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "SPC",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "SPC.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  },
+  {
+    "codigo_modelo": "VER",
+    "codigo_parametro": null,
+    "codigo_pendencia": "nota_formulario",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "VER.PNG",
+    "observacoes": "Cabeçalho do preparo VER, linha da análise VER-I."
+  },
+  {
+    "codigo_modelo": "VER",
+    "codigo_parametro": "cor_spencer",
+    "codigo_pendencia": "intervalo_descendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "VER.PNG · linha 6 · Cor Spencer · 669–417",
+    "observacoes": "A primeira extremidade excede a segunda. Confirmar a ordenação e os limites impressos."
+  },
+  {
+    "codigo_modelo": "VER",
+    "codigo_parametro": "concentracao_be",
+    "codigo_pendencia": "unidade_densidade_formula",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "VER.PNG · linha 12 · Concentração °Be (25°C) · 26,2–31,8",
+    "observacoes": "Resolver a unidade de B15 no XLSX antes de aprovar o cálculo."
+  },
+  {
+    "codigo_modelo": "VER",
+    "codigo_parametro": null,
+    "codigo_pendencia": "homologacao_pendente",
+    "status": "aberta",
+    "bloqueia_aprovacao": true,
+    "evidencia_documental": "VER.PNG",
+    "observacoes": "Confirmar obrigatoriedade, método, unidade, precisão e inclusividade de limites quando o formulário não documenta esses dados."
+  }
+]
