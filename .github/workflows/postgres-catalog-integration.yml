@@ -61,6 +61,9 @@ jobs:
       - name: Validar identidade composta de produto e lote no PostgreSQL
         run: psql -v ON_ERROR_STOP=1 -f database/tests/011_batch_composite_identity.sql
 
+      - name: Validar desativação de produto duplicado com histórico
+        run: psql -X -v ON_ERROR_STOP=1 -f database/tests/012_duplicate_product_archive.sql
+
       - name: Validar seed opt-in admin/admin em PostgreSQL real
         shell: bash
         run: |

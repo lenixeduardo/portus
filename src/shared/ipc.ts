@@ -68,6 +68,7 @@ export const IPC = {
   centralStatus: "central:status",
   centralBatchesListOpen: "central:batches:list-open",
   centralBatchesListAll: "central:batches:list-all",
+  centralBatchesFindByBarcode: "central:batches:find-by-barcode",
   centralBatchesFindByCode: "central:batches:find-by-code",
   centralBatchesCreate: "central:batches:create",
   centralBatchesConfirmProduction: "central:batches:confirm-production",
@@ -416,6 +417,7 @@ export interface SerialReaderApi {
     batches: {
       listOpen(): Promise<BatchWithProduct[]>;
       listAll(): Promise<BatchWithProduct[]>;
+      findByBarcode(barcode: string): Promise<ServiceResult<BatchWithProduct | null>>;
       findByCode(code: string, productId?: number): Promise<BatchWithProduct | null>;
       create(input: BatchInput): Promise<ServiceResult<BatchWithProduct>>;
       confirmProduction(id: number): Promise<ServiceResult<BatchWithProduct>>;

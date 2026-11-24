@@ -32,7 +32,7 @@ export function Products() {
   }, []);
 
   async function handleDelete(p: Product) {
-    if (!confirm(`Excluir o produto "${p.name}"?`)) return;
+    if (!confirm(`Desativar o produto "${p.name}"? O histórico de lotes será preservado.`)) return;
     const res = await window.api.products.remove(p.id);
     if (!res.ok) {
       setError(res.error);

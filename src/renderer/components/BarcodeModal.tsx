@@ -43,13 +43,27 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       try {
         const original = barcode.trim();
         if (!mountedRef.current) return;
-        setLoading(false);
         const digits = original.replace(/\D/g, "");
         if (!/^\d{16,}$/.test(digits)) {
           setError("Etiqueta inválida: informe os 12 dígitos do produto e pelo menos 4 dígitos do lote.");
           return;
         }
         const prefix = digits.slice(0, 12);
+        const code = digits.slice(12);
+        const lookup = window.api.central.batches.findByBarcode;
+        if (typeof lookup === "function") {
+          const found = await lookup(original);
+          if (!mountedRef.current) return;
+          if (!found.ok) { setError(found.error); return; }
+          if (found.data) {
+            if (found.data.status === "closed") setError(`O lote ${code} deste produto está finalizado.`);
+            else {
+              setResult({ batch: found.data, created: false });
+              setPendingBarcode(null);
+            }
+            return;
+          }
+        }
         const products = await window.api.products.list();
         if (!mountedRef.current) return;
         const matches = products.filter(product =>
@@ -63,7 +77,6 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
             : "Há mais de um produto associado ao código " + prefix + ". Corrija o cadastro central.");
           return;
         }
-        const code = digits.slice(12);
         const existing = await window.api.central.batches.findByCode(code, matches[0].id);
         if (!mountedRef.current) return;
         if (existing) {
@@ -81,9 +94,11 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         setPendingBarcode(original);
         return;
       } catch {
-        if (mountedRef.current) { setLoading(false); setError("Não foi possível verificar o lote no banco central."); }
-        return;
+        if (mountedRef.current) setError("Não foi possível verificar o lote no banco central.");
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
+      return;
     }
     const res = await scanBarcodeByMode(window.api, barcode, centralMode, productId);
     if (!mountedRef.current) return;
