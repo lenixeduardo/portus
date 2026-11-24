@@ -1,4 +1,5 @@
 import { Client } from "pg";
+import type { LaboratoryBatchView } from "../../shared/laboratory-ipc";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fixture = vi.hoisted(() => ({
@@ -47,6 +48,18 @@ describe("laboratory IPC", () => {
   ])("routes %s through PostgreSQL with the session identity", async (channel, fn, payload, params) => {
     await expect(call(channel, payload)).resolves.toEqual({ ok: true, data: "42" });
     expect(fixture.query).toHaveBeenLastCalledWith(expect.stringContaining("public." + fn), params);
+  });
+
+  it("loads only the batch selected by the renderer, with the actor from the session", async () => {
+    const view = { cycle: "1", analysis: null };
+    fixture.query
+      .mockResolvedValueOnce({ rows: [{ id: "7", role: "operator", sector_code: "LABORATORY" }] })
+      .mockResolvedValueOnce({ rows: [{ application_id: "2", sector_id: "3" }] })
+      .mockResolvedValueOnce({ rows: [{ view }] });
+    await expect(call("get-batch", { batchId: 20 })).resolves.toEqual({ ok: true, data: view });
+    expect(fixture.query).toHaveBeenLastCalledWith(
+      expect.stringContaining("public.lab_get_batch_view"), [20, 7, "2", "3"]
+    );
   });
 
   it("rejects renderer-supplied actor data before a laboratory write", async () => {
@@ -178,8 +191,34 @@ it.skipIf(!testDatabase)("runs the IPC flow against PostgreSQL with distinct aut
       return (response as { data: string }).data;
     }
 
+    async function readBatch(): Promise<LaboratoryBatchView> {
+      const response = await call("get-batch", { batchId: ids.batch });
+      expect(response).toMatchObject({ ok: true });
+      return (response as { data: LaboratoryBatchView }).data;
+    }
+
+    const privileges = await db.query(`SELECT has_table_privilege('public.lab_results','SELECT') AS can_read_table,
+      has_function_privilege('public.lab_get_batch_view(bigint,bigint,bigint,bigint)','EXECUTE') AS can_read_view`);
+    expect(privileges.rows[0]).toEqual({ can_read_table: false, can_read_view: true });
+    expect(await readBatch()).toMatchObject({
+      cycle: "1", specification: { id: ids.specification, modelCode: "QA-EPA-IPC", version: 1 },
+      analysis: null, outcome: null, permissions: {
+        canStart: true, canCapture: false, canSubmit: false, canApprove: false, canReject: false
+      }
+    });
+
     const analysisId = await invokeId("start-analysis", { batchId: ids.batch, specificationId: ids.specification });
     const sampleId = await invokeId("add-sample", { analysisId, identification: "A" });
+    const pending = await readBatch();
+    expect(pending.analysisSpecification?.id).toBe(ids.specification);
+    expect(pending.readings).toEqual([expect.objectContaining({ id: ids.reading, value: "5,2" })]);
+    expect(pending.results).toHaveLength(3);
+    expect(pending.results.every(result => result.id === null && result.outcome === "incomplete")).toBe(true);
+    expect(pending.parameters.find(parameter => parameter.id === ids.parameter)).toMatchObject({
+      minimum: "120", maximum: "130",
+      formula: { code: "cor_spencer", version: 1, inputs: [{ cell: "B3", unit: "Abs" }] }
+    });
+
     const resultId = await invokeId("record-calculation", {
       analysisId, sampleId, parameterId: ids.parameter, formulaCode: "cor_spencer",
       formulaVersion: 1, inputs: { B3: { value: "0.600000000000000001", unit: "Abs" } }
@@ -188,14 +227,39 @@ it.skipIf(!testDatabase)("runs the IPC flow against PostgreSQL with distinct aut
     await invokeId("record-result", {
       analysisId, sampleId, parameterId: ids.instrument_parameter, readingId: ids.reading, numericValue: "5.2", unit: "mg/L"
     });
+    const staleEvaluationId = await invokeId("submit-review", { analysisId });
+    await invokeId("record-result", {
+      analysisId, sampleId, parameterId: ids.manual_parameter, qualitativeValue: "Ausente", reason: "Conferência"
+    });
+    fixture.getCurrentUser.mockReturnValue(sessionFor(ids.reviewer));
+    expect(await readBatch()).toMatchObject({
+      evaluation: { id: staleEvaluationId, stale: true },
+      permissions: { canApprove: false, canReject: false }
+    });
+    fixture.getCurrentUser.mockReturnValue(sessionFor(ids.actor));
     const evaluationId = await invokeId("submit-review", { analysisId });
+    expect(await readBatch()).toMatchObject({
+      evaluation: { id: evaluationId, stale: false, decision: null, outcome: "conforming" },
+      permissions: { canApprove: false, canReject: false }
+    });
     const decision = { evaluationId, decision: "approved", reason: "QA" };
     // PostgreSQL errors abort their current transaction scope.
     await db.query("SAVEPOINT self_review");
     await expect(call("decide-review", decision)).resolves.toMatchObject({ ok: false });
     await db.query("ROLLBACK TO SAVEPOINT self_review");
     fixture.getCurrentUser.mockReturnValue(sessionFor(ids.reviewer));
+    expect(await readBatch()).toMatchObject({ permissions: { canApprove: true, canReject: true } });
     await expect(call("decide-review", decision)).resolves.toEqual({ ok: true, data: true });
+    const approved = await readBatch();
+    expect(approved).toMatchObject({
+      evaluation: { id: evaluationId, stale: false, decision: "approved", decidedBy: "QA EPA IPC Reviewer" },
+      permissions: { canApprove: false, canReject: false }
+    });
+    expect(approved.history).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "analysis", actor: "QA EPA IPC" }),
+      expect.objectContaining({ kind: "result", detail: expect.stringContaining("Conferência") }),
+      expect.objectContaining({ kind: "decision", actor: "QA EPA IPC Reviewer", detail: "QA" })
+    ]));
     await db.query("SET CONSTRAINTS ALL IMMEDIATE");
     await db.query("RESET ROLE");
     const evidence = await db.query("SELECT inputs #>> '{B3,value}' AS input FROM lab_calculation_evidence WHERE result_id=$1", [resultId]);

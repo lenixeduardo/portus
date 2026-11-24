@@ -21,6 +21,7 @@ export const IPC = {
   authLoginBarcode: "auth:login-barcode",
   authLogout: "auth:logout",
   authCurrentUser: "auth:current-user",
+  laboratoryGetBatch: "laboratory:get-batch",
   laboratoryStartAnalysis: "laboratory:start-analysis",
   laboratoryAddSample: "laboratory:add-sample",
   laboratoryRecordResult: "laboratory:record-result",

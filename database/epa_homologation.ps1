@@ -104,7 +104,7 @@ try {
   $migrationDirectory = Join-Path $PSScriptRoot 'migrations'
   $files = @(Get-ChildItem -LiteralPath $migrationDirectory -Filter '*.sql' -File | Sort-Object Name)
   $baseline = @($files | Where-Object { $_.Name -match '^(00[1-9]|01[0-9]|02[0-6])_[a-z0-9_]+\.sql$' })
-  $epa = @($files | Where-Object { $_.Name -match '^(02[7-9]|03[0-2])_[a-z0-9_]+\.sql$' })
+  $epa = @($files | Where-Object { $_.Name -match '^(02[7-9]|03[0-3])_[a-z0-9_]+\.sql$' })
   $missingBaseline = @($baseline | Where-Object { $report.appliedBefore -cnotcontains $_.Name })
   $report.missingBaseline = @($missingBaseline | ForEach-Object Name)
   $report.epaFilesPresent = @($epa | ForEach-Object Name)
@@ -119,10 +119,10 @@ try {
   }
 
   if ($ApplyMigrations -or $RunTests) {
-    $expectedNumbers = 1..32 | ForEach-Object { '{0:000}' -f $_ }
+    $expectedNumbers = 1..33 | ForEach-Object { '{0:000}' -f $_ }
     $availableNumbers = @($baseline + $epa | ForEach-Object { $_.Name.Substring(0, 3) })
     if (($availableNumbers -join ',') -cne ($expectedNumbers -join ',')) {
-      throw 'O checkout deve conter exatamente uma migration por versao de 001 a 032.'
+      throw 'O checkout deve conter exatamente uma migration por versao de 001 a 033.'
     }
     if ($missingBaseline.Count -gt 0) { throw 'O ledger nao confirma a aplicacao das migrations 001 a 026.' }
     $expectedPrefix = @($epa | Select-Object -First ($epa.Count - $pending.Count) | ForEach-Object Name)

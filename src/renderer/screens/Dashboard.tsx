@@ -1,5 +1,5 @@
 import { canSetBatchCompleted, canFinalizeBatch } from "../../shared/batch-permissions";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { User } from "../../shared/types";
 import type { BatchWithProduct } from "../../shared/ipc";
 import { canCaptureLaboratory, isLaboratoryUser } from "../../shared/laboratory-access";
@@ -8,6 +8,7 @@ import { CaptureModal } from "../components/CaptureModal";
 import { EquipmentSelectionModal } from "../components/EquipmentSelectionModal";
 import { BarcodeDisplay } from "../components/BarcodeDisplay";
 import { BarcodeModal } from "../components/BarcodeModal";
+import { LaboratoryBatchPanel, canOpenLaboratory } from "../components/LaboratoryBatchPanel";
 import { Modal } from "../components/Modal";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import {
@@ -24,6 +25,7 @@ import {
   CircleCheck,
   ClipboardList,
   Copy,
+  FlaskConical,
   MoreVertical,
   Printer,
   ScanBarcode,
@@ -96,6 +98,7 @@ export function Dashboard({
   const [closingBatch, setClosingBatch] = useState(false);
   const closingBatchRef = useRef(false);
   const [closeError, setCloseError] = useState<string | null>(null);
+  const [laboratoryBatchId, setLaboratoryBatchId] = useState<number | null>(null);
   const [confirmBatch, setConfirmBatch] = useState<BatchWithProduct | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>({ phase: "idle" });
   const [batchFilter, setBatchFilter] = useState<BatchFilter>("ALL");
@@ -565,20 +568,28 @@ export function Dashboard({
       ) : (
         <div className="batch-list">
           {visibleBatches.map((b) => (
-            <BatchRow
-              key={b.id}
-              batch={b}
-              isCapturing={captureBatchId === b.id}
-              canFinalize={canFinalize && Boolean(b.completed)}
-              canMarkCompleted={canMarkCompleted && (!b.completed || canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", false))}
-              centralMode={requiresCentral}
-              canCapture={canCapture}
-              canCaptureCompleted={isLaboratory || isMaster || isSupervisor}
-              onCompletedChange={(completed) => void handleCompletedChange(b, completed)}
-              onClose={() => handleClose(b)}
-              onCapture={() => void handleStartCapture(b)}
-              onPrint={() => handlePrintBarcode(b)}
-            />
+            <Fragment key={b.id}>
+              <BatchRow
+                batch={b}
+                isCapturing={captureBatchId === b.id}
+                canFinalize={canFinalize && Boolean(b.completed)}
+                canMarkCompleted={canMarkCompleted && (!b.completed || canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", false))}
+                centralMode={requiresCentral}
+                canCapture={canCapture}
+                canCaptureCompleted={isLaboratory || isMaster || isSupervisor}
+                onCompletedChange={(completed) => void handleCompletedChange(b, completed)}
+                onClose={() => handleClose(b)}
+                onCapture={() => void handleStartCapture(b)}
+                onPrint={() => handlePrintBarcode(b)}
+                onLaboratory={requiresCentral && centralAvailable && canOpenLaboratory(user) && typeof window.api.laboratory?.getBatch === "function"
+                  ? () => setLaboratoryBatchId(current => current === b.id ? null : b.id)
+                  : undefined}
+                laboratoryOpen={laboratoryBatchId === b.id}
+              />
+              {laboratoryBatchId === b.id && canOpenLaboratory(user) && (
+                <LaboratoryBatchPanel key={user.id} batchId={b.id} batchCode={b.code} onClose={() => setLaboratoryBatchId(null)} />
+              )}
+            </Fragment>
           ))}
           {visibleBatches.length === 0 && <div className="placeholder">Nenhum lote corresponde aos filtros selecionados.</div>}
         </div>
@@ -681,7 +692,9 @@ function BatchRow({
   onCompletedChange,
   onClose,
   onCapture,
-  onPrint
+  onPrint,
+  onLaboratory,
+  laboratoryOpen
 }: {
   batch: BatchWithProduct;
   isCapturing: boolean;
@@ -694,6 +707,8 @@ function BatchRow({
   onClose: () => void;
   onCapture: () => void;
   onPrint: () => void;
+  onLaboratory?: () => void;
+  laboratoryOpen: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copiar código");
@@ -803,6 +818,11 @@ function BatchRow({
             </div>
           )}
         </div>
+        {onLaboratory && (
+          <button type="button" className="secondary laboratory-trigger" aria-expanded={laboratoryOpen} onClick={onLaboratory}>
+            <FlaskConical size={15} aria-hidden="true" /> Análise laboratorial
+          </button>
+        )}
       </div>
     </article>
   );

@@ -103,7 +103,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
     $exists = & $psql -h $DatabaseHost -p $Port -U $AdminUser -d $DatabaseName -tA -v ON_ERROR_STOP=1 -c "SELECT EXISTS (SELECT 1 FROM portus_schema_migrations WHERE name = '$name');"
     if ($LASTEXITCODE -ne 0) { throw "Não foi possível consultar o estado da migration $name." }
     if ($exists.Trim() -eq "t") { Write-Host "Migration já aplicada: $name"; return }
-    if ($name -match '^(02[7-9]|03[0-2])_[a-z0-9_]+\.sql$') {
+    if ($name -match '^(02[7-9]|03[0-3])_[a-z0-9_]+\.sql$') {
       # As migrations EPA usam a mesma transação do ledger. Inserir primeiro
       # reserva o nome da migration e impede uma segunda execução concorrente.
       Invoke-Psql $AdminUser $adminPassword $DatabaseName @(

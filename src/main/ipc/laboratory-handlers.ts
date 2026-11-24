@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC, type ServiceResult } from "../../shared/ipc";
+import type { LaboratoryBatchView } from "../../shared/laboratory-ipc";
 import type { User } from "../../shared/types";
 import { getCurrentUser } from "../auth/auth-service";
 import { centralQuery } from "../db/central-connection";
@@ -62,6 +63,19 @@ async function laboratoryId(sql: string, values: unknown[]): Promise<string> {
 }
 
 export function registerLaboratoryHandlers(): void {
+  register(IPC.laboratoryGetBatch, z.strictObject({ batchId: id }), async (input, actor) => {
+    try {
+      const { rows } = await centralQuery<{ view: LaboratoryBatchView }>(
+        "SELECT public.lab_get_batch_view($1,$2,$3,$4) AS view", [input.batchId, ...actor]);
+      return rows[0].view;
+    } catch (error) {
+      if ((error as { code?: string } | null)?.code === "42883") {
+        throw new Error("A consulta laboratorial requer a migration 033 no PostgreSQL central.");
+      }
+      throw error;
+    }
+  });
+
   register(IPC.laboratoryStartAnalysis, z.strictObject({ batchId: id, specificationId: id }),
     (input, actor) => laboratoryId("SELECT public.lab_start_analysis($1,$2,$3,$4,$5)::text AS id",
       [input.batchId, input.specificationId, ...actor]));

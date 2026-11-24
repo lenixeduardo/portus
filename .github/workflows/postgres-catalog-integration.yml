@@ -149,7 +149,7 @@ jobs:
           done
           psql -X -v ON_ERROR_STOP=1 -f database/seed/reference.sql
           psql -X -v ON_ERROR_STOP=1 -f database/tests/epa_upgrade_fixture.sql
-          for migration in database/migrations/0{27..32}_*.sql; do
+          for migration in database/migrations/0{27..33}_*.sql; do
             psql -X -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
           done
           psql -X -v ON_ERROR_STOP=1 -f database/tests/epa_upgrade_check.sql
