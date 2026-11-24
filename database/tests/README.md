@@ -70,3 +70,32 @@ PORTUS_TEST_PGLITE_MODULE=/tmp/portus-db-tests/node_modules/@electric-sql/pglite
 Após aplicar `026_batch_product_composite_identity.sql` em um banco PostgreSQL de teste,
 execute `psql "$PORTUS_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/011_batch_composite_identity.sql`.
 O teste valida dois produtos com o mesmo código, rejeita duplicação no mesmo produto e usa `ROLLBACK`.
+
+### Homologação EPA no Windows
+
+Use o script a partir do checkout do PORTUS. Configure as credenciais do
+PostgreSQL em `%APPDATA%\postgresql\pgpass.conf` para o host, a porta, o
+banco e o usuário escolhidos. Use `-PostgresBin` se a descoberta automática
+selecionar uma instalação diferente.
+
+Diagnóstico somente leitura, incluindo preflight, histórico das migrations e
+verificação do catálogo de um backup PostgreSQL customizado, se informado.
+
+```powershell
+powershell.exe -NoProfile -File .\database\epa_homologation.ps1 -DatabaseHost 127.0.0.1 -Port 5432 -DatabaseName portus_homologacao -AdminUser postgres -ReportPath .\epa-diagnostico.json
+```
+
+Na cópia isolada de homologação que já recebeu as migrations 001–026,
+informe um caminho novo para o backup e autorize a instalação e os testes.
+
+```powershell
+powershell.exe -NoProfile -File .\database\epa_homologation.ps1 -DatabaseHost 127.0.0.1 -Port 5432 -DatabaseName portus_homologacao -AdminUser postgres -ConfirmHomologation -ApplyMigrations -RunTests -BackupPath .\portus-antes-epa.dump -ReportPath .\epa-homologacao.json
+```
+
+A opção `-RunTests` também pode ser executada sozinha com
+`-ConfirmHomologation` após as seis migrations EPA. A instalação cria um
+backup customizado e confere a leitura do catálogo antes de aplicar as
+migrations 027–032 pendentes em uma transação com o ledger. O relatório JSON
+registra a fase, a versão PostgreSQL, o estado das migrations, a conferência
+do backup e o resultado por arquivo de teste. O código de saída é zero
+quando o modo solicitado conclui e diferente de zero em caso de falha.

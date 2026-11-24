@@ -103,8 +103,18 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
     $exists = & $psql -h $DatabaseHost -p $Port -U $AdminUser -d $DatabaseName -tA -v ON_ERROR_STOP=1 -c "SELECT EXISTS (SELECT 1 FROM portus_schema_migrations WHERE name = '$name');"
     if ($LASTEXITCODE -ne 0) { throw "Não foi possível consultar o estado da migration $name." }
     if ($exists.Trim() -eq "t") { Write-Host "Migration já aplicada: $name"; return }
-    Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", $_.FullName)
-    Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", "INSERT INTO portus_schema_migrations (name) VALUES ('$name');")
+    if ($name -match '^(02[7-9]|03[0-2])_[a-z0-9_]+\.sql$') {
+      # As migrations EPA usam a mesma transação do ledger. Inserir primeiro
+      # reserva o nome da migration e impede uma segunda execução concorrente.
+      Invoke-Psql $AdminUser $adminPassword $DatabaseName @(
+        "-X", "--single-transaction",
+        "-c", "INSERT INTO public.portus_schema_migrations (name) VALUES ('$name');",
+        "-f", $_.FullName
+      )
+    } else {
+      Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-f", $_.FullName)
+      Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-c", "INSERT INTO portus_schema_migrations (name) VALUES ('$name');")
+    }
     Write-Host "Migration aplicada: $name" -ForegroundColor Green
   }
 
@@ -186,9 +196,14 @@ GRANT INSERT, UPDATE ON TABLE users, user_sector_permissions, application_sector
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"app_user";
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
 '@
+  if (Test-Path (Join-Path $PSScriptRoot "migrations/031_lab_permissions.sql")) {
+    $grantSql += [Environment]::NewLine + @'
+SELECT public.lab_grant_runtime(:'app_user'::name);
+'@
+  }
   $grantFile = Join-Path ([IO.Path]::GetTempPath()) ("portus-grants-" + [guid]::NewGuid() + ".sql")
   Write-Utf8NoBom $grantFile $grantSql
-  try { Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-v", "app_user=$AppUser", "-f", $grantFile) }
+  try { Invoke-Psql $AdminUser $adminPassword $DatabaseName @("-v", "app_user=$AppUser", "--single-transaction", "-f", $grantFile) }
   finally { Remove-Item $grantFile -Force -ErrorAction SilentlyContinue }
   }
 
