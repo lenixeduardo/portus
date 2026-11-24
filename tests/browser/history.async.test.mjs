@@ -36,6 +36,8 @@ async function openHistory() {
   page.on("pageerror", error => errors.push(error.message));
   await page.addInitScript(appVersion => {
     localStorage.setItem("portus:last-seen-version", appVersion);
+    // These scenarios exercise navigation after the Master backup tutorial has been acknowledged.
+    localStorage.setItem("portus:admin-backup-guide:v1:1", "seen");
     window.user = { id: 1, username: "master", displayName: "Master", role: "master",
       sectorCode: "ADMIN", active: true, createdAt: "2026-10-12T12:00:00Z" };
     const batches = [1, 2].map(id => ({ id, code: `LOTE-${id}`, productId: id,
