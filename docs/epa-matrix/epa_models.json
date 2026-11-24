@@ -1,0 +1,337 @@
+[
+  {
+    "codigo_modelo": "CER-A",
+    "nome_original": "CORANTE CARAMELO CER-A",
+    "codigo_documento": null,
+    "revisao_documental": "08",
+    "data_documental": "2024-05-17",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Análise",
+      "Antes envase",
+      "Reanálise"
+    ],
+    "arquivo_origem": "CER-A.PNG",
+    "sha256": "0b1619f387b2e6773238dd5653fa3c029eabd15691bd283001c1722dbbf4a630",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Rodapé cortado."
+  },
+  {
+    "codigo_modelo": "CER-K",
+    "nome_original": "CORANTE CARAMELO CER-K",
+    "codigo_documento": "PRO-11-RQ-052",
+    "revisao_documental": "02",
+    "data_documental": "2025-03-03",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Pós Evap (**)",
+      "Final",
+      "Laboratório"
+    ],
+    "arquivo_origem": "CER-K.PNG",
+    "sha256": "4ecd6331d5d92c815d062ecb79efc7e12552968520f98ed91985e1471afda40b",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "(**) Turbidez é liberatória para lote, não para envase."
+  },
+  {
+    "codigo_modelo": "CER-P",
+    "nome_original": "CORANTE CARAMELO CER-P",
+    "codigo_documento": "PRO-11-RQ-046",
+    "revisao_documental": "03",
+    "data_documental": "2020-08-07",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Análise",
+      "Antes Envase",
+      "Reanálise"
+    ],
+    "arquivo_origem": "CER-P.PNG",
+    "sha256": "68764f66db94c3c5021c1c93d525ca6dc30470507c30ee87e294295aa11bc164",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Rodapé fora do recorte."
+  },
+  {
+    "codigo_modelo": "CPO",
+    "nome_original": "CORANTE CARAMELO CPO",
+    "codigo_documento": null,
+    "revisao_documental": null,
+    "data_documental": null,
+    "amostra": "100 g",
+    "colunas_encontrado": [
+      "Encontrado"
+    ],
+    "arquivo_origem": "CPO.PNG",
+    "sha256": "7b88fc8c78bcd7bd61e398a948b4b0e0959d37ad11b3f7fbff5b926f23248b40",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Legenda (*) fora do recorte."
+  },
+  {
+    "codigo_modelo": "CPO-B",
+    "nome_original": "CORANTE CARAMELO CPO-B",
+    "codigo_documento": null,
+    "revisao_documental": null,
+    "data_documental": null,
+    "amostra": "100 g",
+    "colunas_encontrado": [
+      "Encontrado"
+    ],
+    "arquivo_origem": "CPO-B.PNG",
+    "sha256": "9c4d5ce7ebf7e6caaecf686dc6688af5b3d3ee6ce587e1686c7148a02c8e42e7",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Legenda (*) fora do recorte."
+  },
+  {
+    "codigo_modelo": "DPC",
+    "nome_original": "CORANTE CARAMELO DPC",
+    "codigo_documento": "PRO-11-RQ-007",
+    "revisao_documental": "01",
+    "data_documental": "2018-11-22",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Reanálise 1",
+      "Reanálise 2"
+    ],
+    "arquivo_origem": "DPC.PNG",
+    "sha256": "0b4e61b3e94c99c76addbe188e3e94197d73f67116fe94980fc79209a3b7b97e",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-C",
+    "nome_original": "CORANTE CARAMELO DPC-M",
+    "codigo_documento": "PRO-11-RQ-059",
+    "revisao_documental": "00",
+    "data_documental": "2017-09-21",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Flash (**)",
+      "Final",
+      "Laboratório"
+    ],
+    "arquivo_origem": "DPC-C.PNG",
+    "sha256": "2516ec7235d3cca79ea32f8bdd6ae876a4dc3c6e9308c3a456f72c3dc5ced07e",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Cabeçalho do preparo DPC-C, linha da análise DPC-M. Legenda (*) e (**) fora do recorte."
+  },
+  {
+    "codigo_modelo": "DPC-CPO",
+    "nome_original": "CORANTE CARAMELO DPC-CPO",
+    "codigo_documento": "PRO-11-RQ-057",
+    "revisao_documental": "03",
+    "data_documental": "2025-11-12",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Reanálise 1",
+      "Reanálise 2"
+    ],
+    "arquivo_origem": "DPC-CPO.PNG",
+    "sha256": "12195049f7596a353f8d75310bb7ffe78b20db56149f1832512a582bef9d974d",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-CPOB",
+    "nome_original": "CORANTE CARAMELO DPC-CPO-B",
+    "codigo_documento": "PRO-11-RQ-058",
+    "revisao_documental": "04",
+    "data_documental": "2022-07-07",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Reanálise 1",
+      "Reanálise 2"
+    ],
+    "arquivo_origem": "DPC-CPOB.PNG",
+    "sha256": "3d30ed52d3b7cd7ea5cd64d174d7445e0e1ee265400f7f1c7d6fcb19e7f79c47",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Código interno DPC-CPO-B com hífen adicional. (**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-M",
+    "nome_original": "CORANTE CARAMELO DPC-M",
+    "codigo_documento": "PRO-11-RQ-008",
+    "revisao_documental": "01",
+    "data_documental": "2018-10-29",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Reanálise 1",
+      "Reanálise 2"
+    ],
+    "arquivo_origem": "DPC-M.PNG",
+    "sha256": "096b57bdaa29c5c6075f2d68885f698af0e5085abaeaa17ddaab632247396bb8",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Legenda (**) fora do recorte."
+  },
+  {
+    "codigo_modelo": "DPC-MB",
+    "nome_original": "CORANTE CARAMELO DPC-MB",
+    "codigo_documento": null,
+    "revisao_documental": "01",
+    "data_documental": "2018-11-22",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Reanálise 1",
+      "Reanálise 2"
+    ],
+    "arquivo_origem": "DPC-MB.PNG",
+    "sha256": "af39b1b76ca30f55088c13e09959eac804f5c1fe5150a33d105d3a460e61a124",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação."
+  },
+  {
+    "codigo_modelo": "DPC-MF",
+    "nome_original": "CORANTE CARAMELO DPC-MF",
+    "codigo_documento": "PRO-11-RQ-060",
+    "revisao_documental": "01",
+    "data_documental": "2022-07-13",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Flash (**)",
+      "Final",
+      "Laboratório"
+    ],
+    "arquivo_origem": "DPC-MF.PNG",
+    "sha256": "87cb048f98366d14a9594c1102fae3e65e8dd69ca3b68f23f6d78665641c5f23",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Legenda (**) fora do recorte."
+  },
+  {
+    "codigo_modelo": "MOL",
+    "nome_original": "CORANTE CARAMELO MOL",
+    "codigo_documento": "PRO-11-RQ-014",
+    "revisao_documental": "03",
+    "data_documental": "2024-10-17",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Análise",
+      "Antes envase",
+      "Reanálise"
+    ],
+    "arquivo_origem": "MOL.PNG",
+    "sha256": "8732683ff79bc4327dd27449de3e5824ad2ee9f93e120bf791ccc66825ed7b31",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": null
+  },
+  {
+    "codigo_modelo": "MOL-L",
+    "nome_original": "CORANTE CARAMELO MOL-L",
+    "codigo_documento": null,
+    "revisao_documental": "06",
+    "data_documental": "2025-12-04",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Análise",
+      "Antes Envase",
+      "Reanálise"
+    ],
+    "arquivo_origem": "MOL-L.PNG",
+    "sha256": "e1582824f46db6c19681df1c0462f5485e9e2036cc38eb742a9df57a48a11055",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Legenda (*) fora do recorte."
+  },
+  {
+    "codigo_modelo": "MOL-S",
+    "nome_original": "CORANTE CARAMELO MOL-S",
+    "codigo_documento": "PRO-11-RQ-122",
+    "revisao_documental": "01",
+    "data_documental": "2026-01-09",
+    "amostra": null,
+    "colunas_encontrado": [
+      "Análise",
+      "Antes Envase",
+      "Reanálise"
+    ],
+    "arquivo_origem": "MOL-S.PNG",
+    "sha256": "c3a7b39167bd98cfd8c36a82651babdb1ccff0ef7005e333865ba164f39395fd",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": null
+  },
+  {
+    "codigo_modelo": "NAT PO",
+    "nome_original": "CORANTE CARAMELO NAT PO",
+    "codigo_documento": null,
+    "revisao_documental": null,
+    "data_documental": null,
+    "amostra": null,
+    "colunas_encontrado": [
+      "Análise"
+    ],
+    "arquivo_origem": "NAT PO.PNG",
+    "sha256": "626588a4158a1045a03d912637e7aa65a78db3f756239d4c0537fe94df09e3c2",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Asterisco junto ao nome da densidade aparente significa analisar uma vez por turno. Significado dos demais asteriscos não explicitado."
+  },
+  {
+    "codigo_modelo": "NAT líquido",
+    "nome_original": "CORANTE CARAMELO CLASSE I LIQUIDO PARA NAT LIQUIDO",
+    "codigo_documento": null,
+    "revisao_documental": null,
+    "data_documental": null,
+    "amostra": null,
+    "colunas_encontrado": [
+      "Análise 1",
+      "Análise 2"
+    ],
+    "arquivo_origem": "NAT líquido.PNG",
+    "sha256": "d40999744fc484c3e3ae52d42868d1a9fd2c5e48bf7c55729d0e85dd173f53f3",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Asterisco junto ao nome da absorbância 0,4%/610 nm e densidade a 25 °C."
+  },
+  {
+    "codigo_modelo": "SPC",
+    "nome_original": "CORANTE CARAMELO SPC",
+    "codigo_documento": "PRO-11-RQ-080",
+    "revisao_documental": "03",
+    "data_documental": "2023-11-29",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Reanálise 1",
+      "Reanálise 2"
+    ],
+    "arquivo_origem": "SPC.PNG",
+    "sha256": "4ced2d17dfc52a9036046d565452b39e31be096567f9737e425d68084431a8eb",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "(**) Acima de 100 cP, realizar teste de resinificação, sem remissão visível na linha da viscosidade."
+  },
+  {
+    "codigo_modelo": "VER",
+    "nome_original": "CORANTE CARAMELO VER-I",
+    "codigo_documento": "PRO-11-RQ-042",
+    "revisao_documental": "03",
+    "data_documental": "2026-10-13",
+    "amostra": "500 mL",
+    "colunas_encontrado": [
+      "Final",
+      "Análise 1",
+      "Análise 2"
+    ],
+    "arquivo_origem": "VER.PNG",
+    "sha256": "b46cf5ab91ffe1feeb716a1937126b53210fa865f6f026f7fa3bd7b3a3c914fe",
+    "origem": "Anexo original EPA Química · Folhas de análises Caramelos · 26/10/2026",
+    "status_validacao": "rascunho",
+    "observacoes": "Cabeçalho do preparo VER, linha da análise VER-I."
+  }
+]

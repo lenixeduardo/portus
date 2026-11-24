@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { batchMatchesCode } from "./dashboard-filtering";
-import { Printer, RotateCcw } from "lucide-react";
+import { FlaskConical, Printer, RotateCcw } from "lucide-react";
 import type { BatchWithProduct, BatchHistory, CaptureSessionRecord } from "../../shared/ipc";
 import type { User } from "../../shared/types";
 import { canReopenFinalizedBatch } from "../../shared/batch-permissions";
+import { LaboratoryBatchPanel, canOpenLaboratory } from "../components/LaboratoryBatchPanel";
 import { Modal } from "../components/Modal";
 
 export function History({ user }: { user: User }) {
   const [batches, setBatches] = useState<BatchWithProduct[]>([]);
+  const [laboratoryBatchId, setLaboratoryBatchId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [batchCodeQuery, setBatchCodeQuery] = useState("");
   const [history, setHistory] = useState<BatchHistory | null>(null);
@@ -265,7 +267,7 @@ export function History({ user }: { user: User }) {
                 key={b.id}
                 className={`batch-picker-item${selectedId === b.id ? " batch-picker-item--selected" : ""}`}
                 disabled={reopening}
-                onClick={() => setSelectedId(selectedId === b.id ? "" : b.id)}
+                onClick={() => { setLaboratoryBatchId(null); setSelectedId(selectedId === b.id ? "" : b.id); }}
               >
                 <span className="batch-picker-code" title={b.code}>#{b.code}</span>
                 <span className="batch-picker-name" title={b.productName}>{b.productName}</span>
@@ -279,6 +281,12 @@ export function History({ user }: { user: User }) {
 
         {history && (
           <div className="history-toolbar-actions">
+            {centralMode && canOpenLaboratory(user) && typeof window.api.laboratory?.getBatch === "function" && (
+              <button type="button" className="secondary laboratory-trigger" aria-expanded={laboratoryBatchId === history.batch.id}
+                onClick={() => setLaboratoryBatchId(current => current === history.batch.id ? null : history.batch.id)}>
+                <FlaskConical size={15} aria-hidden="true" /> Análise laboratorial
+              </button>
+            )}
             {canReopenBatch && centralMode && history.batch.status === "closed" && (
               <button type="button" onClick={openReopenDialog} disabled={reopening} className="secondary history-reopen-btn">
                 <RotateCcw size={15} aria-hidden="true" />
@@ -329,6 +337,11 @@ export function History({ user }: { user: User }) {
             </div>
             <div className="history-summary-item"><span>Total leituras</span><strong>{totalReadings}</strong></div>
           </div>
+
+          {laboratoryBatchId === history.batch.id && canOpenLaboratory(user) && (
+            <LaboratoryBatchPanel key={`${history.batch.id}:${user.id}:${history.batch.status}`}
+              batchId={history.batch.id} batchCode={history.batch.code} onClose={() => setLaboratoryBatchId(null)} />
+          )}
 
           {history.auditEvents && history.auditEvents.length > 0 && (
             <div className="card" style={{ marginTop: 16, padding: 16 }}>

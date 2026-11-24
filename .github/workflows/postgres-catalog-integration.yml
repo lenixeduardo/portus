@@ -129,3 +129,39 @@ jobs:
 
       - name: Validar captura cruzada real e manter restrições de lote
         run: node database/tests/010_cross_sector_capture_permissions.mjs
+
+      - name: Validar migrations, catálogo e contratos EPA no banco limpo
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/generate-epa-draft-seed.mjs
+          for test in database/tests/epa_*.test.sql; do
+            echo "Executando $test"
+            psql -X -v ON_ERROR_STOP=1 -f "$test"
+          done
+
+      - name: Validar atualização EPA a partir da migration 026 e finalização concorrente
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE portus_epa_upgrade'
+          export PGDATABASE=portus_epa_upgrade
+          for migration in database/migrations/0{01..26}_*.sql; do
+            [[ -f "$migration" ]] || continue
+            psql -X -v ON_ERROR_STOP=1 -f "$migration"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f database/seed/reference.sql
+          psql -X -v ON_ERROR_STOP=1 -f database/tests/epa_upgrade_fixture.sql
+          for migration in database/migrations/0{27..33}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f database/tests/epa_upgrade_check.sql
+          for test in database/tests/epa_*.test.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$test"
+          done
+          PORTUS_EPA_DISPOSABLE_DATABASE=1 node database/tests/epa_release_concurrency.test.mjs
+
+      - name: Validar fluxo IPC do Electron com PostgreSQL
+        env:
+          PORTUS_EPA_IPC_TEST_DATABASE_URL: postgresql://postgres:portus-ci-password@127.0.0.1:5432/portus
+        run: npx vitest run src/main/__tests__/laboratory-handlers.test.ts --configLoader runner
