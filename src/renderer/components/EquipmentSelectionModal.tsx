@@ -18,7 +18,6 @@ export function EquipmentSelectionModal({ batch, onConfirm, onCancel }: Props) {
     window.api.equipments.list().then((list) => {
       const enabled = list.filter((e) => e.enabled);
       setEquipments(enabled);
-      setSelected(new Set(enabled.map((e) => e.id)));
       setLoading(false);
     });
   }, []);
