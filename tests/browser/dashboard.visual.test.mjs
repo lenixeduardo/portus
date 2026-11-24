@@ -74,6 +74,8 @@ async function openDashboard(width, height, role = "admin", sectorCode = "ADMIN"
   page.on("pageerror", error => errors.push(error.message));
   await page.addInitScript(({ appVersion, batches, role, sectorCode }) => {
     localStorage.setItem("portus:last-seen-version", appVersion);
+    // These scenarios exercise navigation after the Master backup tutorial has been acknowledged.
+    localStorage.setItem("portus:admin-backup-guide:v1:1", "seen");
     localStorage.setItem("portus:theme", "dark");
     const user = {
       id: 1, username: "admin", displayName: "admin",
