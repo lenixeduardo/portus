@@ -1,3 +1,4 @@
+import type { LaboratoryApi } from "./laboratory-ipc";
 import type {
   Batch,
   Equipment,
@@ -20,6 +21,12 @@ export const IPC = {
   authLoginBarcode: "auth:login-barcode",
   authLogout: "auth:logout",
   authCurrentUser: "auth:current-user",
+  laboratoryStartAnalysis: "laboratory:start-analysis",
+  laboratoryAddSample: "laboratory:add-sample",
+  laboratoryRecordResult: "laboratory:record-result",
+  laboratoryRecordCalculation: "laboratory:record-calculation",
+  laboratorySubmitReview: "laboratory:submit-review",
+  laboratoryDecideReview: "laboratory:decide-review",
   productsList: "products:list",
   productsCreate: "products:create",
   productsUpdate: "products:update",
@@ -335,6 +342,7 @@ export interface UpdateDownloadProgress {
 }
 
 export interface SerialReaderApi {
+  laboratory: LaboratoryApi;
   updates: {
     check(): Promise<AvailableUpdate | null>;
     checkNow(): Promise<ServiceResult<AvailableUpdate | null>>;

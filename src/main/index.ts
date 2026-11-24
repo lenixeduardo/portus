@@ -5,6 +5,7 @@ import { registerBatchesHandlers } from "./ipc/batches-handlers";
 import { registerCaptureHandlers } from "./ipc/capture-handlers";
 import { registerEquipmentsHandlers } from "./ipc/equipments-handlers";
 import { registerProductsHandlers } from "./ipc/products-handlers";
+import { registerLaboratoryHandlers } from "./ipc/laboratory-handlers";
 import { registerHistoryHandlers } from "./ipc/history-handlers";
 import { registerSettingsHandlers } from "./ipc/settings-handlers";
 import { registerUsersHandlers } from "./ipc/users-handlers";
@@ -106,6 +107,7 @@ app.whenReady().then(async () => {
   registerAuthHandlers();
   registerProductsHandlers();
   registerBatchesHandlers();
+  registerLaboratoryHandlers();
   registerSettingsHandlers();
   registerEquipmentsHandlers();
   registerUsersHandlers();

@@ -157,3 +157,8 @@ jobs:
             psql -X -v ON_ERROR_STOP=1 -f "$test"
           done
           PORTUS_EPA_DISPOSABLE_DATABASE=1 node database/tests/epa_release_concurrency.test.mjs
+
+      - name: Validar fluxo IPC do Electron com PostgreSQL
+        env:
+          PORTUS_EPA_IPC_TEST_DATABASE_URL: postgresql://postgres:portus-ci-password@127.0.0.1:5432/portus
+        run: npx vitest run src/main/__tests__/laboratory-handlers.test.ts --configLoader runner

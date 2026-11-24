@@ -38,6 +38,14 @@ function subscribe<T>(channel: string, cb: (data: T) => void): Unsubscribe {
 }
 
 const api: SerialReaderApi = {
+  laboratory: {
+    startAnalysis: (input) => ipcRenderer.invoke(IPC.laboratoryStartAnalysis, input),
+    addSample: (input) => ipcRenderer.invoke(IPC.laboratoryAddSample, input),
+    recordResult: (input) => ipcRenderer.invoke(IPC.laboratoryRecordResult, input),
+    recordCalculation: (input) => ipcRenderer.invoke(IPC.laboratoryRecordCalculation, input),
+    submitReview: (input) => ipcRenderer.invoke(IPC.laboratorySubmitReview, input),
+    decideReview: (input) => ipcRenderer.invoke(IPC.laboratoryDecideReview, input)
+  },
   updates: {
     check: () => ipcRenderer.invoke(IPC.updatesCheck),
     checkNow: () => ipcRenderer.invoke(IPC.updatesCheckNow),
