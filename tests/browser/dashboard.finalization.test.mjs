@@ -30,9 +30,9 @@ before(async () => {
 
 after(async () => { await browser?.close(); if (vite?.exitCode === null) vite.kill(); });
 
-async function openDashboard({ completed = true } = {}) {
+async function openDashboard({ completed = true, historicalBarcode = false } = {}) {
   const page = await browser.newPage();
-  await page.addInitScript(({ appVersion, completed }) => {
+  await page.addInitScript(({ appVersion, completed, historicalBarcode }) => {
     localStorage.setItem("portus:last-seen-version", appVersion);
     const user = { id: 1, username: "lab", role: "operator", sectorCode: "LABORATORY", laboratoryProfile: "capture" };
     const batch = { id: 1, code: "LAB-001", productId: 1, productName: "Produto", status: "open", completed,
@@ -51,9 +51,15 @@ async function openDashboard({ completed = true } = {}) {
       users: { findByBarcode: async () => null }, log: { error: async () => {} },
       central: { status: async () => ({ configured: true, available: true, required: true }),
         batches: { listOpen: async () => window.batchFinalized ? [] : [batch],
+          findByBarcode: async (barcode) => {
+            if (historicalBarcode && barcode === "1220.0330.0001-93525") {
+              return { ok: true, data: { ...batch, code: "93525", productId: 9, productName: "Cadastro histórico" } };
+            }
+            return { ok: false, error: "A etiqueta corresponde a mais de um lote." };
+          },
           finalize: (id, justification) => new Promise((resolve, reject) => window.requests.push({ id, justification, resolve, reject })) } }
     };
-  }, { appVersion: version, completed });
+  }, { appVersion: version, completed, historicalBarcode });
   await page.goto(baseURL);
   return page;
 }
@@ -106,5 +112,23 @@ test("equipment selection starts empty each time the capture dialog opens", asyn
     await dialog.getByText("Viscosímetro", { exact: true }).waitFor();
     assert.equal(await dialog.getByRole("checkbox", { checked: true }).count(), 0);
     assert.equal(await confirm.isDisabled(), true);
+  } finally { await page.close(); }
+});
+
+
+test("scanner reuses an existing batch associated with an archived product", async () => {
+  const page = await openDashboard({ completed: false, historicalBarcode: true });
+  try {
+    await page.getByRole("button", { name: "Novo Lote por Código de Barras" }).click();
+    const dialog = page.locator(".modal-card").filter({ hasText: "Scanner de Código de Barras" });
+    const input = dialog.getByRole("textbox");
+    await input.fill("1220.0330.0001-93526");
+    await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
+    await dialog.getByText("A etiqueta corresponde a mais de um lote.").waitFor();
+
+    await input.fill("1220.0330.0001-93525");
+    await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
+    await dialog.getByText("Cadastro histórico", { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole("button", { name: "Confirmar novo lote" }).count(), 0);
   } finally { await page.close(); }
 });

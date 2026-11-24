@@ -174,6 +174,29 @@ export async function findCentralBatchByCode(
   return result.rows[0] ? toBatch(result.rows[0]) : null;
 }
 
+/** An existing label can resolve to a batch whose product was later archived. */
+export async function findCentralBatchByBarcode(
+  productPrefix: string,
+  lotCode: string,
+  username: string,
+  sectorCode: "PRODUCTION" | "LABORATORY"
+): Promise<BatchWithProduct | null> {
+  const context = await resolveContext(username, sectorCode);
+  await assertReadPermission(context);
+  const result = await centralQuery<CentralBatchRow>(
+    `${SELECT_BATCH}
+       WHERE b.code = $1
+         AND (left(regexp_replace(p.description, '[^0-9]', '', 'g'), 12) = $2
+           OR left(regexp_replace(p.name, '[^0-9]', '', 'g'), 12) = $2)
+       ORDER BY b.id LIMIT 2`,
+    [lotCode, productPrefix]
+  );
+  if (result.rows.length > 1) {
+    throw new Error("A etiqueta corresponde a mais de um lote. Abra o lote correto pela lista de lotes.");
+  }
+  return result.rows[0] ? toBatch(result.rows[0]) : null;
+}
+
 async function resolveContext(username: string, sectorCode: string) {
   const applicationCode = sectorCode === "LABORATORY" ? "PORTUS_LABORATORY" : "PORTUS";
   const result = await centralQuery<{

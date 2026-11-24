@@ -122,6 +122,24 @@ export function registerCentralHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC.centralBatchesFindByBarcode,
+    compose([requireAuth])(async (_e, barcode: unknown): Promise<ServiceResult<BatchWithProduct | null>> => {
+      const user = getCurrentUser();
+      if (!user || !isCentralDatabaseConfigured()) return unavailable();
+      const digits = typeof barcode === "string" ? barcode.replace(/\D/g, "") : "";
+      if (!/^\d{16,}$/.test(digits)) return { ok: false, error: "Etiqueta de lote inválida." };
+      try {
+        const { findCentralBatchByBarcode } = await import("../db/central-batches-repo");
+        const batch = await findCentralBatchByBarcode(digits.slice(0, 12), digits.slice(12),
+          user.username, getUserOperationalSector(user));
+        return { ok: true, data: batch };
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : "Não foi possível consultar a etiqueta." };
+      }
+    })
+  );
+
+  ipcMain.handle(
     IPC.centralBatchesCreate,
     compose([requireAuth, validateInput(createBatchSchema)])(
       async (_e, input: BatchInput): Promise<ServiceResult<BatchWithProduct>> => {
@@ -136,6 +154,10 @@ export function registerCentralHandlers(): void {
               return { ok: false, error: "Etiqueta inválida: esperado código de produto (12 dígitos) e lote (mínimo 4 dígitos)." };
             }
             if (input.code?.trim() !== digits.slice(12)) return { ok: false, error: "Número do lote diferente do código completo identificado na etiqueta." };
+            const { findCentralBatchByBarcode } = await import("../db/central-batches-repo");
+            const historical = await findCentralBatchByBarcode(digits.slice(0, 12), digits.slice(12),
+              user.username, getUserOperationalSector(user));
+            if (historical) return { ok: false, error: "Já existe um lote para esta etiqueta." };
             const identified = await findCentralProductByBarcodePrefix(digits.slice(0, 12));
             if (!identified) return { ok: false, error: "Produto não localizado pelo código de barras. Solicite o cadastro do código no catálogo central." };
             if (product?.id !== identified.id) {

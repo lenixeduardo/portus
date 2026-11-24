@@ -143,6 +143,7 @@ const api: SerialReaderApi = {
     batches: {
       listOpen: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListOpen),
       listAll: (): Promise<BatchWithProduct[]> => ipcRenderer.invoke(IPC.centralBatchesListAll),
+      findByBarcode: (barcode: string) => ipcRenderer.invoke(IPC.centralBatchesFindByBarcode, barcode),
       findByCode: (code: string, productId?: number): Promise<BatchWithProduct | null> =>
         ipcRenderer.invoke(IPC.centralBatchesFindByCode, code, productId),
       create: (input: BatchInput): Promise<ServiceResult<BatchWithProduct>> =>
