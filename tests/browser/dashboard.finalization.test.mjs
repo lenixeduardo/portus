@@ -30,12 +30,12 @@ before(async () => {
 
 after(async () => { await browser?.close(); if (vite?.exitCode === null) vite.kill(); });
 
-async function openDashboard() {
+async function openDashboard({ completed = true } = {}) {
   const page = await browser.newPage();
-  await page.addInitScript(appVersion => {
+  await page.addInitScript(({ appVersion, completed }) => {
     localStorage.setItem("portus:last-seen-version", appVersion);
     const user = { id: 1, username: "lab", role: "operator", sectorCode: "LABORATORY", laboratoryProfile: "capture" };
-    const batch = { id: 1, code: "LAB-001", productId: 1, productName: "Produto", status: "open", completed: true,
+    const batch = { id: 1, code: "LAB-001", productId: 1, productName: "Produto", status: "open", completed,
       openedAt: "2026-10-14T12:00:00Z", operatorName: "Operador", readingsCount: 1 };
     window.requests = [];
     window.batchFinalized = false;
@@ -44,21 +44,25 @@ async function openDashboard() {
       setup: { status: async () => ({ configured: true, available: true, required: true, mode: "central", supported: true, setupCompleted: true }) },
       updates: { check: async () => null, verify: async () => ({ status: "current" }) },
       capture: { onEnded: () => () => {}, isActive: async () => false },
+      equipments: { list: async () => [
+        { id: 1, name: "Balança de precisão", slotIndex: 1, enabled: true },
+        { id: 2, name: "Viscosímetro", slotIndex: 2, enabled: true }
+      ] },
       users: { findByBarcode: async () => null }, log: { error: async () => {} },
       central: { status: async () => ({ configured: true, available: true, required: true }),
         batches: { listOpen: async () => window.batchFinalized ? [] : [batch],
           finalize: (id, justification) => new Promise((resolve, reject) => window.requests.push({ id, justification, resolve, reject })) } }
     };
-  }, version);
+  }, { appVersion: version, completed });
   await page.goto(baseURL);
-  await page.getByRole("button", { name: "Finalizar lote", exact: true }).click();
-  await page.locator("#batch-close-justification").fill("Análises do laboratório aprovadas");
   return page;
 }
 
 test("laboratory finalization stays pending, preserves errors and allows retry", async () => {
   const page = await openDashboard();
   try {
+    await page.getByRole("button", { name: "Finalizar lote", exact: true }).click();
+    await page.locator("#batch-close-justification").fill("Análises do laboratório aprovadas");
     const dialog = page.locator(".modal-card");
     await dialog.getByRole("button", { name: "Finalizar lote", exact: true }).click();
     await page.waitForFunction(() => window.requests.length === 1);
@@ -76,5 +80,31 @@ test("laboratory finalization stays pending, preserves errors and allows retry",
     await page.evaluate(() => { window.batchFinalized = true; window.requests[2].resolve({ ok: true, data: { id: 1, status: "closed" } }); });
     await dialog.waitFor({ state: "detached" });
     await page.waitForFunction(() => !document.querySelector(".batch-row"));
+  } finally { await page.close(); }
+});
+
+
+test("equipment selection starts empty each time the capture dialog opens", async () => {
+  const page = await openDashboard({ completed: false });
+  try {
+    const reading = page.getByRole("button", { name: "Iniciar leitura", exact: true });
+    const dialog = page.locator(".modal-card").filter({ hasText: "Selecionar Equipamentos" });
+    const confirm = dialog.getByRole("button", { name: "Iniciar Captura", exact: true });
+    const balance = dialog.locator("li").filter({ hasText: "Balança de precisão" }).getByRole("checkbox");
+
+    await reading.click();
+    await dialog.getByText("Viscosímetro", { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole("checkbox", { checked: true }).count(), 0);
+    assert.equal(await confirm.isDisabled(), true);
+
+    await balance.check();
+    assert.equal(await dialog.getByRole("checkbox", { checked: true }).count(), 1);
+    assert.equal(await confirm.isEnabled(), true);
+
+    await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await reading.click();
+    await dialog.getByText("Viscosímetro", { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole("checkbox", { checked: true }).count(), 0);
+    assert.equal(await confirm.isDisabled(), true);
   } finally { await page.close(); }
 });
