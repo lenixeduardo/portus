@@ -207,3 +207,29 @@ test("products can be found by name without accents or by identifier", async () 
     await page.getByRole("heading", { name: "Editar Produto" }).waitFor();
   } finally { await page.close(); }
 });
+
+
+for (const sectorCode of ["LABORATORY", "PRODUCTION"]) {
+  test(`${sectorCode}: operational reader accepts slower HID input with Tab and Enter`, async () => {
+    const page = await openDashboard({ completed: false, sectorCode });
+    try {
+      await page.getByText("Pronto para leitura", { exact: true }).waitFor();
+      assert.equal(await page.locator(".batch-row").count(), 0);
+      await page.getByRole("button", { name: "Leitura por Código de Barras" }).click();
+      const dialog = page.locator(".modal-card");
+      await dialog.getByRole("status").waitFor();
+      assert.equal(await dialog.getByRole("status").evaluate(el => document.activeElement === el), true);
+      assert.equal(await dialog.getByRole("textbox").count(), 0);
+      await page.keyboard.type("1220.0330.0001-93525", { delay: 65 });
+      await page.keyboard.press("Tab");
+      await page.locator(".batch-row").getByText("#93525", { exact: true }).waitFor();
+      assert.equal(await page.locator(".batch-row").count(), 1);
+      await page.getByRole("button", { name: "Limpar lote" }).click();
+      assert.equal(await page.locator(".batch-row").count(), 0);
+      await page.keyboard.type("93525", { delay: 65 });
+      await page.keyboard.press("Enter");
+      await page.locator(".batch-row").getByText("#93525", { exact: true }).waitFor();
+      assert.equal(await page.locator(".batch-row").count(), 1);
+    } finally { await page.close(); }
+  });
+}

@@ -6,6 +6,8 @@ const MIN_BARCODE_LENGTH = 3;
 interface BarcodeScannerOptions {
   ignoreFormFields?: boolean;
   capture?: boolean;
+  maxIntervalMs?: number;
+  acceptTabSuffix?: boolean;
   shouldIntercept?: (code: string) => boolean;
 }
 
@@ -23,7 +25,9 @@ export function useBarcodeScanner(
 
   const {
     ignoreFormFields = true,
-    capture = false
+    capture = false,
+    maxIntervalMs = SCAN_INTERVAL_MS,
+    acceptTabSuffix = false
   } = options;
 
   useEffect(() => {
@@ -35,7 +39,7 @@ export function useBarcodeScanner(
 
       const now = Date.now();
 
-      if (e.key === "Enter") {
+      if (e.key === "Enter" || (acceptTabSuffix && e.key === "Tab")) {
         const code = bufferRef.current;
         bufferRef.current = "";
         lastKeyTimeRef.current = 0;
@@ -59,7 +63,7 @@ export function useBarcodeScanner(
       }
 
       const elapsed = now - lastKeyTimeRef.current;
-      if (bufferRef.current.length > 0 && elapsed > SCAN_INTERVAL_MS) {
+      if (bufferRef.current.length > 0 && elapsed > maxIntervalMs) {
         bufferRef.current = "";
       }
 
@@ -73,5 +77,5 @@ export function useBarcodeScanner(
       bufferRef.current = "";
       lastKeyTimeRef.current = 0;
     };
-  }, [enabled, ignoreFormFields, capture]);
+  }, [enabled, ignoreFormFields, capture, maxIntervalMs, acceptTabSuffix]);
 }
