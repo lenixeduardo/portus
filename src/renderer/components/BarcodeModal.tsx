@@ -3,7 +3,6 @@ import { ScanBarcode } from "lucide-react";
 import type { BarcodeScanResult, BatchWithProduct } from "../../shared/ipc";
 import { Modal } from "./Modal";
 import type { Product } from "../../shared/types";
-import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { scanBarcodeByMode } from "../services/barcode-scan";
 
 interface Props {
@@ -24,7 +23,6 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   const [matchedProduct, setMatchedProduct] = useState<Product | null>(null);
   const [productId, setProductId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const scannerStatusRef = useRef<HTMLParagraphElement>(null);
   const mountedRef = useRef(true);
   const scanningRef = useRef(false);
 
@@ -36,25 +34,17 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       // window.focus() reacquires OS-level keyboard focus for the Electron window
       // in case it was lost during a logout/login cycle, then focuses the input.
       window.focus();
-      if (scannerOnly) scannerStatusRef.current?.focus();
-      else inputRef.current?.focus();
+      inputRef.current?.focus();
     }
     return () => { mountedRef.current = false; };
   }, []);
 
-  useBarcodeScanner(code => { void submitScan(code); }, scannerOnly && !loading && !pendingBarcode && !result, {
-    capture: true,
-    ignoreFormFields: false,
-    maxIntervalMs: 100,
-    acceptTabSuffix: true,
-    shouldIntercept: () => true
-  });
-
-  // The scanner-only view has no editable field. Restore focus after a retry
-  // or returning from the new-batch confirmation screen.
+  // Both roles use the native input while the modal is open. The dashboard
+  // scanner is disabled by showBarcode, so no timing heuristic competes here.
   useEffect(() => {
     if (scannerOnly && !loading && !pendingBarcode && !result) {
-      scannerStatusRef.current?.focus();
+      inputRef.current?.focus();
+      inputRef.current?.select();
     }
   }, [scannerOnly, loading, pendingBarcode, result]);
 
@@ -212,11 +202,9 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         ) : (
           <>
             <button className="secondary" onClick={onClose}>Cancelar</button>
-            {!scannerOnly && (
-              <button onClick={handleSubmit} disabled={loading || !value.trim()}>
-                {loading ? "Processando..." : "Confirmar"}
-              </button>
-            )}
+            <button onClick={handleSubmit} disabled={loading || !value.trim()}>
+              {loading ? "Processando..." : "Confirmar"}
+            </button>
           </>
         )
       }
@@ -246,20 +234,22 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
           </div>
           {error && <div className="error">{error}</div>}
         </div>
-      ) : scannerOnly ? (
-        <>
-          <p ref={scannerStatusRef} tabIndex={-1} role="status">{loading ? "Consultando lote..." : "Aponte o leitor para o código de barras da etiqueta."}</p>
-          {error && <div className="error" role="alert">{error}</div>}
-        </>
       ) : (
         <form onSubmit={handleSubmit}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 20, color: "#6B7280" }}>
             <ScanBarcode size={48} strokeWidth={1.2} />
           </div>
           <div className="field">
-            <label>Código de barras</label>
+            <label htmlFor="barcode-input">Código de barras</label>
             <input
+              id="barcode-input"
               ref={inputRef}
+              onKeyDown={(e) => {
+                if (scannerOnly && e.key === "Tab" && !e.shiftKey && value.trim() && !loading) {
+                  e.preventDefault();
+                  void submitScan(value.trim());
+                }
+              }}
               value={value}
               onChange={(e) => { setValue(e.target.value); setError(null); }}
               placeholder="Aponte o leitor ou digite o código..."
@@ -271,7 +261,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
               Posicione o cursor aqui e use o leitor. O código é enviado automaticamente ao pressionar Enter.
             </small>
           </div>
-          {error && <div className="error">{error}</div>}
+          {error && <div className="error" role="alert">{error}</div>}
           <button type="submit" style={{ display: "none" }} />
         </form>
       )}
