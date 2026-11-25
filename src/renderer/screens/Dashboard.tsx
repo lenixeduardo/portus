@@ -325,6 +325,8 @@ export function Dashboard({
     handleScan(code);
   }, scannerActive, {
     capture: isOperational,
+    maxIntervalMs: isOperational ? 100 : undefined,
+    acceptTabSuffix: isOperational,
     shouldIntercept: isOperational ? () => true : undefined
   });
 
@@ -408,21 +410,26 @@ export function Dashboard({
 
   async function handleBarcodeReady(batch: BatchWithProduct) {
     setShowBarcode(false);
-    const already = await window.api.capture.isActive();
-    if (already) {
-      setScannerError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
-      await reload();
-      return;
-    }
-    const openBatches = await reload();
-    if (!openBatches) return;
-    const current = openBatches.find(item => item.id === batch.id);
-    if (!current) {
-      setScannerError(`Lote ${batch.code} não está disponível para captura nesta estação.`);
-    } else if (isOperational) {
-      setScannedBatchId(current.id);
-    } else {
-      setSelectionBatch(current);
+    try {
+      const already = await window.api.capture.isActive();
+      if (already) {
+        setScannerError("Já existe uma captura em andamento. Cancele antes de iniciar outra.");
+        await reload();
+        return;
+      }
+      const openBatches = await reload();
+      if (!openBatches) return;
+      const current = openBatches.find(item => item.id === batch.id);
+      if (!current) {
+        setScannerError(`Lote ${batch.code} não está disponível para captura nesta estação.`);
+      } else if (isOperational) {
+        setScannedBatchId(current.id);
+      } else {
+        setSelectionBatch(current);
+      }
+    } catch (error) {
+      setScannerError("Não foi possível abrir o lote para captura. Tente novamente.");
+      reportDashboardError("barcode-ready", error);
     }
   }
 
