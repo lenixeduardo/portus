@@ -215,7 +215,10 @@ function epaSheet(history: BatchHistory): string {
     epaRow(12, EPA_COLUMNS, Array(8).fill(6), 31)
   ];
   for (let i=0;i<Math.max(12,data.length);i++) {
-    rows.push(epaRow(i+13, data[i] ?? Array(8).fill(""), Array(8).fill(i%2 ? 8 : 7)));
+    const values = data[i] ?? Array(8).fill("");
+    const valueLines = values[3].split("\n").length;
+    const height = valueLines > 1 ? Math.min(409, valueLines * 20) : 24;
+    rows.push(epaRow(i+13, values, Array(8).fill(i%2 ? 8 : 7), height));
   }
   rows.push(epaRow(footer, [
     "LOTE ABERTO POR", "", "DATA/HORA DA ABERTURA", "",

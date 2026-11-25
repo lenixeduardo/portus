@@ -97,7 +97,7 @@ describe('serial capture recovery', () => {
     for (const line of ['on', '00:00:00 20.8°C', 'SP:L1 30.0RPM', '2.6% 5.151515cP', 'off']) {
       expect(injectManualReading(1, line).ok).toBe(true);
     }
-    expect(values()).toEqual(['SP:L1 30.0RPM | 2.6% 5.151515cP']);
+    expect(values()).toEqual(['TEMP: 20.8°C\nSP:L1 30.0RPM\n2.6% | 5.151515cP']);
     expect((await completeCapture()).ok).toBe(true);
   });
   it('assembles Marte MVD-8 spindle and viscosity across serial chunks', async () => {
@@ -105,7 +105,43 @@ describe('serial capture recovery', () => {
     await begin();
     send('on\r\n00:00:00 20.8°C\r\nSP:L1 30.0RPM\r\n2.6% ');
     send('5.151515cP\r\noff\r\n');
-    expect(values()).toEqual(['SP:L1 30.0RPM | 2.6% 5.151515cP']);
+    expect(values()).toEqual(['TEMP: 20.8°C\nSP:L1 30.0RPM\n2.6% | 5.151515cP']);
+  });
+  it('keeps MVD-8 temperatures with their own measurements across byte boundaries', async () => {
+    state.equipments = [equipment({ name: 'MARTE MVD8', parseRegex: '(?<value>TESTE123456)' })];
+    await begin();
+    const first = Buffer.from('00:09:30  21.9°C\r\nSP:L1 30.0RPM\r\n 0.0%      0.0cP\r\n');
+    const degree = first.indexOf(0xc2);
+    const terminator = first.indexOf(0x0a);
+    state.ports[0].emit('data', first.subarray(0, degree + 1));
+    state.ports[0].emit('data', first.subarray(degree + 1, terminator));
+    state.ports[0].emit('data', Buffer.concat([
+      first.subarray(terminator),
+      Buffer.from('00:09:40 -1,2?C\nSP:L2 60.0RPM\n4.0% 2.0cP\n')
+    ]));
+    const expected = [
+      'TEMP: 21.9°C\nSP:L1 30.0RPM\n0.0% | 0.0cP',
+      'TEMP: -1,2°C\nSP:L2 60.0RPM\n4.0% | 2.0cP'
+    ];
+    expect(values()).toEqual(expected);
+    expect(vi.mocked(insertCentralReading).mock.calls.map(([reading]) => reading.valueParsed)).toEqual(expected);
+  });
+  it('clears incomplete MVD-8 measurements at stream boundaries', async () => {
+    state.equipments = [equipment({ name: 'Viscosímetro' })];
+    await begin();
+    send('00:00:01 21.0°C\nSP:L1 30.0RPM\noff\n0.0% 0.0cP\n');
+    send('00:00:02 22.0°C\non\nSP:L2 30.0RPM\n0.0% 0.0cP\n');
+    send('00:00:03 23.0°C\nSP:L1 30.0RPM\n00:00:04 inválida\n0.0% 0.0cP\nSP:L3 30.0RPM\n0.0% 0.0cP\n');
+    send('00:00:05 24.0°C\nSP:L1 30.0RPM\n0.0% ');
+    state.ports[0].emit('close');
+    send('0.0cP\nSP:L4 30.0RPM\n0.0% 0.0cP\n');
+    send('00:00:06 25.0°C\n0.0% 0.0cP\nSP:L5 30.0RPM\n0.0% 0.0cP\n');
+    expect(values()).toEqual([
+      'SP:L2 30.0RPM | 0.0% 0.0cP',
+      'SP:L3 30.0RPM | 0.0% 0.0cP',
+      'SP:L4 30.0RPM | 0.0% 0.0cP',
+      'SP:L5 30.0RPM | 0.0% 0.0cP'
+    ]);
   });
   it('records multiple valid readings by default when checkbox is disabled', async () => {
     state.equipments = [equipment({ singleReadingPerCapture: false })];

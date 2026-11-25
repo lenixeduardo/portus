@@ -80,6 +80,22 @@ describe("modelo Excel EPA no historico PORTUS", () => {
       rmSync(folder, { recursive: true, force: true });
     }
   });
+  it("reserva altura para as três linhas da medição do MVD-8", () => {
+    const folder = mkdtempSync(join(tmpdir(), "portus-epa-"));
+    try {
+      const path = join(folder, "lote.xlsx");
+      const history = sample();
+      const reading = history.sessions[0].readings[0];
+      reading.valueRaw = "TEMP: 21.9°C\nSP:L1 30.0RPM\n0.0% | 0.0cP";
+      writeBatchReportXlsx(path, history);
+      const sheet = contents(path)["xl/worksheets/sheet1.xml"].toString("utf8");
+      expect(sheet).toContain(reading.valueRaw);
+      expect(sheet).toContain('<row r="13" ht="60" customHeight="1">');
+      expect(sheet).toContain('<row r="14" ht="24" customHeight="1">');
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
   it("mantem o fechamento vazio enquanto o lote nao estiver finalizado", () => {
     const folder = mkdtempSync(join(tmpdir(), "portus-epa-"));
     try {
