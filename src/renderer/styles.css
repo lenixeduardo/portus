@@ -556,6 +556,10 @@ label.checkbox input { width: auto; }
   gap: 12px;
   margin-bottom: 20px;
 }
+.page-actions .product-search {
+  width: min(100%, 320px);
+  margin-inline-end: auto;
+}
 .page-actions .alert {
   flex: 1;
   background: var(--danger-dim);

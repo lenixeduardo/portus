@@ -68,6 +68,10 @@ export function useBarcodeScanner(
     }
 
     window.addEventListener("keydown", handleKeyDown, capture);
-    return () => window.removeEventListener("keydown", handleKeyDown, capture);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, capture);
+      bufferRef.current = "";
+      lastKeyTimeRef.current = 0;
+    };
   }, [enabled, ignoreFormFields, capture]);
 }

@@ -9,6 +9,7 @@ type EditState =
 
 export function Products() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [edit, setEdit] = useState<EditState>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +43,26 @@ export function Products() {
     reload();
   }
 
+  const query = normalizeSearch(search.trim());
+  const codeQuery = query.replace(/[.\s-]/g, "");
+  const visibleProducts = query ? products.filter(product => {
+    const value = normalizeSearch(product.description ?? "");
+    return normalizeSearch(product.name).includes(query) || value.includes(query)
+      || (/^\d+$/.test(codeQuery) && value.replace(/[.\s-]/g, "").includes(codeQuery));
+  }) : products;
+
   return (
     <>
       <div className="page-actions">
         {error && <div className="alert">{error}</div>}
+        <input
+          className="product-search"
+          type="search"
+          aria-label="Buscar produtos"
+          placeholder="Buscar por nome ou valor"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+        />
         <button onClick={() => setEdit({ mode: "create" })}>+ Novo Produto</button>
       </div>
 
@@ -63,10 +80,12 @@ export function Products() {
             {loading && (
               <tr><td colSpan={4} className="muted">Carregando...</td></tr>
             )}
-            {!loading && products.length === 0 && (
-              <tr><td colSpan={4} className="muted">Nenhum produto cadastrado.</td></tr>
+            {!loading && visibleProducts.length === 0 && (
+              <tr><td colSpan={4} className="muted">
+                {products.length === 0 ? "Nenhum produto cadastrado." : "Nenhum produto encontrado para a busca."}
+              </td></tr>
             )}
-            {products.map((p) => (
+            {visibleProducts.map((p) => (
               <tr key={p.id}>
                 <td><strong>{p.name}</strong></td>
                 <td className="muted mono">{p.description ?? "—"}</td>
@@ -157,6 +176,10 @@ function ProductFormModal({ initial, onClose, onSaved }: FormProps) {
       </form>
     </Modal>
   );
+}
+
+function normalizeSearch(value: string): string {
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
 }
 
 function formatDate(iso: string): string {

@@ -92,6 +92,7 @@ export function Dashboard({
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
   const [captureEquipmentIds, setCaptureEquipmentIds] = useState<number[] | null>(null);
   const [simulatedCapture, setSimulatedCapture] = useState(false);
+  const [scannedBatchId, setScannedBatchId] = useState<number | null>(null);
   const [selectionBatch, setSelectionBatch] = useState<BatchWithProduct | null>(null);
   const [closingBatch, setClosingBatch] = useState(false);
   const closingBatchRef = useRef(false);
@@ -105,6 +106,7 @@ export function Dashboard({
   const [sortDirection, setSortDirection] = useState<BatchSortDirection>("DESC");
   const scannerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLaboratory = isLaboratoryUser(user);
+  const isOperational = user.role === "operator" && user.sectorCode !== "ADMIN";
   const isAdmin = user.role === "admin" || user.role === "master";
   const isMaster = user.role === "master";
   const isSupervisor = user.role === "supervisor";
@@ -125,10 +127,13 @@ export function Dashboard({
         : await window.api.batches.listOpen();
       // IPC é uma fronteira externa: normalize a resposta antes de renderizar
       // filtros, contadores e cartões do lote.
-      setBatches(Array.isArray(list) ? list : []);
       if (!Array.isArray(list)) {
+        setBatches([]);
         setScannerError("A base central retornou uma lista de lotes inválida.");
+        return;
       }
+      setBatches(list);
+      return list;
     } catch (error) {
       setBatches([]);
       setScannerError("Não foi possível consultar os lotes na base central.");
@@ -246,6 +251,11 @@ export function Dashboard({
         const digits = code.replace(/\D/g, "");
         let centralBatch: BatchWithProduct | null;
         if (/^\d{16,}$/.test(digits)) {
+          if (isOperational) {
+            setScannerState({ phase: "idle" });
+            openBarcodeModal(code);
+            return;
+          }
           const prefix = digits.slice(0, 12);
           const products = await window.api.products.list();
           const matches = products.filter(product =>
@@ -313,7 +323,10 @@ export function Dashboard({
 
   useBarcodeScanner((code) => {
     handleScan(code);
-  }, scannerActive);
+  }, scannerActive, {
+    capture: isOperational,
+    shouldIntercept: isOperational ? () => true : undefined
+  });
 
   async function handleSimulateLot() {
     setSimulatingLot(true);
@@ -401,13 +414,16 @@ export function Dashboard({
       await reload();
       return;
     }
-    await reload();
-    setBatches((current) => {
-      const stillOpen = current.some((b) => b.id === batch.id);
-      if (stillOpen) setSelectionBatch(batch);
-      else setScannerError(`Lote ${batch.code} foi fechado antes de iniciar a captura.`);
-      return current;
-    });
+    const openBatches = await reload();
+    if (!openBatches) return;
+    const current = openBatches.find(item => item.id === batch.id);
+    if (!current) {
+      setScannerError(`Lote ${batch.code} não está disponível para captura nesta estação.`);
+    } else if (isOperational) {
+      setScannedBatchId(current.id);
+    } else {
+      setSelectionBatch(current);
+    }
   }
 
   function handleEquipmentSelected(ids: number[]) {
@@ -426,6 +442,7 @@ export function Dashboard({
     setSelectionBatch(batch);
   }
 
+  const scannedBatch = batches.find(batch => batch.id === scannedBatchId);
   const productOptions = getProductFilterOptions(batches);
   const visibleBatches = filterAndSortActiveBatches(batches, {
     sector: batchFilter,
@@ -449,11 +466,30 @@ export function Dashboard({
     setSortDirection("DESC");
   }
 
+  function renderBatchRow(b: BatchWithProduct) {
+    return (
+      <BatchRow
+        key={b.id}
+        batch={b}
+        isCapturing={captureBatchId === b.id}
+        canFinalize={canFinalize && Boolean(b.completed)}
+        canMarkCompleted={canMarkCompleted && (!b.completed || canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", false))}
+        centralMode={requiresCentral}
+        canCapture={canCapture}
+        canCaptureCompleted={isLaboratory || isMaster || isSupervisor}
+        onCompletedChange={(completed) => void handleCompletedChange(b, completed)}
+        onClose={() => handleClose(b)}
+        onCapture={() => void handleStartCapture(b)}
+        onPrint={() => handlePrintBarcode(b)}
+      />
+    );
+  }
+
   return (
     <>
       <div className="dashboard-actions">
-        {(
-          <div className="dashboard-actions__buttons">
+        <div className="dashboard-actions__buttons">
+          {!isOperational && (
             <button
               className="secondary"
               onClick={handleSimulateLot}
@@ -464,16 +500,17 @@ export function Dashboard({
               <Zap size={14} />
               {simulatingLot ? "Criando..." : "Simular Scan"}
             </button>
-            <button
-              className="secondary"
-              onClick={() => openBarcodeModal()}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              <ScanBarcode size={14} />
-              Novo Lote por Código de Barras
-            </button>
-          </div>
-        )}
+          )}
+          <button
+            className="secondary"
+            onClick={() => openBarcodeModal()}
+            disabled={isOperational && !scannerActive}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <ScanBarcode size={14} />
+            {isOperational ? "Leitura por Código de Barras" : "Novo Lote por Código de Barras"}
+          </button>
+        </div>
       </div>
 
       {requiresCentral && !centralAvailable ? (
@@ -484,7 +521,7 @@ export function Dashboard({
         <ScannerPanel state={{ phase: "idle" }} message="Supervisor: revise o lote concluído para finalizar ou reabrir pelo Histórico." />
       )}
 
-      {!loading && batches.length > 0 && (
+      {!isOperational && !loading && batches.length > 0 && (
         <div className="batch-list-controls" aria-label="Filtros de lote">
           <div className="batch-filter-tabs" role="tablist" aria-label="Filtrar lotes por setor">
             <FilterTab label="Todos" count={batches.length} active={batchFilter === "ALL"} onClick={() => setBatchFilter("ALL")} />
@@ -554,7 +591,7 @@ export function Dashboard({
         </div>
       )}
 
-      {loading ? (
+      {isOperational ? null : loading ? (
         <div className="muted mono" style={{ fontSize: 12 }}>Carregando...</div>
       ) : batches.length === 0 ? (
         <div className="placeholder">
@@ -564,23 +601,15 @@ export function Dashboard({
         </div>
       ) : (
         <div className="batch-list">
-          {visibleBatches.map((b) => (
-            <BatchRow
-              key={b.id}
-              batch={b}
-              isCapturing={captureBatchId === b.id}
-              canFinalize={canFinalize && Boolean(b.completed)}
-              canMarkCompleted={canMarkCompleted && (!b.completed || canSetBatchCompleted(user.role, isLaboratory ? "LABORATORY" : "PRODUCTION", false))}
-              centralMode={requiresCentral}
-              canCapture={canCapture}
-              canCaptureCompleted={isLaboratory || isMaster || isSupervisor}
-              onCompletedChange={(completed) => void handleCompletedChange(b, completed)}
-              onClose={() => handleClose(b)}
-              onCapture={() => void handleStartCapture(b)}
-              onPrint={() => handlePrintBarcode(b)}
-            />
-          ))}
+          {visibleBatches.map(renderBatchRow)}
           {visibleBatches.length === 0 && <div className="placeholder">Nenhum lote corresponde aos filtros selecionados.</div>}
+        </div>
+      )}
+
+      {isOperational && scannedBatch && (
+        <div className="batch-list">
+          {renderBatchRow(scannedBatch)}
+          <div><button className="secondary" onClick={() => setScannedBatchId(null)}>Limpar lote</button></div>
         </div>
       )}
 
@@ -590,6 +619,7 @@ export function Dashboard({
           onBatchReady={handleBarcodeReady}
           initialBarcode={barcodeInitial}
           centralMode={requiresCentral}
+          scannerOnly={isOperational}
         />
       )}
 

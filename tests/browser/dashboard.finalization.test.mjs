@@ -30,14 +30,16 @@ before(async () => {
 
 after(async () => { await browser?.close(); if (vite?.exitCode === null) vite.kill(); });
 
-async function openDashboard({ completed = true, historicalBarcode = false } = {}) {
+async function openDashboard({ completed = true, historicalBarcode = false, role = "operator", sectorCode = "LABORATORY" } = {}) {
   const page = await browser.newPage();
-  await page.addInitScript(({ appVersion, completed, historicalBarcode }) => {
+  await page.addInitScript(({ appVersion, completed, historicalBarcode, role, sectorCode }) => {
     localStorage.setItem("portus:last-seen-version", appVersion);
-    const user = { id: 1, username: "lab", role: "operator", sectorCode: "LABORATORY", laboratoryProfile: "capture" };
-    const batch = { id: 1, code: "LAB-001", productId: 1, productName: "Produto", status: "open", completed,
+    const user = { id: 1, username: "lab", role, sectorCode, laboratoryProfile: "capture" };
+    const batch = { id: 1, code: "93525", productId: 1, productName: "Produto", status: "open", completed,
       openedAt: "2026-10-14T12:00:00Z", operatorName: "Operador", readingsCount: 1 };
     window.requests = [];
+    window.barcodeRequests = [];
+    window.createdBatches = [];
     window.batchFinalized = false;
     window.api = {
       auth: { currentUser: async () => user, logout: async () => {} },
@@ -48,18 +50,31 @@ async function openDashboard({ completed = true, historicalBarcode = false } = {
         { id: 1, name: "Balança de precisão", slotIndex: 1, enabled: true },
         { id: 2, name: "Viscosímetro", slotIndex: 2, enabled: true }
       ] },
+      products: { list: async () => [
+        { id: 1, name: "Açúcar refinado", description: "1220.0330.0001", createdAt: "2026-10-14T12:00:00Z" },
+        { id: 2, name: "Produto distinto", description: "1220.0330.0002", createdAt: "2026-10-14T12:00:00Z" }
+      ] },
       users: { findByBarcode: async () => null }, log: { error: async () => {} },
       central: { status: async () => ({ configured: true, available: true, required: true }),
-        batches: { listOpen: async () => window.batchFinalized ? [] : [batch],
+        batches: { listOpen: async () => window.batchFinalized ? [] : [batch, ...window.createdBatches],
+          findByCode: async (code) => code === batch.code ? batch : null,
+          create: async ({ code, productId }) => {
+            const created = { ...batch, id: 2, code, productId, completed: false };
+            window.createdBatches.push(created);
+            return { ok: true, data: created };
+          },
           findByBarcode: async (barcode) => {
+            window.barcodeRequests.push(barcode);
             if (historicalBarcode && barcode === "1220.0330.0001-93525") {
               return { ok: true, data: { ...batch, code: "93525", productId: 9, productName: "Cadastro histórico" } };
             }
-            return { ok: false, error: "A etiqueta corresponde a mais de um lote." };
+            return barcode.endsWith("93526")
+              ? { ok: false, error: "A etiqueta corresponde a mais de um lote." }
+              : { ok: true, data: null };
           },
           finalize: (id, justification) => new Promise((resolve, reject) => window.requests.push({ id, justification, resolve, reject })) } }
     };
-  }, { appVersion: version, completed, historicalBarcode });
+  }, { appVersion: version, completed, historicalBarcode, role, sectorCode });
   await page.goto(baseURL);
   return page;
 }
@@ -67,6 +82,7 @@ async function openDashboard({ completed = true, historicalBarcode = false } = {
 test("laboratory finalization stays pending, preserves errors and allows retry", async () => {
   const page = await openDashboard();
   try {
+    await scanExistingBatch(page);
     await page.getByRole("button", { name: "Finalizar lote", exact: true }).click();
     await page.locator("#batch-close-justification").fill("Análises do laboratório aprovadas");
     const dialog = page.locator(".modal-card");
@@ -93,6 +109,8 @@ test("laboratory finalization stays pending, preserves errors and allows retry",
 test("equipment selection starts empty each time the capture dialog opens", async () => {
   const page = await openDashboard({ completed: false });
   try {
+    await page.getByRole("button", { name: "Leitura por Código de Barras" }).click();
+    await scanExistingBatch(page);
     const reading = page.getByRole("button", { name: "Iniciar leitura", exact: true });
     const dialog = page.locator(".modal-card").filter({ hasText: "Selecionar Equipamentos" });
     const confirm = dialog.getByRole("button", { name: "Iniciar Captura", exact: true });
@@ -117,7 +135,7 @@ test("equipment selection starts empty each time the capture dialog opens", asyn
 
 
 test("scanner reuses an existing batch associated with an archived product", async () => {
-  const page = await openDashboard({ completed: false, historicalBarcode: true });
+  const page = await openDashboard({ completed: false, historicalBarcode: true, role: "admin", sectorCode: "ADMIN" });
   try {
     await page.getByRole("button", { name: "Novo Lote por Código de Barras" }).click();
     const dialog = page.locator(".modal-card").filter({ hasText: "Scanner de Código de Barras" });
@@ -130,5 +148,62 @@ test("scanner reuses an existing batch associated with an archived product", asy
     await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
     await dialog.getByText("Cadastro histórico", { exact: true }).waitFor();
     assert.equal(await dialog.getByRole("button", { name: "Confirmar novo lote" }).count(), 0);
+  } finally { await page.close(); }
+});
+
+async function scanLabel(page, code) {
+  await page.evaluate(label => {
+    const target = document.activeElement ?? document.body;
+    for (const key of [...label, "Enter"]) {
+      target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    }
+  }, code);
+}
+
+async function scanExistingBatch(page) {
+  await page.getByText("Pronto para leitura", { exact: true }).waitFor();
+  await scanLabel(page, "93525");
+  await page.locator(".batch-row").waitFor();
+}
+
+test("production sees only the header until a scan and must confirm a new lot", async () => {
+  const page = await openDashboard({ completed: false, sectorCode: "PRODUCTION" });
+  try {
+    await page.getByText("Pronto para leitura", { exact: true }).waitFor();
+    assert.equal(await page.locator(".batch-row, .batch-list-controls").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Simular Scan" }).count(), 0);
+    await page.getByRole("button", { name: "Leitura por Código de Barras" }).click();
+    const dialog = page.locator(".modal-card");
+    assert.equal(await dialog.getByRole("textbox").count(), 0);
+
+    const label = "1220.0330.0001-93527";
+    await page.keyboard.type(label, { delay: 110 });
+    await page.keyboard.press("Enter");
+    assert.deepEqual(await page.evaluate(() => window.barcodeRequests), []);
+
+    await scanLabel(page, label);
+    const confirm = dialog.getByRole("button", { name: "Confirmar novo lote" });
+    await confirm.waitFor();
+    assert.equal(await dialog.getByRole("textbox").count(), 0);
+    assert.deepEqual(await page.evaluate(() => window.createdBatches), []);
+    await confirm.click();
+    await page.locator(".batch-row").getByText("#93527", { exact: true }).waitFor();
+    assert.equal(await page.locator(".batch-row").count(), 1);
+  } finally { await page.close(); }
+});
+
+test("products can be found by name without accents or by identifier", async () => {
+  const page = await openDashboard({ role: "supervisor", sectorCode: "ADMIN" });
+  try {
+    await page.getByRole("button", { name: "Produtos", exact: true }).click();
+    await page.getByText("Açúcar refinado", { exact: true }).waitFor();
+    const search = page.getByRole("searchbox", { name: "Buscar produtos" });
+    await search.fill("ACUCAR");
+    assert.equal(await page.getByText("Produto distinto", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Açúcar refinado", { exact: true }).count(), 1);
+    await search.fill("122003300002");
+    assert.equal(await page.getByText("Açúcar refinado", { exact: true }).count(), 0);
+    await page.getByRole("row").filter({ hasText: "Produto distinto" }).getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("heading", { name: "Editar Produto" }).waitFor();
   } finally { await page.close(); }
 });

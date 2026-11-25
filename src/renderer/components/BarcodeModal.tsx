@@ -3,6 +3,7 @@ import { ScanBarcode } from "lucide-react";
 import type { BarcodeScanResult, BatchWithProduct } from "../../shared/ipc";
 import { Modal } from "./Modal";
 import type { Product } from "../../shared/types";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { scanBarcodeByMode } from "../services/barcode-scan";
 
 interface Props {
@@ -10,9 +11,10 @@ interface Props {
   onBatchReady: (batch: BatchWithProduct) => void;
   initialBarcode?: string;
   centralMode?: boolean;
+  scannerOnly?: boolean;
 }
 
-export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMode = false }: Props) {
+export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMode = false, scannerOnly = false }: Props) {
   const [value, setValue] = useState(initialBarcode ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +25,12 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   const [productId, setProductId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
+  const scanningRef = useRef(false);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (initialBarcode) {
-      scan(initialBarcode);
+      void submitScan(initialBarcode);
     } else {
       // window.focus() reacquires OS-level keyboard focus for the Electron window
       // in case it was lost during a logout/login cycle, then focuses the input.
@@ -35,6 +39,27 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
     }
     return () => { mountedRef.current = false; };
   }, []);
+
+  useBarcodeScanner(code => { void submitScan(code); }, scannerOnly && !loading && !pendingBarcode && !result, {
+    capture: true,
+    shouldIntercept: () => true
+  });
+
+  async function submitScan(barcode: string) {
+    if (scanningRef.current) return;
+    scanningRef.current = true;
+    try {
+      await scan(barcode);
+    } finally {
+      scanningRef.current = false;
+    }
+  }
+
+  function showBatch(batch: BatchWithProduct, created: boolean) {
+    setPendingBarcode(null);
+    if (scannerOnly) onBatchReady(batch);
+    else setResult({ batch, created });
+  }
 
   async function scan(barcode: string) {
     setLoading(true);
@@ -45,7 +70,15 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         if (!mountedRef.current) return;
         const digits = original.replace(/\D/g, "");
         if (!/^\d{16,}$/.test(digits)) {
-          setError("Etiqueta inválida: informe os 12 dígitos do produto e pelo menos 4 dígitos do lote.");
+          if (scannerOnly) {
+            const batch = await window.api.central.batches.findByCode(original);
+            if (!mountedRef.current) return;
+            if (!batch) setError("Lote não encontrado. Leia a etiqueta completa do produto para criar um lote.");
+            else if (batch.status === "closed") setError(`O lote ${batch.code} está finalizado.`);
+            else showBatch(batch, false);
+          } else {
+            setError("Etiqueta inválida: informe os 12 dígitos do produto e pelo menos 4 dígitos do lote.");
+          }
           return;
         }
         const prefix = digits.slice(0, 12);
@@ -57,10 +90,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
           if (!found.ok) { setError(found.error); return; }
           if (found.data) {
             if (found.data.status === "closed") setError(`O lote ${code} deste produto está finalizado.`);
-            else {
-              setResult({ batch: found.data, created: false });
-              setPendingBarcode(null);
-            }
+            else showBatch(found.data, false);
             return;
           }
         }
@@ -83,8 +113,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
           if (existing.status === "closed") {
             setError(`O lote ${code} deste produto está finalizado.`);
           } else {
-            setResult({ batch: existing, created: false });
-            setPendingBarcode(null);
+            showBatch(existing, false);
           }
           return;
         }
@@ -93,8 +122,10 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         setLotCode(code);
         setPendingBarcode(original);
         return;
-      } catch {
-        if (mountedRef.current) setError("Não foi possível verificar o lote no banco central.");
+      } catch (error) {
+        if (mountedRef.current) setError(scannerOnly && error instanceof Error
+          ? error.message
+          : "Não foi possível verificar o lote no banco central.");
       } finally {
         if (mountedRef.current) setLoading(false);
       }
@@ -108,7 +139,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       if (!initialBarcode) setValue("");
       return;
     }
-    setResult(res.data);
+    showBatch(res.data.batch, res.data.created);
   }
 
   async function createConfirmedBatch() {
@@ -128,8 +159,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       const created = await window.api.central.batches.create({ productId, code, barcodeValue: pendingBarcode });
       if (!mountedRef.current) return;
       if (!created.ok) { setError(created.error); return; }
-      setPendingBarcode(null);
-      setResult({ batch: created.data, created: true });
+      showBatch(created.data, true);
     } catch {
       if (mountedRef.current) setError("Não foi possível criar o lote.");
     } finally {
@@ -144,7 +174,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       setError("Digite ou escaneie o código de barras antes de confirmar.");
       return;
     }
-    await scan(barcode);
+    await submitScan(barcode);
   }
 
   return (
@@ -169,9 +199,11 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         ) : (
           <>
             <button className="secondary" onClick={onClose}>Cancelar</button>
-            <button onClick={handleSubmit} disabled={loading || !value.trim()}>
-              {loading ? "Processando..." : "Confirmar"}
-            </button>
+            {!scannerOnly && (
+              <button onClick={handleSubmit} disabled={loading || !value.trim()}>
+                {loading ? "Processando..." : "Confirmar"}
+              </button>
+            )}
           </>
         )
       }
@@ -180,11 +212,19 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         <BarcodeResult result={result} />
       ) : pendingBarcode ? (
         <div>
-          <p className="muted">Confira ou altere o número do lote antes de confirmar a criação.</p>
+          <p className="muted">{scannerOnly
+            ? "Novo lote identificado. Confira os dados antes de confirmar a criação."
+            : "Confira ou altere o número do lote antes de confirmar a criação."}</p>
           <div className="field">
-            <label htmlFor="lot-code">Número do lote (mínimo 4 dígitos)</label>
-            <input id="lot-code" className="mono" inputMode="numeric" autoFocus
-              value={lotCode} onChange={(event) => { setLotCode(event.target.value.replace(/[^0-9]/g, "")); setError(null); }} />
+            {scannerOnly ? (
+              <><label>Número do lote</label><strong className="mono">{lotCode}</strong></>
+            ) : (
+              <>
+                <label htmlFor="lot-code">Número do lote (mínimo 4 dígitos)</label>
+                <input id="lot-code" className="mono" inputMode="numeric" autoFocus
+                  value={lotCode} onChange={(event) => { setLotCode(event.target.value.replace(/[^0-9]/g, "")); setError(null); }} />
+              </>
+            )}
             <small className="muted">Número completo do lote identificado na etiqueta {pendingBarcode}.</small>
           </div>
           <div className="field">
@@ -193,6 +233,11 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
           </div>
           {error && <div className="error">{error}</div>}
         </div>
+      ) : scannerOnly ? (
+        <>
+          <p role="status">{loading ? "Consultando lote..." : "Aponte o leitor para o código de barras da etiqueta."}</p>
+          {error && <div className="error" role="alert">{error}</div>}
+        </>
       ) : (
         <form onSubmit={handleSubmit}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 20, color: "#6B7280" }}>
