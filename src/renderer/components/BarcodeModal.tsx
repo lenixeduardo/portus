@@ -24,6 +24,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
   const [matchedProduct, setMatchedProduct] = useState<Product | null>(null);
   const [productId, setProductId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scannerStatusRef = useRef<HTMLParagraphElement>(null);
   const mountedRef = useRef(true);
   const scanningRef = useRef(false);
 
@@ -35,15 +36,27 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
       // window.focus() reacquires OS-level keyboard focus for the Electron window
       // in case it was lost during a logout/login cycle, then focuses the input.
       window.focus();
-      inputRef.current?.focus();
+      if (scannerOnly) scannerStatusRef.current?.focus();
+      else inputRef.current?.focus();
     }
     return () => { mountedRef.current = false; };
   }, []);
 
   useBarcodeScanner(code => { void submitScan(code); }, scannerOnly && !loading && !pendingBarcode && !result, {
     capture: true,
+    ignoreFormFields: false,
+    maxIntervalMs: 100,
+    acceptTabSuffix: true,
     shouldIntercept: () => true
   });
+
+  // The scanner-only view has no editable field. Restore focus after a retry
+  // or returning from the new-batch confirmation screen.
+  useEffect(() => {
+    if (scannerOnly && !loading && !pendingBarcode && !result) {
+      scannerStatusRef.current?.focus();
+    }
+  }, [scannerOnly, loading, pendingBarcode, result]);
 
   async function submitScan(barcode: string) {
     if (scanningRef.current) return;
@@ -235,7 +248,7 @@ export function BarcodeModal({ onClose, onBatchReady, initialBarcode, centralMod
         </div>
       ) : scannerOnly ? (
         <>
-          <p role="status">{loading ? "Consultando lote..." : "Aponte o leitor para o código de barras da etiqueta."}</p>
+          <p ref={scannerStatusRef} tabIndex={-1} role="status">{loading ? "Consultando lote..." : "Aponte o leitor para o código de barras da etiqueta."}</p>
           {error && <div className="error" role="alert">{error}</div>}
         </>
       ) : (
