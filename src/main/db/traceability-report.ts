@@ -167,6 +167,7 @@ function fallbackEpaLogoSvg(): string {
 export function buildBatchPrintHtml(history: BatchHistory): string {
   const rows = buildTraceabilityRows(history).filter(row => row.result !== "");
   const batch = history.batch;
+  const hasMultilineReading = rows.some(row => row.result.includes("\n"));
   // Escalas progressivas para otimizar o número de registros legíveis por A4.
   // Lotes muito extensos continuam paginados; nenhuma leitura pode ser omitida.
   const density = rows.length >= 43 ? "report--dense"
@@ -178,7 +179,7 @@ export function buildBatchPrintHtml(history: BatchHistory): string {
       <td>${esc(row.sector)}</td>
       <td class="mono">${esc(row.login)}</td>
       <td class="equipment-name"><span>${esc(row.event)}</span></td>
-      <td class="mono">${esc(row.result)}</td>
+      <td class="mono">${esc(row.result).replace(/\r?\n/g, "<br>")}</td>
       <td>${esc(formatDate(row.at))}</td>
     </tr>`).join("");
 
@@ -312,8 +313,8 @@ window.addEventListener("resize", fitEquipmentNames);
     <tr>
       <th style="width:16%">Setor</th>
       <th style="width:13%">Login</th>
-      <th style="width:39%">Equipamento</th>
-      <th style="width:12%">Valor</th>
+      <th style="width:${hasMultilineReading ? 35 : 39}%">Equipamento</th>
+      <th style="width:${hasMultilineReading ? 16 : 12}%">Valor</th>
       <th style="width:20%">Data da captura</th>
     </tr>
   </thead>

@@ -59,6 +59,7 @@ interface ActiveSlot {
   modbusStop?: () => void;
   sharedModbus?: boolean;
   readingAccepted?: boolean;
+  pendingViscometerTemperature?: string;
   pendingViscometerSpindle?: string;
 }
 
@@ -233,24 +234,46 @@ function scheduleUiBroadcast(slotIndex: number, event: SlotUpdateEvent): void {
   );
 }
 
+function isMarteViscometer(slot: ActiveSlot): boolean {
+  return /viscos[ií]metro|\bMVD[\s-]*8\b/i.test(slot.equipment.name);
+}
+
+function clearViscometerMeasurement(slot: ActiveSlot): void {
+  slot.pendingViscometerTemperature = undefined;
+  slot.pendingViscometerSpindle = undefined;
+}
+
 // Processa uma linha completa: parseia, grava (auditoria de TODAS as leituras)
 // e agenda a atualização visual. Cada leitura recebida na janela é persistida.
 function handleLine(slot: ActiveSlot, line: string): void {
   let raw = line.trim();
-  const isMarteViscometer = /viscos[ií]metro/i.test(slot.equipment.name);
-  if (isMarteViscometer) {
+  const viscometer = isMarteViscometer(slot);
+  if (viscometer) {
     if (/^(on|off)$/i.test(raw)) {
-      if (/^off$/i.test(raw)) slot.pendingViscometerSpindle = undefined;
+      clearViscometerMeasurement(slot);
+      return;
+    }
+    if (/^\d{2}:\d{2}:\d{2}(?:\s|$)/.test(raw)) {
+      clearViscometerMeasurement(slot);
+      // O buffer latin1 preserva tanto 0xB0 quanto os bytes UTF-8 0xC2 0xB0.
+      const match = /^\d{2}:\d{2}:\d{2}\s+([+-]?\d+(?:[.,]\d+)?)\s*(?:\xC2?\xB0|\?)C$/i.exec(raw);
+      slot.pendingViscometerTemperature = match?.[1];
       return;
     }
     if (/^SP\s*:\s*\S+\s+\d+(?:[.,]\d+)?\s*RPM\s*$/i.test(raw)) {
+      if (slot.pendingViscometerSpindle) clearViscometerMeasurement(slot);
       slot.pendingViscometerSpindle = raw;
       return;
     }
-    if (!/^\d+(?:[.,]\d+)?\s*%\s*[+-]?\d+(?:[.,]\d+)?\s*cP$/i.test(raw)) return;
-    if (!slot.pendingViscometerSpindle) return;
-    raw = slot.pendingViscometerSpindle + " | " + raw;
-    slot.pendingViscometerSpindle = undefined;
+    const result = /^(\d+(?:[.,]\d+)?\s*%)\s*([+-]?\d+(?:[.,]\d+)?\s*cP)$/i.exec(raw);
+    if (!result) return;
+    const temperature = slot.pendingViscometerTemperature;
+    const spindle = slot.pendingViscometerSpindle;
+    clearViscometerMeasurement(slot);
+    if (!spindle) return;
+    raw = temperature === undefined
+      ? spindle + " | " + raw
+      : `TEMP: ${temperature}°C\n${spindle}\n${result[1]} | ${result[2]}`;
   }
   const sid = sessionId;
   const bid = batchId;
@@ -264,7 +287,7 @@ function handleLine(slot: ActiveSlot, line: string): void {
     console.log(`[serial] Primeira linha ignorada (slot ${eq.slotIndex}, skipFirstReading) raw="${raw}"`);
     return;
   }
-  const { parsed, failureReason } = isMarteViscometer
+  const { parsed, failureReason } = viscometer
     ? { parsed: raw, failureReason: null }
     : parseReading(raw, slot.regex, slot.regexInvalid);
 
@@ -352,6 +375,7 @@ function drainBuffer(slot: ActiveSlot): void {
 }
 
 function logBufferOverflow(slot: ActiveSlot): void {
+  clearViscometerMeasurement(slot);
   logCaptureError({ slot, code: "serial_buffer_overflow", message: `Linha serial excedeu o limite de ${BUFFER_LIMIT_BYTES} bytes e foi descartada.`, context: { limitBytes: BUFFER_LIMIT_BYTES } });
 }
 
@@ -500,11 +524,15 @@ async function performCleanup(reason: "completed" | "cancelled"): Promise<Captur
 // ligado diretamente à porta, ele permanece válido após a reabertura.
 function attemptReconnect(slotIndex: number): void {
   if (sessionId === null) return;
-  if (reconnectAttempted.has(slotIndex)) return;
-  reconnectAttempted.add(slotIndex);
-
   const slot = slots.get(slotIndex);
   if (!slot) return;
+  if (isMarteViscometer(slot)) {
+    clearViscometerMeasurement(slot);
+    slot.buffer = "";
+    slot.discardingOverflow = false;
+  }
+  if (reconnectAttempted.has(slotIndex)) return;
+  reconnectAttempted.add(slotIndex);
 
   console.log(`[serial] Porta ${slot.equipment.portPath} (slot ${slotIndex}) fechou inesperadamente. Tentando reconexão...`);
 

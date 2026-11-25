@@ -62,6 +62,17 @@ describe("exportação unificada de leituras", () => {
     expect(html).not.toContain(">Computador</th>");
   });
 
+  it("exibe a medição completa do MVD-8 em uma linha da tabela do relatório", () => {
+    const history = sampleHistory();
+    const reading = history.sessions[1].readings[0];
+    const measurement = "TEMP: 21.9°C\nSP:L1 30.0RPM\n0.0% | 0.0cP";
+    Object.assign(reading, { equipmentName: "Viscosímetro", valueRaw: measurement, valueParsed: measurement });
+    expect(buildCsvContent(history)).toContain('"' + measurement + '"');
+    expect(buildBatchPrintHtml(history)).toContain(
+      "TEMP: 21.9°C<br>SP:L1 30.0RPM<br>0.0% | 0.0cP"
+    );
+  });
+
   it("usa a cor atual do tema como padrão do código de barras", () => {
     const source = readFileSync(resolve(process.cwd(), "src/renderer/components/BarcodeDisplay.tsx"), "utf8");
     expect(source).toContain('lineColor = "currentColor"');
