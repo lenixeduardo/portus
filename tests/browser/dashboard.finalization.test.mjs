@@ -162,7 +162,13 @@ async function scanLabel(page, code) {
 
 async function scanExistingBatch(page) {
   await page.getByText("Pronto para leitura", { exact: true }).waitFor();
-  await scanLabel(page, "93525");
+  const input = page.locator(".modal-card #barcode-input");
+  if (await input.count()) {
+    await input.fill("93525");
+    await input.press("Enter");
+  } else {
+    await scanLabel(page, "93525");
+  }
   await page.locator(".batch-row").waitFor();
 }
 
@@ -174,14 +180,15 @@ test("production sees only the header until a scan and must confirm a new lot", 
     assert.equal(await page.getByRole("button", { name: "Simular Scan" }).count(), 0);
     await page.getByRole("button", { name: "Leitura por Código de Barras" }).click();
     const dialog = page.locator(".modal-card");
-    assert.equal(await dialog.getByRole("textbox").count(), 0);
+    const input = dialog.getByRole("textbox", { name: "Código de barras" });
+    await input.waitFor();
+    assert.equal(await input.evaluate(el => document.activeElement === el), true);
 
     const label = "1220.0330.0001-93527";
     await page.keyboard.type(label, { delay: 110 });
-    await page.keyboard.press("Enter");
+    assert.equal(await input.inputValue(), label);
     assert.deepEqual(await page.evaluate(() => window.barcodeRequests), []);
-
-    await scanLabel(page, label);
+    await input.press("Enter");
     const confirm = dialog.getByRole("button", { name: "Confirmar novo lote" });
     await confirm.waitFor();
     assert.equal(await dialog.getByRole("textbox").count(), 0);
@@ -210,24 +217,26 @@ test("products can be found by name without accents or by identifier", async () 
 
 
 for (const sectorCode of ["LABORATORY", "PRODUCTION"]) {
-  test(`${sectorCode}: operational reader accepts slower HID input with Tab and Enter`, async () => {
+  test(`${sectorCode}: operational reader accepts native input, Tab and manual confirmation`, async () => {
     const page = await openDashboard({ completed: false, sectorCode });
     try {
       await page.getByText("Pronto para leitura", { exact: true }).waitFor();
       assert.equal(await page.locator(".batch-row").count(), 0);
       await page.getByRole("button", { name: "Leitura por Código de Barras" }).click();
       const dialog = page.locator(".modal-card");
-      await dialog.getByRole("status").waitFor();
-      assert.equal(await dialog.getByRole("status").evaluate(el => document.activeElement === el), true);
-      assert.equal(await dialog.getByRole("textbox").count(), 0);
-      await page.keyboard.type("1220.0330.0001-93525", { delay: 65 });
-      await page.keyboard.press("Tab");
+      const input = dialog.getByRole("textbox", { name: "Código de barras" });
+      await input.waitFor();
+      assert.equal(await input.evaluate(el => document.activeElement === el), true);
+      await page.keyboard.type("1220.0330.0001-93525", { delay: 110 });
+      assert.equal(await input.inputValue(), "1220.0330.0001-93525");
+      await input.press("Tab");
       await page.locator(".batch-row").getByText("#93525", { exact: true }).waitFor();
       assert.equal(await page.locator(".batch-row").count(), 1);
       await page.getByRole("button", { name: "Limpar lote" }).click();
       assert.equal(await page.locator(".batch-row").count(), 0);
-      await page.keyboard.type("93525", { delay: 65 });
-      await page.keyboard.press("Enter");
+      await page.getByRole("button", { name: "Leitura por Código de Barras" }).click();
+      await input.fill("93525");
+      await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.locator(".batch-row").getByText("#93525", { exact: true }).waitFor();
       assert.equal(await page.locator(".batch-row").count(), 1);
     } finally { await page.close(); }
