@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IPC } from "../../shared/ipc";
-const state = vi.hoisted(() => ({ routes: new Map<string, (...args: any[]) => any>(), attempts: 0, offline: true, downloads: 0, external: vi.fn(), quit: vi.fn(), capture: false, spawn: vi.fn(), spawnFails: false }));
+const state = vi.hoisted(() => ({ routes: new Map<string, (...args: any[]) => any>(), attempts: 0, offline: true, downloads: 0, external: vi.fn(), quit: vi.fn(), capture: false, role: "admin" as string | null, spawn: vi.fn(), spawnFails: false }));
 vi.mock("electron", () => ({
   app: { isPackaged: true, getVersion: () => "0.1.27", getPath: () => "/downloads", quit: state.quit },
   ipcMain: { handle: (name: string, handler: (...args: any[]) => any) => state.routes.set(name, handler) },
@@ -11,6 +11,7 @@ vi.mock("electron", () => ({
       assets: [{ name: "PORTUS-Setup-0.1.35-x64.exe", browser_download_url: "https://github.com/lenixeduardo/portus/releases/download/v0.1.35/PORTUS-Setup-0.1.35-x64.exe" }] }));
   } }, shell: { openExternal: state.external }
 }));
+vi.mock("../auth/auth-service", () => ({ getCurrentUser: () => state.role ? { role: state.role } : null }));
 vi.mock("../update-download", () => ({ downloadUpdate: async () => { state.downloads++; return "/downloads/PORTUS-Setup-0.1.35-x64.exe"; } }));
 vi.mock("../serial/capture-service", () => ({ isActive: () => state.capture }));
 vi.mock("node:fs/promises", () => ({ access: async () => {} }));
@@ -27,18 +28,39 @@ import { registerUpdateHandlers } from "../ipc/update-handlers";
 const platform = Object.getOwnPropertyDescriptor(process, "platform")!;
 beforeEach(() => {
   Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+  state.role = "admin";
   state.routes.clear(); state.attempts = 0; state.downloads = 0; state.offline = true; state.external.mockClear(); state.capture = false; state.spawnFails = false; state.quit.mockClear(); state.spawn.mockClear();
   registerUpdateHandlers();
 });
 afterEach(() => Object.defineProperty(process, "platform", platform));
 
 describe("IPC de atualização", () => {
+  it.each([null, "operator", "supervisor"])("nega atualização para perfil %s sem consultar a rede", async role => {
+    state.role = role;
+    expect(await state.routes.get(IPC.updatesVerify)!()).toEqual({ status: "current" });
+    expect(await state.routes.get(IPC.updatesCheck)!()).toBeNull();
+    expect(await state.routes.get(IPC.updatesCheckNow)!()).toMatchObject({ ok: false, error: expect.stringMatching(/Acesso negado/) });
+    expect(await state.routes.get(IPC.updatesDownload)!(event)).toMatchObject({ ok: false });
+    expect(await state.routes.get(IPC.updatesInstall)!()).toMatchObject({ ok: false });
+    expect(state.attempts).toBe(0);
+    expect(state.downloads).toBe(0);
+    expect(state.spawn).not.toHaveBeenCalled();
+  });
+  it("permite atualização pelo master e não permite instalar após logout", async () => {
+    state.role = "master";
+    state.offline = false;
+    expect(await state.routes.get(IPC.updatesVerify)!()).toMatchObject({ status: "required" });
+    expect(await state.routes.get(IPC.updatesDownload)!(event)).toMatchObject({ ok: true });
+    state.role = null;
+    expect(await state.routes.get(IPC.updatesInstall)!()).toMatchObject({ ok: false });
+    expect(state.spawn).not.toHaveBeenCalled();
+  });
   it("repete a consulta após falha de rede, em vez de guardar null por toda a sessão", async () => {
     expect(await state.routes.get(IPC.updatesCheck)!()).toBeNull();
     state.offline = false;
     expect(await state.routes.get(IPC.updatesCheck)!()).toMatchObject({ version: "0.1.35" });
   });
-  it("permite consultar versão mesmo sem login e diferencia falha de rede", async () => {
+  it("permite consulta administrativa e diferencia falha de rede", async () => {
     const manual = state.routes.get(IPC.updatesCheckNow);
     expect(manual).toBeTypeOf("function");
     const offline = await manual!();

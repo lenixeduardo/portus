@@ -10,9 +10,9 @@ export type UpdateGateState =
 let state: UpdateGateState = { status: "checking" };
 let enforceGate = false;
 
-export function configureUpdateGateEnforcement(enabled: boolean): void {
+export function configureUpdateGateEnforcement(enabled: boolean, requiresVersionCheck = enabled): void {
   enforceGate = enabled;
-  state = enabled ? { status: "checking" } : { status: "current" };
+  state = requiresVersionCheck ? { status: "checking" } : { status: "current" };
   inFlight = null;
 }
 let inFlight: Promise<UpdateGateState> | null = null;

@@ -61,6 +61,15 @@ describe("bloqueio obrigatório de versões desatualizadas", () => {
     expect(() => assertUpdateGateOpen()).toThrow();
   });
 
+  it("consulta versões sem bloquear operações quando o gate está desabilitado", async () => {
+    configureUpdateGateEnforcement(false, true);
+    expect(() => assertUpdateGateOpen()).not.toThrow();
+    expect((await verifyUpdateGate("0.1.59", async () => { throw new Error("offline"); })).status).toBe("error");
+    expect(() => assertUpdateGateOpen()).not.toThrow();
+    expect((await verifyUpdateGate("0.1.59", response(release()))).status).toBe("required");
+    expect(() => assertUpdateGateOpen()).not.toThrow();
+  });
+
   it("desabilita o gate em desenvolvimento sem lançamento instalável", () => {
     configureUpdateGateEnforcement(false);
     expect(() => assertUpdateGateOpen()).not.toThrow();
