@@ -4,7 +4,7 @@ A versão mínima desta mudança é 0.1.35. Cada build aprovado da `main` calcul
 
 O workflow Windows é serializado na main. Após testes, build e smoke test do DB Utility, o instalador validado é enviado como artifact, e o job reutilizável de publicação envia **esse mesmo arquivo** para uma Release. A Release só deixa de ser draft depois do upload. O job confirma que `/releases/latest` contém a tag e o instalador esperado. PRs geram artifacts para homologação e nunca publicam no canal de atualização. Uma execução manual do workflow Build instalável na main também permite publicar uma versão validada. Erros de autenticação/rede ao consultar a versão publicada interrompem o build, evitando reutilizar uma versão por engano.
 
-O app instalado consulta a Release ao abrir, repete a consulta a cada minuto enquanto não encontrar atualização e tenta novamente quando a conexão volta. As falhas ficam nos logs. Uma vez oferecida, a mesma atualização não fica reaparecendo ao dispensar o aviso nessa sessão.
+O app instalado consulta a Release somente após autenticação de um usuário com perfil `admin` ou `master`, repete a consulta a cada minuto e tenta novamente quando a conexão volta. A tela de login e os perfis operacionais não exibem a atualização nem ficam bloqueados por versão antiga ou falha de consulta. Download e instalação também exigem sessão administrativa no processo principal. Uma vez dispensada, a mesma atualização não reaparece naquela sessão. As notas de versão também são exibidas apenas após login administrativo.
 
 O botão **Baixar atualização** baixa pelo processo principal do Electron para a pasta Downloads. O modal mostra o progresso. Arquivos incompletos e respostas que não sejam executáveis Windows são descartados; a interface nunca fornece URL ou caminho de executável ao processo principal.
 
@@ -19,7 +19,7 @@ As migrations do PostgreSQL central continuam sendo aplicadas pelo DB Utility co
 ## Homologação Windows
 
 1. Instalar uma versão anterior numa pasta personalizada com espaços.
-2. Abrir com e sem conexão; ao reconectar, confirmar a oferta da versão publicada.
+2. Abrir sem login e confirmar ausência de aviso; autenticar operador e supervisor e confirmar acesso sem aviso. Autenticar admin ou master, com e sem conexão; ao reconectar, confirmar a oferta da versão publicada.
 3. Baixar no modal e conferir progresso/arquivo final, sem abertura de navegador.
 4. Iniciar uma captura e conferir que Instalar e reiniciar é bloqueado.
 5. Concluir a captura, confirmar instalação, aceitar elevação quando solicitada e conferir reinício, versão exibida e manutenção da pasta/configurações.

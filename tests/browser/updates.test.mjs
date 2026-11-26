@@ -23,33 +23,50 @@ before(async () => {
 });
 after(async () => { await browser?.close(); if (vite?.exitCode === null) vite.kill(); });
 
-async function openUpdate({ offline = false } = {}) {
+async function openUpdate({ offline = false, role = "admin" } = {}) {
   const page = await browser.newPage();
-  await page.addInitScript(({version,offline}) => {
+  await page.addInitScript(({version,offline,role}) => {
     localStorage.setItem('portus:last-seen-version',version);
     window.updateOffline=offline;
-    window.downloads=0; window.installs=0;
+    window.downloads=0; window.installs=0; window.checks=0;
+    const user={id:1,username:'test',displayName:'Test',role,sectorCode:'ADMIN',active:true,createdAt:'2026-10-01T12:00:00'};
+    localStorage.setItem('portus:admin-backup-guide:v1:1','seen');
     window.api={
-      auth:{currentUser:async()=>null},
+      auth:{currentUser:async()=>null,login:async()=>({ok:true,user}),logout:async()=>{}},
+      central:{status:async()=>({configured:true,available:true,required:true,mode:"central"}),batches:{listOpen:async()=>[]}},
+      capture:{onEnded:()=>()=>{},isActive:async()=>false},
+      users:{findByBarcode:async()=>null},
+      settings:{getAll:async()=>({})},
+      log:{error:async()=>{}},
       setup:{status:async()=>({configured:true,available:true,setupCompleted:true})},
       updates:{
         check:async()=>window.updateOffline?null:({currentVersion:version,version:'0.9.0'}),
-        verify:async()=>window.updateOffline
+        verify:async()=>{window.checks++;return window.updateOffline
           ? {status:'error',error:'Não foi possível acessar o canal de atualizações.'}
-          : {status:'required',update:{currentVersion:version,version:'0.9.0'}},
+          : {status:'required',update:{currentVersion:version,version:'0.9.0'}};},
         onProgress:callback=>{window.progressCallback=callback;return()=>{window.progressCallback=null;};},
         download:()=>{window.downloads++;return new Promise(resolve=>{window.finishDownload=resolve;});},
         install:async()=>{window.installs++;return window.installs===1?{ok:false,error:'Conclua a captura em andamento antes de instalar a atualização.'}:{ok:true,data:true};}
       }
     };
-  },{version,offline});
+  },{version,offline,role});
   await page.goto(url);
   return page;
+}
+
+async function login(page) {
+  await page.getByRole('button',{name:'Entrar',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Baixar atualização',exact:true}).count(),0);
+  assert.equal(await page.evaluate(()=>window.checks),0);
+  await page.getByPlaceholder('USER_ID').fill('test');
+  await page.locator('input[type=password]').fill('test');
+  await page.getByRole('button',{name:'Entrar',exact:true}).click();
 }
 
 test('download interno mantém modal, mostra progresso e oferece instalação na mesma pasta',async()=>{
   const page=await openUpdate();
   try {
+    await login(page);
     await page.getByRole('button',{name:'Baixar atualização',exact:true}).click();
     await page.evaluate(()=>window.progressCallback({receivedBytes:50,totalBytes:100}));
     await page.getByText('50% baixado',{exact:true}).waitFor();
@@ -67,23 +84,39 @@ test('download interno mantém modal, mostra progresso e oferece instalação na
     assert.equal(page.context().pages().length,1);
   } finally {await page.close();}
 });
-test('falha de conexão mantém login bloqueado até revalidar',async()=>{
+test('falha de conexão não bloqueia login e administrador recebe aviso ao reconectar',async()=>{
   const page=await openUpdate({offline:true});
   try {
-    await page.getByRole('button',{name:'Tentar novamente',exact:true}).waitFor();
-    assert.equal(await page.getByRole('button',{name:'Entrar',exact:true}).count(),0);
-    await page.evaluate(()=>{window.updateOffline=false;});
-    await page.getByRole('button',{name:'Tentar novamente'}).click();
+    await login(page);
+    await page.getByRole('heading',{name:'Lotes Ativos'}).waitFor();
+    await page.waitForFunction(()=>window.checks>0);
+    assert.equal(await page.getByRole('button',{name:'Baixar atualização',exact:true}).count(),0);
+    await page.evaluate(()=>{window.updateOffline=false; window.dispatchEvent(new Event('online'));});
     await page.getByRole('button',{name:'Baixar atualização',exact:true}).waitFor();
-    assert.equal(await page.getByRole('button',{name:'Agora não'}).count(),0);
-    assert.equal(await page.getByRole('button',{name:'Fechar',exact:true}).count(),0);
-    assert.equal(await page.getByRole('button',{name:'Entrar',exact:true}).count(),0);
+    await page.getByRole('button',{name:'Agora não',exact:true}).click();
+    assert.equal(await page.getByRole('button',{name:'Baixar atualização',exact:true}).count(),0);
   } finally {await page.close();}
 });
+
+for (const role of ['operator','supervisor','master']) {
+  test(`atualização após login: ${role}`,async()=>{
+    const page=await openUpdate({role});
+    try {
+      await login(page);
+      await page.getByRole('heading',{name:'Lotes Ativos'}).waitFor();
+      if (role==='master') await page.getByRole('button',{name:'Baixar atualização',exact:true}).waitFor();
+      else {
+        assert.equal(await page.evaluate(()=>window.checks),0);
+        assert.equal(await page.getByRole('button',{name:'Baixar atualização',exact:true}).count(),0);
+      }
+    } finally {await page.close();}
+  });
+}
 
 test('ao clicar em baixar, o estado de conexão aparece antes do primeiro byte', async () => {
   const page = await openUpdate();
   try {
+    await login(page);
     await page.getByRole('button',{name:'Baixar atualização',exact:true}).click();
     await page.getByText('Conectando ao servidor e aguardando dados…',{exact:true}).waitFor();
     assert.equal(await page.evaluate(()=>window.downloads),1);

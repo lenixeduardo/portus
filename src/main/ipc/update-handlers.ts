@@ -9,9 +9,15 @@ import type { UpdateGateState } from "../../shared/ipc";
 import { downloadUpdate } from "../update-download";
 import { isActive } from "../serial/capture-service";
 import { logError, logInfo } from "../logger";
+import { getCurrentUser } from "../auth/auth-service";
+import { canManageUpdates } from "../../shared/update-permissions";
+
+const hasUpdateAccess = () => canManageUpdates(getCurrentUser()?.role);
+const denied = { ok: false, error: "Acesso negado. Apenas administradores podem atualizar o PORTUS." } as const;
 
 export function registerUpdateHandlers() {
-  configureUpdateGateEnforcement(app.isPackaged && process.platform === "win32");
+  // Uma atualização disponível não bloqueia autenticação ou operação das estações.
+  configureUpdateGateEnforcement(false);
   let checking: Promise<AvailableUpdate | null> | undefined;
   let downloading: Promise<ServiceResult<true>> | undefined;
   let downloadedPath: string | undefined;
@@ -31,9 +37,10 @@ export function registerUpdateHandlers() {
     checking ??= verify().then(state => state.status === "required" ? state.update : null)
       .finally(() => { checking = undefined; });
 
-  ipcMain.handle(IPC.updatesVerify, verify);
-  ipcMain.handle(IPC.updatesCheck, check);
+  ipcMain.handle(IPC.updatesVerify, () => hasUpdateAccess() ? verify() : { status: "current" });
+  ipcMain.handle(IPC.updatesCheck, () => hasUpdateAccess() ? check() : null);
   ipcMain.handle(IPC.updatesCheckNow, async (): Promise<ServiceResult<AvailableUpdate | null>> => {
+    if (!hasUpdateAccess()) return denied;
     if (!app.isPackaged || process.platform !== "win32") {
       return { ok: false, error: "A busca manual está disponível na versão instalada do PORTUS para Windows." };
     }
@@ -43,6 +50,7 @@ export function registerUpdateHandlers() {
     return { ok: true, data: state.status === "required" ? state.update : null };
   });
   ipcMain.handle(IPC.updatesDownload, (event): Promise<ServiceResult<true>> => {
+    if (!hasUpdateAccess()) return Promise.resolve(denied);
     if (installing) return Promise.resolve({ ok: false, error: "A atualização já está sendo instalada." });
     if (downloading) return downloading;
     logInfo("updates:download", "Solicitação de download recebida.");
@@ -50,6 +58,7 @@ export function registerUpdateHandlers() {
       try {
         // Reuse the already announced release; an intermittent second check must not block a click.
         const update = announcedUpdate ?? await check();
+        if (!hasUpdateAccess()) return denied;
         if (!update) return { ok: false, error: "Não foi possível confirmar a atualização no GitHub. Verifique sua conexão e tente novamente." };
         downloadedPath = undefined;
         logInfo("updates:download", `Iniciando download da versão ${update.version}.`);
@@ -68,6 +77,7 @@ export function registerUpdateHandlers() {
   });
 
   ipcMain.handle(IPC.updatesInstall, async (): Promise<ServiceResult<true>> => {
+    if (!hasUpdateAccess()) return denied;
     if (!app.isPackaged || process.platform !== "win32" || !downloadedPath || installing) {
       return { ok: false, error: "Baixe a atualização antes de instalar." };
     }
@@ -75,6 +85,10 @@ export function registerUpdateHandlers() {
     try {
       installing = true;
       await access(downloadedPath);
+      if (!hasUpdateAccess() || isActive()) {
+        installing = false;
+        return !hasUpdateAccess() ? denied : { ok: false, error: "Conclua a captura em andamento antes de instalar a atualização." };
+      }
       // NSIS requires /D last and unquoted, even for paths containing spaces.
       const child = spawn(downloadedPath, ["/S", "--updated", "--force-run", `/D=${win32.dirname(process.execPath)}`], {
         detached: true, stdio: "ignore", windowsHide: true, windowsVerbatimArguments: true

@@ -15,7 +15,8 @@ import { UserBarcodeRegistration } from "./components/UserBarcodeRegistration";
 import { APP_VERSION, RELEASE_NOTES } from "./releaseNotes";
 import type { User } from "../shared/types";
 import { getUserViewLabel } from "./user-view-label";
-import type { AvailableUpdate, InitialSetupStatus, UpdateGateState } from "../shared/ipc";
+import type { AvailableUpdate, InitialSetupStatus } from "../shared/ipc";
+import { canManageUpdates } from "../shared/update-permissions";
 import { UpdateAvailableModal } from "./components/UpdateAvailableModal";
 
 const TITLES: Record<Route, string> = {
@@ -52,8 +53,8 @@ export function App() {
   const [initialSetup, setInitialSetup] = useState<InitialSetupStatus | null>(null);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showBackupGuide, setShowBackupGuide] = useState(false);
-  const [updateGate, setUpdateGate] = useState<UpdateGateState>({ status: "checking" });
-  const [retryingUpdate, setRetryingUpdate] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<AvailableUpdate | null>(null);
+  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const [showReportError, setShowReportError] = useState(false);
   const [requestedUserBarcode, setRequestedUserBarcode] = useState<string | null>(null);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>("checking");
@@ -96,13 +97,6 @@ export function App() {
     let active = true;
     const loadApplication = async () => {
       try {
-        const gate = await window.api.updates.verify();
-        if (!active) return;
-        setUpdateGate(gate);
-        if (gate.status !== "current") {
-          setUser(null);
-          return;
-        }
         const [currentUser, setup] = await Promise.all([
           window.api.auth.currentUser(), window.api.setup.status()
         ]);
@@ -110,10 +104,9 @@ export function App() {
         setUser(currentUser);
         if ((setup.supported && !setup.setupCompleted) || !setup.configured) setInitialSetup(setup);
       } catch (error) {
-        reportRendererError("mandatory-version-check", error);
+        reportRendererError("bootstrap", error);
         if (active) {
           setUser(null);
-          setUpdateGate({ status: "error", error: "Falha ao validar a versão instalada. Verifique sua conexão e tente novamente." });
         }
       } finally {
         if (active) setBootstrapping(false);
@@ -168,6 +161,36 @@ export function App() {
     setShowBackupGuide(window.localStorage.getItem(`${BACKUP_GUIDE_KEY}:${user.id}`) !== "seen");
   }, [user?.id, user?.role]);
 
+  useEffect(() => {
+    setAvailableUpdate(null);
+    setDismissedVersion(null);
+    if (!canManageUpdates(user?.role) || !window.api) return;
+    let active = true;
+    let checking = false;
+    async function checkVersion() {
+      if (checking) return;
+      checking = true;
+      try {
+        const gate = await window.api.updates.verify();
+        if (active && gate.status === "required") setAvailableUpdate(gate.update);
+        else if (active && gate.status === "current") setAvailableUpdate(null);
+      } catch (error) {
+        reportRendererError("admin-version-check", error);
+      } finally {
+        checking = false;
+      }
+    }
+    void checkVersion();
+    const interval = window.setInterval(() => void checkVersion(), 60_000);
+    const reconnect = () => void checkVersion();
+    window.addEventListener("online", reconnect);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("online", reconnect);
+    };
+  }, [user?.id, user?.role]);
+
   function closeBackupGuide() {
     if (user?.role === "master") window.localStorage.setItem(`${BACKUP_GUIDE_KEY}:${user.id}`, "seen");
     setShowBackupGuide(false);
@@ -179,36 +202,10 @@ export function App() {
 
   async function handleLogout() {
     await window.api.auth.logout();
+    setAvailableUpdate(null);
+    setDismissedVersion(null);
     setUser(null);
     setRoute("dashboard");
-  }
-
-  async function retryVersionCheck() {
-    if (retryingUpdate) return;
-    setRetryingUpdate(true);
-    try {
-      const gate = await window.api.updates.verify();
-      setUpdateGate(gate);
-      if (gate.status === "current") {
-        const [currentUser, setup] = await Promise.all([
-          window.api.auth.currentUser(), window.api.setup.status()
-        ]);
-        setUser(currentUser);
-        setInitialSetup(
-          (setup.supported && !setup.setupCompleted) || !setup.configured ? setup : null
-        );
-      }
-    } catch (error) {
-      reportRendererError("retry-version-check", error);
-      setUpdateGate({ status: "error", error: "Não foi possível verificar a versão. Verifique a conexão e tente novamente." });
-    } finally {
-      setRetryingUpdate(false);
-    }
-  }
-
-  function handleUpdateFound(update: AvailableUpdate) {
-    setUpdateGate({ status: "required", update });
-    setUser(null);
   }
 
   function closeReleaseNotes() {
@@ -229,34 +226,10 @@ export function App() {
       <code style={{ fontSize: 13 }}>npm run electron</code>
     </div>
   );
-  if (updateGate.status !== "current") {
-    return (
-      <>
-        <div className="login-wrap">
-          <section className="update-gate-screen" role="status" aria-live="polite">
-            <h2>PORTUS</h2>
-            {updateGate.status === "checking" && <p>Verificando versão instalada…</p>}
-            {updateGate.status === "required" && <p>A versão instalada está desatualizada. Atualize para continuar.</p>}
-            {updateGate.status === "error" && <>
-              <h3>Verificação de versão indisponível</h3>
-              <p role="alert">{updateGate.error}</p>
-              <p>O acesso permanece bloqueado até validar a versão instalada.</p>
-              <button type="button" disabled={retryingUpdate} onClick={() => void retryVersionCheck()}>
-                {retryingUpdate ? "Verificando…" : "Tentar novamente"}
-              </button>
-            </>}
-          </section>
-        </div>
-        {updateGate.status === "required" &&
-          <UpdateAvailableModal update={updateGate.update} onClose={() => undefined} mandatory />}
-      </>
-    );
-  }
   if (initialSetup) return <InitialSetup initialStatus={initialSetup} onCompleted={() => { setUser(null); setInitialSetup(null); }} />;
   if (!user) return (
     <>
-      <Login onAuthenticated={setUser} onUpdateFound={handleUpdateFound} />
-      {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+      <Login onAuthenticated={setUser} />
     </>
   );
 
@@ -311,8 +284,13 @@ export function App() {
         requestedBarcode={requestedUserBarcode}
         onRequestedBarcodeHandled={() => setRequestedUserBarcode(null)}
       />
-      {showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
-      {showBackupGuide && !showReleaseNotes && user.role === "master" && <BackupGuideModal onClose={closeBackupGuide} />}
+      {canManageUpdates(user.role) && availableUpdate && dismissedVersion !== availableUpdate.version ? (
+        <UpdateAvailableModal key={`${user.id}:${availableUpdate.version}`} update={availableUpdate}
+          onClose={() => setDismissedVersion(availableUpdate.version)} />
+      ) : <>
+        {canManageUpdates(user.role) && showReleaseNotes && <ReleaseNotesModal onClose={closeReleaseNotes} />}
+        {showBackupGuide && !showReleaseNotes && user.role === "master" && <BackupGuideModal onClose={closeBackupGuide} />}
+      </>}
       {showReportError && <ReportErrorModal onClose={() => setShowReportError(false)} />}
     </>
   );
