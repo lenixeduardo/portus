@@ -136,22 +136,23 @@ export async function createCentralCaptureSession(
   timeoutSeconds: number,
   username: string,
   sectorCode: "PRODUCTION" | "LABORATORY",
-  station: CentralStationIdentity
+  station: CentralStationIdentity,
+  wavelength?: { equipmentId: number; nm: number }
 ): Promise<CaptureSession> {
   const context = await resolveContext(username, sectorCode);
   const stationId = await ensureCentralStation(station);
   await assertCentralCapturePermission(context, sectorCode);
   const result = await centralQuery<SessionRow>(
     `INSERT INTO capture_sessions (
-       batch_id, sector_id, station_id, source_application_id, user_id, timeout_seconds
+       batch_id, sector_id, station_id, source_application_id, user_id, timeout_seconds, wavelength_equipment_id, wavelength_nm
      )
-     SELECT b.id, $2, $3, $4, $5, $6
+     SELECT b.id, $2, $3, $4, $5, $6, $7, $8
        FROM batches b
       WHERE b.id = $1
         AND b.status = 'open'
         AND (NOT b.completed OR $2 <> (SELECT id FROM sectors WHERE code = 'PRODUCTION'))
      RETURNING id, batch_id, started_at, ended_at, timeout_seconds, status`,
-    [batchId, context.sector_id, stationId, context.application_id, context.user_id, timeoutSeconds]
+    [batchId, context.sector_id, stationId, context.application_id, context.user_id, timeoutSeconds, wavelength?.equipmentId ?? null, wavelength?.nm ?? null]
   );
   const row = result.rows[0];
   if (!row) throw new Error("Lote concluído ou finalizado: novas leituras da Produção estão bloqueadas.");

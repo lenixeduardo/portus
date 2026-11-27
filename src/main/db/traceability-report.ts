@@ -56,6 +56,10 @@ export function reportEquipmentName(name: string): string {
   return name.trim();
 }
 
+export function withWavelength(value: string, nm?: number): string {
+  return nm == null ? value : value + "\n" + nm.toLocaleString("pt-BR", { maximumFractionDigits: 20, useGrouping: false }) + " nm";
+}
+
 export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
   const rows: TraceRow[] = [];
 
@@ -79,7 +83,7 @@ export function buildTraceabilityRows(history: BatchHistory): TraceRow[] {
         at: reading.capturedAt,
         sector: sectorLabel(session.sectorCode),
         event: reportEquipmentName(reading.equipmentName),
-        result: reading.valueParsed ?? reading.valueRaw,
+        result: withWavelength(reading.valueParsed ?? reading.valueRaw, reading.wavelengthNm),
         responsible: session.operatorName ?? session.operatorLogin ?? "—",
         login: session.operatorLogin ?? session.operatorName ?? "—",
         station: session.stationCode ?? session.stationName ?? "—"

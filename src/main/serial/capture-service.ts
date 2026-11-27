@@ -668,7 +668,8 @@ export async function startCapture(
   equipmentIds?: number[],
   username?: string,
   sectorCode: "PRODUCTION" | "LABORATORY" = "PRODUCTION",
-  simulated = false
+  simulated = false,
+  wavelengthNm?: number
 ): Promise<ServiceResult<CaptureStartResult>> {
   if (isActive()) {
     return { ok: false, error: "Já existe uma captura em andamento." };
@@ -718,8 +719,13 @@ export async function startCapture(
     return { ok: false, error: "Falha ao carregar captura central: " + (error instanceof Error ? error.message : String(error)) };
   }
 
+  const spectrometer = equipments.find(eq => eq.code === "ESPECTROFOTOMETRO");
+  if (spectrometer && !simulated && (wavelengthNm == null || !Number.isFinite(wavelengthNm) || wavelengthNm < 0 || wavelengthNm > 1500)) {
+    return { ok: false, error: "Informe um comprimento de onda de 0 a 1500 nm." };
+  }
   const session = await createCentralCaptureSession(
-    targetBatchId, timeoutSeconds, username, sectorCode, stationIdentity
+    targetBatchId, timeoutSeconds, username, sectorCode, stationIdentity,
+    spectrometer && wavelengthNm != null ? { equipmentId: spectrometer.id, nm: wavelengthNm } : undefined
   );
   centralReadErrors = [];
   sessionId = session.id;

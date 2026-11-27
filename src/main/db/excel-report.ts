@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BatchHistory } from "../../shared/ipc";
-import { reportEquipmentName } from "./traceability-report";
+import { withWavelength, reportEquipmentName } from "./traceability-report";
 import { deflateRawSync, deflateSync } from "node:zlib";
 
 // XLSX (OOXML) criado inteiramente em Node.js: não depende de Excel nem PowerShell.
@@ -176,7 +176,7 @@ export function excelReportRows(history: BatchHistory): string[][] {
     session.stationCode || session.stationName || "",
     session.operatorLogin || "",
     reportEquipmentName(reading.equipmentName),
-    reading.valueRaw || reading.valueParsed || "",
+    withWavelength(reading.valueRaw || reading.valueParsed || "", reading.wavelengthNm),
     "", // Unidade: sem dado de origem
     "", // Status de leitura: sem regra de validacao confiavel
     excelDate(reading.capturedAt),

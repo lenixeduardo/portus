@@ -12,7 +12,7 @@ export function buildCsvContent(history: BatchHistory): string {
   const header = [
     "Lote", "Produto", "Operador", "Abertura do Lote",
     "Sessão", "Início Sessão", "Fim Sessão",
-    "Status Sessão", "Setor", "Responsável", "Login", "Computador", "Equipamento", "Slot", "Valor Bruto", "Valor Numérico", "Capturado em"
+    "Status Sessão", "Setor", "Responsável", "Login", "Computador", "Equipamento", "Slot", "Valor Bruto", "Valor Numérico", "Capturado em", "Comprimento de onda (nm)"
   ];
   lines.push(header.join(";"));
 
@@ -25,7 +25,7 @@ export function buildCsvContent(history: BatchHistory): string {
       lines.push(
         [batch.code, batch.productName, batch.operatorName, formatExcelDate(batch.openedAt),
           sessionNum, formatExcelDate(session.startedAt), formatExcelDate(session.endedAt), session.status,
-          sectorLabel(session.sectorCode), session.operatorName ?? "", session.operatorLogin ?? "", session.stationCode ?? "", "", "", "", "", ""]
+          sectorLabel(session.sectorCode), session.operatorName ?? "", session.operatorLogin ?? "", session.stationCode ?? "", "", "", "", "", "", ""]
           .map(csvCell).join(";")
       );
       continue;
@@ -35,7 +35,7 @@ export function buildCsvContent(history: BatchHistory): string {
         [batch.code, batch.productName, batch.operatorName, formatExcelDate(batch.openedAt),
           sessionNum, formatExcelDate(session.startedAt), formatExcelDate(session.endedAt), session.status,
           sectorLabel(session.sectorCode), session.operatorName ?? "", session.operatorLogin ?? "", session.stationCode ?? "", reportEquipmentName(r.equipmentName),
-          r.slotIndex >= 0 ? r.slotIndex + 1 : "", r.valueRaw, formatExcelDecimal(r.valueParsed), formatExcelDate(r.capturedAt)]
+          r.slotIndex >= 0 ? r.slotIndex + 1 : "", r.valueRaw, formatExcelDecimal(r.valueParsed), formatExcelDate(r.capturedAt), formatExcelDecimal(r.wavelengthNm?.toString())]
           .map(csvCell).join(";")
       );
     }
