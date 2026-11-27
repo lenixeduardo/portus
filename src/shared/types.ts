@@ -46,6 +46,7 @@ export type ModbusFunction = 3 | 4;
 export type ModbusRegisterDecode = "uint16" | "int16" | "uint32_be" | "uint32_le";
 
 export interface Equipment {
+  code?: string;
   id: number;
   name: string;
   portPath: string;

@@ -5,7 +5,7 @@ import { Modal } from "./Modal";
 
 interface Props {
   batch: BatchWithProduct;
-  onConfirm: (equipmentIds: number[]) => void;
+  onConfirm: (equipmentIds: number[], wavelengthNm?: number) => void;
   onCancel: () => void;
 }
 
@@ -31,8 +31,13 @@ export function EquipmentSelectionModal({ batch, onConfirm, onCancel }: Props) {
     });
   }
 
+  const [wavelength, setWavelength] = useState("");
+  const needsWavelength = equipments.some(eq => selected.has(eq.id) && eq.code === "ESPECTROFOTOMETRO");
+  const nm = wavelength.trim() === "" ? NaN : Number(wavelength.replace(",", "."));
+  const valid = Number.isFinite(nm) && nm >= 0 && nm <= 1500;
+
   function handleConfirm() {
-    onConfirm([...selected]);
+    if (!needsWavelength || valid) onConfirm([...selected], needsWavelength ? nm : undefined);
   }
 
   return (
@@ -43,7 +48,7 @@ export function EquipmentSelectionModal({ batch, onConfirm, onCancel }: Props) {
       footer={
         <>
           <button className="secondary" onClick={onCancel}>Cancelar</button>
-          <button onClick={handleConfirm} disabled={selected.size === 0 || loading}>
+          <button onClick={handleConfirm} disabled={selected.size === 0 || loading || (needsWavelength && !valid)}>
             Iniciar Captura
           </button>
         </>
@@ -85,6 +90,13 @@ export function EquipmentSelectionModal({ batch, onConfirm, onCancel }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {needsWavelength && (
+        <label>Comprimento de onda (0 a 1500 nm)
+          <input type="number" min="0" max="1500" step="any" required autoFocus
+            value={wavelength} onChange={event => setWavelength(event.target.value)} />
+        </label>
       )}
 
       {!loading && selected.size === 0 && (

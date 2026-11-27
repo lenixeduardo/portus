@@ -9,6 +9,7 @@ interface SlotState extends SlotInitState {
 
 interface Props {
   batchId: number;
+  wavelengthNm?: number;
   equipmentIds?: number[];
   simulated?: boolean;
   onClose: () => void;
@@ -18,7 +19,7 @@ interface Props {
 const RING_RADIUS = 54;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose, onEnded }: Props) {
+export function CaptureModal({ batchId, equipmentIds, wavelengthNm, simulated = false, onClose, onEnded }: Props) {
   const [phase, setPhase] = useState<"starting" | "active" | "ended">("starting");
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
@@ -51,7 +52,7 @@ export function CaptureModal({ batchId, equipmentIds, simulated = false, onClose
         setSkipFirstReading(st.skipFirstReading);
         setPhase("active");
       } else {
-        const res = await window.api.capture.start(batchId, equipmentIds, simulated);
+        const res = await window.api.capture.start(batchId, equipmentIds, simulated, wavelengthNm);
         if (cancelled) return;
         if (!res.ok) {
           setError(res.error);

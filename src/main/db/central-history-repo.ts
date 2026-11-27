@@ -9,6 +9,7 @@ interface HistoryRow {
   session_timeout_seconds: number;
   session_status: "active" | "completed" | "cancelled";
   reading_id: number | null;
+  wavelength_nm: number | null;
   value_raw: string | null;
   value_parsed: string | null;
   captured_at: string | Date | null;
@@ -65,6 +66,7 @@ export async function getCentralBatchHistory(
             cu.username AS operator_login,
             s.code AS sector_code, st.code AS station_code, st.name AS station_name,
             r.id AS reading_id, r.value_raw,
+            CASE WHEN cs.wavelength_equipment_id = r.equipment_id THEN cs.wavelength_nm END AS wavelength_nm,
             r.value_parsed, r.captured_at, e.id AS equipment_id,
             COALESCE(NULLIF(trim(profile.config->>'name'), ''), e.name) AS equipment_name
        FROM capture_sessions cs
@@ -108,6 +110,7 @@ export async function getCentralBatchHistory(
         // O modelo central não possui slot físico da estação. Não inventamos
         // "slot 1" para todas as leituras; a interface exibe "—" nesse caso.
         slotIndex: -1,
+        wavelengthNm: row.wavelength_nm ?? undefined,
         valueRaw: row.value_raw ?? "",
         valueParsed: row.value_parsed ?? undefined,
         capturedAt: toCentralTimestamp(row.captured_at)

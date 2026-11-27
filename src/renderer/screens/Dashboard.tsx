@@ -90,6 +90,7 @@ export function Dashboard({
   const [barcodeInitial, setBarcodeInitial] = useState<string | undefined>(undefined);
   const [simulatingLot, setSimulatingLot] = useState(false);
   const [captureBatchId, setCaptureBatchId] = useState<number | null>(null);
+  const [wavelengthNm, setWavelengthNm] = useState<number>();
   const [captureEquipmentIds, setCaptureEquipmentIds] = useState<number[] | null>(null);
   const [simulatedCapture, setSimulatedCapture] = useState(false);
   const [scannedBatchId, setScannedBatchId] = useState<number | null>(null);
@@ -356,6 +357,7 @@ export function Dashboard({
       }
       await reload();
       setCaptureEquipmentIds(equipments.map((equipment) => equipment.id));
+      setWavelengthNm(undefined);
       setSimulatedCapture(true);
       setCaptureBatchId(res.data.id);
     } finally {
@@ -433,7 +435,8 @@ export function Dashboard({
     }
   }
 
-  function handleEquipmentSelected(ids: number[]) {
+  function handleEquipmentSelected(ids: number[], nm?: number) {
+    setWavelengthNm(nm);
     const batch = selectionBatch;
     setSelectionBatch(null);
     setCaptureEquipmentIds(ids);
@@ -654,6 +657,7 @@ export function Dashboard({
       {captureBatchId !== null && (
         <CaptureModal
           batchId={captureBatchId}
+          wavelengthNm={wavelengthNm}
           equipmentIds={captureEquipmentIds ?? undefined}
           simulated={simulatedCapture}
           onClose={async () => {

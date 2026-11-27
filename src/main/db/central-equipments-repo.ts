@@ -38,6 +38,7 @@ function toEquipment(row: EquipmentProfileRow): Equipment {
     modbusResponseTimeoutMs: 1000,
     scaleEnabled: false,
     ...config,
+    code: row.code ?? undefined,
     id: Number(row.id),
     slotIndex: typeof config.slotIndex === "number" ? config.slotIndex : idx + 1
   } as Equipment;

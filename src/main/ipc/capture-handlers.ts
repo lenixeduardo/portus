@@ -12,6 +12,7 @@ import { compose, requireAuth, validateInput } from "./middleware";
 const startCaptureSchema = z.object({
   batchId: z.number().positive("ID do lote deve ser um número positivo"),
   equipmentIds: z.array(z.number().positive()).optional(),
+  wavelengthNm: z.number().min(0).max(1500).optional(),
   simulated: z.boolean().optional()
 });
 
@@ -39,7 +40,7 @@ export function registerCaptureHandlers(): void {
         try {
           const station = await getCentralStationIdentity();
           const captureSector = resolveCaptureSector(user, station.sectorCode);
-          return await startCapture(input.batchId, input.equipmentIds, user.username, captureSector, input.simulated ?? false);
+          return await startCapture(input.batchId, input.equipmentIds, user.username, captureSector, input.simulated ?? false, input.wavelengthNm);
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : "Falha ao iniciar captura central." };
         }

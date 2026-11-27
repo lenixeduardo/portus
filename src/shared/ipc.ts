@@ -167,6 +167,7 @@ export interface CaptureStateSnapshot {
 export type Unsubscribe = () => void;
 
 export interface ReadingRecord {
+  wavelengthNm?: number;
   id: number;
   equipmentId: number;
   equipmentName: string;
@@ -397,7 +398,7 @@ export interface SerialReaderApi {
     listPorts(): Promise<SerialPortInfo[]>;
   };
   capture: {
-    start(batchId: number, equipmentIds?: number[], simulated?: boolean): Promise<ServiceResult<CaptureStartResult>>;
+    start(batchId: number, equipmentIds?: number[], simulated?: boolean, wavelengthNm?: number): Promise<ServiceResult<CaptureStartResult>>;
     cancel(): Promise<ServiceResult<true>>;
     complete(): Promise<ServiceResult<true>>;
     skipFirstReading(): Promise<ServiceResult<true>>;
